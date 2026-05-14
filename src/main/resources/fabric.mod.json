@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "globe-world",
+	"version": "${version}",
+	"name": "Globe World",
+	"description": "This is an example description! Tell everyone what your mod is about!",
+	"authors": [
+		"Me!"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/globe-world/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"globe.world.GlobeWorld"
+		],
+		"client": [
+			"globe.world.client.GlobeWorldClient"
+		]
+	},
+	"mixins": [
+		"globe-world.mixins.json",
+		{
+			"config": "globe-world.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.2",
+		"minecraft": "~26.1.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
