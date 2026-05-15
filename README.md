@@ -3,6 +3,7 @@ A minecraft mod
 
 build: ./gradlew build
 test: ./gradlew runClient
+pkill -f runClient
 
 
 Create a visually and functionally “round” Minecraft world by generating a finite, tileable square of terrain that repeats seamlessly when the player walks beyond its bounds. The mod gives the illusion of a continuous globe without breaking vanilla game systems. Optional enhancements include a curvature shader for a round-horizon effect.

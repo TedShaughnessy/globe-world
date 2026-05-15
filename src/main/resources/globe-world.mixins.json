@@ -3,7 +3,9 @@
 	"package": "globe.world.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
-		"ExampleMixin"
+		"LevelChunkPacketAccess",
+		"PlayerChunkSenderMixin",
+		"ServerChunkCacheMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
