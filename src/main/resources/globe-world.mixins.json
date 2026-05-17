@@ -9,6 +9,7 @@
 		"ClientboundLevelChunkWithLightMixin",
 		"NaturalSpawnerMixin",
 		"PlayerChunkSenderMixin",
+		"ServerEntityMixin",
 		"ServerChunkCacheMixin"
 	],
 	"injectors": {
