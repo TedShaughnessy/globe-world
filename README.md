@@ -27,7 +27,6 @@ Player coordinates grow unboundedly during a session. On death or world load the
 - Gravity, physics, collision
 - Terrain generation algorithm (noise is made periodic in Phase 2)
 - Redstone, block ticks, inventories
-- Any client-side rendering beyond receiving correctly labeled packets
 
 ## Phases
 
@@ -39,4 +38,3 @@ Player coordinates grow unboundedly during a session. On death or world load the
 | 4 | Planned | Cosmetic shader (curved horizon) |
 | 5 | Future | Hexagonal tiling, alternate tile sizes |
 
-See `IMPL.md` for implementation details and `RESEARCH.md` / `BORDER_CONTINUITY.md` for bytecode analysis of affected Minecraft systems.
