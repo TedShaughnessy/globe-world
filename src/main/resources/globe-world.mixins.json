@@ -3,6 +3,7 @@
 	"package": "globe.world.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
+		"BiomeFilterMixin",
 		"ClientboundLevelChunkWithLightMixin",
 		"PlayerChunkSenderMixin",
 		"ServerChunkCacheMixin"
