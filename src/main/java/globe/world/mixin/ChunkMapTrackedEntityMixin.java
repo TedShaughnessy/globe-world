@@ -6,10 +6,12 @@ import globe.world.util.CoordUtil;
 import globe.world.util.EntityPacketUtil;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.server.network.ServerPlayerConnection;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -37,6 +39,25 @@ public class ChunkMapTrackedEntityMixin {
             delta.y,
             CoordUtil.wrappedDeltaBlock(playerPos.z, entityPos.z)
         );
+    }
+
+    @WrapOperation(
+        method = "updatePlayer",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/server/level/ChunkMap;isChunkTracked(Lnet/minecraft/server/level/ServerPlayer;II)Z"
+        )
+    )
+    private boolean wrapTrackedEntityChunkLookup(
+            ChunkMap chunkMap,
+            ServerPlayer player,
+            int chunkX,
+            int chunkZ,
+            Operation<Boolean> original) {
+        ChunkPos playerChunk = player.chunkPosition();
+        int virtualX = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkX), playerChunk.x());
+        int virtualZ = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkZ), playerChunk.z());
+        return original.call(chunkMap, player, virtualX, virtualZ);
     }
 
     @WrapOperation(
