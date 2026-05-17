@@ -15,10 +15,26 @@ Canonical zone: `[-W/2, W/2)` in chunk coords (centered at origin so spawn has f
 
 **Mixins:**
 - `ServerChunkCacheMixin` — hooks `getChunk` / `getChunkNow`, wraps x/z to canonical before lookup
-- `PlayerChunkSenderMixin` — `@Redirect` on `conn.send` inside private static `sendChunk`; relabels `ClientboundLevelChunkWithLightPacket` x/z to virtual frame; same for `ClientboundForgetLevelChunkPacket`
-- `LevelChunkPacketAccess` (accessor interface) — exposes setters for `private final int x/z` on the chunk packet; Mixin strips `final` at bytecode
+- `PlayerChunkSenderMixin` — `@WrapOperation` on `new ClientboundLevelChunkWithLightPacket(...)` inside static `sendChunk`; relabels x/z to virtual frame; same for `ClientboundForgetLevelChunkPacket` in `dropChunk`
+- `ClientboundLevelChunkWithLightMixin` — stores virtual x/z override; `@Redirect` on GETFIELD for x/z in `write()` to emit virtual coords on the wire
 
 See DEVLOG.md for full architecture rationale (canonical-zone centering, why server relabeling beats client wrapping).
+
+**Known pitfalls fixed in PlayerChunkSenderMixin:**
+
+*1. Non-deterministic terrain (getChunkNow returns null)*
+Canonical chunks are `W_CHUNKS` away from the player's virtual/raw position and get no natural player ticket, so `getChunkNow(wcx, wcz)` is a lottery. Fix: fall back to `level.getChunk(wcx, wcz)` (forced sync load on server thread).
+
+*2. Missing tiles when viewDist > W_CHUNKS/2*
+`virtualChunk()` returns only the nearest alias. With large view distance the same canonical chunk must appear at multiple virtual positions (one per visible tile). Fix: after computing the nearest-alias main packet, iterate `visibleAliases()` and send extra packets for every other `(ax, az)` combination. Mirror in `dropChunk` to avoid ghost chunks. `visibleAliases(canonical, playerCoord, viewDist)` returns all `canonical + k*W_CHUNKS` within `[playerCoord-viewDist, playerCoord+viewDist]`.
+
+*3. Canonical chunks unloaded mid-session (distance manager gap)*
+Server distance manager uses raw player position. Canonical chunks far from that position accumulate no player ticket and get unloaded. Fix: `addTicketWithRadius(TicketType.FORCED, canonPos, 0)` when a non-canonical chunk is sent; `removeTicketWithRadius(...)` when it is dropped. Each non-canonical raw position acts as an implicit ref — the canonical stays loaded until all virtual references are dropped.
+
+**MC 26.1.2 ticket API (changed from older versions):**
+`TicketType` is now a non-generic `Record` — no `create(String, Comparator)` factory, no type parameter.
+Use `ServerChunkCache.addTicketWithRadius(TicketType, ChunkPos, int radius)` / `removeTicketWithRadius(...)`.
+`TicketType.FORCED` (radius=0) keeps exactly the target chunk at entity-ticking status (equivalent to `/forceload`); note it persists to disk.
 
 ---
 
