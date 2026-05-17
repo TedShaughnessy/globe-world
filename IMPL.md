@@ -10,26 +10,25 @@ Canonical zone: `[-W/2, W/2)` in chunk coords (centered at origin so spawn has f
 **Coordinate utilities (`CoordUtil`):**
 - `wrapChunk(c)` — `floorMod` into canonical zone
 - `wrapBlock(b)` — same for block coords
-- `virtualChunk(canonical, playerChunk)` — nearest virtual tile position to player: `canonical + round((playerChunk - canonical) / W) * W`
-- `virtualBlock(canonical, playerBlock)` — same for block/entity coords
+- `virtualChunk(canonical, playerChunk)` — nearest virtual tile to player (exists, unused in send path — see below)
 
 **Mixins:**
 - `ServerChunkCacheMixin` — hooks `getChunk` / `getChunkNow`, wraps x/z to canonical before lookup
-- `PlayerChunkSenderMixin` — `@WrapOperation` on `new ClientboundLevelChunkWithLightPacket(...)` inside static `sendChunk`; relabels x/z to virtual frame; same for `ClientboundForgetLevelChunkPacket` in `dropChunk`
+- `PlayerChunkSenderMixin` — `@WrapOperation` on `new ClientboundLevelChunkWithLightPacket(...)` inside static `sendChunk`; loads canonical chunk data; sends packet with virtual coord = raw coord (see below); same for `ClientboundForgetLevelChunkPacket` in `dropChunk`
 - `ClientboundLevelChunkWithLightMixin` — stores virtual x/z override; `@Redirect` on GETFIELD for x/z in `write()` to emit virtual coords on the wire
 
-See DEVLOG.md for full architecture rationale (canonical-zone centering, why server relabeling beats client wrapping).
+See DEVLOG.md for full architecture rationale (canonical-zone centering, why server relabeling beats client wrapping, why raw-pos = virtual-pos).
 
 **Known pitfalls fixed in PlayerChunkSenderMixin:**
 
 *1. Non-deterministic terrain (getChunkNow returns null)*
 Canonical chunks are `W_CHUNKS` away from the player's virtual/raw position and get no natural player ticket, so `getChunkNow(wcx, wcz)` is a lottery. Fix: fall back to `level.getChunk(wcx, wcz)` (forced sync load on server thread).
 
-*2. Missing tiles when viewDist > W_CHUNKS/2*
-`virtualChunk()` returns only the nearest alias. With large view distance the same canonical chunk must appear at multiple virtual positions (one per visible tile). Fix: after computing the nearest-alias main packet, iterate `visibleAliases()` and send extra packets for every other `(ax, az)` combination. Mirror in `dropChunk` to avoid ghost chunks. `visibleAliases(canonical, playerCoord, viewDist)` returns all `canonical + k*W_CHUNKS` within `[playerCoord-viewDist, playerCoord+viewDist]`.
+*2. Multiple aliases coexist naturally — no explicit extra-send needed*
+The server generates actual Minecraft chunks at every raw position within view distance. Multiple raw positions that map to the same canonical (e.g. raw `x=12` and raw `x=36` both wrapping to canonical `x=-12`) are generated and tracked independently by the server's chunk holder system. Each alias is sent to the client at its raw position as the virtual coord. Multiple aliases of the same canonical coexist on the client simultaneously — the client treats them as distinct positions. Each alias has its own load/drop lifecycle; no manual deduplication or extra-send logic is needed or correct (deduplicating causes aliases to vanish as the player moves, since the client silently evicts chunks that drift outside `viewDist`).
 
 *3. Canonical chunks unloaded mid-session (distance manager gap)*
-Server distance manager uses raw player position. Canonical chunks far from that position accumulate no player ticket and get unloaded. Fix: `addTicketWithRadius(TicketType.FORCED, canonPos, 0)` when a non-canonical chunk is sent; `removeTicketWithRadius(...)` when it is dropped. Each non-canonical raw position acts as an implicit ref — the canonical stays loaded until all virtual references are dropped.
+Server distance manager uses raw player position. Canonical chunks far from that position accumulate no player ticket and get unloaded. Fix: `addTicketWithRadius(TicketType.FORCED, canonPos, 0)` when a non-canonical chunk is sent; `removeTicketWithRadius(...)` when it is dropped. Refcount tracks all active raw aliases across all players — ticket released only when all aliases drop.
 
 **MC 26.1.2 ticket API (changed from older versions):**
 `TicketType` is now a non-generic `Record` — no `create(String, Comparator)` factory, no type parameter.

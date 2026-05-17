@@ -26,22 +26,32 @@ This concept applies to: chunk data, entity positions, projectile positions, spa
 
 ## 1. Chunks
 
-### What needs to happen
-Player near `x = W - n` (within view distance of the edge) must receive chunk data for `chunkX = 0..n` remapped as `chunkX = W/16..W/16+n`.
+### Coordinate convention
+Code uses a **centered canonical range**: `wrapChunk(c)` maps any raw chunk coordinate to `[-W_CHUNKS/2, W_CHUNKS/2)` — i.e. `[-12, 11]` for a 24-chunk-wide world. This differs from the `[0, W)` notation used elsewhere in this doc; they are equivalent, just offset by `W/2`. The border teleport implementation (step 3) must use `wrapChunk` to stay consistent — teleport fires when the player's raw chunk coord exits `[-12, 11]`, not at `0` or `W`.
 
-### Server side
-`PlayerChunkSenderMixin` (already being worked on): intercept chunk send logic. When the server would send chunk `(cx, cz)` to a player but that chunk is in the "virtual overflow" region, load the real wrapped chunk `(cx % worldChunksX, cz % worldChunksZ)` and rewrite the `ChunkPos` in the outbound packet to the virtual coordinate.
+### How it works (implemented)
 
-**Packet to intercept:** `ClientboundLevelChunkWithLightPacket` — rewrite `x` and `z` fields before send.
+The server generates actual Minecraft chunks at **raw** positions around the player's current (drifted) coordinates — e.g. player at raw chunk `(22, -38)` gets chunks generated in a radius around that point. Most of these raw chunks are non-canonical (outside `[-12, 11]`). `PlayerChunkSenderMixin` intercepts each outgoing `ClientboundLevelChunkWithLightPacket` and:
 
-### Client side
-`ClientboundLevelChunkWithLightMixin` (already being worked on): if incoming chunk `(cx, cz)` has coordinates beyond the real world bounds, accept and render them at those virtual coordinates. The client chunk storage already supports arbitrary chunk coords as long as they are within `viewDistance` of the player.
+1. Computes `wrapChunk(cx)` / `wrapChunk(cz)` to find the canonical chunk.
+2. If non-canonical: acquires a FORCED ticket on the canonical chunk to keep its data in memory, then loads the canonical `LevelChunk` and serialises *its* block data into the packet.
+3. Rewrites the packet's `x`/`z` fields to the raw (virtual) position via `ClientboundLevelChunkWithLightMixin.setVirtualPos`.
+4. Sends the packet. The client stores the chunk at the virtual (raw) position — within its `viewDistance` ring — and renders it there.
+
+On unload, `relabelDropPacket` releases the FORCED ticket and sends `ClientboundForgetLevelChunkPacket` with the same raw position. Load/drop coords always match.
+
+**Multiple aliases per canonical chunk coexist on the client.** When `viewDistance > W_CHUNKS/2`, more than one copy of the same canonical chunk is visible simultaneously. Each alias has an independent load/drop lifecycle driven by the server's normal chunk radius management. This is correct and necessary — aliases naturally enter and exit the client's view window as the player moves.
+
+### After border teleport is added (step 3)
+Once the player is kept in canonical range `[-12, 11]`, only chunks near the boundary will be non-canonical (the "overflow" tiles). The system above handles this transparently — no chunk code changes needed for teleport support.
 
 ### Chunk unload
-When player moves past the border and teleports, the virtual extended chunks (now behind the player) must be unloaded and the newly visible ones loaded. Standard chunk tick handles this as long as the remapping stays consistent.
+Standard chunk tick handles unload. Because virtual coord = raw coord and the server manages load/drop symmetrically, the client sees a clean unload when the player moves away.
 
-### Edge case: chunk updates
-Block updates (`ClientboundBlockUpdatePacket`, `ClientboundSectionBlocksUpdatePacket`) also carry `BlockPos` or `SectionPos`. These must be remapped too when sent to players viewing virtual chunks. **This is easy to miss.**
+### ⚠ TODO: block update packets
+`ClientboundBlockUpdatePacket` and `ClientboundSectionBlocksUpdatePacket` carry a `BlockPos` / `SectionPos` in **canonical** coordinates. A player viewing a non-canonical alias tile will receive block updates referencing the canonical position — which may be far outside their view window. Those updates will be silently ignored by the client.
+
+**Fix required:** intercept the block update send path and remap `BlockPos` into the virtual coordinate space for any player whose view of that block is through a non-canonical alias. This affects all live block changes visible through the tiled border.
 
 ---
 
@@ -189,7 +199,8 @@ In practice, view distance shows the other side so the player can see targets; t
 
 | System | Difficulty | What to intercept |
 |---|---|---|
-| Chunk data across border | **Medium** | `PlayerChunkSenderMixin` (already started), `ClientboundLevelChunkWithLightMixin` (already started), also block update packets |
+| Chunk data across border | ✅ **Done** | `PlayerChunkSenderMixin` + `ClientboundLevelChunkWithLightMixin` — virtual alias tiling working |
+| Block update packets to virtual viewers | **Medium** | `ClientboundBlockUpdatePacket` / `ClientboundSectionBlocksUpdatePacket` — remap BlockPos to virtual coords per watching player |
 | Entity tracking decision | **Easy** | `ChunkMap$TrackedEntity.updatePlayer` — replace distXZsq |
 | Entity position in packets | **Hard** | `ClientboundAddEntityPacket`, `ClientboundTeleportEntityPacket` — remap per-player |
 | Relative entity move at border | **Medium** | Detect large delta → send teleport packet with virtual coord instead |
@@ -201,7 +212,6 @@ In practice, view distance shows the other side so the player can see targets; t
 | Projectile visual continuity | **Medium** | Send virtual coords in teleport packets |
 | Projectile hit at border | **Hard** | Split raycast at border plane (skip for MVP) |
 | Block interaction across border | **Medium** | `Player.isWithinBlockInteractionRange` + BlockPos remap |
-| Block update packets to virtual viewers | **Medium** | Intercept `ClientboundBlockUpdatePacket` send path |
 
 ---
 
