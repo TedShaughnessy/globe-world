@@ -26,6 +26,7 @@ public class ChunkHolderMixin {
             Operation<Void> original,
             Packet<?> originalPacket,
             ServerPlayer player) {
-        original.call(connection, BlockPacketUtil.virtualizeFor(packet, player));
+        Packet<?> virtualPacket = BlockPacketUtil.virtualizeFor(packet, player);
+        original.call(connection, virtualPacket);
     }
 }

@@ -3,6 +3,7 @@ package globe.world.util;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
 import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.server.level.ServerPlayer;
@@ -10,11 +11,16 @@ import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.Relative;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class EntityPacketUtil {
-    @SuppressWarnings("unchecked")
     public static Packet<? super ClientGamePacketListener> virtualizeFor(
             Packet<? super ClientGamePacketListener> packet,
             ServerPlayer viewer) {
+        if (packet instanceof ClientboundBundlePacket bundle) {
+            return virtualizeBundle(bundle, viewer);
+        }
         if (packet instanceof ClientboundAddEntityPacket add) {
             return virtualizeAddEntity(add, viewer);
         }
@@ -25,6 +31,20 @@ public class EntityPacketUtil {
             return virtualizeTeleport(teleport, viewer);
         }
         return packet;
+    }
+
+    private static ClientboundBundlePacket virtualizeBundle(ClientboundBundlePacket packet, ServerPlayer viewer) {
+        List<Packet<? super ClientGamePacketListener>> virtualPackets = new ArrayList<>();
+        boolean changed = false;
+        for (Packet<? super ClientGamePacketListener> subPacket : packet.subPackets()) {
+            Packet<? super ClientGamePacketListener> virtualPacket = virtualizeFor(subPacket, viewer);
+            virtualPackets.add(virtualPacket);
+            if (virtualPacket != subPacket) {
+                changed = true;
+            }
+        }
+        if (!changed) return packet;
+        return new ClientboundBundlePacket(virtualPackets);
     }
 
     private static ClientboundAddEntityPacket virtualizeAddEntity(ClientboundAddEntityPacket packet, ServerPlayer viewer) {

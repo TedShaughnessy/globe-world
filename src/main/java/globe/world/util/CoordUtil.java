@@ -4,6 +4,7 @@ import globe.world.config.GlobeConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class CoordUtil {
@@ -61,6 +62,17 @@ public class CoordUtil {
 
     public static double virtualBlock(double canonical, double viewer) {
         return canonical + Math.rint((viewer - canonical) / GlobeConfig.W_BLOCKS) * GlobeConfig.W_BLOCKS;
+    }
+
+    public static AABB virtualAabb(AABB canonical, double viewerX, double viewerZ) {
+        double centerX = (canonical.minX + canonical.maxX) * 0.5;
+        double centerZ = (canonical.minZ + canonical.maxZ) * 0.5;
+        double dx = virtualBlock(centerX, viewerX) - centerX;
+        double dz = virtualBlock(centerZ, viewerZ) - centerZ;
+        if (dx == 0.0 && dz == 0.0) {
+            return canonical;
+        }
+        return canonical.move(dx, 0.0, dz);
     }
 
     /** Returns the virtual tile of canonical coord nearest to playerCoord. */

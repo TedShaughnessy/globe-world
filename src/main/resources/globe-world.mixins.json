@@ -11,11 +11,16 @@
 		"ClientboundBlockEntityDataPacketAccessor",
 		"ClientboundLevelChunkWithLightMixin",
 		"ClientboundSectionBlocksUpdatePacketAccessor",
+		"ChunkMapPlayerProviderMixin",
+		"LevelSetBlockBroadcastMixin",
 		"NaturalSpawnerMixin",
+		"NearestLivingEntitySensorMixin",
 		"PlayerChunkSenderMixin",
+		"PlayerInteractionRangeMixin",
 		"ServerLevelEntityMixin",
 		"ServerEntityMixin",
-		"ServerChunkCacheMixin"
+		"ServerChunkCacheMixin",
+		"TargetingConditionsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
