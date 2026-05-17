@@ -1,27 +1,42 @@
 # Globe World
-A minecraft mod
 
-build: ./gradlew build
-test: ./gradlew runClient
-pkill -f runClient
+Fabric mod for Minecraft 26.1.2 that makes the world tile seamlessly — walk far enough east and you reappear from the west, giving the illusion of a globe.
 
+```
+build:   ./gradlew build
+client:  ./gradlew runClient
+kill:    pkill -f runClient
+```
 
-Create a visually and functionally “round” Minecraft world by generating a finite, tileable square of terrain that repeats seamlessly when the player walks beyond its bounds. The mod gives the illusion of a continuous globe without breaking vanilla game systems. Optional enhancements include a curvature shader for a round-horizon effect.
+## How it works
 
-Key Features:
+The world has a finite canonical tile of `W_CHUNKS × W_CHUNKS` chunks centered at the origin. Any chunk access outside that tile is transparently redirected to the canonical equivalent on the server. Outbound chunk and entity packets are relabeled to the player's virtual coordinate frame, so the client renders a continuous world with no seams and no client mod required.
 
-Repeating World:
-The world is generated as a finite square of chunks.
-When the player walks past its edges, the same chunks tile seamlessly.
-Seamless Terrain:
-Procedural generation ensures edges match up perfectly.
-Noise, biomes, and structure seeds are wrapped to prevent seams.
-Player Continuity:
-No forced teleportation during normal movement.
-Optional rebasing on death or world load to keep players near the “center” if coordinates grow too large.
-Optional Cosmetic Enhancements:
-Curvature shader to simulate a globe.
-Hexagonal tiling (future) for alternate terrain patterns.
-Vanilla-Compatible:
-All vanilla mechanics (mobs, AI, redstone, entities) continue to work.
-No modifications to Minecraft physics, networking, or rendering logic beyond worldgen and cosmetic shaders.
+Player coordinates grow unboundedly during a session. On death or world load the player is rebased to the canonical equivalent position.
+
+## What is and isn't changed
+
+**Changed:**
+- Chunk lookup and packet labeling (server → client)
+- Entity spawn/teleport packets (coordinate translation to player's virtual frame)
+- Entity tracking range (wrapped XZ distance)
+- Mob spawn and despawn distance checks (wrapped XZ distance)
+- Block update packets sent to players viewing virtual tile positions
+
+**Not changed:**
+- Gravity, physics, collision
+- Terrain generation algorithm (noise is made periodic in Phase 2)
+- Redstone, block ticks, inventories
+- Any client-side rendering beyond receiving correctly labeled packets
+
+## Phases
+
+| Phase | Status | Description |
+|---|---|---|
+| 1 | Done | Core chunk wrapping — terrain repeats, no seams yet |
+| 2 | Planned | Periodic noise, biome and structure seam fix |
+| 3 | Planned | Entity multiplayer — tracking, spawn/despawn, packet translation |
+| 4 | Planned | Cosmetic shader (curved horizon) |
+| 5 | Future | Hexagonal tiling, alternate tile sizes |
+
+See `IMPL.md` for implementation details and `RESEARCH.md` / `BORDER_CONTINUITY.md` for bytecode analysis of affected Minecraft systems.
