@@ -1,6 +1,7 @@
 package globe.world.util;
 
 import globe.world.config.GlobeConfig;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
@@ -16,12 +17,27 @@ public class CoordUtil {
         return Math.floorMod(b + half, GlobeConfig.W_BLOCKS) - half;
     }
 
+    public static BlockPos wrapBlockPos(BlockPos pos) {
+        int x = wrapBlock(pos.getX());
+        int z = wrapBlock(pos.getZ());
+        if (x == pos.getX() && z == pos.getZ()) {
+            return pos;
+        }
+        return new BlockPos(x, pos.getY(), z);
+    }
+
+    public static ChunkPos wrapChunkPos(ChunkPos pos) {
+        int x = wrapChunk(pos.x());
+        int z = wrapChunk(pos.z());
+        if (x == pos.x() && z == pos.z()) {
+            return pos;
+        }
+        return new ChunkPos(x, z);
+    }
+
     public static double wrappedDeltaBlock(double a, double b) {
         double d = a - b;
-        double half = GlobeConfig.W_BLOCKS / 2.0;
-        if (d > half) d -= GlobeConfig.W_BLOCKS;
-        if (d < -half) d += GlobeConfig.W_BLOCKS;
-        return d;
+        return d - Math.rint(d / GlobeConfig.W_BLOCKS) * GlobeConfig.W_BLOCKS;
     }
 
     public static double wrappedDistanceSqrXZ(double ax, double az, double bx, double bz) {

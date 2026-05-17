@@ -12,6 +12,7 @@
 		"ClientboundSectionBlocksUpdatePacketAccessor",
 		"NaturalSpawnerMixin",
 		"PlayerChunkSenderMixin",
+		"ServerLevelEntityMixin",
 		"ServerEntityMixin",
 		"ServerChunkCacheMixin"
 	],
