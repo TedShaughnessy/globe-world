@@ -20,7 +20,5 @@ public class GlobeWorld implements ModInitializer {
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
 
-		LOGGER.info("GlobeWorld loaded - default period {} chunks ({} blocks)",
-				GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS, GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS * 16);
 	}
 }
