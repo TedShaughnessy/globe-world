@@ -13,6 +13,7 @@
 		"ClientboundSectionBlocksUpdatePacketAccessor",
 		"ChunkMapPlayerProviderMixin",
 		"LevelSetBlockBroadcastMixin",
+		"MinecraftServerMixin",
 		"NaturalSpawnerMixin",
 		"NearestLivingEntitySensorMixin",
 		"PlayerChunkSenderMixin",
@@ -20,7 +21,8 @@
 		"ServerLevelEntityMixin",
 		"ServerEntityMixin",
 		"ServerChunkCacheMixin",
-		"TargetingConditionsMixin"
+		"TargetingConditionsMixin",
+		"WorldGenSettingsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

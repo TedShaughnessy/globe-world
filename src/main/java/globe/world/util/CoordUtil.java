@@ -9,13 +9,21 @@ import net.minecraft.world.phys.Vec3;
 
 public class CoordUtil {
     public static int wrapChunk(int c) {
-        int half = GlobeConfig.W_CHUNKS / 2;
-        return Math.floorMod(c + half, GlobeConfig.W_CHUNKS) - half;
+        if (!GlobeConfig.enabled()) {
+            return c;
+        }
+        int tileSize = GlobeConfig.tileSizeChunks();
+        int half = tileSize / 2;
+        return Math.floorMod(c + half, tileSize) - half;
     }
 
     public static int wrapBlock(int b) {
-        int half = GlobeConfig.W_BLOCKS / 2;
-        return Math.floorMod(b + half, GlobeConfig.W_BLOCKS) - half;
+        if (!GlobeConfig.enabled()) {
+            return b;
+        }
+        int tileSize = GlobeConfig.tileSizeBlocks();
+        int half = tileSize / 2;
+        return Math.floorMod(b + half, tileSize) - half;
     }
 
     public static BlockPos wrapBlockPos(BlockPos pos) {
@@ -37,8 +45,12 @@ public class CoordUtil {
     }
 
     public static double wrappedDeltaBlock(double a, double b) {
+        if (!GlobeConfig.enabled()) {
+            return a - b;
+        }
         double d = a - b;
-        return d - Math.rint(d / GlobeConfig.W_BLOCKS) * GlobeConfig.W_BLOCKS;
+        int tileSize = GlobeConfig.tileSizeBlocks();
+        return d - Math.rint(d / tileSize) * tileSize;
     }
 
     public static double wrappedDistanceSqrXZ(double ax, double az, double bx, double bz) {
@@ -61,7 +73,11 @@ public class CoordUtil {
     }
 
     public static double virtualBlock(double canonical, double viewer) {
-        return canonical + Math.rint((viewer - canonical) / GlobeConfig.W_BLOCKS) * GlobeConfig.W_BLOCKS;
+        if (!GlobeConfig.enabled()) {
+            return canonical;
+        }
+        int tileSize = GlobeConfig.tileSizeBlocks();
+        return canonical + Math.rint((viewer - canonical) / tileSize) * tileSize;
     }
 
     public static AABB virtualAabb(AABB canonical, double viewerX, double viewerZ) {
@@ -77,7 +93,11 @@ public class CoordUtil {
 
     /** Returns the virtual tile of canonical coord nearest to playerCoord. */
     public static int virtualChunk(int canonical, int playerChunk) {
-        int k = Math.floorDiv(playerChunk - canonical + GlobeConfig.W_CHUNKS / 2, GlobeConfig.W_CHUNKS);
-        return canonical + k * GlobeConfig.W_CHUNKS;
+        if (!GlobeConfig.enabled()) {
+            return canonical;
+        }
+        int tileSize = GlobeConfig.tileSizeChunks();
+        int k = Math.floorDiv(playerChunk - canonical + tileSize / 2, tileSize);
+        return canonical + k * tileSize;
     }
 }
