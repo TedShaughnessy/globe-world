@@ -44,6 +44,25 @@ public class CoordUtil {
         return new ChunkPos(x, z);
     }
 
+    public static int tileAliasChunk(int chunk) {
+        if (!GlobeConfig.enabled()) {
+            return 0;
+        }
+        return (chunk - wrapChunk(chunk)) / GlobeConfig.tileSizeChunks();
+    }
+
+    public static int tileAliasBlock(int block) {
+        if (!GlobeConfig.enabled()) {
+            return 0;
+        }
+        return (block - wrapBlock(block)) / GlobeConfig.tileSizeBlocks();
+    }
+
+    public static boolean isInCanonicalTile(BlockPos pos) {
+        return !GlobeConfig.enabled()
+                || (pos.getX() == wrapBlock(pos.getX()) && pos.getZ() == wrapBlock(pos.getZ()));
+    }
+
     public static double wrappedDeltaBlock(double a, double b) {
         if (!GlobeConfig.enabled()) {
             return a - b;

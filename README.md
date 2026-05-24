@@ -22,11 +22,13 @@ Player coordinates grow unboundedly during a session. On death or world load the
 - Entity tracking range (wrapped XZ distance)
 - Mob spawn and despawn distance checks (wrapped XZ distance)
 - Block update packets sent to players viewing virtual tile positions
+- Scheduled block/fluid ticks canonicalized for the normal gameplay path
+- Immediate redstone dust shape updates render through aliases
 
 **Not changed:**
 - Gravity, physics, collision
 - Terrain generation algorithm (noise is made periodic in Phase 2)
-- Redstone, block ticks, inventories
+- Random block ticks, inventories, and full redstone/piston/observer edge-case behavior
 
 ## Phases
 
@@ -37,4 +39,3 @@ Player coordinates grow unboundedly during a session. On death or world load the
 | 3 | Planned | Entity multiplayer — tracking, spawn/despawn, packet translation |
 | 4 | Planned | Cosmetic shader (curved horizon) |
 | 5 | Future | Hexagonal tiling, alternate tile sizes |
-

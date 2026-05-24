@@ -5,6 +5,9 @@
 	"client": [
 		"ClientChunkCacheMixin",
 		"CreateWorldScreenMixin",
+		"DebugRendererMixin",
+		"DebugScreenOverlayMixin",
+		"KeyboardHandlerMixin",
 		"WorldTabMixin"
 	],
 	"injectors": {
