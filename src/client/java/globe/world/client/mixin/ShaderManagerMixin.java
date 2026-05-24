@@ -17,11 +17,22 @@ import org.apache.commons.io.IOUtils;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Map;
+import java.util.Set;
 
 @Mixin(ShaderManager.class)
 public class ShaderManagerMixin {
     @Unique
-    private static final ThreadLocal<Boolean> globeWorld$loadingTerrainVertexShader = ThreadLocal.withInitial(() -> false);
+    private static final Set<String> GLOBE_WORLD_CURVED_VERTEX_SHADERS = Set.of(
+            "shaders/core/terrain.vsh",
+            "shaders/core/entity.vsh",
+            "shaders/core/block.vsh",
+            "shaders/core/rendertype_entity_shadow.vsh",
+            "shaders/core/rendertype_leash.vsh",
+            "shaders/core/rendertype_outline.vsh",
+            "shaders/core/particle.vsh"
+    );
+    @Unique
+    private static final ThreadLocal<Boolean> globeWorld$loadingCurvedVertexShader = ThreadLocal.withInitial(() -> false);
 
     @Inject(method = "loadShader", at = @At("HEAD"))
     private static void globeWorld$rememberShader(
@@ -32,10 +43,10 @@ public class ShaderManagerMixin {
             ImmutableMap.Builder<?, String> output,
             CallbackInfo ci
     ) {
-        globeWorld$loadingTerrainVertexShader.set(
+        globeWorld$loadingCurvedVertexShader.set(
                 type == ShaderType.VERTEX
                         && "minecraft".equals(location.getNamespace())
-                        && "shaders/core/terrain.vsh".equals(location.getPath())
+                        && GLOBE_WORLD_CURVED_VERTEX_SHADERS.contains(location.getPath())
         );
     }
 
@@ -45,10 +56,10 @@ public class ShaderManagerMixin {
     )
     private static String globeWorld$readShaderSource(Reader reader) throws IOException {
         String source = IOUtils.toString(reader);
-        if (!globeWorld$loadingTerrainVertexShader.get()) {
+        if (!globeWorld$loadingCurvedVertexShader.get()) {
             return source;
         }
-        return GlobeCurvatureShader.transformTerrainVertexShader(source);
+        return GlobeCurvatureShader.transformWorldVertexShader(source);
     }
 
     @Inject(method = "loadShader", at = @At("RETURN"))
@@ -60,6 +71,6 @@ public class ShaderManagerMixin {
             ImmutableMap.Builder<?, String> output,
             CallbackInfo ci
     ) {
-        globeWorld$loadingTerrainVertexShader.remove();
+        globeWorld$loadingCurvedVertexShader.remove();
     }
 }
