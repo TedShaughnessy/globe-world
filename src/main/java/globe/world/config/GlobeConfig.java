@@ -3,10 +3,15 @@ package globe.world.config;
 public class GlobeConfig {
     public static final int DEFAULT_TILE_SIZE_CHUNKS = 6;
 
-    private static TilingSettings settings = TilingSettings.square(DEFAULT_TILE_SIZE_CHUNKS);
+    private static volatile TilingSettings settings = TilingSettings.square(DEFAULT_TILE_SIZE_CHUNKS);
+    private static volatile int settingsVersion = 0;
 
     public static void setTilingSettings(TilingSettings newSettings) {
-        settings = newSettings.sanitized();
+        TilingSettings sanitized = newSettings.sanitized();
+        if (!sanitized.equals(settings)) {
+            settings = sanitized;
+            settingsVersion++;
+        }
     }
 
     public static TilingSettings tilingSettings() {
@@ -15,6 +20,10 @@ public class GlobeConfig {
 
     public static boolean enabled() {
         return settings.enabled();
+    }
+
+    public static int settingsVersion() {
+        return settingsVersion;
     }
 
     public static int tileSizeChunks() {

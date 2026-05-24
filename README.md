@@ -37,5 +37,5 @@ Player coordinates grow unboundedly during a session. On death or world load the
 | 1 | Done | Core chunk wrapping — terrain repeats, no seams yet |
 | 2 | Planned | Periodic noise, biome and structure seam fix |
 | 3 | Planned | Entity multiplayer — tracking, spawn/despawn, packet translation |
-| 4 | Planned | Cosmetic shader (curved horizon) |
+| 4 | Partial | Cosmetic shader bends terrain downward based on tile size |
 | 5 | Future | Hexagonal tiling, alternate tile sizes |
