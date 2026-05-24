@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import globe.world.GlobeChunkPacket;
+import globe.world.util.ChunkAliasTracker;
 import globe.world.util.CoordUtil;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
@@ -84,6 +85,8 @@ public class PlayerChunkSenderMixin {
             if (canonical != null) chunkToSend = canonical;
         }
 
+        ChunkAliasTracker.addAlias(conn.player, wcx, wcz, cx, cz);
+
         // Virtual coord = raw coord; client stores each alias at its natural position.
         // The alias enters/exits the client's view as the player moves, just like any
         // vanilla chunk would.
@@ -108,6 +111,7 @@ public class PlayerChunkSenderMixin {
         int cx = pos.x(), cz = pos.z();
         int wcx = CoordUtil.wrapChunk(cx), wcz = CoordUtil.wrapChunk(cz);
 
+        ChunkAliasTracker.removeAlias(player, wcx, wcz, cx, cz);
         if (wcx != cx || wcz != cz) {
             releaseForcedTicket((ServerLevel) player.level(), wcx, wcz);
         }
