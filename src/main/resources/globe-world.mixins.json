@@ -5,6 +5,7 @@
 	"mixins": [
 		"BiomeFilterMixin",
 		"ChunkGeneratorMixin",
+		"ChunkMapCanonicalTicketMixin",
 		"ChunkMapSpawningMixin",
 		"ChunkMapTrackedEntityMixin",
 		"ChunkHolderMixin",

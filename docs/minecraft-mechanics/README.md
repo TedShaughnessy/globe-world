@@ -4,6 +4,8 @@ This folder is a progressive-disclosure index for vanilla Minecraft mechanics th
 
 It is intentionally about vanilla mechanics first. Use it to find the relevant decompiled source files before deciding where a project-specific change belongs.
 
+If you discover more important references update the docs
+
 ## Source Roots
 
 Common/server/shared sources:

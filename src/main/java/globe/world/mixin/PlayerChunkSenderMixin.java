@@ -4,7 +4,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import globe.world.GlobeChunkPacket;
-import globe.world.GlobeWorld;
 import globe.world.util.ChunkAliasTracker;
 import globe.world.util.CoordUtil;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
@@ -22,41 +21,11 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 import java.util.BitSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Mixin(PlayerChunkSender.class)
 public class PlayerChunkSenderMixin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("globe-world/chunks");
-    private static final int CANONICAL_TICKING_TICKET_RADIUS = 2;
-
-    // Ref-count ticking tickets per canonical chunk across all players and aliases.
-    // Keeps canonical state active while any alias is loaded by any player.
-    private static final ConcurrentHashMap<Long, AtomicInteger> CANONICAL_TICKING_REFS = new ConcurrentHashMap<>();
-
-    private static long canonKey(int cx, int cz) {
-        return ((long) cx << 32) | ((long) cz & 0xFFFFFFFFL);
-    }
-
-    private static void acquireCanonicalTickingTicket(ServerLevel level, int wcx, int wcz) {
-        long key = canonKey(wcx, wcz);
-        if (CANONICAL_TICKING_REFS.computeIfAbsent(key, k -> new AtomicInteger(0)).getAndIncrement() == 0) {
-            level.getChunkSource().addTicketWithRadius(
-                    GlobeWorld.CANONICAL_ALIAS_TICKET, new ChunkPos(wcx, wcz), CANONICAL_TICKING_TICKET_RADIUS);
-        }
-    }
-
-    private static void releaseCanonicalTickingTicket(ServerLevel level, int wcx, int wcz) {
-        long key = canonKey(wcx, wcz);
-        AtomicInteger ref = CANONICAL_TICKING_REFS.get(key);
-        if (ref == null) return;
-        if (ref.decrementAndGet() <= 0) {
-            CANONICAL_TICKING_REFS.remove(key);
-            level.getChunkSource().removeTicketWithRadius(
-                    GlobeWorld.CANONICAL_ALIAS_TICKET, new ChunkPos(wcx, wcz), CANONICAL_TICKING_TICKET_RADIUS);
-        }
-    }
 
     // Each non-canonical alias is sent at its raw position as the virtual coord.
     // Multiple aliases of the same canonical coexist on the client — this is
@@ -76,8 +45,6 @@ public class PlayerChunkSenderMixin {
         LevelChunk chunkToSend = chunk;
 
         if (wcx != cx || wcz != cz) {
-            acquireCanonicalTickingTicket(level, wcx, wcz);
-
             LevelChunk canonical = level.getChunkSource().getChunkNow(wcx, wcz);
             if (canonical == null) {
                 net.minecraft.world.level.chunk.ChunkAccess ca = level.getChunk(wcx, wcz);
@@ -115,9 +82,6 @@ public class PlayerChunkSenderMixin {
         int wcx = CoordUtil.wrapChunk(cx), wcz = CoordUtil.wrapChunk(cz);
 
         ChunkAliasTracker.removeAlias(player, wcx, wcz, cx, cz);
-        if (wcx != cx || wcz != cz) {
-            releaseCanonicalTickingTicket((ServerLevel) player.level(), wcx, wcz);
-        }
 
         LOGGER.info("DROP chunk raw=({},{}) wrap=({},{}) player=({},{})",
                 cx, cz, wcx, wcz, player.chunkPosition().x(), player.chunkPosition().z());
