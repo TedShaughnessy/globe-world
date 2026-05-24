@@ -4,13 +4,13 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import globe.world.GlobeChunkPacket;
+import globe.world.GlobeWorld;
 import globe.world.util.ChunkAliasTracker;
 import globe.world.util.CoordUtil;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.level.TicketType;
 import net.minecraft.server.network.PlayerChunkSender;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.level.ChunkPos;
@@ -29,29 +29,32 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class PlayerChunkSenderMixin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("globe-world/chunks");
+    private static final int CANONICAL_TICKING_TICKET_RADIUS = 2;
 
-    // Ref-count FORCED tickets per canonical chunk across all players and aliases.
-    // Keeps canonical data in memory while any alias is loaded by any player.
-    private static final ConcurrentHashMap<Long, AtomicInteger> FORCED_REFS = new ConcurrentHashMap<>();
+    // Ref-count ticking tickets per canonical chunk across all players and aliases.
+    // Keeps canonical state active while any alias is loaded by any player.
+    private static final ConcurrentHashMap<Long, AtomicInteger> CANONICAL_TICKING_REFS = new ConcurrentHashMap<>();
 
     private static long canonKey(int cx, int cz) {
         return ((long) cx << 32) | ((long) cz & 0xFFFFFFFFL);
     }
 
-    private static void acquireForcedTicket(ServerLevel level, int wcx, int wcz) {
+    private static void acquireCanonicalTickingTicket(ServerLevel level, int wcx, int wcz) {
         long key = canonKey(wcx, wcz);
-        if (FORCED_REFS.computeIfAbsent(key, k -> new AtomicInteger(0)).getAndIncrement() == 0) {
-            level.getChunkSource().addTicketWithRadius(TicketType.FORCED, new ChunkPos(wcx, wcz), 0);
+        if (CANONICAL_TICKING_REFS.computeIfAbsent(key, k -> new AtomicInteger(0)).getAndIncrement() == 0) {
+            level.getChunkSource().addTicketWithRadius(
+                    GlobeWorld.CANONICAL_ALIAS_TICKET, new ChunkPos(wcx, wcz), CANONICAL_TICKING_TICKET_RADIUS);
         }
     }
 
-    private static void releaseForcedTicket(ServerLevel level, int wcx, int wcz) {
+    private static void releaseCanonicalTickingTicket(ServerLevel level, int wcx, int wcz) {
         long key = canonKey(wcx, wcz);
-        AtomicInteger ref = FORCED_REFS.get(key);
+        AtomicInteger ref = CANONICAL_TICKING_REFS.get(key);
         if (ref == null) return;
         if (ref.decrementAndGet() <= 0) {
-            FORCED_REFS.remove(key);
-            level.getChunkSource().removeTicketWithRadius(TicketType.FORCED, new ChunkPos(wcx, wcz), 0);
+            CANONICAL_TICKING_REFS.remove(key);
+            level.getChunkSource().removeTicketWithRadius(
+                    GlobeWorld.CANONICAL_ALIAS_TICKET, new ChunkPos(wcx, wcz), CANONICAL_TICKING_TICKET_RADIUS);
         }
     }
 
@@ -73,7 +76,7 @@ public class PlayerChunkSenderMixin {
         LevelChunk chunkToSend = chunk;
 
         if (wcx != cx || wcz != cz) {
-            acquireForcedTicket(level, wcx, wcz);
+            acquireCanonicalTickingTicket(level, wcx, wcz);
 
             LevelChunk canonical = level.getChunkSource().getChunkNow(wcx, wcz);
             if (canonical == null) {
@@ -113,7 +116,7 @@ public class PlayerChunkSenderMixin {
 
         ChunkAliasTracker.removeAlias(player, wcx, wcz, cx, cz);
         if (wcx != cx || wcz != cz) {
-            releaseForcedTicket((ServerLevel) player.level(), wcx, wcz);
+            releaseCanonicalTickingTicket((ServerLevel) player.level(), wcx, wcz);
         }
 
         LOGGER.info("DROP chunk raw=({},{}) wrap=({},{}) player=({},{})",
