@@ -8,6 +8,7 @@
 		"DebugRendererMixin",
 		"DebugScreenOverlayMixin",
 		"KeyboardHandlerMixin",
+		"OptionsScreenMixin",
 		"ShaderManagerMixin",
 		"WorldTabMixin"
 	],
