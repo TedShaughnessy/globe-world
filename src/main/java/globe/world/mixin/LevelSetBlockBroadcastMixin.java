@@ -2,6 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import java.util.ArrayDeque;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -16,16 +17,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Level.class)
 public abstract class LevelSetBlockBroadcastMixin {
     @Unique
-    private BlockState globeWorld$setBlockOldState;
-
-    @Unique
-    private boolean globeWorld$sentBlockUpdate;
+    private final ArrayDeque<GlobeWorldSetBlockFrame> globeWorld$setBlockFrames = new ArrayDeque<>();
 
     @Shadow
     public abstract boolean isClientSide();
 
     @Shadow
     public abstract void sendBlockUpdated(BlockPos pos, BlockState oldState, BlockState newState, int flags);
+
+    @Shadow
+    public abstract BlockState getBlockState(BlockPos pos);
 
     @Inject(
         method = "setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;II)Z",
@@ -37,8 +38,7 @@ public abstract class LevelSetBlockBroadcastMixin {
             int flags,
             int recursionLeft,
             CallbackInfoReturnable<Boolean> cir) {
-        globeWorld$setBlockOldState = null;
-        globeWorld$sentBlockUpdate = false;
+        globeWorld$setBlockFrames.push(new GlobeWorldSetBlockFrame());
     }
 
     @WrapOperation(
@@ -55,7 +55,10 @@ public abstract class LevelSetBlockBroadcastMixin {
             int flags,
             Operation<BlockState> original) {
         BlockState oldState = original.call(chunk, pos, state, flags);
-        globeWorld$setBlockOldState = oldState;
+        GlobeWorldSetBlockFrame frame = globeWorld$currentSetBlockFrame();
+        if (frame != null) {
+            frame.oldState = oldState;
+        }
         return oldState;
     }
 
@@ -73,7 +76,10 @@ public abstract class LevelSetBlockBroadcastMixin {
             BlockState newState,
             int flags,
             Operation<Void> original) {
-        globeWorld$sentBlockUpdate = true;
+        GlobeWorldSetBlockFrame frame = globeWorld$currentSetBlockFrame();
+        if (frame != null) {
+            frame.sentBlockUpdate = true;
+        }
         original.call(level, pos, oldState, newState, flags);
     }
 
@@ -87,12 +93,27 @@ public abstract class LevelSetBlockBroadcastMixin {
             int flags,
             int recursionLeft,
             CallbackInfoReturnable<Boolean> cir) {
-        if (isClientSide() || !cir.getReturnValue() || globeWorld$sentBlockUpdate || globeWorld$setBlockOldState == null) {
+        GlobeWorldSetBlockFrame frame = globeWorld$setBlockFrames.poll();
+        if (frame == null || isClientSide() || !cir.getReturnValue() || frame.sentBlockUpdate || frame.oldState == null) {
             return;
         }
         if ((flags & 2) == 0) {
             return;
         }
-        sendBlockUpdated(pos, globeWorld$setBlockOldState, state, flags);
+        BlockState actualState = getBlockState(pos);
+        if (actualState != frame.oldState) {
+            sendBlockUpdated(pos, frame.oldState, actualState, flags);
+        }
+    }
+
+    @Unique
+    private GlobeWorldSetBlockFrame globeWorld$currentSetBlockFrame() {
+        return globeWorld$setBlockFrames.peek();
+    }
+
+    @Unique
+    private static class GlobeWorldSetBlockFrame {
+        private BlockState oldState;
+        private boolean sentBlockUpdate;
     }
 }
