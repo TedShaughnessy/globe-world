@@ -13,6 +13,7 @@
 		"ClientboundSectionBlocksUpdatePacketAccessor",
 		"ChunkMapPlayerProviderMixin",
 		"LevelSetBlockBroadcastMixin",
+		"LevelTicksMixin",
 		"MinecraftServerMixin",
 		"NaturalSpawnerMixin",
 		"NearestLivingEntitySensorMixin",
