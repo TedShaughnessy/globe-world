@@ -1,6 +1,7 @@
 package globe.world.client;
 
 import globe.world.config.GlobeConfig;
+import globe.world.config.TilingSettings;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 
@@ -26,23 +27,22 @@ public final class GlobeCurvatureShader {
         float tileSize = GlobeConfig.enabled() ? (float) GlobeConfig.tileSizeBlocks() : 0.0F;
         String helper = """
 
-float globeWorld_curvatureTileSize() {
+float globeWorld_curvatureRadius() {
     return %s;
 }
 
 vec3 globeWorld_applyCurvature(vec3 pos) {
-    float tileSize = globeWorld_curvatureTileSize();
-    if (tileSize <= 0.0) {
+    float radius = globeWorld_curvatureRadius();
+    if (radius <= 0.0) {
         return pos;
     }
 
-    float radius = max(tileSize / 6, 16.0);
     float distanceSqr = dot(pos.xz, pos.xz);
-    float drop = min(distanceSqr / (2.0 * radius), tileSize * 2.0);
+    float drop = min(distanceSqr / (2.0 * radius), radius * 12.0);
     pos.y -= drop;
     return pos;
 }
-""".formatted(String.format(Locale.ROOT, "%.1f", tileSize));
+""".formatted(String.format(Locale.ROOT, "%.1f", curvatureRadius(tileSize)));
 
         return source.replace("\nvoid main() {", helper + "\nvoid main() {")
                 .replace(TERRAIN_POSITION_LINE, TERRAIN_POSITION_LINE + "\n    pos = globeWorld_applyCurvature(pos);");
@@ -56,5 +56,17 @@ vec3 globeWorld_applyCurvature(vec3 pos) {
         reloadQueued = true;
         loadedSettingsVersion = GlobeConfig.settingsVersion();
         minecraft.reloadResourcePacks().whenComplete((ignored, throwable) -> reloadQueued = false);
+    }
+
+    private static float curvatureRadius(float tileSize) {
+        if (!GlobeConfig.enabled() || tileSize <= 0.0F) {
+            return 0.0F;
+        }
+
+        float curvatureScale = TilingSettings.curvatureScaleFromPercent(GlobeConfig.curvaturePercent());
+        if (curvatureScale <= 0.0F) {
+            return 0.0F;
+        }
+        return Math.max(tileSize / curvatureScale, 16.0F);
     }
 }

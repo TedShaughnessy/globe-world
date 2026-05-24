@@ -4,6 +4,7 @@ import globe.world.client.GlobeWorldCreateState;
 import globe.world.config.TilingMode;
 import globe.world.config.TilingSettings;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.tabs.GridLayoutTab;
@@ -36,6 +37,8 @@ public abstract class WorldTabMixin extends GridLayoutTab {
         tileSizeField.setValue(Integer.toString(initialSettings.tileSize()));
         tileSizeField.setMaxLength(6);
 
+        GlobeCurvatureSlider curvatureSlider = new GlobeCurvatureSlider(0, 0, 310, 20, initialSettings.curvaturePercent());
+
         CycleButton<TilingMode> modeButton = CycleButton.<TilingMode>builder(
                         mode -> Component.literal(mode.displayName()),
                         initialSettings.mode()
@@ -51,6 +54,7 @@ public abstract class WorldTabMixin extends GridLayoutTab {
                             TilingSettings updated = GlobeWorldCreateState.get().withMode(mode);
                             GlobeWorldCreateState.set(updated);
                             globeWorld$setTileSizeFieldEnabled(tileSizeField, updated.enabled());
+                            curvatureSlider.active = updated.enabled();
                         }
                 );
 
@@ -63,6 +67,7 @@ public abstract class WorldTabMixin extends GridLayoutTab {
         });
 
         globeWorld$setTileSizeFieldEnabled(tileSizeField, initialSettings.enabled());
+        curvatureSlider.active = initialSettings.enabled();
 
         GridLayout layout = this.layout;
         layout.addChild(modeButton, 3, 0, 1, 2);
@@ -77,10 +82,45 @@ public abstract class WorldTabMixin extends GridLayoutTab {
                 1,
                 2
         );
+        layout.addChild(curvatureSlider, 5, 0, 1, 2);
     }
 
     private static void globeWorld$setTileSizeFieldEnabled(EditBox field, boolean enabled) {
         field.active = enabled;
         field.setEditable(enabled);
+    }
+
+    private static class GlobeCurvatureSlider extends AbstractSliderButton {
+        private GlobeCurvatureSlider(int x, int y, int width, int height, int initialPercent) {
+            super(x, y, width, height, Component.empty(), globeWorld$valueFromPercent(initialPercent));
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            int percent = globeWorld$percentFromValue(this.value);
+            Component value = switch (percent) {
+                case TilingSettings.CURVATURE_DISABLED_PERCENT -> Component.literal("0% (Disabled)");
+                case TilingSettings.CURVATURE_COMFORTABLE_PERCENT -> Component.literal("50% (Comfortable)");
+                case TilingSettings.CURVATURE_REALISTIC_PERCENT -> Component.literal("100% (Realistic)");
+                default -> Component.literal(percent + "%");
+            };
+            this.setMessage(Component.literal("Globe Curvature: ").append(value));
+        }
+
+        @Override
+        protected void applyValue() {
+            int percent = globeWorld$percentFromValue(this.value);
+            this.value = globeWorld$valueFromPercent(percent);
+            GlobeWorldCreateState.set(GlobeWorldCreateState.get().withCurvaturePercent(percent));
+        }
+
+        private static double globeWorld$valueFromPercent(int percent) {
+            return TilingSettings.sanitizeCurvaturePercent(percent) / 100.0;
+        }
+
+        private static int globeWorld$percentFromValue(double value) {
+            return TilingSettings.sanitizeCurvaturePercent((int) Math.round(value * 100.0));
+        }
     }
 }

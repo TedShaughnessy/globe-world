@@ -32,7 +32,7 @@ Canonical zone: centered on origin, `[-W/2, W/2)` in chunk/block X/Z.
 | Terrain noise and biomes | Planned | Terrain and biome generation may not line up visually at canonical tile edges. | Make generation periodic with period `W_BLOCKS`: wrap X/Z inputs for noise, biome lookup, and structure placement seeds. |
 | Structures | Planned | Structures can duplicate badly or produce references outside canonical space. | Generate/retain structures only for canonical chunks; clear alias structures and wrap placement/reference lookups to canonical coords. |
 | Players | Planned | Players can move unbounded forever, but saved/log-in positions should stay sane. | Let live player coordinates remain virtual. On world load, respawn, or dimension transfer, rebase to canonical equivalent when appropriate. |
-| Client rendering | Partial client visuals | Client sees raw alias chunks as normal chunks; no client-side canonical awareness. | Keep server relabeling. A client terrain shader now bends terrain downward based on tile size; mutable state still stays canonical. |
+| Client rendering | Partial client visuals | Client sees raw alias chunks as normal chunks; no client-side canonical awareness. | Keep server relabeling. A client terrain shader now bends terrain downward based on a saved curvature percent: 0% disables it, 50% is comfortable, and 100% is realistic. Mutable state still stays canonical. |
 | Debug logging | Cleanup | Chunk/client logs are noisy once behavior is stable. | Keep while testing alias send/drop/fanout. Remove or guard behind config before packaging. |
 
 ## High-Risk Questions

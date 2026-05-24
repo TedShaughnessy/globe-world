@@ -33,4 +33,8 @@ public class GlobeConfig {
     public static int tileSizeBlocks() {
         return tileSizeChunks() * 16;
     }
+
+    public static int curvaturePercent() {
+        return settings.curvaturePercent();
+    }
 }
