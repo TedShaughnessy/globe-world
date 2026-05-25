@@ -33,6 +33,34 @@ public class WorldGenRegionMixin {
         return CoordUtil.wrapBlockPos(pos);
     }
 
+    @Inject(
+            method = "getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void virtualizeWorldgenChunkLookup(
+            int chunkX,
+            int chunkZ,
+            net.minecraft.world.level.chunk.status.ChunkStatus targetStatus,
+            boolean loadOrGenerate,
+            CallbackInfoReturnable<ChunkAccess> cir
+    ) {
+        int virtualX = virtualCacheChunkX(chunkX);
+        int virtualZ = virtualCacheChunkZ(chunkZ);
+        if (virtualX != chunkX || virtualZ != chunkZ) {
+            cir.setReturnValue(((WorldGenRegion) (Object) this).getChunk(virtualX, virtualZ, targetStatus, loadOrGenerate));
+        }
+    }
+
+    @Inject(method = "hasChunk", at = @At("HEAD"), cancellable = true)
+    private void virtualizeWorldgenHasChunk(int chunkX, int chunkZ, CallbackInfoReturnable<Boolean> cir) {
+        int virtualX = virtualCacheChunkX(chunkX);
+        int virtualZ = virtualCacheChunkZ(chunkZ);
+        if (virtualX != chunkX || virtualZ != chunkZ) {
+            cir.setReturnValue(((WorldGenRegion) (Object) this).hasChunk(virtualX, virtualZ));
+        }
+    }
+
     @ModifyVariable(method = "getFluidState", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetFluidStatePos(BlockPos pos) {
         return CoordUtil.wrapBlockPos(pos);
@@ -76,6 +104,14 @@ public class WorldGenRegionMixin {
         int tileSize = GlobeConfig.tileSizeChunks();
         int wrappedDelta = Math.floorMod(a - b, tileSize);
         return Math.min(wrappedDelta, tileSize - wrappedDelta);
+    }
+
+    private int virtualCacheChunkX(int chunkX) {
+        return CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkX), this.center.getPos().x());
+    }
+
+    private int virtualCacheChunkZ(int chunkZ) {
+        return CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkZ), this.center.getPos().z());
     }
 
     @ModifyVariable(method = "ensureCanWrite", at = @At("HEAD"), argsOnly = true, ordinal = 0)
