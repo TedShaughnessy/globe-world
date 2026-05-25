@@ -94,3 +94,29 @@ Important anchors:
 - Does feature placement read neighboring chunks or blocks?
 - Are worldgen random seeds derived from absolute chunk/block coordinates?
 - Should generated storage be unique while visible terrain repeats?
+
+## Globe World Notes
+
+Alias generation must not run post-generation block mutations against canonical storage.
+
+Why this matters:
+
+- `LevelChunk.postProcessGeneration(...)` walks queued post-processing offsets for a `LevelChunk`.
+- For each queued position, it may call fluid/block ticks or `level.setBlock(pos, blockStateNew, 276)` after neighbor-shape updates.
+- If the `LevelChunk` is an alias, those positions are alias coordinates. Server `Level.setBlock(...)` canonicalizes the mutation position, so alias terrain fixes can overwrite canonical terrain.
+
+Observed symptom:
+
+- An all-ocean canonical tile received `minecraft:grass_block` writes over water/air.
+- Debug logs showed `caller=net.minecraft.world.level.chunk.LevelChunk#postProcessGeneration:596` with non-canonical original positions.
+
+Project hooks:
+
+- `src/main/java/globe/world/mixin/LevelChunkPostProcessMixin.java:20` cancels `LevelChunk.postProcessGeneration(...)` for non-canonical chunks and clears queued post-processing offsets.
+- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:23` cancels structure starts for non-canonical chunks.
+- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:36` cancels structure references for non-canonical chunks.
+
+Current status:
+
+- Good: alias chunk post-processing no longer writes neighbor-shape fixes into canonical chunks.
+- Remaining audit: feature decoration and terrain/noise generation still run for aliases unless intercepted elsewhere. They should not mutate canonical state, but they may waste work or create misleading alias-local data before packet relabeling replaces it.

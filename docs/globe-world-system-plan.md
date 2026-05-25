@@ -20,16 +20,17 @@ Canonical zone: centered on origin, `[-W/2, W/2)` in chunk/block X/Z.
 | Entity packets | Done | A canonical mob near one tile edge should appear in the nearest virtual copy for each player. | Virtualize outbound add, teleport, and position-sync packets per viewer using `CoordUtil.virtualBlock`. Relative movement packets stay relative where possible. |
 | Entity tracking | Done | Vanilla tracking checks raw distance/chunks, so players near a tile edge may not receive nearby canonical entities. | Use wrapped X/Z distance for tracking range and check the virtual chunk nearest to the player. |
 | Player provider for block/entity broadcasts | Done | Vanilla asks "which players track canonical chunk X/Z?", but players may track an alias instead. | Convert canonical chunk coords to the player's nearest virtual chunk before `ChunkMap.isChunkTracked` / border checks. |
-| Mob natural spawning | Partly done, needs testing | Multiple aliases can cause duplicate spawn attempts for the same canonical chunk; raw distance checks break near edges. | Spawn only into canonical chunks/positions, wrap spawn candidate positions, wrap player distance checks, and count mob caps by canonical chunk. Add per-tick canonical spawn dedupe if duplicate spawns still appear. |
+| Mob natural spawning | Done for chunk pass | Multiple aliases can cause duplicate spawn attempts for the same canonical chunk; raw distance checks break near edges. | Spawn only into canonical chunks/positions, wrap spawn candidate positions, wrap player distance checks, count mob caps by canonical chunk, and dedupe `ChunkMap.collectSpawningChunks` by canonical chunk. |
 | Mob chunk-generation spawning | Done | Alias chunk generation could spawn duplicate mobs. | Cancel chunk-generation spawns for non-canonical chunks. |
 | Mob despawning | Needs audit | Vanilla nearest-player and despawn distance checks can treat edge-near mobs as far away. | Use wrapped distance for nearest-player selection and despawn distance checks. Confirm current mixins cover `Mob.checkDespawn`; add a targeted mixin if not. |
 | Mob sensing and targeting | Partly done | AABB and distance checks do not naturally wrap at tile edges. | Add wrapped player candidates to sensors, use wrapped target distances, and allow line-of-sight fallback when wrapped distance says the target is actually nearby. |
 | Mob pathfinding | Open | Path nodes and goals are in raw Euclidean space, so crossing the tile edge can fail or look too far. | MVP: accept imperfect pathing. Later: virtualize path target positions relative to the mob and wrap block reads during node evaluation. |
-| Random block ticks | Open | If multiple aliases of one canonical chunk are loaded, crops/fire/ice/etc. may random-tick multiple times per server tick. | Canonical chunks should random-tick at most once per server tick. Track canonical chunk keys during the world tick, skip duplicate alias ticks, and wrap selected random tick block positions into canonical coords. |
+| Random block ticks | Done for chunk pass | If multiple aliases of one canonical chunk are loaded, crops/fire/ice/etc. may random-tick multiple times per server tick, or alias data may write mutations into canonical storage. | `ChunkMapRandomTickMixin` converts each block-ticking chunk to its canonical chunk and dedupes by canonical chunk key during `ChunkMap.forEachBlockTickingChunk`. |
 | Scheduled block/fluid ticks | Done for gameplay path | Scheduled ticks may be queued at raw alias positions or stored on canonical chunks outside vanilla simulation range. | Canonicalize `LevelTicks.schedule`, `hasScheduledTick`, and `willTickThisTick` positions so queued ticks store in canonical block coords, and mirror alias block/entity ticking status onto canonical chunks so queued ticks can execute. Clone/area tick operations still need edge-case testing. |
 | Entity ticking | Needs audit | A canonical mob might be ticked once per canonical chunk or accidentally once per alias depending on chunk tick iteration. | Entity storage should make each entity tick once from canonical storage. Verify there is no alias-driven duplicate entity ticking. |
 | Redstone and neighbor updates | Partly done | Neighbor positions crossing a tile edge may query/update raw positions; redstone dust shape changes can happen through reentrant immediate block updates. | Reentrant skipped block-update broadcasts now send the actual post-update state, which fixes redstone dot-to-line rendering. Broader cross-edge neighbor notification behavior still needs audit. |
 | Terrain noise and biomes | Planned | Terrain and biome generation may not line up visually at canonical tile edges. | Make generation periodic with period `W_BLOCKS`: wrap X/Z inputs for noise, biome lookup, and structure placement seeds. |
+| Alias chunk post-processing | Done | Alias `LevelChunk.postProcessGeneration` can apply neighbor-shape fixes from alias terrain into canonical storage through wrapped `Level.setBlock`. | Cancel post-generation processing for non-canonical chunks and clear queued post-processing offsets. |
 | Structures | Planned | Structures can duplicate badly or produce references outside canonical space. | Generate/retain structures only for canonical chunks; clear alias structures and wrap placement/reference lookups to canonical coords. |
 | Players | Planned | Players can move unbounded forever, but saved/log-in positions should stay sane. | Let live player coordinates remain virtual. On world load, respawn, or dimension transfer, rebase to canonical equivalent when appropriate. |
 | Client rendering | Partial client visuals | Client sees raw alias chunks as normal chunks; no client-side canonical awareness. | Keep server relabeling. A client terrain shader now bends terrain downward based on a saved curvature percent: 0% disables it, 50% is comfortable, and 100% is realistic. Mutable state still stays canonical. |
@@ -37,16 +38,17 @@ Canonical zone: centered on origin, `[-W/2, W/2)` in chunk/block X/Z.
 
 ## High-Risk Questions
 
-1. Random ticks: do canonical chunks currently tick once per visible alias? If yes, crops and fire will run too fast near seams.
-2. Natural mob spawning: does one canonical chunk receive spawn attempts from multiple aliases in the same tick? If yes, add canonical spawn dedupe.
-3. Mob despawn: is `Mob.checkDespawn` using wrapped distance everywhere it needs to? If not, edge mobs can vanish.
-4. Cross-edge neighbor updates: do redstone, pistons, observers, doors, and similar blocks notify the correct canonical neighbor when the neighbor lies over a tile boundary?
-5. Pathfinding: acceptable for MVP, but likely to be the first visible mob behavior flaw after spawning/despawning are fixed.
+1. Mob despawn: is `Mob.checkDespawn` using wrapped distance everywhere it needs to? If not, edge mobs can vanish.
+2. Entity ticking: do canonical mobs tick exactly once when only an alias is in entity-ticking range?
+3. Cross-edge neighbor updates: do redstone, pistons, observers, doors, and similar blocks notify the correct canonical neighbor when the neighbor lies over a tile boundary?
+4. Pathfinding: acceptable for MVP, but likely to be the first visible mob behavior flaw after spawning/despawning are fixed.
 
-## Immediate Next Work
+## Chunk Tick Plan
 
-1. Add instrumentation for random ticks and natural mob spawning keyed by canonical chunk.
-2. Verify whether duplicate aliases cause duplicate random ticks or duplicate spawn attempts.
-3. Patch random tick dedupe first if crops/fire visibly speed up.
-4. Audit cross-edge neighbor updates with redstone, pistons, observers, doors, and falling blocks.
-5. Update README status after the tick/mob audit is done.
+Best target model: every server simulation lane either receives canonical chunks only or dedupes by canonical chunk key before running side effects. Alias chunks remain valid view/tracking inputs, but they should not run mutable world behavior directly.
+
+1. Keep canonical ticket mirroring as the availability layer. `CanonicalChunkTickets` should only decide which canonical chunks are loaded/ticking because aliases are nearby.
+2. Treat `ChunkMap.forEachBlockTickingChunk` as the random/block tick lane. Current status: canonicalized and deduped by `ChunkMapRandomTickMixin`.
+3. Treat `ChunkMap.collectSpawningChunks` as the spawning/thunder/inhabited-time lane. Current status: canonicalized and deduped by `ChunkMapSpawningMixin`.
+4. Audit entity ticking separately. Because mobs are stored canonically, entity ticking should naturally run once from canonical storage, but `isPositionEntityTicking`, despawn distance, and section-change behavior still need proof.
+5. After chunk lanes are stable, audit cross-edge neighbor updates and scheduled tick clone/copy edge cases.

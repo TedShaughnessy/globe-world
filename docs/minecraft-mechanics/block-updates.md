@@ -122,3 +122,27 @@ Client application entry points:
 - Are block update packets reporting storage positions or player-facing positions?
 - Are block entity side effects preserved when a block state changes?
 
+## Globe World Notes
+
+Server-side block mutations must enter `Level.setBlock(...)` in canonical coordinates.
+
+Why this matters:
+
+- `ServerChunkCache.getChunk(...)` wraps chunk lookup to canonical chunks.
+- Vanilla `Level.setBlock(...)` then passes the same `BlockPos` into `LevelChunk.setBlockState(...)`.
+- `LevelChunk.setBlockState(...)` writes local section coordinates with `pos.getX() & 15` and `pos.getZ() & 15`.
+- If the chunk is canonical but the `BlockPos` is still an alias coordinate, an alias-side update can mutate the wrong local block in canonical storage.
+
+Project hooks:
+
+- `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:34` canonicalizes the server-side `setBlock(...)` position at method entry. Client-side calls keep their packet/view coordinates.
+- `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:55` captures the old state after the canonical storage mutation.
+- `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:76` tracks whether vanilla sent a block update.
+- `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:98` sends a skipped/reentrant server block update with the actual post-update state when vanilla does not send one.
+
+Current status:
+
+- Good: server mutation, dirty marking, neighbor updates, light checks, POI updates, and block-update packets now share the canonical block position.
+- Good: packet fanout can treat canonical block updates as the source of truth and relabel to loaded aliases.
+- Remaining audit: direct `LevelChunk.setBlockState(...)` calls outside `Level.setBlock(...)`, if any gameplay path uses them, would need separate wrapping or proof that they are already canonical.
+- Related worldgen fix: `LevelChunk.postProcessGeneration(...)` can call `Level.setBlock(...)` from alias chunks during chunk promotion. `LevelChunkPostProcessMixin` cancels that pass for non-canonical chunks.

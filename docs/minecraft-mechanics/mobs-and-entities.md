@@ -103,3 +103,41 @@ Important anchors:
 - Are spawn caps counted once per physical chunk or once per visible chunk?
 - Do pathfinding, sensors, and targeting use the same distance convention as tracking?
 
+## Globe World Notes
+
+Natural spawning has two separate concerns:
+
+- Candidate selection and caps must use canonical chunks/positions so aliases do not create duplicate real mobs.
+- Player eligibility and packet visibility must use wrapped/virtual coordinates so players near a seam still interact with nearby canonical mobs.
+
+Project hooks for natural spawning:
+
+- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:23` cancels chunk-generation mob spawns for non-canonical chunks.
+- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:39` samples random spawn positions from the canonical chunk in `spawnCategoryForChunk(...)`.
+- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:53` passes canonical chunk and wrapped start position into `spawnCategoryForPosition(...)`.
+- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:71` wraps `spawnCategoryForPosition(...)`'s start position at method entry.
+- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:81` wraps chunk positions used for local mob caps.
+- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:92` and `:114` wrap random spawn candidate chunk/block coordinates.
+- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:103` wraps counted mob chunk positions during spawn-state creation.
+- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:150` uses wrapped player distance for spawn-point distance checks.
+- `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:30` clears per-pass canonical spawn chunk tracking at the start of `ChunkMap.collectSpawningChunks(...)`.
+- `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:35` wraps the `List.add(...)` call in `collectSpawningChunks(...)`, swaps alias chunks for canonical chunks, and dedupes by canonical chunk key before `ServerChunkCache.tickSpawningChunk(...)` runs.
+- `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:68` uses wrapped chunk distance for `playerIsCloseEnoughForSpawning(...)`.
+
+Project hooks for entity storage and visibility:
+
+- `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:18` canonicalizes mobs before `ServerLevel.addEntity(...)` stores them.
+- `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:23` and `:28` canonicalize mobs loaded from chunk/entity streams.
+- `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:27` and `:46` translate canonical chunk lookup to each player's nearest tracked virtual chunk for player-provider queries.
+- `src/main/java/globe/world/util/ChunkAliasTracker.java:16` tracks loaded aliases per player and canonical chunk for block/entity packet fanout.
+
+Current status:
+
+- Good: spawned mobs are stored in canonical coordinates.
+- Good: spawn position math and mob caps are mostly wrapped to canonical chunk identity.
+- Good: `ServerChunkCache.tickSpawningChunk(...)` now receives each canonical chunk at most once per `collectSpawningChunks(...)` pass, avoiding duplicate spawn attempts, inhabited-time increments, and thunder work from aliases.
+- Partial: despawn, sensors, targeting, and pathfinding each have their own distance/visibility assumptions. Some are wrapped elsewhere, but this page should remain the entry point for auditing them.
+
+Best rule of thumb:
+
+Entity storage should be canonical. Player-facing entity packets and distance checks should choose the nearest virtual copy for each viewer. Spawn/chunk tick lanes should dedupe by canonical chunk before they run side effects.
