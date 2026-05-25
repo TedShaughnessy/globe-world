@@ -1,6 +1,7 @@
 package globe.world.client.mixin;
 
 import globe.world.client.GlobeCurvatureSlider;
+import globe.world.client.GlobeClientTilingSettings;
 import globe.world.config.GlobeConfig;
 import net.minecraft.client.gui.layouts.LayoutElement;
 import net.minecraft.client.gui.layouts.LinearLayout;
@@ -34,7 +35,9 @@ public class OptionsScreenMixin {
                     150,
                     20,
                     GlobeConfig.curvaturePercent(),
-                    percent -> GlobeConfig.setTilingSettings(GlobeConfig.tilingSettings().withCurvaturePercent(percent))
+                    percent -> GlobeClientTilingSettings.setFromPauseMenu(
+                            GlobeConfig.tilingSettings().withCurvaturePercent(percent)
+                    )
             ));
         }
         return addedChild;
