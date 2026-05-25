@@ -20,6 +20,16 @@ import java.util.Collections;
 
 @Mixin(ChunkGenerator.class)
 public class ChunkGeneratorMixin {
+    @Inject(method = "applyBiomeDecoration", at = @At("HEAD"), cancellable = true)
+    private void skipAliasBiomeDecoration(
+            WorldGenLevel level,
+            ChunkAccess chunk,
+            StructureManager structureManager,
+            CallbackInfo ci) {
+        if (!isCanonical(chunk.getPos())) {
+            ci.cancel();
+        }
+    }
 
     @Inject(method = "createStructures", at = @At("HEAD"), cancellable = true)
     private void skipAliasStructureStarts(

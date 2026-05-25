@@ -97,9 +97,9 @@ Important anchors:
 
 ## Globe World Notes
 
-Alias generation must not run post-generation block mutations against canonical storage.
+Alias generation must not run mutable generation phases, and canonical generation must not write spillover blocks into alias chunks.
 
-Why this matters:
+### Alias Post-Processing
 
 - `LevelChunk.postProcessGeneration(...)` walks queued post-processing offsets for a `LevelChunk`.
 - For each queued position, it may call fluid/block ticks or `level.setBlock(pos, blockStateNew, 276)` after neighbor-shape updates.
@@ -110,13 +110,54 @@ Observed symptom:
 - An all-ocean canonical tile received `minecraft:grass_block` writes over water/air.
 - Debug logs showed `caller=net.minecraft.world.level.chunk.LevelChunk#postProcessGeneration:596` with non-canonical original positions.
 
-Project hooks:
+Project hook:
 
 - `src/main/java/globe/world/mixin/LevelChunkPostProcessMixin.java:20` cancels `LevelChunk.postProcessGeneration(...)` for non-canonical chunks and clears queued post-processing offsets.
-- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:23` cancels structure starts for non-canonical chunks.
-- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:36` cancels structure references for non-canonical chunks.
 
-Current status:
+### Alias Feature Decoration
+
+`ChunkGenerator.applyBiomeDecoration(...)` places trees, vegetation, ores, leaf litter, and structures for the center chunk. These features can write up to `ChunkStep.blockStateWriteRadius()` chunks away from the center through `WorldGenRegion.setBlock(...)`.
+
+For Globe World, non-canonical chunks are views. Letting an alias run feature decoration creates extra, non-canonical feature centers and duplicate tree/foliage attempts that do not belong to the finite tile.
+
+Project hook:
+
+- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:23` cancels biome decoration for non-canonical chunks.
+
+### Canonical Feature Spillover
+
+Vanilla tree/foliage features centered in a canonical edge chunk can place blocks just outside that chunk. In a 1-chunk tile, logs showed canonical center `[0,0]` writing blocks at positions such as `x=16` or `z=16` into raw target chunks `[1,0]`, `[0,1]`, or `[1,1]`; all of those wrap back to canonical chunk `[0,0]`.
+
+Observed symptom:
+
+- Live client aliases were missing trunks/leaves or had invisible foliage collision.
+- Reload fixed the view because saved/reloaded canonical access collapsed the data back through wrapping.
+- The decisive logs were `GW_WORLDGEN_WRITE ... center=[0,0] target=[1,0] wrap=(0,0) ... targetReady=false canonicalReady=false`, proving the problem happened before packet send, not as a late client update.
+
+Current project hook:
+
+- `src/main/java/globe/world/mixin/WorldGenRegionMixin.java` canonicalizes `WorldGenRegion` block read/write positions for `getBlockState`, `getFluidState`, `getBlockEntity`, and `setBlock`.
+
+Why read/write symmetry matters:
+
+- Write-only wrapping makes features place blocks into canonical storage but still make placement decisions from unwrapped alias/protochunk state.
+- That mismatch can reduce successful tree placement, miscompute leaf distances, or leave partial/floating feature remnants.
+- Generation code that reads and writes through `WorldGenRegion` should see one coherent canonical coordinate space.
+
+### Structures
+
+Current structure hook:
+
+- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:34` cancels structure starts for non-canonical chunks.
+- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:49` cancels structure references for non-canonical chunks.
+
+### Current Status And Plan
 
 - Good: alias chunk post-processing no longer writes neighbor-shape fixes into canonical chunks.
-- Remaining audit: feature decoration and terrain/noise generation still run for aliases unless intercepted elsewhere. They should not mutate canonical state, but they may waste work or create misleading alias-local data before packet relabeling replaces it.
+- Good: alias chunks no longer run biome decoration, structure starts, or structure references.
+- Good: `WorldGenRegion` reads/writes now use canonical block positions for direct block/fluid/entity lookups and `setBlock`.
+- Good: alias chunk packets are only allowed to serialize canonical chunk data; if the canonical source is unavailable, `PlayerChunkSenderMixin` requeues the alias send instead of falling back to alias-local terrain.
+- Needs testing: fresh 1-chunk and 2-chunk tile worlds with trees near all four edges and corners.
+- Needs audit: worldgen APIs that bypass `WorldGenRegion.getBlockState` / `setBlock`, direct `ChunkAccess.setBlockState` calls, tick scheduling in `WorldGenRegion`, carvers, surface building, and noise/biome sampling.
+- Planned: make biome/noise/feature placement periodic by wrapping coordinate inputs at the generator/biome-source/noise layer, not only by wrapping block mutations after features choose positions.
+- Planned: remove or gate noisy chunk/client logs before packaging.

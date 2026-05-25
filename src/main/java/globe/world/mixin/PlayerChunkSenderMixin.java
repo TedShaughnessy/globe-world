@@ -19,6 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.BitSet;
 
@@ -26,6 +28,29 @@ import java.util.BitSet;
 public class PlayerChunkSenderMixin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("globe-world/chunks");
+
+    @Inject(
+        method = "sendChunk(Lnet/minecraft/server/network/ServerGamePacketListenerImpl;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/LevelChunk;)V",
+        at = @At("HEAD"),
+        cancellable = true
+    )
+    private static void waitForCanonicalAliasSource(
+            ServerGamePacketListenerImpl connection,
+            ServerLevel level,
+            LevelChunk chunk,
+            CallbackInfo ci) {
+        int cx = chunk.getPos().x(), cz = chunk.getPos().z();
+        int wcx = CoordUtil.wrapChunk(cx), wcz = CoordUtil.wrapChunk(cz);
+        if (wcx == cx && wcz == cz) {
+            return;
+        }
+
+        if (level.getChunkSource().getChunkNow(wcx, wcz) == null) {
+            connection.chunkSender.markChunkPendingToSend(chunk);
+            LOGGER.info("DEFER alias raw=({},{}) wrap=({},{}) waiting for canonical source", cx, cz, wcx, wcz);
+            ci.cancel();
+        }
+    }
 
     // Each non-canonical alias is sent at its raw position as the virtual coord.
     // Multiple aliases of the same canonical coexist on the client — this is
@@ -47,10 +72,7 @@ public class PlayerChunkSenderMixin {
         if (wcx != cx || wcz != cz) {
             LevelChunk canonical = level.getChunkSource().getChunkNow(wcx, wcz);
             if (canonical == null) {
-                net.minecraft.world.level.chunk.ChunkAccess ca = level.getChunk(wcx, wcz);
-                if (ca instanceof LevelChunk lc) canonical = lc;
-                if (canonical == null)
-                    LOGGER.error("canonical=({},{}) unavailable for alias raw=({},{})", wcx, wcz, cx, cz);
+                LOGGER.error("canonical=({},{}) unavailable for alias raw=({},{})", wcx, wcz, cx, cz);
             }
             if (canonical != null) chunkToSend = canonical;
         }
