@@ -4,6 +4,7 @@ import globe.world.client.GlobeWorldCreateState;
 import globe.world.client.GlobeCurvatureSlider;
 import globe.world.config.TilingMode;
 import globe.world.config.TilingSettings;
+import globe.world.config.TilingSettingsHolder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
@@ -25,7 +26,8 @@ public abstract class WorldTabMixin extends GridLayoutTab {
 
     @Inject(method = "<init>", at = @At("TAIL"))
     private void globeWorld$addTilingOptions(CreateWorldScreen screen, CallbackInfo ci) {
-        TilingSettings initialSettings = TilingSettings.DEFAULT;
+        TilingSettings initialSettings = ((TilingSettingsHolder) (Object) screen.getUiState().getSettings())
+                .globeWorld$getTilingSettings();
         GlobeWorldCreateState.set(initialSettings);
 
         EditBox tileSizeField = new EditBox(

@@ -1,9 +1,9 @@
 package globe.world.config;
 
 public class GlobeConfig {
-    public static final int DEFAULT_TILE_SIZE_CHUNKS = 6;
+    public static final int DEFAULT_TILE_SIZE_CHUNKS = 100;
 
-    private static volatile TilingSettings settings = TilingSettings.square(DEFAULT_TILE_SIZE_CHUNKS);
+    private static volatile TilingSettings settings = TilingSettings.DEFAULT;
     private static volatile int settingsVersion = 0;
 
     public static void setTilingSettings(TilingSettings newSettings) {

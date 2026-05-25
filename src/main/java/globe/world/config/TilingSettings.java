@@ -14,7 +14,7 @@ public record TilingSettings(TilingMode mode, int tileSize, int curvaturePercent
             CURVATURE_DISABLED_PERCENT
     );
     public static final TilingSettings DEFAULT = new TilingSettings(
-            TilingMode.SQUARE,
+            TilingMode.DISABLED,
             GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS,
             CURVATURE_COMFORTABLE_PERCENT
     );
