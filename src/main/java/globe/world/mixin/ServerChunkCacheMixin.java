@@ -48,6 +48,7 @@ public class ServerChunkCacheMixin {
         BlockPos wrapped = CoordUtil.wrapBlockPos(pos);
         if (!wrapped.equals(pos)) {
             ((ServerChunkCache) (Object) this).blockChanged(wrapped);
+            ci.cancel();
         }
     }
 
