@@ -9,7 +9,10 @@
 		"DebugScreenOverlayMixin",
 		"FrustumMixin",
 		"KeyboardHandlerMixin",
+		"OptionsMixin",
 		"OptionsScreenMixin",
+		"SectionOcclusionGraphMixin",
+		"SectionOcclusionGraphStorageMixin",
 		"ShaderManagerMixin",
 		"WorldTabMixin"
 	],
