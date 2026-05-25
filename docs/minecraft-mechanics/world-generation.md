@@ -134,9 +134,11 @@ Observed symptom:
 - Reload fixed the view because saved/reloaded canonical access collapsed the data back through wrapping.
 - The decisive logs were `GW_WORLDGEN_WRITE ... center=[0,0] target=[1,0] wrap=(0,0) ... targetReady=false canonicalReady=false`, proving the problem happened before packet send, not as a late client update.
 
-Current project hook:
+Current project hooks:
 
 - `src/main/java/globe/world/mixin/WorldGenRegionMixin.java` canonicalizes `WorldGenRegion` block read/write positions for `getBlockState`, `getFluidState`, `getBlockEntity`, and `setBlock`.
+- `src/main/java/globe/world/mixin/WorldGenRegionMixin.java` also applies toroidal chunk distance in `ensureCanWrite(...)`; in a 6-chunk tile, canonical chunks `2` and `-3` are adjacent across the tile seam even though vanilla's raw distance is 5.
+- `src/main/java/globe/world/mixin/BulkSectionAccessMixin.java` canonicalizes `BulkSectionAccess.getSection(...)` because vanilla ore placement calls `WorldGenLevel.ensureCanWrite(...)` and then writes directly through a chunk section instead of going through `WorldGenRegion.setBlock(...)`.
 
 Why read/write symmetry matters:
 
@@ -155,7 +157,8 @@ Current structure hook:
 
 - Good: alias chunk post-processing no longer writes neighbor-shape fixes into canonical chunks.
 - Good: alias chunks no longer run biome decoration, structure starts, or structure references.
-- Good: `WorldGenRegion` reads/writes now use canonical block positions for direct block/fluid/entity lookups and `setBlock`.
+- Good: `WorldGenRegion` reads/writes now use canonical block positions for direct block/fluid/entity lookups, toroidal write-radius checks, `setBlock`, and queued postprocessing positions.
+- Good: ore placement's `BulkSectionAccess` path now resolves sections from canonical positions after `ensureCanWrite(...)` accepts a wrapped write.
 - Good: alias chunk packets are only allowed to serialize canonical chunk data; if the canonical source is unavailable, `PlayerChunkSenderMixin` requeues the alias send instead of falling back to alias-local terrain.
 - Needs testing: fresh 1-chunk and 2-chunk tile worlds with trees near all four edges and corners.
 - Needs audit: worldgen APIs that bypass `WorldGenRegion.getBlockState` / `setBlock`, direct `ChunkAccess.setBlockState` calls, tick scheduling in `WorldGenRegion`, carvers, surface building, and noise/biome sampling.

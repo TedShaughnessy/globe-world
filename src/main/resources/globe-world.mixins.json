@@ -4,6 +4,7 @@
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
 		"BiomeFilterMixin",
+		"BulkSectionAccessMixin",
 		"ChunkGeneratorMixin",
 		"ChunkMapCanonicalTicketMixin",
 		"ChunkMapRandomTickMixin",
