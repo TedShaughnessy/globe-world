@@ -1,5 +1,7 @@
 package globe.world.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.server.level.WorldGenRegion;
@@ -14,8 +16,42 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.function.Supplier;
+
 @Mixin(NoiseBasedChunkGenerator.class)
 public class NoiseBasedChunkGeneratorMixin {
+    @WrapOperation(
+            method = "createBiomes",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ljava/util/concurrent/CompletableFuture;supplyAsync(Ljava/util/function/Supplier;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;"
+            )
+    )
+    private CompletableFuture<ChunkAccess> preserveBiomeTilingContext(
+            Supplier<ChunkAccess> supplier,
+            Executor executor,
+            Operation<CompletableFuture<ChunkAccess>> original) {
+        DimensionTiling tiling = DimensionTiling.currentOrOverworld();
+        return original.call((Supplier<ChunkAccess>) () -> DimensionTiling.with(tiling, supplier), executor);
+    }
+
+    @WrapOperation(
+            method = "fillFromNoise",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ljava/util/concurrent/CompletableFuture;supplyAsync(Ljava/util/function/Supplier;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;"
+            )
+    )
+    private CompletableFuture<ChunkAccess> preserveNoiseTilingContext(
+            Supplier<ChunkAccess> supplier,
+            Executor executor,
+            Operation<CompletableFuture<ChunkAccess>> original) {
+        DimensionTiling tiling = DimensionTiling.currentOrOverworld();
+        return original.call((Supplier<ChunkAccess>) () -> DimensionTiling.with(tiling, supplier), executor);
+    }
+
     @Inject(method = "applyCarvers", at = @At("HEAD"))
     private void pushCarverTilingContext(
             WorldGenRegion region,

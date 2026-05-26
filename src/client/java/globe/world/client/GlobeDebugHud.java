@@ -60,7 +60,13 @@ public final class GlobeDebugHud {
         if (!tiling.enabled()) {
             return "disabled";
         }
-        return String.format(Locale.ROOT, "%d chunks / %d blocks", tiling.tileSizeChunks(), tiling.tileSizeBlocks());
+        return String.format(
+                Locale.ROOT,
+                "%d chunks / %d blocks, %s terrain",
+                tiling.tileSizeChunks(),
+                tiling.tileSizeBlocks(),
+                tiling.terrainMode().displayName()
+        );
     }
 
     private static String yesNo(boolean value) {

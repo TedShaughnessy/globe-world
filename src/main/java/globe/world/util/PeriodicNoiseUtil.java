@@ -13,8 +13,6 @@ import net.minecraft.world.level.levelgen.synth.PerlinNoise;
 public class PeriodicNoiseUtil {
     private static final double TAU = Math.PI * 2.0;
     private static final double NORMAL_NOISE_INPUT_FACTOR = 1.0181268882175227;
-    private static final int EDGE_BLEND_MIN_TILE_CHUNKS = 64;
-    private static final int PERIODIC_LATTICE_TILE_CHUNK_MULTIPLE = 256;
     private static final int MIN_EDGE_BLEND_BAND_BLOCKS = 64;
     private static final int MAX_EDGE_BLEND_BAND_BLOCKS = 256;
     private static final int[][] GRADIENT = new int[][]{
@@ -52,7 +50,7 @@ public class PeriodicNoiseUtil {
             return sampler.sample(0.0, 0.0);
         }
 
-        TerrainMode mode = terrainMode(tiling);
+        TerrainMode mode = tiling.terrainMode();
         if (mode == TerrainMode.EDGE_BLEND || mode == TerrainMode.PERIODIC_LATTICE) {
             return sampleEdgeBlendedPlane(firstCoord, secondCoord, period, scale, sampler);
         }
@@ -96,7 +94,7 @@ public class PeriodicNoiseUtil {
         }
 
         DimensionTiling tiling = DimensionTiling.currentOrOverworld();
-        if (!tiling.enabled() || terrainMode(tiling) != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
+        if (!tiling.enabled() || tiling.terrainMode() != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
             return samplePlane(blockX, blockY, scale, (x, y) -> noise.getValue(x, y, z));
         }
 
@@ -119,7 +117,7 @@ public class PeriodicNoiseUtil {
             double offsetZ,
             NormalNoise noise) {
         DimensionTiling tiling = DimensionTiling.currentOrOverworld();
-        if (!tiling.enabled() || terrainMode(tiling) != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
+        if (!tiling.enabled() || tiling.terrainMode() != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
             return samplePlane(blockX, blockZ, scale, (x, z) -> noise.getValue(x + offsetX, y, z + offsetZ));
         }
 
@@ -138,7 +136,7 @@ public class PeriodicNoiseUtil {
             double yFudge,
             ImprovedNoise noise) {
         DimensionTiling tiling = DimensionTiling.currentOrOverworld();
-        if (!tiling.enabled() || terrainMode(tiling) != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
+        if (!tiling.enabled() || tiling.terrainMode() != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
             return samplePlane(
                     blockX,
                     blockZ,
@@ -357,17 +355,6 @@ public class PeriodicNoiseUtil {
         return clamped * clamped * (3.0 - 2.0 * clamped);
     }
 
-    private static TerrainMode terrainMode(DimensionTiling tiling) {
-        int tileChunks = tiling.tileSizeChunks();
-        if (tileChunks < EDGE_BLEND_MIN_TILE_CHUNKS) {
-            return TerrainMode.COMPACT_TORUS;
-        }
-        if (tileChunks % PERIODIC_LATTICE_TILE_CHUNK_MULTIPLE == 0) {
-            return TerrainMode.PERIODIC_LATTICE;
-        }
-        return TerrainMode.EDGE_BLEND;
-    }
-
     private static int p(ImprovedNoise noise, int x) {
         return ((ImprovedNoiseAccessor) (Object) noise).globeWorld$permutations()[x & 0xFF] & 0xFF;
     }
@@ -402,12 +389,6 @@ public class PeriodicNoiseUtil {
     }
 
     private record EdgeBlendAxis(double base, double copy, double weight) {
-    }
-
-    private enum TerrainMode {
-        COMPACT_TORUS,
-        EDGE_BLEND,
-        PERIODIC_LATTICE
     }
 
     private record NoiseAxis(boolean periodic, int blockCoord, double scale, double offset) {

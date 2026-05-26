@@ -152,6 +152,60 @@ Important vanilla Overworld thresholds:
 | Large-biome continentalness / erosion | `-11`, `0.25` | `1/512` | `512` | `512` |
 | Large-biome temperature | `-12`, `0.25` | `1/1024` | `1024` | `1024` |
 
+Important vanilla Nether thresholds:
+
+The Nether preset is much flatter in the noise-router sense. Its
+`minecraft:nether` noise settings use a `0..128` build range, 4-block horizontal
+noise cells, 8-block vertical noise cells, default netherrack, sea level `32`,
+no aquifers, and no ore veins. The router has real values only for:
+
+- `temperature`: `shifted_noise` over `minecraft:nether/temperature`.
+- `vegetation`: `shifted_noise` over `minecraft:nether/vegetation`.
+- `final_density`: vertical slides around `minecraft:nether/base_3d_noise`.
+
+The Nether multi-noise biome source then uses only temperature, vegetation, and
+offset targets. Continentalness, erosion, depth, and weirdness are all zero for
+Nether biome selection. The preset target points are:
+
+| Biome | Temperature target | Vegetation target | Offset |
+| --- | ---: | ---: | ---: |
+| Nether wastes | `0.0` | `0.0` | `0.0` |
+| Soul sand valley | `0.0` | `-0.5` | `0.0` |
+| Crimson forest | `0.4` | `0.0` | `0.0` |
+| Warped forest | `0.0` | `0.5` | `0.375` |
+| Basalt deltas | `-0.5` | `0.0` | `0.175` |
+
+For `NormalNoise` sources used by Nether biomes and surface rules, the lowest
+active octave gives these chunk-size implications:
+
+| System | Noise holder / use | Lowest active octave / scale | Cells per chunk | Exact chunk multiple | Chunks for at least 1 cell |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Nether biome temperature | `nether/temperature`, router `xz_scale=0.25` | `-7`, `0.25` | `1/32` | `32` | `32` |
+| Nether biome vegetation | `nether/vegetation`, router `xz_scale=0.25` | `-7`, `0.25` | `1/32` | `32` | `32` |
+| Generic surface depth | `surface` | `-6`, `1.0` | `1/4` | `4` | `4` |
+| Generic secondary surface depth | `surface_secondary` | `-6`, `1.0` | `1/4` | `4` | `4` |
+| Soul sand / gravel bands near lava level | `soul_sand_layer`, `gravel_layer` | `-8`, `1.0` | `1/16` | `16` | `16` |
+| Basalt/soul material selector | `nether_state_selector` | `-4`, `1.0` | `1` | `1` | `1` |
+| Basalt/soul gravel patches | `patch` | `-5`, `1.0` | `1/2` | `2` | `2` |
+| Crimson/warped nylium mask | `netherrack` | `-3`, `1.0` | `2` | `1` | `1` |
+| Nether wart block mask | `nether_wart` | `-3`, `1.0` | `2` | `1` | `1` |
+
+`minecraft:nether/base_3d_noise` is not a `NormalNoise` holder. It is
+`old_blended_noise` with `xz_scale=0.25`, `y_scale=0.375`, `xz_factor=80`,
+`y_factor=60`, and `smear_scale_multiplier=8`. Vanilla `BlendedNoise` samples:
+
+- min/max limit noise octaves `-15..0` with horizontal input scale
+  `684.412 * 0.25 * 2^-i`, or `2737.648 * 2^-i` cells per chunk.
+- main noise octaves `-7..0` with horizontal input scale
+  `(684.412 * 0.25 / 80) * 2^-i`, or `34.2206 * 2^-i` cells per chunk.
+
+Because those scales include `684.412`, exact chunk-size whitelisting is not
+useful for the Nether cave body. It needs the same quantized periodic-lattice or
+edge-blended treatment as other non-clean vanilla scales. Unlike the Overworld,
+though, Nether biome placement has no huge continent-scale octave: `32` Nether
+chunks already gives the lowest biome temperature/vegetation octave one complete
+lattice cell, and `128` Nether chunks gives four.
+
 So for the main landform/climate fields:
 
 - `128` chunks is the first size where normal Overworld continentalness and
@@ -273,7 +327,7 @@ can select a periodic strategy based on tile size and noise fit:
 | `EDGE_BLEND` | arbitrary medium/large sizes, especially non-clean sizes like `100` chunks | Vanilla noise in the interior, smooth border stitching near tile edges. No global scale change. |
 | `PERIODIC_LATTICE` | clean sizes, especially multiples of `256` chunks for normal Overworld | True periodic version of vanilla gradient noise with octave periods chosen cleanly. |
 
-Initial automatic policy:
+Initial automatic Overworld policy:
 
 ```text
 if tileChunks < 64:
@@ -284,8 +338,23 @@ else:
     EDGE_BLEND
 ```
 
+Initial automatic Nether policy:
+
+```text
+if netherTileChunks < 32:
+    COMPACT_TORUS
+else if netherTileChunks >= 128 and netherTileChunks % 128 == 0:
+    PERIODIC_LATTICE
+else:
+    EDGE_BLEND
+```
+
 This keeps arbitrary tile sizes usable, avoids globally deforming awkward sizes,
-and still rewards clean sizes with the most topologically pure terrain.
+and still rewards clean sizes with the most topologically pure terrain. The
+Nether thresholds are smaller because its biome temperature/vegetation fields
+fit much sooner than Overworld continent-scale fields. `EDGE_BLEND` remains the
+Nether default for medium sizes because the cavern body is legacy
+`old_blended_noise` with non-clean `684.412` scaling.
 
 ## Small-Tile Mode
 
