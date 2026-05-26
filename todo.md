@@ -5,7 +5,9 @@
 - village cut in half by tile boundary
 - getting on a horse triggers teleport
 - compare terrain with and without mod
-- terrain gen is worse
+- terrain gen is worse; see `docs/terrain-periodicity-investigation.md`
+    - current torus-embedded periodic sampler is seamless but changes vanilla noise statistics globally
+    - next likely path: auto-select compact torus, edge-blended arbitrary-size terrain, or periodic lattice for clean large tiles
 
 - mobs - all the things
 - day night offset
