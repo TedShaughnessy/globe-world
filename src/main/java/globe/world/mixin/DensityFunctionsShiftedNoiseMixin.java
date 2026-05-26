@@ -34,11 +34,14 @@ public abstract class DensityFunctionsShiftedNoiseMixin {
         double shiftX = this.shiftX().compute(context);
         double shiftZ = this.shiftZ().compute(context);
         DensityFunction.NoiseHolder noise = this.noise();
-        double value = PeriodicNoiseUtil.samplePlane(
+        double value = PeriodicNoiseUtil.sampleNoiseHolderXZ(
                 context.blockX(),
                 context.blockZ(),
                 this.xzScale(),
-                (x, z) -> noise.getValue(x + shiftX, y, z + shiftZ)
+                shiftX,
+                y,
+                shiftZ,
+                noise
         );
         cir.setReturnValue(value);
     }

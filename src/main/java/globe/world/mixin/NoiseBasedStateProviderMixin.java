@@ -20,11 +20,12 @@ public class NoiseBasedStateProviderMixin {
     @Inject(method = "getNoiseValue", at = @At("HEAD"), cancellable = true)
     private void samplePeriodicStateProviderNoise(BlockPos pos, double scale, CallbackInfoReturnable<Double> cir) {
         double y = pos.getY() * scale;
-        cir.setReturnValue(PeriodicNoiseUtil.samplePlane(
+        cir.setReturnValue(PeriodicNoiseUtil.sampleNormalNoiseXZ(
                 pos.getX(),
                 pos.getZ(),
                 scale,
-                (x, z) -> this.noise.getValue(x, y, z)
+                y,
+                this.noise
         ));
     }
 }

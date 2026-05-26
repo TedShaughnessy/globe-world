@@ -24,11 +24,12 @@ public class DualNoiseProviderMixin {
     @Inject(method = "getSlowNoiseValue", at = @At("HEAD"), cancellable = true)
     private void samplePeriodicSlowNoise(BlockPos pos, CallbackInfoReturnable<Double> cir) {
         double y = pos.getY() * this.slowScale;
-        cir.setReturnValue(PeriodicNoiseUtil.samplePlane(
+        cir.setReturnValue(PeriodicNoiseUtil.sampleNormalNoiseXZ(
                 pos.getX(),
                 pos.getZ(),
                 this.slowScale,
-                (x, z) -> this.slowNoise.getValue(x, y, z)
+                y,
+                this.slowNoise
         ));
     }
 }

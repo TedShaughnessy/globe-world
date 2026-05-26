@@ -23,11 +23,12 @@ public abstract class DensityFunctionsNoiseMixin {
     private void samplePeriodicNoise(DensityFunction.FunctionContext context, CallbackInfoReturnable<Double> cir) {
         double y = context.blockY() * this.yScale();
         DensityFunction.NoiseHolder noise = this.noise();
-        double value = PeriodicNoiseUtil.samplePlane(
+        double value = PeriodicNoiseUtil.sampleNoiseHolderXZ(
                 context.blockX(),
                 context.blockZ(),
                 this.xzScale(),
-                (x, z) -> noise.getValue(x, y, z)
+                y,
+                noise
         );
         cir.setReturnValue(value);
     }

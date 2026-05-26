@@ -64,11 +64,14 @@ public class BlendedNoiseMixin {
                 double y = PerlinNoise.wrap(mainY * octavePow);
                 double yScalePow = mainSmear * octavePow;
                 double yFudge = mainY * octavePow;
-                mainNoiseValue += PeriodicNoiseUtil.samplePlane(
+                mainNoiseValue += PeriodicNoiseUtil.sampleImprovedNoiseXZ(
                         context.blockX(),
                         context.blockZ(),
                         scale,
-                        (x, z) -> noise.noise(PerlinNoise.wrap(x), y, PerlinNoise.wrap(z), yScalePow, yFudge)
+                        y,
+                        yScalePow,
+                        yFudge,
+                        noise
                 ) / octavePow;
             }
 
@@ -90,11 +93,14 @@ public class BlendedNoiseMixin {
             if (!isMax) {
                 ImprovedNoise minNoise = this.minLimitNoise.getOctaveNoise(i);
                 if (minNoise != null) {
-                    blendMin += PeriodicNoiseUtil.samplePlane(
+                    blendMin += PeriodicNoiseUtil.sampleImprovedNoiseXZ(
                             context.blockX(),
                             context.blockZ(),
                             scale,
-                            (x, z) -> minNoise.noise(PerlinNoise.wrap(x), y, PerlinNoise.wrap(z), yScalePow, yFudge)
+                            y,
+                            yScalePow,
+                            yFudge,
+                            minNoise
                     ) / pow;
                 }
             }
@@ -102,11 +108,14 @@ public class BlendedNoiseMixin {
             if (!isMin) {
                 ImprovedNoise maxNoise = this.maxLimitNoise.getOctaveNoise(i);
                 if (maxNoise != null) {
-                    blendMax += PeriodicNoiseUtil.samplePlane(
+                    blendMax += PeriodicNoiseUtil.sampleImprovedNoiseXZ(
                             context.blockX(),
                             context.blockZ(),
                             scale,
-                            (x, z) -> maxNoise.noise(PerlinNoise.wrap(x), y, PerlinNoise.wrap(z), yScalePow, yFudge)
+                            y,
+                            yScalePow,
+                            yFudge,
+                            maxNoise
                     ) / pow;
                 }
             }

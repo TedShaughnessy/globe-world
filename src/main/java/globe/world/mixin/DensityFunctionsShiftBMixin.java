@@ -16,12 +16,13 @@ public abstract class DensityFunctionsShiftBMixin {
     @Inject(method = "compute", at = @At("HEAD"), cancellable = true)
     private void samplePeriodicShiftB(DensityFunction.FunctionContext context, CallbackInfoReturnable<Double> cir) {
         DensityFunction.NoiseHolder noise = this.offsetNoise();
-        double value = PeriodicNoiseUtil.samplePlane(
+        double value = PeriodicNoiseUtil.sampleNoiseHolderXY(
                 context.blockZ(),
                 context.blockX(),
                 0.25,
-                (x, y) -> noise.getValue(x, y, 0.0) * 4.0
-        );
+                0.0,
+                noise
+        ) * 4.0;
         cir.setReturnValue(value);
     }
 }

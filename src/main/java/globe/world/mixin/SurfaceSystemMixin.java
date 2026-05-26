@@ -207,6 +207,6 @@ public class SurfaceSystemMixin {
     }
 
     private static double sample(int blockX, int blockZ, double scale, NormalNoise noise) {
-        return PeriodicNoiseUtil.samplePlane(blockX, blockZ, scale, (x, z) -> noise.getValue(x, 0.0, z));
+        return PeriodicNoiseUtil.sampleNormalNoiseXZ(blockX, blockZ, scale, 0.0, noise);
     }
 }

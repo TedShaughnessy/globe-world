@@ -32,12 +32,14 @@ public abstract class DensityFunctionsWeirdScaledSamplerMixin {
             CallbackInfoReturnable<Double> cir) {
         double rarity = globeWorld$rarity(input);
         DensityFunction.NoiseHolder noise = this.noise();
-        double value = PeriodicNoiseUtil.samplePlane(
+        double value = PeriodicNoiseUtil.sampleNoiseHolderXZ(
                 context.blockX(),
                 context.blockZ(),
                 1.0 / rarity,
-                (x, z) -> rarity * Math.abs(noise.getValue(x, context.blockY() / rarity, z))
+                context.blockY() / rarity,
+                noise
         );
+        value = rarity * Math.abs(value);
         cir.setReturnValue(value);
     }
 
