@@ -30,7 +30,7 @@ Source references below use jar-internal paths such as:
 6. [Random Ticks](random-ticks.md): random block/fluid ticks during chunk ticking.
 7. [Block Entities](block-entities.md): block entity storage, ticking, save/load, update packets.
 8. [Mobs And Entities](mobs-and-entities.md): entity ticking, entity chunk storage, natural spawning, tracking.
-9. [World Generation](world-generation.md): chunk status pipeline, biomes, noise, features, structures.
+9. [World Generation](world-generation.md): chunk status pipeline, biomes, noise, features, structures. Deep dive: [Structure Edge Generation](structure-edge-generation.md).
 10. [Client World](client-world.md): client chunk cache, chunk/light/block packet application, render-facing storage.
 
 ## Reading Pattern
@@ -41,4 +41,3 @@ For any mechanic:
 2. Open the listed source files in the source jar.
 3. Follow the "entry points" first.
 4. Use the "audit questions" to decide whether the mechanic depends on absolute block position, chunk position, section position, player distance, or packet coordinates.
-

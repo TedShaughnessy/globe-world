@@ -1,6 +1,8 @@
 ## TODO
 
 ## priorities
+- validate village/structure generation across tile edges and corners
+- dungeon/monster-room generation cut off at tile boundary
 - mobs - all the things
 - day night offset
 

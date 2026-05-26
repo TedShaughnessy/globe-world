@@ -71,6 +71,12 @@ Important anchors:
 - `ChunkGenerator.java:568` allowed biome set
 - `ChunkGenerator.java:585` records generated start
 - `ChunkGenerator.java:612` scans nearby starts for references
+- `StructureManager.java:41` creates a region-scoped manager for decoration
+- `StructureManager.java:50` reads structure references for a chunk
+- `StructureManager.java:67` resolves referenced start chunks
+- `StructureStart.java:74` places only pieces intersecting the target chunk bounding box
+- `StructurePiece.java:124` stores each piece's absolute bounding box
+- `StructurePiece.java:167` only writes blocks inside the supplied chunk bounding box
 
 ## Biomes, Noise, And Features
 
@@ -85,6 +91,13 @@ Important anchors:
 - `ChunkGenerator.java:368` possible biomes
 - `ChunkGenerator.java:386` placed feature execution
 - `ServerLevel.java:321` `getUncachedNoiseBiome`
+- `PlacedFeature.java:39` placement modifier stream
+- `InSquarePlacement.java:18` random position inside the decorated chunk
+- `Feature.java:176` `safeSetBlock(...)`
+- `MonsterRoomFeature.java:25` dungeon/monster-room feature
+- `MonsterRoomFeature.java:46` validates the whole room envelope before writing
+- `MonsterRoomFeature.java:95` places chest loot block entities
+- `MonsterRoomFeature.java:101` places and initializes the spawner block entity
 
 ## Audit Questions
 
@@ -94,6 +107,8 @@ Important anchors:
 - Does feature placement read neighboring chunks or blocks?
 - Are worldgen random seeds derived from absolute chunk/block coordinates?
 - Should generated storage be unique while visible terrain repeats?
+- Does the object have an anchor/start outside the canonical tile whose body crosses into it?
+- Does the object store secondary data outside block states, such as chest loot tables, spawner data, scheduled ticks, or post-processing offsets?
 
 ## Globe World Notes
 
@@ -148,19 +163,81 @@ Why read/write symmetry matters:
 
 ### Structures
 
-Current structure hook:
+See [Structure Edge Generation](structure-edge-generation.md) for the detailed investigation of why villages and other structures still cut off at canonical tile boundaries.
 
-- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:34` cancels structure starts for non-canonical chunks.
-- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:49` cancels structure references for non-canonical chunks.
+Vanilla structures are split into two chunk statuses:
+
+- `STRUCTURE_STARTS`: `ChunkGenerator.createStructures(...)` decides whether a start belongs to a chunk and stores a `StructureStart` on that chunk.
+- `STRUCTURE_REFERENCES`: `ChunkGenerator.createReferences(...)` scans nearby starts and records references on every chunk whose 16x16 area intersects the start's bounding box.
+
+During biome decoration, `ChunkGenerator.applyBiomeDecoration(...)` asks `StructureManager.startsForStructure(...)` for the target chunk's references, then calls `StructureStart.placeInChunk(...)`. `StructureStart` only calls `StructurePiece.postProcess(...)` for pieces whose absolute bounding boxes intersect the supplied chunk bounding box.
+
+For Globe World, this means a village crossing the east/west seam needs all of these to become toroidal:
+
+- The structure placement decision for a start chunk.
+- The stored start identity and piece bounding boxes.
+- The reference scan from target chunk to nearby start chunks.
+- The `StructureManager` lookup from reference key back to the start chunk.
+- The chunk bounding box passed to `StructureStart.placeInChunk(...)`.
+- Block, fluid, block entity, scheduled tick, and post-processing writes performed by pieces.
+
+Current project hooks:
+
+- Earlier behavior canceled structure starts and references for non-canonical chunks. That prevented duplicate alias structure data, but it also removed virtual starts needed by canonical edge chunks to place the opposite side of a seam-crossing village.
+- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java` currently clears alias structure references, stores virtual source keys during canonical reference creation, and queues exact placement shifts during biome decoration.
+- `src/main/java/globe/world/mixin/StructurePlacementMixin.java` makes `StructurePlacement.isStructureChunk(...)` periodic for alias start generation.
+- `src/main/java/globe/world/mixin/StructureGenerationContextMixin.java` canonicalizes structure-generation random seeds while keeping alias start positions virtual.
+- `src/main/java/globe/world/mixin/StructureStartMixin.java` consumes the queued shift and calls vanilla placement with a shifted chunk bounding box.
+- This needs in-game validation: the implementation is designed to preserve coherent virtual structure-start identity, but villages crossing all four edges/corners still need testing.
+
+Important constraint:
+
+- Do not call `ServerLevel.getChunk(...)` from structure-reference generation. A previous attempt did this while a chunk was generating and caused chunk loading to stall near the tile border and hang on quit. Reference scans must stay inside the bounded `WorldGenRegion.getChunk(...)` cache.
+
+Implemented design:
+
+- Keep canonical chunks as the intended saved structure-start owners; alias starts are transient worldgen data and still need a save/load audit.
+- During structure reference generation, store virtual source reference keys so the exact whole-tile shift survives lookup.
+- During structure placement, resolve each virtual reference to a start and move the chunk bounding box by the stored shift instead of guessing from bounding-box centers.
+- Route all structure block writes through `WorldGenRegion`/spillover wrapping, and separately audit block entities, loot tables, scheduled ticks, and post-processing writes.
+
+### Dungeons / Monster Rooms
+
+Vanilla monster rooms are not structures; they are configured features (`Feature.MONSTER_ROOM`) run during biome decoration. The feature is anchored at one placed feature position and then validates/writes a small room around that origin.
+
+Why they cut off at a tile boundary:
+
+- `ChunkGeneratorMixin` cancels `applyBiomeDecoration(...)` for non-canonical chunks, so feature origins in alias chunks do not run.
+- A dungeon whose origin is inside a canonical edge chunk can spill blocks across the boundary through `WorldGenRegion.setBlock(...)` and `WorldGenSpillover`.
+- A dungeon whose origin would be just outside the canonical tile but whose room crosses into the tile is missing entirely, because the alias feature center is skipped.
+- `MonsterRoomFeature` performs whole-envelope validation before writing. If its reads see inconsistent canonical/alias state, it can reject placement rather than placing a partial room.
+- Chests and spawners use block entities and loot/spawner initialization after block placement. Block-state spillover alone is not enough; block entity NBT/data must also be canonicalized or replayed for wrapped positions.
+
+Associated systems:
+
+- `PlacedFeature` and placement modifiers choose candidate origins per decorated chunk.
+- `BiomeFilterMixin` wraps biome checks, but does not create alias feature centers.
+- `WorldGenRegionMixin` wraps direct block/fluid/entity lookups and writes.
+- `WorldGenSpillover` replays wrapped block-state writes into canonical storage.
+- Block entity creation/initialization paths such as `RandomizableContainer.setBlockEntityLootTable(...)` and `SpawnerBlockEntity.setEntityId(...)` still need an explicit audit for wrapped positions and delayed canonical replay.
+
+Possible next design:
+
+- For selected cross-boundary features, allow alias feature decoration to run in a transient mode that does not own persistent chunk data but can spill wrapped mutations into canonical storage.
+- Alternatively, during canonical edge-chunk decoration, run extra feature-origin passes for the adjacent virtual chunks and only keep writes that wrap into canonical storage.
+- Apply the same read/write symmetry rule as trees: validation reads, block writes, block entity writes, scheduled ticks, and post-processing markers must all see the same toroidal coordinate space.
 
 ### Current Status And Plan
 
 - Good: alias chunk post-processing no longer writes neighbor-shape fixes into canonical chunks.
-- Good: alias chunks no longer run biome decoration, structure starts, or structure references.
+- Good: alias chunks no longer run biome decoration or structure references.
+- Needs validation: structure starts, references, and placement now carry virtual source keys and explicit shifts, but villages still need edge/corner testing.
 - Good: `WorldGenRegion` reads/writes now use canonical block positions for direct block/fluid/entity lookups, toroidal write-radius checks, `setBlock`, and queued postprocessing positions.
 - Good: ore placement's `BulkSectionAccess` path now resolves sections from canonical positions after `ensureCanWrite(...)` accepts a wrapped write.
 - Good: alias chunk packets are only allowed to serialize canonical chunk data; if the canonical source is unavailable, `PlayerChunkSenderMixin` requeues the alias send instead of falling back to alias-local terrain.
-- Needs testing: fresh 1-chunk and 2-chunk tile worlds with trees near all four edges and corners.
-- Needs audit: worldgen APIs that bypass `WorldGenRegion.getBlockState` / `setBlock`, direct `ChunkAccess.setBlockState` calls, tick scheduling in `WorldGenRegion`, carvers, surface building, and noise/biome sampling.
+- Done: tree/foliage spillover now has a queued canonical replay path.
+- Needs validation: villages/structures crossing tile boundaries.
+- Open: dungeons/monster rooms crossing tile boundaries still cut off.
+- Needs audit: worldgen APIs that bypass `WorldGenRegion.getBlockState` / `setBlock`, direct `ChunkAccess.setBlockState` calls, block entity writes, tick scheduling in `WorldGenRegion`, carvers, surface building, and noise/biome sampling.
 - Planned: make biome/noise/feature placement periodic by wrapping coordinate inputs at the generator/biome-source/noise layer, not only by wrapping block mutations after features choose positions.
 - Planned: remove or gate noisy chunk/client logs before packaging.
