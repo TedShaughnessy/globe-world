@@ -1,6 +1,6 @@
 package globe.world.client;
 
-import globe.world.config.GlobeConfig;
+import globe.world.util.DimensionTiling;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.gizmos.Gizmos;
@@ -13,6 +13,9 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
     private static final int CANONICAL_COLOR = ARGB.color(255, 0, 220, 180);
     private static final int CURRENT_ALIAS_COLOR = ARGB.color(255, 255, 220, 0);
     private static final int OTHER_ALIAS_COLOR = ARGB.color(150, 120, 160, 255);
+    private static final float CURRENT_TILE_WIDTH = 10.0F;
+    private static final float OTHER_TILE_WIDTH = 5.0F;
+    private static final float CHUNK_GRID_WIDTH = 2.5F;
 
     private final Minecraft minecraft;
 
@@ -22,7 +25,12 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
 
     @Override
     public void emitGizmos(double camX, double camY, double camZ, DebugValueAccess debugValues, Frustum frustum, float partialTicks) {
-        if (!GlobeDebugState.tileBordersEnabled() || !GlobeConfig.enabled() || this.minecraft.level == null) {
+        if (!GlobeDebugState.tileBordersEnabled() || this.minecraft.level == null) {
+            return;
+        }
+
+        DimensionTiling tiling = DimensionTiling.forLevel(this.minecraft.level);
+        if (!tiling.enabled()) {
             return;
         }
 
@@ -31,8 +39,8 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
             return;
         }
 
-        int tileBlocks = GlobeConfig.tileSizeBlocks();
-        int canonicalMin = -(GlobeConfig.tileSizeChunks() / 2) * 16;
+        int tileBlocks = tiling.tileSizeBlocks();
+        int canonicalMin = -(tiling.tileSizeChunks() / 2) * 16;
         int currentTileX = Math.floorDiv(cameraEntity.blockPosition().getX() - canonicalMin, tileBlocks);
         int currentTileZ = Math.floorDiv(cameraEntity.blockPosition().getZ() - canonicalMin, tileBlocks);
         int minY = this.minecraft.level.getMinY();
@@ -45,7 +53,7 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
                 int x1 = x0 + tileBlocks;
                 int z1 = z0 + tileBlocks;
                 int color = colorFor(tileX, tileZ, currentTileX, currentTileZ);
-                float width = tileX == currentTileX && tileZ == currentTileZ ? 4.0F : 2.0F;
+                float width = tileX == currentTileX && tileZ == currentTileZ ? CURRENT_TILE_WIDTH : OTHER_TILE_WIDTH;
                 drawTile(x0, z0, x1, z1, minY, maxY, color, width);
             }
         }
@@ -78,13 +86,13 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
         line(x0, minY, z1, x0, maxY, z1, color, width);
 
         for (int x = x0 + 16; x < x1; x += 16) {
-            line(x, minY, z0, x, maxY, z0, color, 1.0F);
-            line(x, minY, z1, x, maxY, z1, color, 1.0F);
+            line(x, minY, z0, x, maxY, z0, color, CHUNK_GRID_WIDTH);
+            line(x, minY, z1, x, maxY, z1, color, CHUNK_GRID_WIDTH);
         }
 
         for (int z = z0 + 16; z < z1; z += 16) {
-            line(x0, minY, z, x0, maxY, z, color, 1.0F);
-            line(x1, minY, z, x1, maxY, z, color, 1.0F);
+            line(x0, minY, z, x0, maxY, z, color, CHUNK_GRID_WIDTH);
+            line(x1, minY, z, x1, maxY, z, color, CHUNK_GRID_WIDTH);
         }
     }
 

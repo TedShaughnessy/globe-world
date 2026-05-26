@@ -16,12 +16,12 @@ public record DimensionTiling(boolean enabled, int tileSizeChunks) {
 
     public static DimensionTiling forDimension(ResourceKey<Level> dimension) {
         TilingSettings settings = GlobeConfig.tilingSettings();
-        if (dimension == Level.OVERWORLD) {
+        if (Level.OVERWORLD.equals(dimension)) {
             return settings.enabled()
                     ? new DimensionTiling(true, settings.tileSize())
                     : DISABLED;
         }
-        if (dimension == Level.NETHER) {
+        if (Level.NETHER.equals(dimension)) {
             return settings.netherEnabled()
                     ? new DimensionTiling(true, settings.netherTileSize())
                     : DISABLED;
