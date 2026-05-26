@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import globe.world.GlobeChunkPacket;
 import globe.world.util.ChunkAliasTracker;
 import globe.world.util.CoordUtil;
+import globe.world.util.WorldGenSpillover;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.server.level.ServerLevel;
@@ -82,6 +83,7 @@ public class PlayerChunkSenderMixin {
         // Virtual coord = raw coord; client stores each alias at its natural position.
         // The alias enters/exits the client's view as the player moves, just like any
         // vanilla chunk would.
+        WorldGenSpillover.applyToChunk(level, chunkToSend);
         ClientboundLevelChunkWithLightPacket packet = original.call(chunkToSend, lightEngine, bs1, bs2);
         if (cx != packet.getX() || cz != packet.getZ()) {
             ((GlobeChunkPacket) packet).setVirtualPos(cx, cz);

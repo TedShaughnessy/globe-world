@@ -1,14 +1,6 @@
 ## TODO
 
 ## priorities
-- follow up tree generation at tile borders: terrain/biomes/caves are seamless, but trees can still be cut where feature writes cross the canonical boundary. Audit whether wrapped `WorldGenRegion.setBlock` writes land in raw neighbor chunks instead of the opposite canonical chunk, and consider a pending spillover/canonical mirror pass after terrain generation.
-- village cut in half by tile boundary
-- getting on a horse triggers teleport
-- compare terrain with and without mod
-- terrain gen is worse; see `docs/terrain-periodicity-investigation.md`
-    - current torus-embedded periodic sampler is seamless but changes vanilla noise statistics globally
-    - next likely path: auto-select compact torus, edge-blended arbitrary-size terrain, or periodic lattice for clean large tiles
-
 - mobs - all the things
 - day night offset
 
@@ -22,10 +14,13 @@
     - lodestone needs to point to nearest lodestone, check is dimension is tiling first
     - recovery compass point to canon death point
     - bed, teleport on wake to canon
-    - Map, fine as is I guess
+    - Map, all player should always be on it
 
 
 ## Events
 - tp on spawn to canon
 
 ## time
+
+## animals
+- getting on a horse triggers teleport

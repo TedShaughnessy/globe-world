@@ -1,6 +1,7 @@
 package globe.world.mixin;
 
 import globe.world.util.CoordUtil;
+import globe.world.util.WorldGenSpillover;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
@@ -28,6 +29,20 @@ public class ChunkGeneratorMixin {
             CallbackInfo ci) {
         if (!isCanonical(chunk.getPos())) {
             ci.cancel();
+            return;
+        }
+
+        WorldGenSpillover.applyToChunk(level.getLevel(), chunk);
+    }
+
+    @Inject(method = "applyBiomeDecoration", at = @At("RETURN"))
+    private void applyQueuedSpilloverAfterBiomeDecoration(
+            WorldGenLevel level,
+            ChunkAccess chunk,
+            StructureManager structureManager,
+            CallbackInfo ci) {
+        if (isCanonical(chunk.getPos())) {
+            WorldGenSpillover.applyToChunk(level.getLevel(), chunk);
         }
     }
 

@@ -1,6 +1,7 @@
 package globe.world.mixin;
 
 import globe.world.util.CoordUtil;
+import globe.world.util.WorldGenSpillover;
 import it.unimi.dsi.fastutil.shorts.ShortList;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -17,6 +18,7 @@ public abstract class LevelChunkPostProcessMixin {
         LevelChunk chunk = (LevelChunk) (Object) this;
         ChunkPos pos = chunk.getPos();
         if (CoordUtil.wrapChunk(pos.x()) == pos.x() && CoordUtil.wrapChunk(pos.z()) == pos.z()) {
+            WorldGenSpillover.applyToChunk(level, chunk);
             return;
         }
 

@@ -2,8 +2,10 @@ package globe.world.mixin;
 
 import globe.world.util.CoordUtil;
 import globe.world.config.GlobeConfig;
+import globe.world.util.WorldGenSpillover;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -27,6 +29,10 @@ public class WorldGenRegionMixin {
     @Shadow
     @Final
     private ChunkStep generatingStep;
+
+    @Shadow
+    @Final
+    private ServerLevel level;
 
     @ModifyVariable(method = "getBlockState", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetBlockStatePos(BlockPos pos) {
@@ -129,6 +135,7 @@ public class WorldGenRegionMixin {
     ) {
         BlockPos wrapped = CoordUtil.wrapBlockPos(pos);
         if (wrapped != pos) {
+            WorldGenSpillover.enqueue(this.level, wrapped, blockState, updateFlags);
             cir.setReturnValue(((WorldGenRegion)(Object)this).setBlock(wrapped, blockState, updateFlags, updateLimit));
         }
     }
