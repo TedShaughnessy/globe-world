@@ -15,8 +15,7 @@
 		"SectionOcclusionGraphStorageMixin",
 		"ShaderManagerMixin",
 		"WorldCreationContextMixin",
-		"WorldOpenFlowsMixin",
-		"WorldTabMixin"
+		"WorldOpenFlowsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

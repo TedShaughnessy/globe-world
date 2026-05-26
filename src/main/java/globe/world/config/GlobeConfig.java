@@ -1,7 +1,7 @@
 package globe.world.config;
 
 public class GlobeConfig {
-    public static final int DEFAULT_TILE_SIZE_CHUNKS = 100;
+    public static final int DEFAULT_TILE_SIZE_CHUNKS = 1024;
 
     private static volatile TilingSettings settings = TilingSettings.DEFAULT;
     private static volatile int settingsVersion = 0;
@@ -36,5 +36,21 @@ public class GlobeConfig {
 
     public static int curvaturePercent() {
         return settings.curvaturePercent();
+    }
+
+    public static boolean netherEnabled() {
+        return settings.netherEnabled();
+    }
+
+    public static int netherTileSizeChunks() {
+        return settings.netherTileSize();
+    }
+
+    public static boolean netherOneEighthOverworldSize() {
+        return settings.netherOneEighthOverworldSize();
+    }
+
+    public static DayNightCycleMode dayNightCycleMode() {
+        return settings.dayNightCycleMode();
     }
 }

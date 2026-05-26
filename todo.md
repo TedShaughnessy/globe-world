@@ -1,10 +1,16 @@
 ## TODO
 
 ## priorities
-- validate village/structure generation across tile edges and corners
-- dungeon/monster-room generation cut off at tile boundary
-- mobs - all the things
-- day night offset
+1. all block/ world / item related things
+    - test the nether
+        should tile
+        should probably be 1/8th the size, make that a yes no option, can always have no tiling
+        should teleport to canon positions
+        look at noise size so we know how to tile / what mode of tiling
+    - the end, little value in tiling, leave as is
+    - items
+2. MOB related things
+3. light related things
 
 
 ## nether
