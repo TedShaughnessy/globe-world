@@ -1,6 +1,5 @@
 package globe.world.util;
 
-import globe.world.config.GlobeConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
@@ -20,11 +19,11 @@ public final class WorldGenSpillover {
     }
 
     public static synchronized void enqueue(ServerLevel level, BlockPos pos, BlockState state, int flags) {
-        if (!GlobeConfig.enabled()) {
+        if (!DimensionTiling.forLevel(level).enabled()) {
             return;
         }
 
-        BlockPos wrapped = CoordUtil.wrapBlockPos(pos).immutable();
+        BlockPos wrapped = CoordUtil.wrapBlockPos(level, pos).immutable();
         ChunkPos chunkPos = new ChunkPos(
                 SectionPos.blockToSectionCoord(wrapped.getX()),
                 SectionPos.blockToSectionCoord(wrapped.getZ())
@@ -34,13 +33,13 @@ public final class WorldGenSpillover {
     }
 
     public static synchronized void applyToChunk(ServerLevel level, ChunkAccess chunk) {
-        if (!GlobeConfig.enabled()) {
+        if (!DimensionTiling.forLevel(level).enabled()) {
             return;
         }
 
         ChunkPos chunkPos = chunk.getPos();
-        if (CoordUtil.wrapChunk(chunkPos.x()) != chunkPos.x()
-                || CoordUtil.wrapChunk(chunkPos.z()) != chunkPos.z()) {
+        if (CoordUtil.wrapChunk(level, chunkPos.x()) != chunkPos.x()
+                || CoordUtil.wrapChunk(level, chunkPos.z()) != chunkPos.z()) {
             return;
         }
 

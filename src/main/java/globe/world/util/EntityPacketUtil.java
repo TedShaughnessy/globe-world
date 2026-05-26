@@ -48,8 +48,8 @@ public class EntityPacketUtil {
     }
 
     private static ClientboundAddEntityPacket virtualizeAddEntity(ClientboundAddEntityPacket packet, ServerPlayer viewer) {
-        double x = CoordUtil.virtualBlock(packet.getX(), viewer.getX());
-        double z = CoordUtil.virtualBlock(packet.getZ(), viewer.getZ());
+        double x = CoordUtil.virtualBlock(viewer.level(), packet.getX(), viewer.getX());
+        double z = CoordUtil.virtualBlock(viewer.level(), packet.getZ(), viewer.getZ());
         if (x == packet.getX() && z == packet.getZ()) return packet;
 
         return new ClientboundAddEntityPacket(
@@ -93,8 +93,8 @@ public class EntityPacketUtil {
             boolean keepX,
             boolean keepZ) {
         Vec3 pos = values.position();
-        double x = keepX ? pos.x : CoordUtil.virtualBlock(pos.x, viewer.getX());
-        double z = keepZ ? pos.z : CoordUtil.virtualBlock(pos.z, viewer.getZ());
+        double x = keepX ? pos.x : CoordUtil.virtualBlock(viewer.level(), pos.x, viewer.getX());
+        double z = keepZ ? pos.z : CoordUtil.virtualBlock(viewer.level(), pos.z, viewer.getZ());
         if (x == pos.x && z == pos.z) return values;
         return new PositionMoveRotation(new Vec3(x, pos.y, z), values.deltaMovement(), values.yRot(), values.xRot());
     }

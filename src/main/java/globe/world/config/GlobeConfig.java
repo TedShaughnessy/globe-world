@@ -1,5 +1,9 @@
 package globe.world.config;
 
+import globe.world.util.DimensionTiling;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
+
 public class GlobeConfig {
     public static final int DEFAULT_TILE_SIZE_CHUNKS = 1024;
 
@@ -22,6 +26,10 @@ public class GlobeConfig {
         return settings.enabled();
     }
 
+    public static boolean enabled(ResourceKey<Level> dimension) {
+        return DimensionTiling.forDimension(dimension).enabled();
+    }
+
     public static int settingsVersion() {
         return settingsVersion;
     }
@@ -32,6 +40,14 @@ public class GlobeConfig {
 
     public static int tileSizeBlocks() {
         return tileSizeChunks() * 16;
+    }
+
+    public static int tileSizeChunks(ResourceKey<Level> dimension) {
+        return DimensionTiling.forDimension(dimension).tileSizeChunks();
+    }
+
+    public static int tileSizeBlocks(ResourceKey<Level> dimension) {
+        return DimensionTiling.forDimension(dimension).tileSizeBlocks();
     }
 
     public static int curvaturePercent() {
@@ -48,6 +64,10 @@ public class GlobeConfig {
 
     public static boolean netherOneEighthOverworldSize() {
         return settings.netherOneEighthOverworldSize();
+    }
+
+    public static boolean effectiveNetherOneEighthOverworldSize() {
+        return settings.effectiveNetherOneEighthOverworldSize();
     }
 
     public static DayNightCycleMode dayNightCycleMode() {

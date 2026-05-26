@@ -44,7 +44,7 @@ public class ChunkMapSpawningMixin {
             Object chunkObject,
             Operation<Boolean> original) {
         LevelChunk chunk = (LevelChunk) chunkObject;
-        ChunkPos canonicalPos = CoordUtil.wrapChunkPos(chunk.getPos());
+        ChunkPos canonicalPos = CoordUtil.wrapChunkPos(this.level, chunk.getPos());
         if (!globeWorld$spawningCanonicalChunks.add(canonicalPos.pack())) {
             return false;
         }
@@ -73,7 +73,7 @@ public class ChunkMapSpawningMixin {
         )
     )
     private double wrapSpawningChunkDistance(ChunkPos chunkPos, Vec3 playerPos, Operation<Double> original) {
-        return CoordUtil.wrappedChunkDistanceSqr(chunkPos, playerPos);
+        return CoordUtil.wrappedChunkDistanceSqr(this.level, chunkPos, playerPos);
     }
 
     @WrapOperation(
@@ -90,8 +90,8 @@ public class ChunkMapSpawningMixin {
             int chunkZ,
             Operation<Boolean> original) {
         ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkX), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkZ), playerChunk.z());
+        int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
+        int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
         return original.call(chunkMap, player, virtualX, virtualZ);
     }
 
@@ -109,8 +109,8 @@ public class ChunkMapSpawningMixin {
             int chunkZ,
             Operation<Boolean> original) {
         ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkX), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkZ), playerChunk.z());
+        int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
+        int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
         return original.call(chunkMap, player, virtualX, virtualZ);
     }
 }

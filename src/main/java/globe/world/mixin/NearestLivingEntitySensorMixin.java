@@ -45,7 +45,7 @@ public class NearestLivingEntitySensorMixin {
             if (entities.contains(candidate) || !predicate.test(candidate)) {
                 continue;
             }
-            double distanceSqr = CoordUtil.wrappedDistanceSqr(body.getX(), body.getY(), body.getZ(),
+            double distanceSqr = CoordUtil.wrappedDistanceSqr(level, body.getX(), body.getY(), body.getZ(),
                     player.getX(), player.getY(), player.getZ());
             if (distanceSqr <= followRangeSqr) {
                 entities.add(candidate);

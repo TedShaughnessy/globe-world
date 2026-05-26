@@ -1,6 +1,6 @@
 package globe.world.mixin;
 
-import globe.world.config.GlobeConfig;
+import globe.world.util.DimensionTiling;
 import globe.world.util.StructurePlacementShifts;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
@@ -25,7 +25,7 @@ public class StructureStartMixin {
             BoundingBox chunkBB,
             ChunkPos chunkPos,
             CallbackInfo ci) {
-        if (!GlobeConfig.enabled() || StructurePlacementShifts.isPlacingShifted()) {
+        if (!DimensionTiling.forLevel(level.getLevel()).enabled() || StructurePlacementShifts.isPlacingShifted()) {
             return;
         }
 

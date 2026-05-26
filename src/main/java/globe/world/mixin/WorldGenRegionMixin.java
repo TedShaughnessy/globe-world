@@ -1,7 +1,7 @@
 package globe.world.mixin;
 
 import globe.world.util.CoordUtil;
-import globe.world.config.GlobeConfig;
+import globe.world.util.DimensionTiling;
 import globe.world.util.WorldGenSpillover;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -36,7 +36,7 @@ public class WorldGenRegionMixin {
 
     @ModifyVariable(method = "getBlockState", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetBlockStatePos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(pos);
+        return CoordUtil.wrapBlockPos(this.level, pos);
     }
 
     @Inject(
@@ -69,17 +69,17 @@ public class WorldGenRegionMixin {
 
     @ModifyVariable(method = "getFluidState", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetFluidStatePos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(pos);
+        return CoordUtil.wrapBlockPos(this.level, pos);
     }
 
     @ModifyVariable(method = "getBlockEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetBlockEntityPos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(pos);
+        return CoordUtil.wrapBlockPos(this.level, pos);
     }
 
     @Inject(method = "ensureCanWrite", at = @At("HEAD"), cancellable = true)
     private void allowCanonicalWorldgenWrite(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-        BlockPos wrapped = CoordUtil.wrapBlockPos(pos);
+        BlockPos wrapped = CoordUtil.wrapBlockPos(this.level, pos);
 
         int chunkX = SectionPos.blockToSectionCoord(wrapped.getX());
         int chunkZ = SectionPos.blockToSectionCoord(wrapped.getZ());
@@ -102,27 +102,21 @@ public class WorldGenRegionMixin {
         cir.setReturnValue(true);
     }
 
-    private static int canonicalChunkDistance(int a, int b) {
-        if (!GlobeConfig.enabled()) {
-            return Math.abs(a - b);
-        }
-
-        int tileSize = GlobeConfig.tileSizeChunks();
-        int wrappedDelta = Math.floorMod(a - b, tileSize);
-        return Math.min(wrappedDelta, tileSize - wrappedDelta);
+    private int canonicalChunkDistance(int a, int b) {
+        return CoordUtil.wrappedChunkDistance(DimensionTiling.forLevel(this.level), a, b);
     }
 
     private int virtualCacheChunkX(int chunkX) {
-        return CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkX), this.center.getPos().x());
+        return CoordUtil.virtualChunk(this.level, CoordUtil.wrapChunk(this.level, chunkX), this.center.getPos().x());
     }
 
     private int virtualCacheChunkZ(int chunkZ) {
-        return CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkZ), this.center.getPos().z());
+        return CoordUtil.virtualChunk(this.level, CoordUtil.wrapChunk(this.level, chunkZ), this.center.getPos().z());
     }
 
     @ModifyVariable(method = "ensureCanWrite", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenEnsureCanWritePos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(pos);
+        return CoordUtil.wrapBlockPos(this.level, pos);
     }
 
     @Inject(method = "setBlock", at = @At("HEAD"), cancellable = true)
@@ -133,7 +127,7 @@ public class WorldGenRegionMixin {
             int updateLimit,
             CallbackInfoReturnable<Boolean> cir
     ) {
-        BlockPos wrapped = CoordUtil.wrapBlockPos(pos);
+        BlockPos wrapped = CoordUtil.wrapBlockPos(this.level, pos);
         if (wrapped != pos) {
             WorldGenSpillover.enqueue(this.level, wrapped, blockState, updateFlags);
             cir.setReturnValue(((WorldGenRegion)(Object)this).setBlock(wrapped, blockState, updateFlags, updateLimit));
@@ -142,11 +136,11 @@ public class WorldGenRegionMixin {
 
     @ModifyVariable(method = "setBlock", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenSetBlockPos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(pos);
+        return CoordUtil.wrapBlockPos(this.level, pos);
     }
 
     @ModifyVariable(method = "markPosForPostprocessing", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenPostProcessingPos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(pos);
+        return CoordUtil.wrapBlockPos(this.level, pos);
     }
 }

@@ -41,7 +41,7 @@ public class PlayerChunkSenderMixin {
             LevelChunk chunk,
             CallbackInfo ci) {
         int cx = chunk.getPos().x(), cz = chunk.getPos().z();
-        int wcx = CoordUtil.wrapChunk(cx), wcz = CoordUtil.wrapChunk(cz);
+        int wcx = CoordUtil.wrapChunk(level, cx), wcz = CoordUtil.wrapChunk(level, cz);
         if (wcx == cx && wcz == cz) {
             return;
         }
@@ -66,7 +66,7 @@ public class PlayerChunkSenderMixin {
             @Local(argsOnly = true) ServerGamePacketListenerImpl conn,
             @Local(argsOnly = true) ServerLevel level) {
         int cx = chunk.getPos().x(), cz = chunk.getPos().z();
-        int wcx = CoordUtil.wrapChunk(cx), wcz = CoordUtil.wrapChunk(cz);
+        int wcx = CoordUtil.wrapChunk(level, cx), wcz = CoordUtil.wrapChunk(level, cz);
 
         LevelChunk chunkToSend = chunk;
 
@@ -103,7 +103,7 @@ public class PlayerChunkSenderMixin {
             Operation<ClientboundForgetLevelChunkPacket> original,
             @Local(argsOnly = true) ServerPlayer player) {
         int cx = pos.x(), cz = pos.z();
-        int wcx = CoordUtil.wrapChunk(cx), wcz = CoordUtil.wrapChunk(cz);
+        int wcx = CoordUtil.wrapChunk(player.level(), cx), wcz = CoordUtil.wrapChunk(player.level(), cz);
 
         ChunkAliasTracker.removeAlias(player, wcx, wcz, cx, cz);
 

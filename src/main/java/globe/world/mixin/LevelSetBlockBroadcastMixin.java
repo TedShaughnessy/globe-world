@@ -43,7 +43,7 @@ public abstract class LevelSetBlockBroadcastMixin {
         ordinal = 0
     )
     private BlockPos canonicalizeServerSetBlockPos(BlockPos pos) {
-        return isClientSide() ? pos : CoordUtil.wrapBlockPos(pos);
+        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
     }
 
     @Inject(
@@ -59,7 +59,7 @@ public abstract class LevelSetBlockBroadcastMixin {
             CallbackInfoReturnable<Boolean> cir) {
         GlobeWorldSetBlockFrame frame = new GlobeWorldSetBlockFrame();
         frame.originalPos = pos;
-        frame.canonicalPos = CoordUtil.wrapBlockPos(pos);
+        frame.canonicalPos = CoordUtil.wrapBlockPos((Level) (Object) this, pos);
         frame.targetState = state;
         frame.flags = flags;
         frame.caller = globeWorld$caller();

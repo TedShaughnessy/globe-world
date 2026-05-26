@@ -23,7 +23,7 @@ public class PlayerInteractionRangeMixin {
     )
     private double wrapEntityInteractionDistance(AABB box, Vec3 eyePosition, Operation<Double> original) {
         Player player = (Player) (Object) this;
-        return original.call(CoordUtil.virtualAabb(box, player.getX(), player.getZ()), eyePosition);
+        return original.call(CoordUtil.virtualAabb(player.level(), box, player.getX(), player.getZ()), eyePosition);
     }
 
     @WrapOperation(
@@ -40,6 +40,6 @@ public class PlayerInteractionRangeMixin {
             double buffer,
             Operation<Boolean> original,
             ItemStack weaponItem) {
-        return original.call(range, attacker, CoordUtil.virtualAabb(box, attacker.getX(), attacker.getZ()), buffer);
+        return original.call(range, attacker, CoordUtil.virtualAabb(attacker.level(), box, attacker.getX(), attacker.getZ()), buffer);
     }
 }

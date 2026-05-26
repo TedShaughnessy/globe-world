@@ -22,7 +22,7 @@ public class TargetingConditionsMixin {
         )
     )
     private double wrapTargetDistance(LivingEntity source, double x, double y, double z, Operation<Double> original) {
-        return CoordUtil.wrappedDistanceSqr(source.getX(), source.getY(), source.getZ(), x, y, z);
+        return CoordUtil.wrappedDistanceSqr(source.level(), source.getX(), source.getY(), source.getZ(), x, y, z);
     }
 
     @WrapOperation(
@@ -43,7 +43,7 @@ public class TargetingConditionsMixin {
             return true;
         }
         return source != null && targetLiving != null
-                && CoordUtil.wrappedDistanceSqrXZ(source.getX(), source.getZ(), targetLiving.getX(), targetLiving.getZ())
+                && CoordUtil.wrappedDistanceSqrXZ(level, source.getX(), source.getZ(), targetLiving.getX(), targetLiving.getZ())
                 < source.distanceToSqr(targetLiving);
     }
 }

@@ -3,6 +3,7 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.util.CoordUtil;
+import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
@@ -16,9 +17,49 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(NaturalSpawner.class)
 public class NaturalSpawnerMixin {
+    @Inject(method = "getRandomPosWithin(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/chunk/LevelChunk;)Lnet/minecraft/core/BlockPos;", at = @At("HEAD"))
+    private static void pushRandomSpawnPosTilingContext(Level level, LevelChunk chunk, CallbackInfoReturnable<BlockPos> cir) {
+        DimensionTiling.push(DimensionTiling.forLevel(level));
+    }
+
+    @Inject(method = "getRandomPosWithin(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/chunk/LevelChunk;)Lnet/minecraft/core/BlockPos;", at = @At("RETURN"))
+    private static void clearRandomSpawnPosTilingContext(Level level, LevelChunk chunk, CallbackInfoReturnable<BlockPos> cir) {
+        DimensionTiling.clear();
+    }
+
+    @Inject(
+        method = "spawnCategoryForPosition(Lnet/minecraft/world/entity/MobCategory;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/NaturalSpawner$SpawnPredicate;Lnet/minecraft/world/level/NaturalSpawner$AfterSpawnCallback;)V",
+        at = @At("HEAD")
+    )
+    private static void pushSpawnCategoryTilingContext(
+            net.minecraft.world.entity.MobCategory mobCategory,
+            ServerLevel level,
+            ChunkAccess chunk,
+            BlockPos start,
+            NaturalSpawner.SpawnPredicate extraTest,
+            NaturalSpawner.AfterSpawnCallback spawnCallback,
+            CallbackInfo ci) {
+        DimensionTiling.push(DimensionTiling.forLevel(level));
+    }
+
+    @Inject(
+        method = "spawnCategoryForPosition(Lnet/minecraft/world/entity/MobCategory;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/NaturalSpawner$SpawnPredicate;Lnet/minecraft/world/level/NaturalSpawner$AfterSpawnCallback;)V",
+        at = @At("RETURN")
+    )
+    private static void clearSpawnCategoryTilingContext(
+            net.minecraft.world.entity.MobCategory mobCategory,
+            ServerLevel level,
+            ChunkAccess chunk,
+            BlockPos start,
+            NaturalSpawner.SpawnPredicate extraTest,
+            NaturalSpawner.AfterSpawnCallback spawnCallback,
+            CallbackInfo ci) {
+        DimensionTiling.clear();
+    }
 
     @Inject(
         method = "spawnMobsForChunkGeneration",
@@ -31,7 +72,7 @@ public class NaturalSpawnerMixin {
             ChunkPos pos,
             net.minecraft.util.RandomSource random,
             CallbackInfo ci) {
-        if (!CoordUtil.wrapChunkPos(pos).equals(pos)) {
+        if (!CoordUtil.wrapChunkPos(level.getLevel(), pos).equals(pos)) {
             ci.cancel();
         }
     }
@@ -65,7 +106,7 @@ public class NaturalSpawnerMixin {
             NaturalSpawner.SpawnPredicate extraTest,
             NaturalSpawner.AfterSpawnCallback spawnCallback,
             Operation<Void> original) {
-        original.call(mobCategory, level, canonicalChunk(level, chunk), CoordUtil.wrapBlockPos(start), extraTest, spawnCallback);
+        original.call(mobCategory, level, canonicalChunk(level, chunk), CoordUtil.wrapBlockPos(level, start), extraTest, spawnCallback);
     }
 
     @ModifyVariable(
@@ -86,7 +127,7 @@ public class NaturalSpawnerMixin {
         )
     )
     private static ChunkPos wrapLocalMobCapChunk(LevelChunk chunk, Operation<ChunkPos> original) {
-        return CoordUtil.wrapChunkPos(original.call(chunk));
+        return CoordUtil.wrapChunkPos(chunk.getLevel(), original.call(chunk));
     }
 
     @WrapOperation(
@@ -97,7 +138,7 @@ public class NaturalSpawnerMixin {
         )
     )
     private static ChunkPos wrapRandomSpawnChunk(LevelChunk chunk, Operation<ChunkPos> original) {
-        return CoordUtil.wrapChunkPos(original.call(chunk));
+        return CoordUtil.wrapChunkPos(chunk.getLevel(), original.call(chunk));
     }
 
     @WrapOperation(
@@ -108,7 +149,7 @@ public class NaturalSpawnerMixin {
         )
     )
     private static ChunkPos wrapCountedMobChunk(LevelChunk chunk, Operation<ChunkPos> original) {
-        return CoordUtil.wrapChunkPos(original.call(chunk));
+        return CoordUtil.wrapChunkPos(chunk.getLevel(), original.call(chunk));
     }
 
     @ModifyVariable(
@@ -155,13 +196,13 @@ public class NaturalSpawnerMixin {
         )
     )
     private static double wrapSpawnPointDistance(Player player, double x, double y, double z, Operation<Double> original) {
-        return CoordUtil.wrappedDistanceSqr(player.getX(), player.getY(), player.getZ(), x, y, z);
+        return CoordUtil.wrappedDistanceSqr(player.level(), player.getX(), player.getY(), player.getZ(), x, y, z);
     }
 
     private static LevelChunk canonicalChunk(ServerLevel level, ChunkAccess chunk) {
         ChunkPos pos = chunk.getPos();
-        int wx = CoordUtil.wrapChunk(pos.x());
-        int wz = CoordUtil.wrapChunk(pos.z());
+        int wx = CoordUtil.wrapChunk(level, pos.x());
+        int wz = CoordUtil.wrapChunk(level, pos.z());
         if (wx == pos.x() && wz == pos.z() && chunk instanceof LevelChunk levelChunk) {
             return levelChunk;
         }

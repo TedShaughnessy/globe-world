@@ -39,7 +39,7 @@ public class ChunkMapRandomTickMixin {
             globeWorld$randomTickedCanonicalChunks.clear();
         }
 
-        ChunkPos canonicalPos = CoordUtil.wrapChunkPos(chunk.getPos());
+        ChunkPos canonicalPos = CoordUtil.wrapChunkPos(level, chunk.getPos());
         if (!globeWorld$randomTickedCanonicalChunks.add(canonicalPos.pack())) {
             ci.cancel();
             return;

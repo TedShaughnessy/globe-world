@@ -27,8 +27,8 @@ public class ServerChunkCacheMixin {
     @Inject(method = "getChunk", at = @At("HEAD"), cancellable = true)
     private void wrapGetChunk(int x, int z, ChunkStatus status, boolean create,
                                CallbackInfoReturnable<ChunkAccess> cir) {
-        int wx = CoordUtil.wrapChunk(x);
-        int wz = CoordUtil.wrapChunk(z);
+        int wx = CoordUtil.wrapChunk(this.level, x);
+        int wz = CoordUtil.wrapChunk(this.level, z);
         if (wx != x || wz != z) {
             cir.setReturnValue(((ServerChunkCache) (Object) this).getChunk(wx, wz, status, create));
         }
@@ -36,8 +36,8 @@ public class ServerChunkCacheMixin {
 
     @Inject(method = "getChunkNow", at = @At("HEAD"), cancellable = true)
     private void wrapGetChunkNow(int x, int z, CallbackInfoReturnable<LevelChunk> cir) {
-        int wx = CoordUtil.wrapChunk(x);
-        int wz = CoordUtil.wrapChunk(z);
+        int wx = CoordUtil.wrapChunk(this.level, x);
+        int wz = CoordUtil.wrapChunk(this.level, z);
         if (wx != x || wz != z) {
             cir.setReturnValue(((ServerChunkCache) (Object) this).getChunkNow(wx, wz));
         }
@@ -45,7 +45,7 @@ public class ServerChunkCacheMixin {
 
     @Inject(method = "blockChanged", at = @At("HEAD"), cancellable = true)
     private void wrapBlockChanged(BlockPos pos, CallbackInfo ci) {
-        BlockPos wrapped = CoordUtil.wrapBlockPos(pos);
+        BlockPos wrapped = CoordUtil.wrapBlockPos(this.level, pos);
         if (!wrapped.equals(pos)) {
             ((ServerChunkCache) (Object) this).blockChanged(wrapped);
             ci.cancel();

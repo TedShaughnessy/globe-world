@@ -3,6 +3,7 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.util.CoordUtil;
+import globe.world.util.DimensionTiling;
 import globe.world.util.StructurePlacementShifts;
 import globe.world.util.WorldGenSpillover;
 import it.unimi.dsi.fastutil.longs.LongIterator;
@@ -34,8 +35,10 @@ public class ChunkGeneratorMixin {
             ChunkAccess chunk,
             StructureManager structureManager,
             CallbackInfo ci) {
+        DimensionTiling.push(DimensionTiling.forLevel(level.getLevel()));
         StructurePlacementShifts.clear();
-        if (!isCanonical(chunk.getPos())) {
+        if (!isCanonical(level.getLevel(), chunk.getPos())) {
+            DimensionTiling.clear();
             ci.cancel();
             return;
         }
@@ -50,7 +53,8 @@ public class ChunkGeneratorMixin {
             StructureManager structureManager,
             CallbackInfo ci) {
         StructurePlacementShifts.clear();
-        if (isCanonical(chunk.getPos())) {
+        DimensionTiling.clear();
+        if (isCanonical(level.getLevel(), chunk.getPos())) {
             WorldGenSpillover.applyToChunk(level.getLevel(), chunk);
         }
     }
@@ -61,13 +65,16 @@ public class ChunkGeneratorMixin {
             StructureManager structureManager,
             ChunkAccess centerChunk,
             CallbackInfo ci) {
-        if (!isCanonical(centerChunk.getPos())) {
+        DimensionTiling.push(DimensionTiling.forLevel(level.getLevel()));
+        if (!isCanonical(level.getLevel(), centerChunk.getPos())) {
             centerChunk.setAllReferences(Collections.emptyMap());
+            DimensionTiling.clear();
             ci.cancel();
             return;
         }
 
         addToroidalStructureReferences(level, structureManager, centerChunk);
+        DimensionTiling.clear();
         ci.cancel();
     }
 
@@ -86,7 +93,7 @@ public class ChunkGeneratorMixin {
             WorldGenLevel level,
             ChunkAccess chunk,
             StructureManager methodStructureManager) {
-        if (!isCanonical(chunk.getPos())) {
+        if (!isCanonical(level.getLevel(), chunk.getPos())) {
             return original.call(structureManager, sectionPos, structure);
         }
 
@@ -116,8 +123,8 @@ public class ChunkGeneratorMixin {
         return starts;
     }
 
-    private static boolean isCanonical(ChunkPos pos) {
-        return CoordUtil.wrapChunk(pos.x()) == pos.x() && CoordUtil.wrapChunk(pos.z()) == pos.z();
+    private static boolean isCanonical(net.minecraft.server.level.ServerLevel level, ChunkPos pos) {
+        return CoordUtil.wrapChunk(level, pos.x()) == pos.x() && CoordUtil.wrapChunk(level, pos.z()) == pos.z();
     }
 
     private static void addToroidalStructureReferences(WorldGenLevel level, StructureManager structureManager, ChunkAccess centerChunk) {

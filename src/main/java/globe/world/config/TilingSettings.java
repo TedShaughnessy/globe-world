@@ -72,8 +72,12 @@ public record TilingSettings(
         return tileSize % 8 == 0;
     }
 
+    public boolean effectiveNetherOneEighthOverworldSize() {
+        return netherOneEighthOverworldSize && supportsNetherOneEighthOverworldSize();
+    }
+
     public int netherTileSize() {
-        return netherOneEighthOverworldSize && supportsNetherOneEighthOverworldSize()
+        return effectiveNetherOneEighthOverworldSize()
                 ? Math.max(1, tileSize / 8)
                 : tileSize;
     }

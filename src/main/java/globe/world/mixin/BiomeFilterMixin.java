@@ -25,9 +25,9 @@ public class BiomeFilterMixin {
         // getUncachedNoiseBiome samples BiomeSource directly (no chunk loading),
         // avoiding WorldGenRegion.getChunk() which throws for out-of-region chunks.
         return level.getUncachedNoiseBiome(
-            QuartPos.fromBlock(CoordUtil.wrapBlock(pos.getX())),
+            QuartPos.fromBlock(CoordUtil.wrapBlock(level.getLevel(), pos.getX())),
             QuartPos.fromBlock(pos.getY()),
-            QuartPos.fromBlock(CoordUtil.wrapBlock(pos.getZ()))
+            QuartPos.fromBlock(CoordUtil.wrapBlock(level.getLevel(), pos.getZ()))
         );
     }
 }

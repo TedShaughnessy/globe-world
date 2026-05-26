@@ -35,8 +35,8 @@ public class ServerLevelEntityMixin {
             return entity;
         }
 
-        double x = CoordUtil.wrapBlock((int) Math.floor(entity.getX())) + (entity.getX() - Math.floor(entity.getX()));
-        double z = CoordUtil.wrapBlock((int) Math.floor(entity.getZ())) + (entity.getZ() - Math.floor(entity.getZ()));
+        double x = CoordUtil.wrapBlock(entity.level(), (int) Math.floor(entity.getX())) + (entity.getX() - Math.floor(entity.getX()));
+        double z = CoordUtil.wrapBlock(entity.level(), (int) Math.floor(entity.getZ())) + (entity.getZ() - Math.floor(entity.getZ()));
         if (x != entity.getX() || z != entity.getZ()) {
             entity.snapTo(x, entity.getY(), z, entity.getYRot(), entity.getXRot());
             entity.syncPacketPositionCodec(x, entity.getY(), z);

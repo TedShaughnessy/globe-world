@@ -1,6 +1,5 @@
 package globe.world.util;
 
-import globe.world.config.GlobeConfig;
 import globe.world.mixin.ImprovedNoiseAccessor;
 import globe.world.mixin.NormalNoiseAccessor;
 import globe.world.mixin.PerlinNoiseAccessor;
@@ -43,16 +42,17 @@ public class PeriodicNoiseUtil {
     }
 
     public static double samplePlane(int firstCoord, int secondCoord, double scale, PlaneSampler sampler) {
-        if (!GlobeConfig.enabled()) {
+        DimensionTiling tiling = DimensionTiling.currentOrOverworld();
+        if (!tiling.enabled()) {
             return sampler.sample(firstCoord * scale, secondCoord * scale);
         }
 
-        int period = GlobeConfig.tileSizeBlocks();
+        int period = tiling.tileSizeBlocks();
         if (period <= 1 || scale == 0.0) {
             return sampler.sample(0.0, 0.0);
         }
 
-        TerrainMode mode = terrainMode();
+        TerrainMode mode = terrainMode(tiling);
         if (mode == TerrainMode.EDGE_BLEND || mode == TerrainMode.PERIODIC_LATTICE) {
             return sampleEdgeBlendedPlane(firstCoord, secondCoord, period, scale, sampler);
         }
@@ -95,7 +95,8 @@ public class PeriodicNoiseUtil {
             return 0.0;
         }
 
-        if (!GlobeConfig.enabled() || terrainMode() != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
+        DimensionTiling tiling = DimensionTiling.currentOrOverworld();
+        if (!tiling.enabled() || terrainMode(tiling) != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
             return samplePlane(blockX, blockY, scale, (x, y) -> noise.getValue(x, y, z));
         }
 
@@ -117,7 +118,8 @@ public class PeriodicNoiseUtil {
             double y,
             double offsetZ,
             NormalNoise noise) {
-        if (!GlobeConfig.enabled() || terrainMode() != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
+        DimensionTiling tiling = DimensionTiling.currentOrOverworld();
+        if (!tiling.enabled() || terrainMode(tiling) != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
             return samplePlane(blockX, blockZ, scale, (x, z) -> noise.getValue(x + offsetX, y, z + offsetZ));
         }
 
@@ -135,7 +137,8 @@ public class PeriodicNoiseUtil {
             double yScale,
             double yFudge,
             ImprovedNoise noise) {
-        if (!GlobeConfig.enabled() || terrainMode() != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
+        DimensionTiling tiling = DimensionTiling.currentOrOverworld();
+        if (!tiling.enabled() || terrainMode(tiling) != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
             return samplePlane(
                     blockX,
                     blockZ,
@@ -193,7 +196,7 @@ public class PeriodicNoiseUtil {
             double factor,
             double yScale,
             double yFudge) {
-        int period = GlobeConfig.tileSizeBlocks();
+        int period = DimensionTiling.currentOrOverworld().tileSizeBlocks();
         PeriodicSampleAxis sampleX = x.sample(factor, period);
         PeriodicSampleAxis sampleY = y.sample(factor, period);
         PeriodicSampleAxis sampleZ = z.sample(factor, period);
@@ -354,8 +357,8 @@ public class PeriodicNoiseUtil {
         return clamped * clamped * (3.0 - 2.0 * clamped);
     }
 
-    private static TerrainMode terrainMode() {
-        int tileChunks = GlobeConfig.tileSizeChunks();
+    private static TerrainMode terrainMode(DimensionTiling tiling) {
+        int tileChunks = tiling.tileSizeChunks();
         if (tileChunks < EDGE_BLEND_MIN_TILE_CHUNKS) {
             return TerrainMode.COMPACT_TORUS;
         }

@@ -40,8 +40,8 @@ public final class CanonicalChunkTickets {
     }
 
     private static void updateAliasRadius(ServerLevel level, ChunkPos aliasPos, int newRadius) {
-        int wcx = CoordUtil.wrapChunk(aliasPos.x());
-        int wcz = CoordUtil.wrapChunk(aliasPos.z());
+        int wcx = CoordUtil.wrapChunk(level, aliasPos.x());
+        int wcz = CoordUtil.wrapChunk(level, aliasPos.z());
         if (wcx == aliasPos.x() && wcz == aliasPos.z()) {
             return;
         }

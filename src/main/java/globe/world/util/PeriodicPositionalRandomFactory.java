@@ -1,21 +1,20 @@
 package globe.world.util;
 
-import globe.world.config.GlobeConfig;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 
 public record PeriodicPositionalRandomFactory(PositionalRandomFactory delegate, int horizontalPeriod) implements PositionalRandomFactory {
     public static PositionalRandomFactory block(PositionalRandomFactory delegate) {
-        return wrap(delegate, GlobeConfig.tileSizeBlocks());
+        return wrap(delegate, DimensionTiling.currentOrOverworld().tileSizeBlocks());
     }
 
     public static PositionalRandomFactory chunk(PositionalRandomFactory delegate) {
-        return wrap(delegate, GlobeConfig.tileSizeChunks());
+        return wrap(delegate, DimensionTiling.currentOrOverworld().tileSizeChunks());
     }
 
     private static PositionalRandomFactory wrap(PositionalRandomFactory delegate, int horizontalPeriod) {
-        if (!GlobeConfig.enabled() || horizontalPeriod <= 1 || delegate instanceof PeriodicPositionalRandomFactory) {
+        if (!DimensionTiling.currentOrOverworld().enabled() || horizontalPeriod <= 1 || delegate instanceof PeriodicPositionalRandomFactory) {
             return delegate;
         }
         return new PeriodicPositionalRandomFactory(delegate, horizontalPeriod);

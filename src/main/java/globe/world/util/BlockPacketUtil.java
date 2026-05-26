@@ -72,10 +72,10 @@ public class BlockPacketUtil {
         SectionPos sectionPos = access.globeWorld$getSectionPos();
 
         int virtualSectionX = SectionPos.blockToSectionCoord(
-            (int) CoordUtil.virtualBlock(sectionPos.minBlockX(), viewer.getX())
+            (int) CoordUtil.virtualBlock(viewer.level(), sectionPos.minBlockX(), viewer.getX())
         );
         int virtualSectionZ = SectionPos.blockToSectionCoord(
-            (int) CoordUtil.virtualBlock(sectionPos.minBlockZ(), viewer.getZ())
+            (int) CoordUtil.virtualBlock(viewer.level(), sectionPos.minBlockZ(), viewer.getZ())
         );
 
         if (virtualSectionX == sectionPos.x() && virtualSectionZ == sectionPos.z()) return packet;
@@ -94,7 +94,7 @@ public class BlockPacketUtil {
     private static List<Packet<?>> virtualizeBlockUpdateForLoadedAliases(
             ClientboundBlockUpdatePacket packet,
             ServerPlayer viewer) {
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(packet.getPos());
+        BlockPos canonicalPos = CoordUtil.wrapBlockPos(viewer.level(), packet.getPos());
         int canonicalChunkX = SectionPos.blockToSectionCoord(canonicalPos.getX());
         int canonicalChunkZ = SectionPos.blockToSectionCoord(canonicalPos.getZ());
         List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(viewer, canonicalChunkX, canonicalChunkZ);
@@ -113,7 +113,7 @@ public class BlockPacketUtil {
     private static List<Packet<?>> virtualizeBlockEntityUpdateForLoadedAliases(
             ClientboundBlockEntityDataPacket packet,
             ServerPlayer viewer) {
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(packet.getPos());
+        BlockPos canonicalPos = CoordUtil.wrapBlockPos(viewer.level(), packet.getPos());
         int canonicalChunkX = SectionPos.blockToSectionCoord(canonicalPos.getX());
         int canonicalChunkZ = SectionPos.blockToSectionCoord(canonicalPos.getZ());
         List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(viewer, canonicalChunkX, canonicalChunkZ);
@@ -138,8 +138,8 @@ public class BlockPacketUtil {
         ClientboundSectionBlocksUpdatePacketAccessor access =
             (ClientboundSectionBlocksUpdatePacketAccessor) packet;
         SectionPos sectionPos = access.globeWorld$getSectionPos();
-        int canonicalChunkX = CoordUtil.wrapChunk(sectionPos.x());
-        int canonicalChunkZ = CoordUtil.wrapChunk(sectionPos.z());
+        int canonicalChunkX = CoordUtil.wrapChunk(viewer.level(), sectionPos.x());
+        int canonicalChunkZ = CoordUtil.wrapChunk(viewer.level(), sectionPos.z());
         List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(viewer, canonicalChunkX, canonicalChunkZ);
         if (aliases.isEmpty()) {
             return List.of(virtualizeSectionUpdate(packet, viewer));
@@ -153,8 +153,8 @@ public class BlockPacketUtil {
     }
 
     private static BlockPos virtualBlockPos(BlockPos pos, ServerPlayer viewer) {
-        int x = (int) CoordUtil.virtualBlock(pos.getX(), viewer.getX());
-        int z = (int) CoordUtil.virtualBlock(pos.getZ(), viewer.getZ());
+        int x = (int) CoordUtil.virtualBlock(viewer.level(), pos.getX(), viewer.getX());
+        int z = (int) CoordUtil.virtualBlock(viewer.level(), pos.getZ(), viewer.getZ());
         if (x == pos.getX() && z == pos.getZ()) return pos;
         return new BlockPos(x, pos.getY(), z);
     }

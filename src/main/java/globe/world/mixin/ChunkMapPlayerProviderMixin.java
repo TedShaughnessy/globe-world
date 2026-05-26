@@ -26,8 +26,8 @@ public class ChunkMapPlayerProviderMixin {
             int chunkZ,
             Operation<Boolean> original) {
         ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkX), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkZ), playerChunk.z());
+        int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
+        int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
         return original.call(chunkMap, player, virtualX, virtualZ);
     }
 
@@ -45,8 +45,8 @@ public class ChunkMapPlayerProviderMixin {
             int chunkZ,
             Operation<Boolean> original) {
         ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkX), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkZ), playerChunk.z());
+        int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
+        int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
         return original.call(chunkMap, player, virtualX, virtualZ);
     }
 }

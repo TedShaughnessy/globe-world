@@ -35,9 +35,9 @@ public class ChunkMapTrackedEntityMixin {
     private Vec3 wrapTrackingDelta(Vec3 playerPos, Vec3 entityPos, Operation<Vec3> original) {
         Vec3 delta = original.call(playerPos, entityPos);
         return new Vec3(
-            CoordUtil.wrappedDeltaBlock(playerPos.x, entityPos.x),
+            CoordUtil.wrappedDeltaBlock(this.entity.level(), playerPos.x, entityPos.x),
             delta.y,
-            CoordUtil.wrappedDeltaBlock(playerPos.z, entityPos.z)
+            CoordUtil.wrappedDeltaBlock(this.entity.level(), playerPos.z, entityPos.z)
         );
     }
 
@@ -55,8 +55,8 @@ public class ChunkMapTrackedEntityMixin {
             int chunkZ,
             Operation<Boolean> original) {
         ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkX), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(CoordUtil.wrapChunk(chunkZ), playerChunk.z());
+        int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
+        int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
         return original.call(chunkMap, player, virtualX, virtualZ);
     }
 
