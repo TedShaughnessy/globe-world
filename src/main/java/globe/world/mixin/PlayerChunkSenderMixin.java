@@ -67,9 +67,6 @@ public class PlayerChunkSenderMixin {
             @Local(argsOnly = true) ServerLevel level) {
         int cx = chunk.getPos().x(), cz = chunk.getPos().z();
         int wcx = CoordUtil.wrapChunk(level, cx), wcz = CoordUtil.wrapChunk(level, cz);
-        ChunkPos playerChunk = conn.player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(level, wcx, playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(level, wcz, playerChunk.z());
 
         LevelChunk chunkToSend = chunk;
 
@@ -81,19 +78,19 @@ public class PlayerChunkSenderMixin {
             if (canonical != null) chunkToSend = canonical;
         }
 
-        ChunkAliasTracker.addAlias(conn.player, wcx, wcz, virtualX, virtualZ);
+        ChunkAliasTracker.addAlias(conn.player, wcx, wcz, cx, cz);
 
-        // Send at the player-nearest virtual coordinate. This also covers the
-        // edge case where vanilla queues a canonical edge chunk while the
-        // client is tracking its alias copy just across the tile boundary.
+        // Virtual coord = raw coord; client stores each alias at its natural position.
+        // Multiple aliases of the same canonical chunk may coexist in the view,
+        // which is required for tiny tiles where the render distance spans many wraps.
         WorldGenSpillover.applyToChunk(level, chunkToSend);
         ClientboundLevelChunkWithLightPacket packet = original.call(chunkToSend, lightEngine, bs1, bs2);
-        if (virtualX != packet.getX() || virtualZ != packet.getZ()) {
-            ((GlobeChunkPacket) packet).setVirtualPos(virtualX, virtualZ);
+        if (cx != packet.getX() || cz != packet.getZ()) {
+            ((GlobeChunkPacket) packet).setVirtualPos(cx, cz);
         }
-        ((PlayerChunkSenderAccessor) conn.chunkSender).globeWorld$pendingChunks().remove(ChunkPos.pack(virtualX, virtualZ));
         LOGGER.info("SEND chunk raw=({},{}) wrap=({},{}) virtual=({},{}) player=({},{})",
-                cx, cz, wcx, wcz, virtualX, virtualZ, playerChunk.x(), playerChunk.z());
+                cx, cz, wcx, wcz, cx, cz,
+                conn.player.chunkPosition().x(), conn.player.chunkPosition().z());
         return packet;
     }
 
