@@ -25,6 +25,13 @@ The curvature visual pass rewrites relevant world vertex shaders at resource
 load time. Curvature is saved in `TilingSettings`, exposed through the world
 creation and pause/options UI, and can be disabled with `0%`.
 
+Local solar-time day/night is planned but not implemented. The repository
+already has a saved `DayNightCycleMode` enum with `REALISTIC`, and the
+world-creation UI can select it. The remaining client work is rendering:
+camera-position-aware environment attribute sampling so the sky and lightmap use
+local canonical X. The feature also needs server gameplay hooks for local
+sleeping, spawning, mob burning, and other day/night predicates.
+
 Client diagnostics and debug overlays remain targeted at alias loading,
 tracking, tile borders, and settings state.
 
@@ -36,6 +43,7 @@ tracking, tile borders, and settings state.
 - `src/client/java/globe/world/client/GlobeCurvatureShader.java`
 - `src/client/java/globe/world/client/GlobeCurvatureSlider.java`
 - `src/client/java/globe/world/client/GlobeClientTilingSettings.java`
+- `src/main/java/globe/world/config/DayNightCycleMode.java`
 - `src/client/java/globe/world/client/GlobeTileBorderRenderer.java`
 - `src/client/java/globe/world/client/GlobeDebugHud.java`
 - `src/client/java/globe/world/client/mixin/ShaderManagerMixin.java`
@@ -46,17 +54,18 @@ tracking, tile borders, and settings state.
 
 ## Related Plans
 
-- [Client Canonical Chunk Cache](../../plans/client-canonical-chunk-cache.md)
-- [Realistic Globe Lighting](../../plans/realistic-lighting-plan.md)
+- [Client Canonical Chunk Cache](../plans/client-canonical-chunk-cache.md)
+- [Realistic Globe Lighting](../plans/realistic-lighting-plan.md)
 
 ## Related Vanilla Mechanics
 
-- [Vanilla client world](../../vanilla-mechanics/client-world.md)
-- [Vanilla lighting](../../vanilla-mechanics/lighting.md)
+- [Vanilla client world](../vanilla-mechanics/client-world.md)
+- [Vanilla lighting](../vanilla-mechanics/lighting.md)
+- [Vanilla time and sky](../vanilla-mechanics/time-and-sky.md)
 
 ## Open Audits
 
 - Client-side canonical chunk cache is still planned, not authoritative.
 - Realistic local solar time is still planned, not implemented.
-- Curvature and any future lighting work should stay visual-only unless a
-  separate gameplay phase is explicitly planned.
+- Realistic day/night gameplay needs separate server-side audits for sleeping,
+  spawning, mob burning, and other global time predicates.

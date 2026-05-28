@@ -32,6 +32,7 @@ Source references below use jar-internal paths such as:
 8. [Mobs And Entities](mobs-and-entities.md): entity ticking, entity chunk storage, natural spawning, tracking.
 9. [World Generation](world-generation.md): chunk status pipeline, biomes, noise, features, structures. Deep dive: [Structure Edge Generation](structure-edge-generation.md).
 10. [Client World](client-world.md): client chunk cache, chunk/light/block packet application, render-facing storage.
+11. [Time And Sky](time-and-sky.md): environment attributes, timelines, camera sampling, sky, and lightmap extraction.
 
 ## Reading Pattern
 
