@@ -143,12 +143,12 @@ This is a larger gameplay change and should not be bundled into the initial visu
 
 Update:
 
-- `docs/globe-world-system-plan.md` with a client visuals row/status note.
-- `docs/minecraft-mechanics/README.md` if a new mechanics note is added.
+- `docs/mod-mechanics/client.md` with a client visuals status note.
+- `docs/vanilla-mechanics/README.md` if a new mechanics note is added.
 
 Consider adding:
 
-- `docs/minecraft-mechanics/time-and-sky.md`
+- `docs/vanilla-mechanics/time-and-sky.md`
 
 That note should reference the vanilla environment attribute system and the client sky/lightmap extraction points.
 

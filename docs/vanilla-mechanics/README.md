@@ -1,10 +1,10 @@
-# Minecraft Mechanics Reference
+# Vanilla Mechanics Reference
 
 This folder is a progressive-disclosure index for vanilla Minecraft mechanics that are likely to matter when changing world topology, coordinate identity, chunk identity, or cross-boundary behavior.
 
 It is intentionally about vanilla mechanics first. Use it to find the relevant decompiled source files before deciding where a project-specific change belongs.
 
-If you discover more important references update the docs
+If you discover more important references, update these docs.
 
 ## Source Roots
 

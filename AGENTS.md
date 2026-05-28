@@ -6,7 +6,13 @@ This repository is a Fabric mod for Minecraft 26.1.2.
 
 Globe World makes a finite canonical Minecraft world tile appear continuous by wrapping chunk/block access in X/Z. The canonical tile owns mutable state; chunks outside it are virtual views of canonical chunks, with server packets relabeled so clients can render aliases at ordinary world coordinates.
 
-Project design/status details live in [Globe World System Plan](docs/globe-world-system-plan.md).
+Project documentation is split into three living indexes:
+
+- [Globe World Mod Mechanics](docs/mod-mechanics/README.md): implemented mod behavior, why it exists, and the files that provide it.
+- [Vanilla Mechanics Reference](docs/vanilla-mechanics/README.md): vanilla Minecraft mechanics and decompiled source anchors.
+- [Plans](docs/plans/README.md): proposed or investigative work that is not yet fully implemented.
+
+Update these docs as the project changes. When implementing a plan, move the durable explanation into mod mechanics and keep or remove the plan note based on whether the investigation is still useful.
 
 ## Minecraft Decompiled Sources
 
@@ -40,4 +46,6 @@ When investigating vanilla Minecraft behavior, inspect these sources before gues
 ## Working Notes
 
 - Prefer repo-local patterns and existing mixin style when changing code.
-- Use `docs/minecraft-mechanics/README.md` as the progressive-disclosure index for vanilla Minecraft mechanics and source references.
+- Use `docs/vanilla-mechanics/README.md` as the progressive-disclosure index for vanilla Minecraft mechanics and source references.
+- Use `docs/mod-mechanics/README.md` as the entry point for project-specific behavior and update it when mechanics or implementation files change.
+- Use `docs/plans/README.md` for active/unimplemented work and update it when plans are added, implemented, superseded, or retired.
