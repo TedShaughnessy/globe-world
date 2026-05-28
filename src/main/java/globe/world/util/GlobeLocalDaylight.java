@@ -69,11 +69,8 @@ public final class GlobeLocalDaylight {
     }
 
     public static float getLightLevelDependentMagicValue(Level level, BlockPos pos) {
-        if (!enabled(level)) {
-            return level.getLightLevelDependentMagicValue(pos);
-        }
-
-        float value = getMaxLocalRawBrightness(level, pos) / 15.0F;
+        int brightness = enabled(level) ? getMaxLocalRawBrightness(level, pos) : level.getMaxLocalRawBrightness(pos);
+        float value = brightness / 15.0F;
         float curvedValue = value / (4.0F - 3.0F * value);
         return Mth.lerp(level.dimensionType().ambientLight(), curvedValue, 1.0F);
     }
