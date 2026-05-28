@@ -60,6 +60,7 @@ World period:
 | Curvature visuals | Implemented | [client.md](client.md) |
 | Local solar time helper | Implemented | [local-solar-time.md](local-solar-time.md) |
 | Scrolling sky/lightmap visuals | Implemented | [client.md](client.md) |
+| Core local day/night gameplay | Implemented for sleep, monster/phantom spawning, undead burning | [local-solar-time.md](local-solar-time.md) |
 
 ## Current High-Risk Audits
 
@@ -73,3 +74,6 @@ World period:
    structure query/persistence paths still need audit.
 5. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
    tiles need the right balance between seamlessness and vanilla-looking noise.
+6. Secondary local day/night gameplay: villagers, bees, turtle eggs, clocks,
+   raids/patrols, commands, and other timeline consumers need individual
+   decisions before they are localized.

@@ -11,7 +11,7 @@ and keep only historical investigation here if it is still useful.
 2. [Terrain Periodicity Investigation](terrain-periodicity-investigation.md):
    analysis of compact torus, edge blend, and periodic lattice terrain modes.
 3. [Realistic Globe Lighting Plan](realistic-lighting-plan.md): scrolling local
-   day/night; shared local-time math and client visuals are implemented,
-   gameplay hooks remain planned.
+   day/night; shared local-time math, client visuals, and core gameplay
+   predicates are implemented, while secondary gameplay audits remain planned.
 4. [Client Canonical Chunk Cache](client-canonical-chunk-cache.md): client-side
    alias warm-start cache proposal.

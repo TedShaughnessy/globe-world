@@ -148,3 +148,33 @@ For Globe World's intended scrolling day/night gameplay, that global sky-darken
 model is a blocker. Sleeping, mob spawning, mob burning, villager schedules, and
 similar systems need separate audits so they can use local solar time at the
 checked block/entity position instead of the dimension-wide value.
+
+## Core Gameplay Predicates
+
+Vanilla sleep eligibility flows through `BedRule.WHEN_DARK`, whose
+`BedRule.Rule.test(...)` calls `Level.isDarkOutside()`. `ServerPlayer.java:1188`
+through `ServerPlayer.java:1190` samples `EnvironmentAttributes.BED_RULE` at the
+bed position and asks `BedRule.canSleep(...)`; `Player.java:245` through
+`Player.java:246` rechecks the bed rule while a player remains asleep.
+`ServerLevel.java:358` through `ServerLevel.java:365` checks the dimension's
+`SleepStatus` and advances the default clock to
+`ClockTimeMarkers.WAKE_UP_FROM_SLEEP` before waking every sleeping player.
+
+Vanilla hostile spawning checks local block and sky light in
+`Monster.isDarkEnoughToSpawn(...)`. `Monster.java:86` through `Monster.java:97`
+first checks stored sky light and block light, then asks
+`getMaxLocalRawBrightness(...)`; the no-argument call uses
+`LevelReader.getSkyDarken()`, so it is global unless a mod supplies a
+position-aware darkening value. Phantoms are a separate custom-spawner path:
+`PhantomSpawner.java:32` gates the whole player loop on `ServerLevel.getSkyDarken()`
+before `PhantomSpawner.java:35` through `PhantomSpawner.java:38` checks each
+player's sky access and local difficulty.
+
+Vanilla undead burning is in `Mob.isSunBurnTick(...)`. `Mob.java:505` through
+`Mob.java:510` checks `EnvironmentAttributes.MONSTERS_BURN`, the entity's light
+level dependent brightness, water/rain/powder-snow protection, and sky
+visibility before `burnUndead(...)` applies helmet damage or fire.
+
+Globe World hooks only these predicate surfaces for the first gameplay pass.
+Stored sky light propagation, `Level.getSkyDarken()`, and the global clock
+remain vanilla/global.

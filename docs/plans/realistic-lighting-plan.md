@@ -206,6 +206,28 @@ Recommended gameplay hook shape:
 4. Keep server block light and stored sky light propagation global unless a
    later phase proves that predicate hooks are insufficient.
 
+Step 3 status: implemented for the core predicates with
+`GlobeLocalDaylight`, `PlayerLocalSleepMixin`, `ServerPlayerLocalSleepMixin`,
+`ServerLevelLocalSleepTimeMixin`, `MonsterLocalDaylightMixin`,
+`PhantomSpawnerLocalDaylightMixin`, and `MobLocalDaylightMixin`.
+
+- Sleeping keeps vanilla bed rules, but evaluates `WHEN_DARK` at the bed/player
+  position in scrolling mode.
+- Sleep time skipping still advances the shared default clock, but targets a
+  sleeping player's local morning. In multiplayer, the chosen sleeper is the one
+  furthest from their next local morning.
+- Monster natural spawning keeps vanilla sky/block light tests, but the raw
+  brightness check uses local sky darkening at the spawn position.
+- Phantom spawning keeps vanilla player/rest/sky checks, but the global
+  darkening gate becomes a local check at each player position.
+- Undead burning keeps vanilla sky visibility, weather/water protection, and
+  helmet behavior, but evaluates both the burn-time predicate and brightness at
+  the mob position.
+
+Future tuning question: confirm whether the "furthest from local morning"
+multiplayer rule feels right, or whether sleep skip should instead pick a
+different sleeper such as the one with the largest longitude offset.
+
 ## First Implementation Scope
 
 The first implementation should be end-to-end for the core fantasy:
@@ -238,6 +260,7 @@ night regions.
 Update:
 
 - `docs/mod-mechanics/client.md` with a client visuals status note.
+- `docs/mod-mechanics/local-solar-time.md` with core gameplay predicate status.
 - `docs/vanilla-mechanics/README.md` if a new mechanics note is added.
 
 Added:

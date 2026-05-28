@@ -31,8 +31,9 @@ exposes shared longitude-based local solar time helpers, and the client replaces
 the Overworld visual day timeline with camera-position-aware environment
 attribute layers. Sky color, sun/moon/star angles, star brightness,
 sunrise/sunset color, and lightmap sky brightness use local canonical X while
-weather layers still run afterward. The feature still needs server gameplay
-hooks for local sleeping, spawning, mob burning, and other day/night predicates.
+weather layers still run afterward. The core server gameplay predicates for
+sleeping, monster spawning brightness, and undead burning also use local solar
+time; broader timeline-driven systems are still separate audits.
 
 Client diagnostics and debug overlays remain targeted at alias loading,
 tracking, tile borders, and settings state.
@@ -77,5 +78,6 @@ tracking, tile borders, and settings state.
   curved terrain horizon. Audit whether the sky/horizon shader needs a matching
   curvature transform or vertical offset so sun, sky disc, and terrain meet in
   the expected place.
-- Scrolling day/night gameplay needs separate server-side audits for sleeping,
-  spawning, mob burning, and other global time predicates.
+- Scrolling day/night secondary gameplay still needs separate server-side audits
+  for villagers, bees, turtle eggs, clocks, raids/patrols, commands, and other
+  global time predicates.
