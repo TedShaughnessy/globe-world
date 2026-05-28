@@ -29,7 +29,8 @@ public class ShaderManagerMixin {
             "shaders/core/rendertype_entity_shadow.vsh",
             "shaders/core/rendertype_leash.vsh",
             "shaders/core/rendertype_outline.vsh",
-            "shaders/core/particle.vsh"
+            "shaders/core/particle.vsh",
+            "shaders/core/rendertype_clouds.vsh"
     );
     @Unique
     private static final ThreadLocal<Boolean> globeWorld$loadingCurvedVertexShader = ThreadLocal.withInitial(() -> false);

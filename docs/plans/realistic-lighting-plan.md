@@ -166,11 +166,14 @@ Step 2 status: implemented with `GlobeScrollingSky` and
 timeline for sky/lightmap visual attributes with camera-position-aware
 positional layers, while weather and lightning layers still run afterward.
 
-Open visual follow-up: when the globe curvature shader is enabled, the terrain
-horizon and vanilla sky horizon no longer line up cleanly. Investigate a sky or
-horizon shader adjustment, or a camera-relative vertical/horizon offset, so the
-scrolling sun/sky presentation meets the curved terrain at the expected apparent
-horizon.
+Visual follow-up status: first pass implemented with `GlobeSkyHorizon` and
+`SkyRendererMixin`. When the curvature shader is enabled, the client derives a
+camera-relative horizon dip from the same curvature radius used by the terrain
+shader and shifts the sky disc, lower dark disc, sunrise/sunset fan, sun, moon,
+and stars downward. The cloud shader also uses the same curvature transform as
+terrain so vanilla's flat cloud layer bends with the world presentation. This
+still needs in-game tuning across sea level, mountains, tiny tiles, fog, and
+large render distances.
 
 ## Gameplay Hook
 

@@ -15,6 +15,7 @@
 		"SectionOcclusionGraphMixin",
 		"SectionOcclusionGraphStorageMixin",
 		"ShaderManagerMixin",
+		"SkyRendererMixin",
 		"WorldCreationContextMixin",
 		"WorldOpenFlowsMixin"
 	],

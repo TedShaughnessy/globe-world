@@ -24,6 +24,13 @@ or virtualized per viewer.
 The curvature visual pass rewrites relevant world vertex shaders at resource
 load time. Curvature is saved in `TilingSettings`, exposed through the world
 creation and pause/options UI, and can be disabled with `0%`.
+Cloud vertices use the same shader curvature transform as terrain so vanilla's
+flat cloud layer bends with the world presentation.
+The sky renderer applies a matching camera-relative horizon offset to the sky
+disc, lower dark disc, sunrise/sunset fan, sun, moon, and stars. The offset is
+derived from the terrain curvature radius and the camera's height above the
+dimension horizon, so the sky horizon moves down as the curved terrain horizon
+falls away.
 
 Local solar-time day/night is implemented for client visuals under
 `DayNightCycleMode.SCROLLING`. The world-creation UI can select it, `CoordUtil`
@@ -44,6 +51,7 @@ tracking, tile borders, and settings state.
 - `src/main/java/globe/world/util/BlockPacketUtil.java`
 - `src/main/java/globe/world/util/EntityPacketUtil.java`
 - `src/client/java/globe/world/client/GlobeCurvatureShader.java`
+- `src/client/java/globe/world/client/GlobeSkyHorizon.java`
 - `src/client/java/globe/world/client/GlobeCurvatureSlider.java`
 - `src/client/java/globe/world/client/GlobeClientTilingSettings.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
@@ -53,6 +61,7 @@ tracking, tile borders, and settings state.
 - `src/client/java/globe/world/client/GlobeTileBorderRenderer.java`
 - `src/client/java/globe/world/client/GlobeDebugHud.java`
 - `src/client/java/globe/world/client/mixin/ShaderManagerMixin.java`
+- `src/client/java/globe/world/client/mixin/SkyRendererMixin.java`
 - `src/client/java/globe/world/client/mixin/CreateWorldScreenMixin.java`
 - `src/client/java/globe/world/client/mixin/OptionsScreenMixin.java`
 - `src/client/java/globe/world/client/mixin/SectionOcclusionGraphMixin.java`
@@ -74,10 +83,9 @@ tracking, tile borders, and settings state.
 - Client-side canonical chunk cache is still planned, not authoritative.
 - Scrolling local solar time has a client render hook, but no pause/options
   toggle yet.
-- Curvature plus scrolling sky can make the apparent horizon disagree with the
-  curved terrain horizon. Audit whether the sky/horizon shader needs a matching
-  curvature transform or vertical offset so sun, sky disc, and terrain meet in
-  the expected place.
+- Curvature horizon alignment now has a first-pass sky offset and curved cloud
+  shader. It still needs in-game tuning across sea level, mountains, tiny
+  tiles, fog, and large render distances.
 - Scrolling day/night secondary gameplay is implemented for villagers, bees,
   turtle eggs, clocks, and patrol daylight gates. Commands and remaining global
   time predicates still need separate audits.

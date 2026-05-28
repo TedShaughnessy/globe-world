@@ -20,6 +20,7 @@ public final class GlobeCurvatureShader {
     private static final float MIN_TINY_TILE_FOG_DISTANCE_SCALE = 0.65F;
     private static final String TERRAIN_POSITION_LINE = "    vec3 pos = Position + (ChunkPosition - CameraBlockPos) + CameraOffset;";
     private static final String BLOCK_POSITION_LINE = "    vec3 pos = Position + ModelOffset;";
+    private static final String CLOUD_POSITION_LINE = "    vec3 pos = (faceVertex * CellSize) + (vec3(cellX, 0, cellZ) * CellSize) + CloudOffset;";
     private static final String RAW_POSITION_LINE = "    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);";
     private static final String FOG_POSITION_VARIABLE = "globeWorld_fogPos";
     private static int loadedSettingsVersion = GlobeConfig.settingsVersion();
@@ -51,6 +52,13 @@ public final class GlobeCurvatureShader {
         String transformed = source;
         if (transformed.contains(BLOCK_POSITION_LINE)) {
             transformed = transformed.replace(BLOCK_POSITION_LINE, curvePositionLine(BLOCK_POSITION_LINE))
+                    .replace("fog_spherical_distance(pos)", "fog_spherical_distance(" + FOG_POSITION_VARIABLE + ")")
+                    .replace("fog_cylindrical_distance(pos)", "fog_cylindrical_distance(" + FOG_POSITION_VARIABLE + ")");
+        } else if (transformed.contains(CLOUD_POSITION_LINE)) {
+            transformed = transformed.replace(
+                            CLOUD_POSITION_LINE,
+                            CLOUD_POSITION_LINE + "\n    vec3 " + FOG_POSITION_VARIABLE + " = globeWorld_fogPosition(pos);\n    pos = globeWorld_applyCloudCurvature(pos);"
+                    )
                     .replace("fog_spherical_distance(pos)", "fog_spherical_distance(" + FOG_POSITION_VARIABLE + ")")
                     .replace("fog_cylindrical_distance(pos)", "fog_cylindrical_distance(" + FOG_POSITION_VARIABLE + ")");
         } else if (transformed.contains(RAW_POSITION_LINE)) {
@@ -124,6 +132,19 @@ vec3 globeWorld_applyCurvature(vec3 pos) {
 
     float distanceSqr = dot(pos.xz, pos.xz);
     float drop = min(distanceSqr / (2.0 * radius), globeWorld_curvatureDropClamp());
+    pos.y -= drop;
+    return pos;
+}
+
+vec3 globeWorld_applyCloudCurvature(vec3 pos) {
+    float radius = globeWorld_curvatureRadius();
+    if (radius <= 0.0) {
+        return pos;
+    }
+
+    float cloudRadius = (radius + max(pos.y, 0.0)) * 2.0; // doubling makes it less distracting
+    float distanceSqr = dot(pos.xz, pos.xz);
+    float drop = min(distanceSqr / (2.0 * cloudRadius), globeWorld_curvatureDropClamp());
     pos.y -= drop;
     return pos;
 }
