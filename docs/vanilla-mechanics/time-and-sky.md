@@ -144,7 +144,7 @@ Because `Level.updateSkyBrightness()` uses
 positional local time will not change `Level.getSkyDarken()` or
 `Level.isBrightOutside()`.
 
-For Globe World's intended realistic day/night gameplay, that global sky-darken
+For Globe World's intended scrolling day/night gameplay, that global sky-darken
 model is a blocker. Sleeping, mob spawning, mob burning, villager schedules, and
 similar systems need separate audits so they can use local solar time at the
 checked block/entity position instead of the dimension-wide value.

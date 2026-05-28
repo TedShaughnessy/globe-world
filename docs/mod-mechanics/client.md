@@ -25,12 +25,14 @@ The curvature visual pass rewrites relevant world vertex shaders at resource
 load time. Curvature is saved in `TilingSettings`, exposed through the world
 creation and pause/options UI, and can be disabled with `0%`.
 
-Local solar-time day/night is planned but not implemented. The repository
-already has a saved `DayNightCycleMode` enum with `REALISTIC`, and the
-world-creation UI can select it. The remaining client work is rendering:
-camera-position-aware environment attribute sampling so the sky and lightmap use
-local canonical X. The feature also needs server gameplay hooks for local
-sleeping, spawning, mob burning, and other day/night predicates.
+Local solar-time day/night is implemented for client visuals under
+`DayNightCycleMode.SCROLLING`. The world-creation UI can select it, `CoordUtil`
+exposes shared longitude-based local solar time helpers, and the client replaces
+the Overworld visual day timeline with camera-position-aware environment
+attribute layers. Sky color, sun/moon/star angles, star brightness,
+sunrise/sunset color, and lightmap sky brightness use local canonical X while
+weather layers still run afterward. The feature still needs server gameplay
+hooks for local sleeping, spawning, mob burning, and other day/night predicates.
 
 Client diagnostics and debug overlays remain targeted at alias loading,
 tracking, tile borders, and settings state.
@@ -43,7 +45,10 @@ tracking, tile borders, and settings state.
 - `src/client/java/globe/world/client/GlobeCurvatureShader.java`
 - `src/client/java/globe/world/client/GlobeCurvatureSlider.java`
 - `src/client/java/globe/world/client/GlobeClientTilingSettings.java`
+- `src/main/java/globe/world/util/CoordUtil.java`
 - `src/main/java/globe/world/config/DayNightCycleMode.java`
+- `src/client/java/globe/world/client/GlobeScrollingSky.java`
+- `src/client/java/globe/world/client/mixin/EnvironmentAttributeSystemBuilderMixin.java`
 - `src/client/java/globe/world/client/GlobeTileBorderRenderer.java`
 - `src/client/java/globe/world/client/GlobeDebugHud.java`
 - `src/client/java/globe/world/client/mixin/ShaderManagerMixin.java`
@@ -66,6 +71,11 @@ tracking, tile borders, and settings state.
 ## Open Audits
 
 - Client-side canonical chunk cache is still planned, not authoritative.
-- Realistic local solar time is still planned, not implemented.
-- Realistic day/night gameplay needs separate server-side audits for sleeping,
+- Scrolling local solar time has a client render hook, but no pause/options
+  toggle yet.
+- Curvature plus scrolling sky can make the apparent horizon disagree with the
+  curved terrain horizon. Audit whether the sky/horizon shader needs a matching
+  curvature transform or vertical offset so sun, sky disc, and terrain meet in
+  the expected place.
+- Scrolling day/night gameplay needs separate server-side audits for sleeping,
   spawning, mob burning, and other global time predicates.

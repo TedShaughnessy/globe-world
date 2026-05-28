@@ -1,14 +1,17 @@
 package globe.world.config;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import net.minecraft.util.StringRepresentable;
 
 public enum DayNightCycleMode implements StringRepresentable {
     VANILLA("vanilla"),
-    SCROLLING("scrolling"),
-    REALISTIC("realistic");
+    SCROLLING("scrolling");
 
-    public static final Codec<DayNightCycleMode> CODEC = StringRepresentable.fromEnum(DayNightCycleMode::values);
+    public static final Codec<DayNightCycleMode> CODEC = Codec.STRING.comapFlatMap(
+            DayNightCycleMode::fromSerializedName,
+            DayNightCycleMode::getSerializedName
+    );
 
     private final String serializedName;
 
@@ -25,7 +28,14 @@ public enum DayNightCycleMode implements StringRepresentable {
         return switch (this) {
             case VANILLA -> "Vanilla";
             case SCROLLING -> "Scrolling";
-            case REALISTIC -> "Realistic";
+        };
+    }
+
+    private static DataResult<DayNightCycleMode> fromSerializedName(String name) {
+        return switch (name) {
+            case "vanilla" -> DataResult.success(VANILLA);
+            case "scrolling", "realistic" -> DataResult.success(SCROLLING);
+            default -> DataResult.error(() -> "Unknown day/night cycle mode: " + name);
         };
     }
 }

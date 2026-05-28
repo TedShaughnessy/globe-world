@@ -35,6 +35,8 @@ World period:
    structure edge handling, and generation risks.
 6. [Client](client.md): client-facing packet/render behavior, curvature,
    diagnostics, and planned client cache work.
+7. [Local Solar Time](local-solar-time.md): shared longitude-based local time
+   math for scrolling day/night rendering and gameplay hooks.
 
 ## Status By Area
 
@@ -56,6 +58,8 @@ World period:
 | Structures and feature edge generation | Needs validation | [worldgen.md](worldgen.md) |
 | Client chunk/world rendering | Implemented for server-relabeled aliases | [client.md](client.md) |
 | Curvature visuals | Implemented | [client.md](client.md) |
+| Local solar time helper | Implemented | [local-solar-time.md](local-solar-time.md) |
+| Scrolling sky/lightmap visuals | Implemented | [client.md](client.md) |
 
 ## Current High-Risk Audits
 

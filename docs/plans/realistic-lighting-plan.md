@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add an optional realistic day/night mode where the canonical globe tile's X axis acts like longitude. Local solar time should shift smoothly across the canonical tile and wrap by one full Minecraft day over one full tile width.
+Add an optional scrolling day/night mode where the canonical globe tile's X axis acts like longitude. Local solar time should shift smoothly across the canonical tile and wrap by one full Minecraft day over one full tile width.
 
 This should affect both presentation and gameplay. In other words, one side of
 the globe can be locally night while the other side is locally day: sky visuals,
@@ -23,7 +23,7 @@ This is intentionally semi-realistic:
 
 Minecraft 26.1.2 makes the visual half a moderate client-rendering feature,
 not a light-engine rewrite. The settings/UI path is partly scaffolded already:
-`DayNightCycleMode.REALISTIC` exists in
+`DayNightCycleMode.SCROLLING` exists in
 `src/main/java/globe/world/config/DayNightCycleMode.java`, is saved through
 `TilingSettings.dayNightCycleMode()`, and is selectable in the world-creation
 tab. The pause/options UI still only exposes curvature.
@@ -51,9 +51,9 @@ New vanilla source notes:
 
 ## User-Facing Behavior
 
-When realistic globe lighting is disabled, Minecraft keeps the normal global time-of-day visuals.
+When scrolling globe lighting is disabled, Minecraft keeps the normal global time-of-day visuals.
 
-When realistic globe lighting is enabled:
+When scrolling globe lighting is enabled:
 
 - The local solar time is based on the camera/player/entity/block canonical X position.
 - The middle of the canonical tile matches the world's normal time.
@@ -72,13 +72,15 @@ This plan originally proposed a boolean such as:
 boolean realisticLightingEnabled
 ```
 
-The current codebase has moved toward `DayNightCycleMode` instead:
+The current codebase uses `DayNightCycleMode`:
 
 - `VANILLA`
 - `SCROLLING`
-- `REALISTIC`
 
-Prefer implementing realistic lighting behind `DayNightCycleMode.REALISTIC` unless we decide the mode enum and a separate boolean are both needed. The setting is already part of `TilingSettings.CODEC` as `day_night_cycle` and is carried by the existing `with...` helpers and `sanitized()`.
+Implement local solar visuals and gameplay behind `DayNightCycleMode.SCROLLING`.
+The setting is already part of `TilingSettings.CODEC` as `day_night_cycle` and
+is carried by the existing `with...` helpers and `sanitized()`. The codec accepts
+legacy saved `"realistic"` values as `SCROLLING`.
 
 `GlobeConfig.dayNightCycleMode()` already exposes the enum. Add a convenience accessor only if it makes call sites clearer, for example:
 
@@ -99,16 +101,16 @@ The pause/options toggle should update via `GlobeClientTilingSettings.setFromPau
 
 ## Longitude Math
 
-Keep the coordinate math in one place, probably `CoordUtil`, so rendering hooks do not duplicate tile wrapping details.
+The shared coordinate math is implemented in `CoordUtil`, so rendering and
+gameplay hooks do not duplicate tile wrapping details.
 
-Proposed behavior:
+Implemented behavior:
 
 ```text
 canonicalX = wrapBlock(cameraX)
-tileSize = GlobeConfig.tileSizeBlocks()
-longitudeFraction = canonicalX / tileSize
-offsetTicks = longitudeFraction * 24000
-localDayTime = worldDayTime + offsetTicks
+longitudeOffsetTicks = canonicalX / tileSizeBlocks * 24000
+localSolarTimeTicks = worldTime + longitudeOffsetTicks
+localSolarDayTicks = localSolarTimeTicks mod 24000
 ```
 
 Because canonical X is centered around zero:
@@ -117,7 +119,12 @@ Because canonical X is centered around zero:
 - Center is `0` ticks.
 - East side is approximately `+12000` ticks.
 
-The result should be normalized modulo `24000` before converting to angles or brightness.
+`CoordUtil.localSolarTimeTicks(...)` keeps the monotonic world-time component.
+`CoordUtil.localSolarDayTicks(...)` normalizes the result modulo `24000` before
+conversion to angles, brightness, or day/night predicates.
+
+Step 1 status: implemented. Remaining steps should consume these helpers
+instead of recomputing longitude offsets.
 
 ## Client Rendering Hook
 
@@ -149,8 +156,19 @@ Important implementation constraints from the source audit:
 Recommended visual hook shape:
 
 1. Add a client helper, for example `GlobeLocalSolarTime`, that computes canonical-X local ticks and samples or mirrors the vanilla Overworld day curves for the visual attributes.
-2. Add client-only mixins that install Globe positional environment layers when `GlobeConfig.enabled()` and `GlobeConfig.dayNightCycleMode() == DayNightCycleMode.REALISTIC`.
+2. Add client-only mixins that install Globe positional environment layers when `GlobeConfig.enabled()` and `GlobeConfig.dayNightCycleMode() == DayNightCycleMode.SCROLLING`.
 3. Prefer an insertion near `EnvironmentAttributeSystem.addDefaultLayers(...)` before weather layers. If that proves too brittle, fall back to targeted redirects in `SkyRenderer.extractRenderState(...)` and `LightmapRenderStateExtractor.extract(...)`.
+
+Step 2 status: implemented with `GlobeScrollingSky` and
+`EnvironmentAttributeSystemBuilderMixin`. The client replaces the Overworld day
+timeline for sky/lightmap visual attributes with camera-position-aware
+positional layers, while weather and lightning layers still run afterward.
+
+Open visual follow-up: when the globe curvature shader is enabled, the terrain
+horizon and vanilla sky horizon no longer line up cleanly. Investigate a sky or
+horizon shader adjustment, or a camera-relative vertical/horizon offset, so the
+scrolling sun/sky presentation meets the curved terrain at the expected apparent
+horizon.
 
 ## Gameplay Hook
 
@@ -178,9 +196,9 @@ Important gameplay surfaces:
 
 Recommended gameplay hook shape:
 
-1. Add shared local-time helpers in `CoordUtil` or a small companion utility:
-   local day ticks, local sky darken, local is-day/is-night predicates, and
-   optionally local timeline marker predicates.
+1. Use the shared local-time helpers in `CoordUtil`. Local sky darken,
+   local is-day/is-night predicates, and optional local timeline marker
+   predicates can be added on top as the audited gameplay hooks need them.
 2. Start with the high-value gameplay contracts: sleeping, monster spawning,
    and monster burning.
 3. Add focused vanilla source notes for each audited gameplay path before
@@ -236,12 +254,14 @@ Run:
 
 Manual client checks:
 
-- Realistic lighting disabled keeps vanilla/global time visuals.
-- Realistic lighting enabled changes local sky time smoothly as the player moves along X.
+- Scrolling lighting disabled keeps vanilla/global time visuals.
+- Scrolling lighting enabled changes local sky time smoothly as the player moves along X.
 - Moving along Z does not change local solar time.
 - Crossing the canonical X seam has no obvious visual pop.
 - A bed in a local-night region allows sleep while a bed in a local-day region does not.
 - Hostile mob spawning follows local darkness/day state on opposite sides of the tile.
 - Undead burning follows local day state on opposite sides of the tile.
-- Curvature and realistic lighting work together.
+- Curvature and scrolling lighting work together.
+- With curvature enabled, the sky horizon lines up with the curved terrain
+  horizon or the mismatch is intentionally compensated.
 - Weather, lightning flashes, night vision, and gamma still look reasonable.

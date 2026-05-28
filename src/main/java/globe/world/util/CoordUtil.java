@@ -9,6 +9,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class CoordUtil {
+    public static final int MINECRAFT_DAY_TICKS = 24000;
+
     public static int wrapChunk(int c) {
         return wrapChunk(DimensionTiling.currentOrOverworld(), c);
     }
@@ -49,6 +51,90 @@ public class CoordUtil {
         int tileSize = tiling.tileSizeBlocks();
         int half = tileSize / 2;
         return Math.floorMod(b + half, tileSize) - half;
+    }
+
+    public static double wrapBlock(double b) {
+        return wrapBlock(DimensionTiling.currentOrOverworld(), b);
+    }
+
+    public static double wrapBlock(Level level, double b) {
+        return wrapBlock(DimensionTiling.forLevel(level), b);
+    }
+
+    public static double wrapBlock(ResourceKey<Level> dimension, double b) {
+        return wrapBlock(DimensionTiling.forDimension(dimension), b);
+    }
+
+    public static double wrapBlock(DimensionTiling tiling, double b) {
+        if (!tiling.enabled()) {
+            return b;
+        }
+        int tileSize = tiling.tileSizeBlocks();
+        double half = tileSize / 2.0;
+        return positiveModulo(b + half, tileSize) - half;
+    }
+
+    public static double longitudeOffsetTicks(Level level, BlockPos pos) {
+        return longitudeOffsetTicks(level, pos.getX());
+    }
+
+    public static double longitudeOffsetTicks(Level level, double x) {
+        return longitudeOffsetTicks(DimensionTiling.forLevel(level), x);
+    }
+
+    public static double longitudeOffsetTicks(ResourceKey<Level> dimension, double x) {
+        return longitudeOffsetTicks(DimensionTiling.forDimension(dimension), x);
+    }
+
+    public static double longitudeOffsetTicks(DimensionTiling tiling, BlockPos pos) {
+        return longitudeOffsetTicks(tiling, pos.getX());
+    }
+
+    public static double longitudeOffsetTicks(DimensionTiling tiling, double x) {
+        if (!tiling.enabled()) {
+            return 0.0;
+        }
+        return wrapBlock(tiling, x) * MINECRAFT_DAY_TICKS / tiling.tileSizeBlocks();
+    }
+
+    public static double localSolarTimeTicks(Level level, BlockPos pos) {
+        return localSolarTimeTicks(level, pos.getX());
+    }
+
+    public static double localSolarTimeTicks(Level level, double x) {
+        return localSolarTimeTicks(DimensionTiling.forLevel(level), level.getDefaultClockTime(), x);
+    }
+
+    public static double localSolarTimeTicks(ResourceKey<Level> dimension, long worldTime, double x) {
+        return localSolarTimeTicks(DimensionTiling.forDimension(dimension), worldTime, x);
+    }
+
+    public static double localSolarTimeTicks(DimensionTiling tiling, long worldTime, BlockPos pos) {
+        return localSolarTimeTicks(tiling, worldTime, pos.getX());
+    }
+
+    public static double localSolarTimeTicks(DimensionTiling tiling, long worldTime, double x) {
+        return worldTime + longitudeOffsetTicks(tiling, x);
+    }
+
+    public static double localSolarDayTicks(Level level, BlockPos pos) {
+        return localSolarDayTicks(level, pos.getX());
+    }
+
+    public static double localSolarDayTicks(Level level, double x) {
+        return localSolarDayTicks(DimensionTiling.forLevel(level), level.getDefaultClockTime(), x);
+    }
+
+    public static double localSolarDayTicks(ResourceKey<Level> dimension, long worldTime, double x) {
+        return localSolarDayTicks(DimensionTiling.forDimension(dimension), worldTime, x);
+    }
+
+    public static double localSolarDayTicks(DimensionTiling tiling, long worldTime, BlockPos pos) {
+        return localSolarDayTicks(tiling, worldTime, pos.getX());
+    }
+
+    public static double localSolarDayTicks(DimensionTiling tiling, long worldTime, double x) {
+        return positiveModulo(localSolarTimeTicks(tiling, worldTime, x), MINECRAFT_DAY_TICKS);
     }
 
     public static BlockPos wrapBlockPos(BlockPos pos) {
@@ -257,5 +343,9 @@ public class CoordUtil {
         int tileSize = tiling.tileSizeChunks();
         int wrappedDelta = Math.floorMod(a - b, tileSize);
         return Math.min(wrappedDelta, tileSize - wrappedDelta);
+    }
+
+    private static double positiveModulo(double value, double modulus) {
+        return value - Math.floor(value / modulus) * modulus;
     }
 }
