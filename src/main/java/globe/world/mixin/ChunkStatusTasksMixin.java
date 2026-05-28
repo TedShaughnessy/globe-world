@@ -3,17 +3,22 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.util.DimensionTiling;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.GenerationChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.StaticCache2D;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.chunk.status.ChunkStatusTasks;
 import net.minecraft.world.level.chunk.status.ChunkStep;
 import net.minecraft.world.level.chunk.status.WorldGenContext;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -22,6 +27,32 @@ import java.util.function.Supplier;
 
 @Mixin(ChunkStatusTasks.class)
 public class ChunkStatusTasksMixin {
+    @WrapOperation(
+            method = "generateStructureStarts",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/chunk/ChunkGenerator;createStructures(Lnet/minecraft/core/RegistryAccess;Lnet/minecraft/world/level/chunk/ChunkGeneratorStructureState;Lnet/minecraft/world/level/StructureManager;Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/world/level/levelgen/structure/templatesystem/StructureTemplateManager;Lnet/minecraft/resources/ResourceKey;)V"
+            )
+    )
+    private static void createStructuresWithDimensionTiling(
+            ChunkGenerator generator,
+            RegistryAccess registryAccess,
+            ChunkGeneratorStructureState state,
+            StructureManager structureManager,
+            ChunkAccess centerChunk,
+            StructureTemplateManager structureTemplateManager,
+            ResourceKey<Level> levelKey,
+            Operation<Void> original,
+            WorldGenContext context,
+            ChunkStep step,
+            StaticCache2D<GenerationChunkHolder> chunks,
+            ChunkAccess chunk) {
+        withDimensionTiling(context.level(), () -> {
+            original.call(generator, registryAccess, state, structureManager, centerChunk, structureTemplateManager, levelKey);
+            return null;
+        });
+    }
+
     @WrapOperation(
             method = "generateBiomes",
             at = @At(
