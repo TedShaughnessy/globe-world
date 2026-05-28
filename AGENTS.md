@@ -31,6 +31,7 @@ Useful files in that directory:
 When investigating vanilla Minecraft behavior, inspect these sources before guessing at method names or control flow. Use common sources for shared/server code and client-only sources for rendering, client networking, and other client-side behavior.
 
 ## Project Commands
+- ask the user to run these
 
 - Build: `./gradlew build`
 - Run client: `./gradlew runClient`

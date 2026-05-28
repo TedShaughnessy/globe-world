@@ -20,6 +20,10 @@ public class GlobeWorld implements ModInitializer {
 			BuiltInRegistries.TICKET_TYPE,
 			Identifier.fromNamespaceAndPath(MOD_ID, "canonical_alias"),
 			new TicketType(TicketType.NO_TIMEOUT, TicketType.FLAG_LOADING));
+	public static final TicketType CANONICAL_ALIAS_SIMULATION_TICKET = Registry.register(
+			BuiltInRegistries.TICKET_TYPE,
+			Identifier.fromNamespaceAndPath(MOD_ID, "canonical_alias_simulation"),
+			new TicketType(TicketType.NO_TIMEOUT, TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION));
 
 	@Override
 	public void onInitialize() {

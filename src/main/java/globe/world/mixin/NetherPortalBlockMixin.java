@@ -3,17 +3,47 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.util.CoordUtil;
+import globe.world.util.PortalDiagnostics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.InsideBlockEffectApplier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.NetherPortalBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.border.WorldBorder;
+import net.minecraft.world.level.portal.TeleportTransition;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(NetherPortalBlock.class)
 public class NetherPortalBlockMixin {
+    @Inject(method = "entityInside", at = @At("HEAD"))
+    private void logServerPortalContact(
+            BlockState state,
+            Level level,
+            BlockPos pos,
+            Entity entity,
+            InsideBlockEffectApplier effectApplier,
+            boolean isPrecise,
+            CallbackInfo ci) {
+        if (level instanceof ServerLevel serverLevel) {
+            PortalDiagnostics.portalContact(serverLevel, entity, pos, state);
+        }
+    }
+
+    @Inject(method = "getPortalDestination", at = @At("RETURN"))
+    private void logPortalDestination(
+            ServerLevel currentLevel,
+            Entity entity,
+            BlockPos portalEntryPos,
+            CallbackInfoReturnable<TeleportTransition> cir) {
+        PortalDiagnostics.portalDestination(currentLevel, entity, portalEntryPos, cir.getReturnValue());
+    }
+
     @WrapOperation(
             method = "getPortalDestination",
             at = @At(

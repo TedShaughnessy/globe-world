@@ -4,7 +4,7 @@ Fabric mod for Minecraft 26.1.2 that makes the world tile seamlessly — walk fa
 
 ```
 build:   ./gradlew build
-client:  ./gradlew runClient
+client:  ./gradlew runClient --debug > debug_log.txt 2>&1
 kill:    pkill -f runClient
 ```
 

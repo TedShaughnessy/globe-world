@@ -2,21 +2,9 @@
 
 ## priorities
 1. all block/ world / item related things
-    - test the nether
-        should tile
-        should probably be 1/8th the size, make that a yes no option, can always have no tiling
-        should teleport to canon positions
-        look at noise size so we know how to tile / what mode of tiling
-    - the end, little value in tiling, leave as is
     - items
 2. MOB related things
 3. light related things
-
-
-## nether
-    - option to not tile the nether
-    - option to proportional tile of the nether? (1/8th size)
-    - nether portals should be canonical on coordinates. always go to the canon coordinates both ways
 
 ## Items
     - lodestone needs to point to nearest lodestone, check is dimension is tiling first
@@ -33,11 +21,16 @@
 ## animals
 - getting on a horse triggers teleport
 
+## Optimise chunk data
+- currently client will request an alias chunk even if it have the real one, it could
+    - only request an alias if it's doesn't have the real one loaded already, (still needs to request updates)
+    - store the chunk data in the same cache
+    - load cache data immediately, then update on recieving new (it could have changed while the client wasn't tracking it)
 
 
-## new UI
+## final UI
 
-enabled button, perhaps simple
+enabled button
 
 defined sizes slider
 - "32 m
@@ -64,7 +57,6 @@ defined sizes slider
 
 globe curvature simplified down to 0, 50% and 100% (need to investigate small tiles)
 merge nether globe with enabled with 1/8 (disabled, same size, 1/8th size)
+nether curvature
 
-nether structure tile fine when not in 1/8 mode?
-
-./gradlew runClient --debug > debug_log.txt 2>&1
+day night cycle
