@@ -78,6 +78,6 @@ tracking, tile borders, and settings state.
   curved terrain horizon. Audit whether the sky/horizon shader needs a matching
   curvature transform or vertical offset so sun, sky disc, and terrain meet in
   the expected place.
-- Scrolling day/night secondary gameplay still needs separate server-side audits
-  for villagers, bees, turtle eggs, clocks, raids/patrols, commands, and other
-  global time predicates.
+- Scrolling day/night secondary gameplay is implemented for villagers, bees,
+  turtle eggs, clocks, and patrol daylight gates. Commands and remaining global
+  time predicates still need separate audits.

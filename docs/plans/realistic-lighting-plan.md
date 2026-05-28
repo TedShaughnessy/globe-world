@@ -62,7 +62,9 @@ When scrolling globe lighting is enabled:
 - Crossing the canonical X seam should not create an obvious lighting jump, because both sides represent the same solar phase modulo one day.
 - Sleeping eligibility is based on the bed/player's local night state, not only the dimension's global time.
 - Monster spawning, monster burning, and similar light/day predicates use local solar phase at the checked block/entity position.
-- Villager schedules, clock-like behavior, and other time predicates should be audited before declaring the feature complete.
+- Villager schedules, bees, turtle eggs, clocks, and patrol daylight gates use
+  local time; command/time predicates and remaining timeline consumers should
+  still be audited before declaring the feature complete.
 
 ## Saved Setting
 
@@ -188,11 +190,12 @@ Important gameplay surfaces:
   global day/night, or environment attributes such as `MONSTERS_BURN`.
 - Sleeping and bed rules, especially checks that ask whether it is night or
   whether the player can sleep now.
-- Villager schedules, bee behavior, raids/patrols, turtle eggs, cat gifts,
+- Villager schedules, bee behavior, patrols, turtle eggs, cat gifts,
   eyeblossoms, creaking, and other timeline-driven gameplay attributes listed
   in the vanilla Overworld day timeline.
 - Clock item behavior and command/time predicates if they are expected to show
-  or test local time.
+  or test local time. Clock item daytime display is already position-aware
+  through the local `SUN_ANGLE` visual layer.
 
 Recommended gameplay hook shape:
 
@@ -206,10 +209,12 @@ Recommended gameplay hook shape:
 4. Keep server block light and stored sky light propagation global unless a
    later phase proves that predicate hooks are insufficient.
 
-Step 3 status: implemented for the core predicates with
+Step 3 status: implemented for core and audited secondary predicates with
 `GlobeLocalDaylight`, `PlayerLocalSleepMixin`, `ServerPlayerLocalSleepMixin`,
 `ServerLevelLocalSleepTimeMixin`, `MonsterLocalDaylightMixin`,
-`PhantomSpawnerLocalDaylightMixin`, and `MobLocalDaylightMixin`.
+`PhantomSpawnerLocalDaylightMixin`, `MobLocalDaylightMixin`,
+`EnvironmentAttributeSystemBuilderGameplayMixin`, and
+`PatrolSpawnerLocalDaylightMixin`.
 
 - Sleeping keeps vanilla bed rules, but evaluates `WHEN_DARK` at the bed/player
   position in scrolling mode.
@@ -223,6 +228,15 @@ Step 3 status: implemented for the core predicates with
 - Undead burning keeps vanilla sky visibility, weather/water protection, and
   helmet behavior, but evaluates both the burn-time predicate and brightness at
   the mob position.
+- Villager schedules, baby villager schedules, bee hive behavior, turtle egg
+  hatch chance, cat gifts, eyeblossoms, creaking, and direct `MONSTERS_BURN`
+  environment-attribute callers use local positional timeline layers.
+- Clock item daytime display already samples `SUN_ANGLE` at the item owner
+  position, so it follows the local client sky layer.
+- Patrol spawning opens the global bright-outside gate in scrolling mode, then
+  requires local daylight at the chosen patrol spawn position. Raids do not
+  have a vanilla day/night start gate in 26.1.2; villagers leaving raid
+  activities resume through the localized schedule.
 
 Future tuning question: confirm whether the "furthest from local morning"
 multiplayer rule feels right, or whether sleep skip should instead pick a
@@ -243,17 +257,15 @@ The first implementation should be end-to-end for the core fantasy:
 
 Leave broader secondary systems global until separately audited:
 
-- Villager schedules.
 - Crop/random tick behavior.
-- Clock item behavior.
+- Command/time predicates.
 - Server block light or sky light propagation.
 
 ## Later Expansion
 
-After the core gameplay pass, expand to villager schedules, bee behavior,
-timeline-driven block/entity rules, clocks, commands, and any mechanics where a
-global day/night assumption is visibly wrong on a map with simultaneous day and
-night regions.
+After the secondary gameplay pass, expand to commands and any remaining
+mechanics where a global day/night assumption is visibly wrong on a map with
+simultaneous day and night regions.
 
 ## Documentation Updates
 

@@ -178,3 +178,31 @@ visibility before `burnUndead(...)` applies helmet damage or fire.
 Globe World hooks only these predicate surfaces for the first gameplay pass.
 Stored sky light propagation, `Level.getSkyDarken()`, and the global clock
 remain vanilla/global.
+
+## Secondary Gameplay Consumers
+
+`UpdateActivityFromSchedule.java:9` asks each scheduled brain to update from
+the level environment attributes at the entity position. `Brain.java:332`
+through `Brain.java:337` samples the brain's schedule attribute, which is
+usually `VILLAGER_ACTIVITY` or `BABY_VILLAGER_ACTIVITY`, and changes activity
+when the scheduled value differs from the current activity.
+
+`Bee.java:340` through `Bee.java:345` makes bees want to enter hives when they
+have nectar, are tired of looking for nectar, or the positional
+`BEES_STAY_IN_HIVE` attribute is true.
+
+`TurtleEggBlock.java:95` through `TurtleEggBlock.java:97` random-ticks eggs and
+only advances hatching when `shouldUpdateHatchLevel(...)` passes.
+`TurtleEggBlock.java:136` through `TurtleEggBlock.java:137` samples
+`TURTLE_EGG_HATCH_CHANCE` at the egg position.
+
+`PatrolSpawner.java:27` gates patrol attempts on dimension-wide
+`ServerLevel.isBrightOutside()` before a player or spawn position is chosen.
+`PatrolSpawner.java:39` later checks `CAN_PILLAGER_PATROL_SPAWN` at the chosen
+spawn position. A local-daylight implementation has to open or replace the
+first global gate, then apply the local daylight rule once a position exists.
+
+Client clock item models use the numeric `Time` property. `Time.java:54`
+through `Time.java:57` shows that the `"daytime"` source samples `SUN_ANGLE` at
+the item owner position, so a positional local-sun-angle layer is enough for
+clocks to display local time.

@@ -17,10 +17,12 @@ The shared helper lives in `CoordUtil`:
 offset. `localSolarDayTicks(...)` normalizes that value into `[0, 24000)` for
 day-track sampling and gameplay predicates.
 
-`GlobeLocalDaylight` builds the first gameplay predicates on top of those
-helpers. In scrolling mode, tiled sky-light dimensions without fixed time can
-ask whether a specific block/entity position is locally bright, locally dark,
-or in the vanilla monster-burning part of the Overworld day cycle.
+`GlobeLocalDaylight` builds gameplay predicates and local timeline samplers on
+top of those helpers. In scrolling mode, tiled sky-light dimensions without
+fixed time can ask whether a specific block/entity position is locally bright,
+locally dark, or in the vanilla monster-burning part of the Overworld day
+cycle. Timeline-driven gameplay attributes such as villager schedules, bee
+hive behavior, and turtle egg hatch chance can also be sampled at local X.
 
 ## Why
 
@@ -54,9 +56,11 @@ the vanilla clock.
 - `src/main/java/globe/world/mixin/PlayerLocalSleepMixin.java`
 - `src/main/java/globe/world/mixin/ServerPlayerLocalSleepMixin.java`
 - `src/main/java/globe/world/mixin/ServerLevelLocalSleepTimeMixin.java`
+- `src/main/java/globe/world/mixin/EnvironmentAttributeSystemBuilderGameplayMixin.java`
 - `src/main/java/globe/world/mixin/MonsterLocalDaylightMixin.java`
 - `src/main/java/globe/world/mixin/PhantomSpawnerLocalDaylightMixin.java`
 - `src/main/java/globe/world/mixin/MobLocalDaylightMixin.java`
+- `src/main/java/globe/world/mixin/PatrolSpawnerLocalDaylightMixin.java`
 - `src/client/java/globe/world/client/GlobeScrollingSky.java`
 
 The helper uses `Level.getDefaultClockTime()` for level-based overloads and also
@@ -78,6 +82,22 @@ spawning opens vanilla's player loop in scrolling mode and then applies the
 phantom darkening threshold at each player position. Undead burning wraps
 `Mob.isSunBurnTick(...)` so both the `MONSTERS_BURN` predicate and the
 brightness curve use the mob's local solar phase.
+
+Timeline-driven gameplay attributes are installed as positional layers while
+scrolling mode is active. Villager and baby villager schedules use the local
+solar phase at the villager position. Bee hive entry uses local
+`BEES_STAY_IN_HIVE`, turtle eggs use local `TURTLE_EGG_HATCH_CHANCE`, and the
+same local timeline path covers cat waking gifts, eyeblossoms, creaking, and
+other direct callers of the localized attributes. Clock item daytime display
+already samples `SUN_ANGLE` at the item owner position, so it follows the local
+client sky layer instead of needing a separate item hook.
+
+Patrol spawning has an extra global `ServerLevel.isBrightOutside()` gate before
+it chooses a player or spawn position. In scrolling mode, that gate is opened so
+the patrol path can run, and the actual spawn-position check then requires local
+daylight at the patrol spawn position. Raids themselves do not have a vanilla
+day/night start gate in 26.1.2; when villager raid behavior resets back to the
+normal schedule, it uses the localized villager schedule attribute.
 
 Stored sky light propagation remains global; local gameplay predicates supply
 position-aware darkening at their call sites.

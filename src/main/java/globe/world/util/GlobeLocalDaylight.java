@@ -6,15 +6,23 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.EasingType;
 import net.minecraft.util.KeyframeTrack;
 import net.minecraft.util.KeyframeTrackSampler;
 import net.minecraft.util.Mth;
+import net.minecraft.util.TriState;
 import net.minecraft.world.attribute.BedRule;
+import net.minecraft.world.attribute.EnvironmentAttribute;
+import net.minecraft.world.attribute.EnvironmentAttributeSystem;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.attribute.LerpFunction;
+import net.minecraft.world.clock.ClockManager;
 import net.minecraft.world.clock.WorldClock;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.timeline.Timeline;
+import net.minecraft.world.timeline.Timelines;
 
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -23,6 +31,44 @@ public final class GlobeLocalDaylight {
     private static final int MONSTERS_STOP_BURNING_TICK = 12542;
     private static final int MONSTERS_START_BURNING_TICK = 23460;
     private static final KeyframeTrackSampler<Float> SKY_LIGHT_LEVEL_MULTIPLIER = skyLightLevelSampler();
+    private static final KeyframeTrackSampler<Boolean> BEES_STAY_IN_HIVE = booleanSampler(keyframes -> keyframes
+            .addKeyframe(12542, true)
+            .addKeyframe(23460, false)
+    );
+    private static final KeyframeTrackSampler<Float> TURTLE_EGG_HATCH_CHANCE = constantFloatSampler(keyframes -> keyframes
+            .addKeyframe(21062, 1.0F)
+            .addKeyframe(21905, 0.002F)
+    );
+    private static final KeyframeTrackSampler<Float> CAT_WAKING_UP_GIFT_CHANCE = constantFloatSampler(keyframes -> keyframes
+            .addKeyframe(362, 0.0F)
+            .addKeyframe(23667, 0.7F)
+    );
+    private static final KeyframeTrackSampler<TriState> EYEBLOSSOM_OPEN = triStateSampler(keyframes -> keyframes
+            .addKeyframe(12600, TriState.TRUE)
+            .addKeyframe(23401, TriState.FALSE)
+    );
+    private static final KeyframeTrackSampler<Boolean> CREAKING_ACTIVE = booleanSampler(keyframes -> keyframes
+            .addKeyframe(12600, true)
+            .addKeyframe(23401, false)
+    );
+    private static final KeyframeTrackSampler<Boolean> MONSTERS_BURN = booleanSampler(keyframes -> keyframes
+            .addKeyframe(12542, false)
+            .addKeyframe(23460, true)
+    );
+    private static final KeyframeTrackSampler<Activity> VILLAGER_ACTIVITY = activitySampler(keyframes -> keyframes
+            .addKeyframe(10, Activity.IDLE)
+            .addKeyframe(2000, Activity.WORK)
+            .addKeyframe(9000, Activity.MEET)
+            .addKeyframe(11000, Activity.IDLE)
+            .addKeyframe(12000, Activity.REST)
+    );
+    private static final KeyframeTrackSampler<Activity> BABY_VILLAGER_ACTIVITY = activitySampler(keyframes -> keyframes
+            .addKeyframe(10, Activity.IDLE)
+            .addKeyframe(3000, Activity.PLAY)
+            .addKeyframe(6000, Activity.IDLE)
+            .addKeyframe(10000, Activity.PLAY)
+            .addKeyframe(12000, Activity.REST)
+    );
 
     private GlobeLocalDaylight() {
     }
@@ -84,6 +130,30 @@ public final class GlobeLocalDaylight {
         return dayTicks < MONSTERS_STOP_BURNING_TICK || dayTicks >= MONSTERS_START_BURNING_TICK;
     }
 
+    public static boolean canPatrolSpawnAt(ServerLevel level, BlockPos pos) {
+        return !enabled(level) || isBrightOutside(level, pos);
+    }
+
+    public static boolean tryAddLocalGameplayLayer(
+            EnvironmentAttributeSystem.Builder builder,
+            Holder<Timeline> timeline,
+            EnvironmentAttribute<?> attribute,
+            ClockManager clockManager
+    ) {
+        if (!enabledForTimelineLayers()) {
+            return false;
+        }
+
+        if (timeline.is(Timelines.OVERWORLD_DAY)) {
+            return tryAddLocalOverworldDayLayer(builder, timeline, attribute, clockManager);
+        }
+        if (timeline.is(Timelines.VILLAGER_SCHEDULE)) {
+            return tryAddLocalVillagerScheduleLayer(builder, timeline, attribute, clockManager);
+        }
+
+        return false;
+    }
+
     public static OptionalLong sleepWakeTime(ServerLevel level, Holder<WorldClock> clock) {
         if (!enabled(level)) {
             return OptionalLong.empty();
@@ -120,6 +190,93 @@ public final class GlobeLocalDaylight {
         return (long) Math.ceil(CoordUtil.MINECRAFT_DAY_TICKS - localDayTicks);
     }
 
+    private static boolean enabledForTimelineLayers() {
+        return GlobeConfig.dayNightCycleMode() == DayNightCycleMode.SCROLLING
+                && DimensionTiling.currentOrOverworld().enabled();
+    }
+
+    private static boolean tryAddLocalOverworldDayLayer(
+            EnvironmentAttributeSystem.Builder builder,
+            Holder<Timeline> timeline,
+            EnvironmentAttribute<?> attribute,
+            ClockManager clockManager
+    ) {
+        if (attribute == EnvironmentAttributes.BEES_STAY_IN_HIVE) {
+            builder.addPositionalLayer(
+                    EnvironmentAttributes.BEES_STAY_IN_HIVE,
+                    (baseValue, pos, biomeInterpolator) -> baseValue || sample(BEES_STAY_IN_HIVE, timeline, clockManager, pos.x)
+            );
+            return true;
+        }
+        if (attribute == EnvironmentAttributes.TURTLE_EGG_HATCH_CHANCE) {
+            builder.addPositionalLayer(
+                    EnvironmentAttributes.TURTLE_EGG_HATCH_CHANCE,
+                    (baseValue, pos, biomeInterpolator) -> Math.max(baseValue, sample(TURTLE_EGG_HATCH_CHANCE, timeline, clockManager, pos.x))
+            );
+            return true;
+        }
+        if (attribute == EnvironmentAttributes.CAT_WAKING_UP_GIFT_CHANCE) {
+            builder.addPositionalLayer(
+                    EnvironmentAttributes.CAT_WAKING_UP_GIFT_CHANCE,
+                    (baseValue, pos, biomeInterpolator) -> Math.max(baseValue, sample(CAT_WAKING_UP_GIFT_CHANCE, timeline, clockManager, pos.x))
+            );
+            return true;
+        }
+        if (attribute == EnvironmentAttributes.EYEBLOSSOM_OPEN) {
+            builder.addPositionalLayer(
+                    EnvironmentAttributes.EYEBLOSSOM_OPEN,
+                    (baseValue, pos, biomeInterpolator) -> sample(EYEBLOSSOM_OPEN, timeline, clockManager, pos.x)
+            );
+            return true;
+        }
+        if (attribute == EnvironmentAttributes.CREAKING_ACTIVE) {
+            builder.addPositionalLayer(
+                    EnvironmentAttributes.CREAKING_ACTIVE,
+                    (baseValue, pos, biomeInterpolator) -> baseValue || sample(CREAKING_ACTIVE, timeline, clockManager, pos.x)
+            );
+            return true;
+        }
+        if (attribute == EnvironmentAttributes.MONSTERS_BURN) {
+            builder.addPositionalLayer(
+                    EnvironmentAttributes.MONSTERS_BURN,
+                    (baseValue, pos, biomeInterpolator) -> baseValue || sample(MONSTERS_BURN, timeline, clockManager, pos.x)
+            );
+            return true;
+        }
+
+        return false;
+    }
+
+    private static boolean tryAddLocalVillagerScheduleLayer(
+            EnvironmentAttributeSystem.Builder builder,
+            Holder<Timeline> timeline,
+            EnvironmentAttribute<?> attribute,
+            ClockManager clockManager
+    ) {
+        if (attribute == EnvironmentAttributes.VILLAGER_ACTIVITY) {
+            builder.addPositionalLayer(
+                    EnvironmentAttributes.VILLAGER_ACTIVITY,
+                    (baseValue, pos, biomeInterpolator) -> sample(VILLAGER_ACTIVITY, timeline, clockManager, pos.x)
+            );
+            return true;
+        }
+        if (attribute == EnvironmentAttributes.BABY_VILLAGER_ACTIVITY) {
+            builder.addPositionalLayer(
+                    EnvironmentAttributes.BABY_VILLAGER_ACTIVITY,
+                    (baseValue, pos, biomeInterpolator) -> sample(BABY_VILLAGER_ACTIVITY, timeline, clockManager, pos.x)
+            );
+            return true;
+        }
+
+        return false;
+    }
+
+    private static <T> T sample(KeyframeTrackSampler<T> sampler, Holder<Timeline> timeline, ClockManager clockManager, double x) {
+        long worldTime = clockManager.getTotalTicks(timeline.value().clock());
+        long localDayTicks = (long) Math.floor(CoordUtil.localSolarDayTicks(DimensionTiling.currentOrOverworld(), worldTime, x));
+        return sampler.sample(localDayTicks);
+    }
+
     private static KeyframeTrackSampler<Float> skyLightLevelSampler() {
         KeyframeTrack.Builder<Float> builder = new KeyframeTrack.Builder<>();
         builder.addKeyframe(133, 1.0F)
@@ -127,5 +284,35 @@ public final class GlobeLocalDaylight {
                 .addKeyframe(13670, 0.26666668F)
                 .addKeyframe(22330, 0.26666668F);
         return builder.build().bakeSampler(Optional.of(CoordUtil.MINECRAFT_DAY_TICKS), LerpFunction.ofFloat());
+    }
+
+    private static KeyframeTrackSampler<Float> constantFloatSampler(TrackBuilder<Float> trackBuilder) {
+        KeyframeTrack.Builder<Float> builder = new KeyframeTrack.Builder<>();
+        builder.setEasing(EasingType.CONSTANT);
+        trackBuilder.accept(builder);
+        return builder.build().bakeSampler(Optional.of(CoordUtil.MINECRAFT_DAY_TICKS), LerpFunction.ofFloat());
+    }
+
+    private static KeyframeTrackSampler<Boolean> booleanSampler(TrackBuilder<Boolean> trackBuilder) {
+        KeyframeTrack.Builder<Boolean> builder = new KeyframeTrack.Builder<>();
+        trackBuilder.accept(builder);
+        return builder.build().bakeSampler(Optional.of(CoordUtil.MINECRAFT_DAY_TICKS), LerpFunction.ofConstant());
+    }
+
+    private static KeyframeTrackSampler<TriState> triStateSampler(TrackBuilder<TriState> trackBuilder) {
+        KeyframeTrack.Builder<TriState> builder = new KeyframeTrack.Builder<>();
+        trackBuilder.accept(builder);
+        return builder.build().bakeSampler(Optional.of(CoordUtil.MINECRAFT_DAY_TICKS), LerpFunction.ofConstant());
+    }
+
+    private static KeyframeTrackSampler<Activity> activitySampler(TrackBuilder<Activity> trackBuilder) {
+        KeyframeTrack.Builder<Activity> builder = new KeyframeTrack.Builder<>();
+        trackBuilder.accept(builder);
+        return builder.build().bakeSampler(Optional.of(CoordUtil.MINECRAFT_DAY_TICKS), LerpFunction.ofConstant());
+    }
+
+    @FunctionalInterface
+    private interface TrackBuilder<T> {
+        void accept(KeyframeTrack.Builder<T> builder);
     }
 }

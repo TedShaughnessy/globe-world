@@ -26,7 +26,9 @@ chunk, and dedupes spawning chunks by canonical key. Chunk-generation mob spawns
 are cancelled for non-canonical chunks. In scrolling day/night mode, hostile
 spawn brightness checks use local sky darkening at the spawn position, phantom
 spawning uses local sky darkening at the player position, and undead burning
-uses local burn-time and brightness predicates at the mob position.
+uses local burn-time and brightness predicates at the mob position. Pillager
+patrol attempts also use local daylight at the selected spawn position instead
+of the dimension-wide bright-outside gate.
 
 Mob sensing and targeting have partial wrapped-distance support. Pathfinding is
 still an MVP compromise because vanilla path nodes and goals are raw Euclidean
@@ -45,6 +47,7 @@ positions.
 - `src/main/java/globe/world/mixin/MonsterLocalDaylightMixin.java`
 - `src/main/java/globe/world/mixin/PhantomSpawnerLocalDaylightMixin.java`
 - `src/main/java/globe/world/mixin/MobLocalDaylightMixin.java`
+- `src/main/java/globe/world/mixin/PatrolSpawnerLocalDaylightMixin.java`
 - `src/main/java/globe/world/mixin/ChunkStatusTasksMixin.java`
 - `src/main/java/globe/world/mixin/NearestLivingEntitySensorMixin.java`
 - `src/main/java/globe/world/mixin/TargetingConditionsMixin.java`
