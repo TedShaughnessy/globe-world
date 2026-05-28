@@ -42,6 +42,9 @@ public final class GlobeDebugHud {
                 minecraft.level.dimension().identifier(), tileSummary(currentTiling)));
         lines.add(String.format(Locale.ROOT, "Overworld tile: %s", tileSummary(overworldTiling)));
         lines.add(String.format(Locale.ROOT, "Nether tile: %s", tileSummary(netherTiling)));
+        lines.add(String.format(Locale.ROOT, "Curvature: overworld %d%% / nether %d%%",
+                GlobeConfig.curvaturePercent(),
+                GlobeConfig.netherCurvaturePercent()));
         lines.add(String.format(Locale.ROOT, "Nether 1/8 requested/effective: %s/%s",
                 yesNo(GlobeConfig.netherOneEighthOverworldSize()),
                 yesNo(GlobeConfig.effectiveNetherOneEighthOverworldSize())));

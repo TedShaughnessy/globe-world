@@ -7,6 +7,7 @@ public record TilingSettings(
         TilingMode mode,
         int tileSize,
         int curvaturePercent,
+        int netherCurvaturePercent,
         TilingMode netherMode,
         boolean netherOneEighthOverworldSize,
         DayNightCycleMode dayNightCycleMode
@@ -19,6 +20,7 @@ public record TilingSettings(
             TilingMode.DISABLED,
             GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS,
             CURVATURE_DISABLED_PERCENT,
+            CURVATURE_DISABLED_PERCENT,
             TilingMode.DISABLED,
             true,
             DayNightCycleMode.VANILLA
@@ -26,6 +28,7 @@ public record TilingSettings(
     public static final TilingSettings DEFAULT = new TilingSettings(
             TilingMode.DISABLED,
             GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS,
+            CURVATURE_COMFORTABLE_PERCENT,
             CURVATURE_COMFORTABLE_PERCENT,
             TilingMode.DISABLED,
             true,
@@ -40,6 +43,8 @@ public record TilingSettings(
                                     .forGetter(TilingSettings::tileSize),
                             Codec.INT.optionalFieldOf("curvature_percent", CURVATURE_COMFORTABLE_PERCENT)
                                     .forGetter(TilingSettings::curvaturePercent),
+                            Codec.INT.optionalFieldOf("nether_curvature_percent", CURVATURE_COMFORTABLE_PERCENT)
+                                    .forGetter(TilingSettings::netherCurvaturePercent),
                             TilingMode.CODEC.optionalFieldOf("nether_mode", TilingMode.DISABLED)
                                     .forGetter(TilingSettings::netherMode),
                             Codec.BOOL.optionalFieldOf("nether_one_eighth_overworld_size", true)
@@ -53,6 +58,7 @@ public record TilingSettings(
         return new TilingSettings(
                 TilingMode.SQUARE,
                 tileSize,
+                CURVATURE_COMFORTABLE_PERCENT,
                 CURVATURE_COMFORTABLE_PERCENT,
                 TilingMode.DISABLED,
                 true,
@@ -69,7 +75,7 @@ public record TilingSettings(
     }
 
     public boolean supportsNetherOneEighthOverworldSize() {
-        return tileSize % 8 == 0;
+        return tileSize >= 16 && tileSize % 8 == 0;
     }
 
     public boolean effectiveNetherOneEighthOverworldSize() {
@@ -87,6 +93,7 @@ public record TilingSettings(
                 newMode,
                 tileSize,
                 curvaturePercent,
+                netherCurvaturePercent,
                 netherMode,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode
@@ -98,6 +105,7 @@ public record TilingSettings(
                 mode,
                 newTileSize,
                 curvaturePercent,
+                netherCurvaturePercent,
                 netherMode,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode
@@ -109,6 +117,19 @@ public record TilingSettings(
                 mode,
                 tileSize,
                 newCurvaturePercent,
+                netherCurvaturePercent,
+                netherMode,
+                netherOneEighthOverworldSize,
+                dayNightCycleMode
+        ).sanitized();
+    }
+
+    public TilingSettings withNetherCurvaturePercent(int newNetherCurvaturePercent) {
+        return new TilingSettings(
+                mode,
+                tileSize,
+                curvaturePercent,
+                newNetherCurvaturePercent,
                 netherMode,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode
@@ -120,6 +141,7 @@ public record TilingSettings(
                 mode,
                 tileSize,
                 curvaturePercent,
+                netherCurvaturePercent,
                 newNetherMode,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode
@@ -131,6 +153,7 @@ public record TilingSettings(
                 mode,
                 tileSize,
                 curvaturePercent,
+                netherCurvaturePercent,
                 netherMode,
                 newNetherOneEighthOverworldSize,
                 dayNightCycleMode
@@ -142,6 +165,7 @@ public record TilingSettings(
                 mode,
                 tileSize,
                 curvaturePercent,
+                netherCurvaturePercent,
                 netherMode,
                 netherOneEighthOverworldSize,
                 newDayNightCycleMode
@@ -153,8 +177,9 @@ public record TilingSettings(
                 mode != null ? mode : TilingMode.DISABLED,
                 Math.max(1, tileSize),
                 sanitizeCurvaturePercent(curvaturePercent),
+                sanitizeCurvaturePercent(netherCurvaturePercent),
                 netherMode != null ? netherMode : TilingMode.DISABLED,
-                netherOneEighthOverworldSize,
+                netherOneEighthOverworldSize && Math.max(1, tileSize) >= 16 && Math.max(1, tileSize) % 8 == 0,
                 dayNightCycleMode != null ? dayNightCycleMode : DayNightCycleMode.VANILLA
         );
     }

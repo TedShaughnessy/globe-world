@@ -8,13 +8,32 @@ import net.minecraft.network.chat.Component;
 import java.util.function.IntConsumer;
 
 public class GlobeCurvatureSlider extends AbstractSliderButton {
+    private final Component label;
     private final IntConsumer onValueChanged;
     private boolean changingWithMouse;
     private int pendingPercent;
 
     public GlobeCurvatureSlider(int x, int y, int width, int height, int initialPercent, IntConsumer onValueChanged) {
+        this(x, y, width, height, Component.literal("Globe Curvature"), initialPercent, onValueChanged);
+    }
+
+    public GlobeCurvatureSlider(
+            int x,
+            int y,
+            int width,
+            int height,
+            Component label,
+            int initialPercent,
+            IntConsumer onValueChanged) {
         super(x, y, width, height, Component.empty(), valueFromPercent(initialPercent));
+        this.label = label;
         this.onValueChanged = onValueChanged;
+        this.pendingPercent = percentFromValue(this.value);
+        updateMessage();
+    }
+
+    public void setPercent(int percent) {
+        this.value = valueFromPercent(percent);
         this.pendingPercent = percentFromValue(this.value);
         updateMessage();
     }
@@ -28,7 +47,7 @@ public class GlobeCurvatureSlider extends AbstractSliderButton {
             case TilingSettings.CURVATURE_REALISTIC_PERCENT -> Component.literal("100% (Realistic)");
             default -> Component.literal(percent + "%");
         };
-        this.setMessage(Component.literal("Globe Curvature: ").append(value));
+        this.setMessage(Component.empty().append(this.label).append(": ").append(value));
     }
 
     @Override

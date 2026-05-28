@@ -29,9 +29,8 @@ The saved setting is `TilingSettings.dayNightCycleMode()`:
 - `SCROLLING`: local solar time is derived from canonical X.
 
 The setting is serialized as `day_night_cycle`; legacy saved `"realistic"`
-values decode as `SCROLLING`. The world-creation UI exposes the setting as
-`Day/Night Cycle`. Pause/options UI is intentionally left for the broader UI
-refresh.
+values decode as `SCROLLING`. The world-creation UI and pause/options Globe
+World settings page expose the setting as `Day/Night Cycle`.
 
 ## Longitude Math
 
@@ -115,7 +114,6 @@ These systems intentionally remain global or are accepted for now:
 - Server block light and stored sky light propagation.
 - Crop/random tick behavior.
 - Commands and generic time predicates.
-- The pause/options day-night UI, pending the broader UI refresh.
 - Dusk's vanilla direction-dependent sunrise/sunset fan.
 
 ## Key Files

@@ -48,13 +48,16 @@ Worldgen paths that do not receive a `ServerLevel` use a scoped
 `DimensionTiling` context.
 
 `nether_one_eighth_overworld_size` is effective only when the Overworld tile size
-is cleanly divisible by 8.
+is at least `16` chunks and cleanly divisible by 8. This keeps the derived
+Nether tile at or above the smallest supported Overworld preset.
 
 Examples:
 
 - Overworld `1024` chunks and one-eighth enabled -> Nether `128` chunks.
-- Overworld `1025` chunks and one-eighth enabled -> Nether falls back to `1025`
-  chunks.
+- Overworld `8` chunks and one-eighth requested -> the request is cleared and
+  Nether uses `8` chunks.
+- Overworld `1025` chunks and one-eighth requested -> the request is cleared
+  and Nether uses `1025` chunks.
 - Nether disabled -> no Nether wrapping.
 
 This keeps vanilla's 8:1 portal scale coherent only when the configured

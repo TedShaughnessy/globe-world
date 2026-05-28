@@ -2,8 +2,11 @@ package globe.world.client;
 
 import globe.world.config.GlobeConfig;
 import globe.world.config.TilingSettings;
+import globe.world.util.DimensionTiling;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 
 import java.util.Locale;
 
@@ -24,6 +27,7 @@ public final class GlobeCurvatureShader {
     private static final String RAW_POSITION_LINE = "    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);";
     private static final String FOG_POSITION_VARIABLE = "globeWorld_fogPos";
     private static int loadedSettingsVersion = GlobeConfig.settingsVersion();
+    private static ResourceKey<Level> loadedDimension = Level.OVERWORLD;
     private static boolean reloadQueued = false;
 
     private GlobeCurvatureShader() {
@@ -96,12 +100,16 @@ public final class GlobeCurvatureShader {
     }
 
     private static void reloadShadersWhenSettingsChange(Minecraft minecraft) {
-        if (reloadQueued || loadedSettingsVersion == GlobeConfig.settingsVersion()) {
+        ResourceKey<Level> currentDimension = minecraft.level == null ? Level.OVERWORLD : minecraft.level.dimension();
+        if (reloadQueued
+                || loadedSettingsVersion == GlobeConfig.settingsVersion()
+                && loadedDimension.equals(currentDimension)) {
             return;
         }
 
         reloadQueued = true;
         loadedSettingsVersion = GlobeConfig.settingsVersion();
+        loadedDimension = currentDimension;
         minecraft.reloadResourcePacks().whenComplete((ignored, throwable) -> reloadQueued = false);
     }
 
@@ -169,23 +177,28 @@ vec3 globeWorld_fogPosition(vec3 pos) {
     }
 
     private static float configuredCurvatureRadius() {
-        float tileSize = (float) GlobeConfig.tileSizeBlocks();
-        if (!GlobeConfig.enabled() || tileSize <= 0.0F) {
+        DimensionTiling tiling = currentTiling();
+        float tileSize = (float) tiling.tileSizeBlocks();
+        if (!tiling.enabled() || tileSize <= 0.0F) {
             return 0.0F;
         }
 
-        float curvatureScale = curvatureScaleForTile();
+        float curvatureScale = curvatureScaleForTile(tiling);
         if (curvatureScale <= 0.0F) {
             return 0.0F;
         }
 
         float radius = tileSize / curvatureScale;
-        return GlobeConfig.tileSizeChunks() < SMALL_TILE_CURVATURE_LIMIT_CHUNKS ? radius : Math.max(radius, 16.0F);
+        return tiling.tileSizeChunks() < SMALL_TILE_CURVATURE_LIMIT_CHUNKS ? radius : Math.max(radius, 16.0F);
     }
 
-    private static float curvatureScaleForTile() {
-        float curvatureScale = TilingSettings.curvatureScaleFromPercent(GlobeConfig.curvaturePercent());
-        int tileSizeChunks = GlobeConfig.tileSizeChunks();
+    private static float curvatureScaleForTile(DimensionTiling tiling) {
+        Minecraft minecraft = Minecraft.getInstance();
+        int curvaturePercent = minecraft.level == null
+                ? GlobeConfig.curvaturePercent()
+                : GlobeConfig.curvaturePercent(minecraft.level.dimension());
+        float curvatureScale = TilingSettings.curvatureScaleFromPercent(curvaturePercent);
+        int tileSizeChunks = tiling.tileSizeChunks();
         if (tileSizeChunks >= TINY_TILE_CURVATURE_LIMIT_CHUNKS) {
             return curvatureScale;
         }
@@ -198,22 +211,24 @@ vec3 globeWorld_fogPosition(vec3 pos) {
     }
 
     private static float fogDistanceScale() {
-        if (!GlobeConfig.enabled() || GlobeConfig.tileSizeChunks() >= TINY_TILE_FOG_LIMIT_CHUNKS) {
+        DimensionTiling tiling = currentTiling();
+        if (!tiling.enabled() || tiling.tileSizeChunks() >= TINY_TILE_FOG_LIMIT_CHUNKS) {
             return 1.0F;
         }
 
         float tinyTileRange = TINY_TILE_FOG_LIMIT_CHUNKS - 2.0F;
-        float tileProgress = Math.max(0.0F, GlobeConfig.tileSizeChunks() - 2.0F) / tinyTileRange;
+        float tileProgress = Math.max(0.0F, tiling.tileSizeChunks() - 2.0F) / tinyTileRange;
         return MIN_TINY_TILE_FOG_DISTANCE_SCALE + (1.0F - MIN_TINY_TILE_FOG_DISTANCE_SCALE) * tileProgress;
     }
 
     private static double curvatureDropClampMultiplier() {
-        if (!GlobeConfig.enabled() || GlobeConfig.tileSizeChunks() >= TINY_TILE_CURVATURE_LIMIT_CHUNKS) {
+        DimensionTiling tiling = currentTiling();
+        if (!tiling.enabled() || tiling.tileSizeChunks() >= TINY_TILE_CURVATURE_LIMIT_CHUNKS) {
             return DEFAULT_CURVATURE_DROP_CLAMP_RADIUS_MULTIPLIER;
         }
 
         double tinyTileRange = TINY_TILE_CURVATURE_LIMIT_CHUNKS - 2.0D;
-        double tileProgress = Math.max(0.0D, GlobeConfig.tileSizeChunks() - 2.0D) / tinyTileRange;
+        double tileProgress = Math.max(0.0D, tiling.tileSizeChunks() - 2.0D) / tinyTileRange;
         return TINY_TILE_CURVATURE_DROP_CLAMP_RADIUS_MULTIPLIER
                 + (DEFAULT_CURVATURE_DROP_CLAMP_RADIUS_MULTIPLIER - TINY_TILE_CURVATURE_DROP_CLAMP_RADIUS_MULTIPLIER) * tileProgress;
     }
@@ -227,12 +242,21 @@ vec3 globeWorld_fogPosition(vec3 pos) {
     }
 
     private static double minimumTinyTileCurvatureDropClamp(double radius) {
-        if (!GlobeConfig.enabled() || GlobeConfig.tileSizeChunks() >= TINY_TILE_CURVATURE_LIMIT_CHUNKS || radius <= 0.0D) {
+        DimensionTiling tiling = currentTiling();
+        if (!tiling.enabled() || tiling.tileSizeChunks() >= TINY_TILE_CURVATURE_LIMIT_CHUNKS || radius <= 0.0D) {
             return 0.0D;
         }
 
         return MIN_TINY_TILE_CURVATURE_DROP_CLAMP_DISTANCE_BLOCKS
                 * MIN_TINY_TILE_CURVATURE_DROP_CLAMP_DISTANCE_BLOCKS
                 / (2.0D * radius);
+    }
+
+    private static DimensionTiling currentTiling() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null) {
+            return DimensionTiling.forDimension(Level.OVERWORLD);
+        }
+        return DimensionTiling.forLevel(minecraft.level);
     }
 }

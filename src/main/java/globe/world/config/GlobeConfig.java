@@ -54,6 +54,17 @@ public class GlobeConfig {
         return settings.curvaturePercent();
     }
 
+    public static int curvaturePercent(ResourceKey<Level> dimension) {
+        if (Level.NETHER.equals(dimension)) {
+            return settings.netherCurvaturePercent();
+        }
+        return settings.curvaturePercent();
+    }
+
+    public static int netherCurvaturePercent() {
+        return settings.netherCurvaturePercent();
+    }
+
     public static boolean netherEnabled() {
         return settings.netherEnabled();
     }

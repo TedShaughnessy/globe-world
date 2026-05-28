@@ -1,45 +1,38 @@
 package globe.world.client.mixin;
 
-import globe.world.client.GlobeCurvatureSlider;
-import globe.world.client.GlobeClientTilingSettings;
-import globe.world.config.GlobeConfig;
-import net.minecraft.client.gui.layouts.LayoutElement;
-import net.minecraft.client.gui.layouts.LinearLayout;
+import globe.world.client.GlobeWorldSettingsScreen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
+import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(OptionsScreen.class)
-public class OptionsScreenMixin {
+public abstract class OptionsScreenMixin extends Screen {
     @Shadow
     @Final
     private boolean inWorld;
 
-    @Redirect(
-            method = "init",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/layouts/LinearLayout;addChild(Lnet/minecraft/client/gui/layouts/LayoutElement;)Lnet/minecraft/client/gui/layouts/LayoutElement;",
-                    ordinal = 1
-            )
-    )
-    private LayoutElement globeWorld$addCurvatureSliderAfterFov(LinearLayout layout, LayoutElement child) {
-        LayoutElement addedChild = layout.addChild(child);
-        if (this.inWorld && GlobeConfig.enabled()) {
-            layout.addChild(new GlobeCurvatureSlider(
-                    0,
-                    0,
-                    150,
-                    20,
-                    GlobeConfig.curvaturePercent(),
-                    percent -> GlobeClientTilingSettings.setFromPauseMenu(
-                            GlobeConfig.tilingSettings().withCurvaturePercent(percent)
-                    )
-            ));
+    protected OptionsScreenMixin(Component title) {
+        super(title);
+    }
+
+    @Inject(method = "init", at = @At("TAIL"))
+    private void globeWorld$addSettingsButton(CallbackInfo ci) {
+        if (!this.inWorld) {
+            return;
         }
-        return addedChild;
+
+        this.addRenderableWidget(Button.builder(
+                        Component.literal("Globe World"),
+                        button -> this.minecraft.setScreen(new GlobeWorldSettingsScreen((Screen) (Object) this))
+                )
+                .bounds(this.width - 112, 8, 104, 20)
+                .build());
     }
 }
