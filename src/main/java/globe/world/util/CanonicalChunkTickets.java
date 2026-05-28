@@ -1,11 +1,11 @@
 package globe.world.util;
 
 import globe.world.GlobeWorld;
-import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.FullChunkStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -22,20 +22,26 @@ public final class CanonicalChunkTickets {
         updateAliasRadius(level, aliasPos, status == FullChunkStatus.INACCESSIBLE ? NO_TICKET_RADIUS : 0);
     }
 
-    public static void refreshSimulationStatuses(ServerLevel level, DistanceManager distanceManager) {
+    public static void clearLevel(ServerLevel level) {
         for (AliasKey aliasKey : ALIAS_RADII.keySet()) {
-            if (aliasKey.level() != level) {
+            if (aliasKey.level() == level) {
+                ALIAS_RADII.remove(aliasKey);
+            }
+        }
+
+        for (Map.Entry<CanonicalTicketKey, AtomicInteger> entry : CANONICAL_REFS.entrySet()) {
+            CanonicalTicketKey key = entry.getKey();
+            if (key.level() != level) {
                 continue;
             }
 
-            ChunkPos aliasPos = ChunkPos.unpack(aliasKey.aliasChunk());
-            int radius = 0;
-            if (distanceManager.inEntityTickingRange(aliasKey.aliasChunk())) {
-                radius = 2;
-            } else if (distanceManager.inBlockTickingRange(aliasKey.aliasChunk())) {
-                radius = 1;
+            AtomicInteger ref = CANONICAL_REFS.remove(key);
+            if (ref == null) {
+                continue;
             }
-            updateAliasRadius(level, aliasPos, radius);
+
+            ChunkPos canonicalPos = ChunkPos.unpack(key.canonicalChunk());
+            level.getChunkSource().removeTicketWithRadius(GlobeWorld.CANONICAL_ALIAS_TICKET, canonicalPos, key.radius());
         }
     }
 

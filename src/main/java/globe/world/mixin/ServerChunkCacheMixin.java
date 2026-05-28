@@ -2,7 +2,6 @@ package globe.world.mixin;
 
 import globe.world.util.CanonicalChunkTickets;
 import globe.world.util.CoordUtil;
-import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.core.BlockPos;
@@ -17,12 +16,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.function.BooleanSupplier;
-
 @Mixin(ServerChunkCache.class)
 public class ServerChunkCacheMixin {
     @Shadow @Final private ServerLevel level;
-    @Shadow @Final private DistanceManager distanceManager;
 
     @Inject(method = "getChunk", at = @At("HEAD"), cancellable = true)
     private void wrapGetChunk(int x, int z, ChunkStatus status, boolean create,
@@ -52,17 +48,13 @@ public class ServerChunkCacheMixin {
         }
     }
 
-    @Inject(
-        method = "tick",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/server/level/ServerChunkCache;tickChunks()V",
-            shift = At.Shift.BEFORE
-        )
-    )
-    private void refreshCanonicalAliasTicking(BooleanSupplier haveTime, boolean tickChunks, CallbackInfo ci) {
-        if (tickChunks) {
-            CanonicalChunkTickets.refreshSimulationStatuses(this.level, this.distanceManager);
-        }
+    @Inject(method = "deactivateTicketsOnClosing", at = @At("HEAD"))
+    private void clearCanonicalAliasTicketsOnClosing(CallbackInfo ci) {
+        CanonicalChunkTickets.clearLevel(this.level);
+    }
+
+    @Inject(method = "close", at = @At("HEAD"))
+    private void clearCanonicalAliasTicketsOnClose(CallbackInfo ci) {
+        CanonicalChunkTickets.clearLevel(this.level);
     }
 }

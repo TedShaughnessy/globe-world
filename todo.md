@@ -32,3 +32,39 @@
 
 ## animals
 - getting on a horse triggers teleport
+
+
+
+## new UI
+
+enabled button, perhaps simple
+
+defined sizes slider
+- "32 m
+- "64 m"
+- "128 m"
+- "256 m"
+- "512 m"
+- "1 km"
+- "2 km"
+- "4.1 km"
+- "8.2 km
+- "16.4 km" Width of Ibiza
+- "32.8 km" Length of Lake Tahoe
+- "65.5 km" ~Width of Singapore
+- "131 km" (~ width of hawai'i)
+- "262 km" (~width of Ireland)
+- "524 km"  (~ width of Iceland)
+- "1,048 km (~Length of Italy)"
+- "2,097 km"
+- "4,194 km (~Width of the US)"
+- "8,388 km (~The Moon)"
+- "16,777 km"
+- "33,554 km (~The Earth)"
+
+globe curvature simplified down to 0, 50% and 100% (need to investigate small tiles)
+merge nether globe with enabled with 1/8 (disabled, same size, 1/8th size)
+
+nether structure tile fine when not in 1/8 mode?
+
+./gradlew runClient --debug > debug_log.txt 2>&1

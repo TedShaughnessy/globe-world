@@ -97,24 +97,24 @@ Important anchors:
 The current project model splits chunk behavior into two identities:
 
 - Canonical chunks own mutable world state and should be the only chunks that run simulation effects.
-- Alias chunks are player-facing view coordinates. They may become visible, block-ticking, or entity-ticking in vanilla distance management, but their simulation status is mirrored to the canonical chunk.
+- Alias chunks are player-facing view coordinates. They may become visible, block-ticking, or entity-ticking in vanilla distance management, while canonical chunks are kept loaded with loading-only alias tickets.
 
 Project hooks:
 
 - `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:27` wraps `ServerChunkCache.getChunk(...)` to canonical chunk coordinates.
 - `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:37` wraps `ServerChunkCache.getChunkNow(...)`.
 - `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:46` wraps `blockChanged(...)` to canonical block coordinates before vanilla chunk-holder broadcast bookkeeping.
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:54` refreshes alias simulation status immediately before `ServerChunkCache.tickChunks()`.
+- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:51` clears Globe alias tickets during vanilla shutdown ticket deactivation, with `close()` as a backup.
 - `src/main/java/globe/world/mixin/ChunkMapCanonicalTicketMixin.java:19` observes `ChunkMap.onFullChunkStatusChange(...)` and tracks non-canonical aliases.
 - `src/main/java/globe/world/util/CanonicalChunkTickets.java:21` records alias full-chunk status.
-- `src/main/java/globe/world/util/CanonicalChunkTickets.java:25` promotes canonical tickets to mirror alias block/entity ticking range.
-- `src/main/java/globe/world/util/CanonicalChunkTickets.java:63` and `:74` ref-count canonical alias tickets, so multiple players or multiple aliases can keep the same canonical chunk loaded without prematurely unloading it.
+- `src/main/java/globe/world/util/CanonicalChunkTickets.java:69` and `:80` ref-count canonical alias tickets, so multiple players or multiple aliases can keep the same canonical chunk loaded without prematurely unloading it.
 
 Current status:
 
 - Good: canonical chunks stay loaded when players are near non-canonical aliases.
 - Good: the ref-count keys include `ServerLevel`, canonical chunk, and radius, so multiplayer aliases share canonical tickets safely.
-- Important caveat: ticket promotion only guarantees canonical availability/status. Each vanilla tick lane still needs its own decision about whether alias chunks are allowed to run behavior or must be converted/deduped to canonical chunks.
+- Good: canonical alias tickets are loading-only, avoiding mid-tick mutation of vanilla simulation-distance tracker state.
+- Important caveat: ticket mirroring only guarantees canonical availability. Each vanilla tick lane still needs its own decision about whether alias chunks are allowed to run behavior or must be converted/deduped to canonical chunks.
 
 Best rule of thumb:
 

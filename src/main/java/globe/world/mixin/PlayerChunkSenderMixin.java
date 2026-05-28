@@ -16,8 +16,6 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.lighting.LevelLightEngine;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -27,8 +25,6 @@ import java.util.BitSet;
 
 @Mixin(PlayerChunkSender.class)
 public class PlayerChunkSenderMixin {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger("globe-world/chunks");
 
     @Inject(
         method = "sendChunk(Lnet/minecraft/server/network/ServerGamePacketListenerImpl;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/LevelChunk;)V",
@@ -48,7 +44,6 @@ public class PlayerChunkSenderMixin {
 
         if (level.getChunkSource().getChunkNow(wcx, wcz) == null) {
             connection.chunkSender.markChunkPendingToSend(chunk);
-            LOGGER.info("DEFER alias raw=({},{}) wrap=({},{}) waiting for canonical source", cx, cz, wcx, wcz);
             ci.cancel();
         }
     }
@@ -72,9 +67,6 @@ public class PlayerChunkSenderMixin {
 
         if (wcx != cx || wcz != cz) {
             LevelChunk canonical = level.getChunkSource().getChunkNow(wcx, wcz);
-            if (canonical == null) {
-                LOGGER.error("canonical=({},{}) unavailable for alias raw=({},{})", wcx, wcz, cx, cz);
-            }
             if (canonical != null) chunkToSend = canonical;
         }
 
@@ -88,9 +80,6 @@ public class PlayerChunkSenderMixin {
         if (cx != packet.getX() || cz != packet.getZ()) {
             ((GlobeChunkPacket) packet).setVirtualPos(cx, cz);
         }
-        LOGGER.info("SEND chunk raw=({},{}) wrap=({},{}) virtual=({},{}) player=({},{})",
-                cx, cz, wcx, wcz, cx, cz,
-                conn.player.chunkPosition().x(), conn.player.chunkPosition().z());
         return packet;
     }
 
@@ -107,8 +96,6 @@ public class PlayerChunkSenderMixin {
 
         ChunkAliasTracker.removeAlias(player, wcx, wcz, cx, cz);
 
-        LOGGER.info("DROP chunk raw=({},{}) wrap=({},{}) player=({},{})",
-                cx, cz, wcx, wcz, player.chunkPosition().x(), player.chunkPosition().z());
         // Drop uses the raw position — matches the virtual coord used at send time.
         return original.call(pos);
     }
