@@ -35,7 +35,9 @@ World period:
    structure edge handling, and generation risks.
 6. [Client](client.md): client-facing packet/render behavior, curvature,
    diagnostics, and planned client cache work.
-7. [Local Solar Time](local-solar-time.md): shared longitude-based local time
+7. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation
+   and gameplay across the canonical tile.
+8. [Local Solar Time](local-solar-time.md): shared longitude-based local time
    math for scrolling day/night rendering and gameplay hooks.
 
 ## Status By Area
@@ -59,9 +61,10 @@ World period:
 | Client chunk/world rendering | Implemented for server-relabeled aliases | [client.md](client.md) |
 | Curvature visuals | Implemented | [client.md](client.md) |
 | Local solar time helper | Implemented | [local-solar-time.md](local-solar-time.md) |
-| Scrolling sky/lightmap visuals | Implemented | [client.md](client.md) |
-| Core local day/night gameplay | Implemented for sleep, monster/phantom spawning, undead burning | [local-solar-time.md](local-solar-time.md) |
-| Secondary local day/night gameplay | Implemented for villager schedules, bees, turtle eggs, clocks, and patrol daylight gates | [local-solar-time.md](local-solar-time.md) |
+| Scrolling day/night mode | Implemented | [scrolling-day-night.md](scrolling-day-night.md) |
+| Scrolling sky/lightmap visuals | Implemented | [scrolling-day-night.md](scrolling-day-night.md) |
+| Core local day/night gameplay | Implemented for sleep, monster/phantom spawning, undead burning | [scrolling-day-night.md](scrolling-day-night.md) |
+| Secondary local day/night gameplay | Implemented for villager schedules, bees, turtle eggs, clocks, and patrol daylight gates | [scrolling-day-night.md](scrolling-day-night.md) |
 
 ## Current High-Risk Audits
 
@@ -75,5 +78,5 @@ World period:
    structure query/persistence paths still need audit.
 5. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
    tiles need the right balance between seamlessness and vanilla-looking noise.
-6. Secondary local day/night gameplay: commands and remaining timeline consumers
-   need individual decisions before they are localized.
+6. Scrolling day/night weather interaction: manually verify weather, lightning,
+   night vision, and gamma with local sky/lightmap visuals.

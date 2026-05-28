@@ -102,6 +102,6 @@ normal schedule, it uses the localized villager schedule attribute.
 Stored sky light propagation remains global; local gameplay predicates supply
 position-aware darkening at their call sites.
 
-## Related Plans
+## Related Mechanics
 
-- [Realistic Globe Lighting](../plans/realistic-lighting-plan.md)
+- [Scrolling Day/Night](scrolling-day-night.md)

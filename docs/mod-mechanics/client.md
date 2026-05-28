@@ -40,7 +40,8 @@ attribute layers. Sky color, sun/moon/star angles, star brightness,
 sunrise/sunset color, and lightmap sky brightness use local canonical X while
 weather layers still run afterward. The core server gameplay predicates for
 sleeping, monster spawning brightness, and undead burning also use local solar
-time; broader timeline-driven systems are still separate audits.
+time. Other global time predicates are documented as scrolling day/night
+boundaries.
 
 Client diagnostics and debug overlays remain targeted at alias loading,
 tracking, tile borders, and settings state.
@@ -67,10 +68,11 @@ tracking, tile borders, and settings state.
 - `src/client/java/globe/world/client/mixin/SectionOcclusionGraphMixin.java`
 - `src/client/java/globe/world/client/mixin/FrustumMixin.java`
 
-## Related Plans
+## Related Docs
 
 - [Client Canonical Chunk Cache](../plans/client-canonical-chunk-cache.md)
-- [Realistic Globe Lighting](../plans/realistic-lighting-plan.md)
+- [Scrolling Day/Night](scrolling-day-night.md)
+- [Local Solar Time](local-solar-time.md)
 
 ## Related Vanilla Mechanics
 
@@ -81,11 +83,7 @@ tracking, tile borders, and settings state.
 ## Open Audits
 
 - Client-side canonical chunk cache is still planned, not authoritative.
-- Scrolling local solar time has a client render hook, but no pause/options
-  toggle yet.
 - Curvature horizon alignment now has a first-pass sky offset and curved cloud
   shader. It still needs in-game tuning across sea level, mountains, tiny
   tiles, fog, and large render distances.
-- Scrolling day/night secondary gameplay is implemented for villagers, bees,
-  turtle eggs, clocks, and patrol daylight gates. Commands and remaining global
-  time predicates still need separate audits.
+- Scrolling day/night weather interaction still needs manual verification.
