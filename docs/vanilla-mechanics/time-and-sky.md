@@ -12,6 +12,7 @@ Client-only sources:
 - `net/minecraft/client/multiplayer/ClientLevel.java`
 - `net/minecraft/client/Camera.java`
 - `net/minecraft/client/renderer/SkyRenderer.java`
+- `net/minecraft/client/renderer/CloudRenderer.java`
 - `net/minecraft/client/renderer/LightmapRenderStateExtractor.java`
 - `net/minecraft/client/renderer/LevelRenderer.java`
 
@@ -99,6 +100,11 @@ values.
 state from the camera. `LevelRenderer.java:607` through
 `LevelRenderer.java:609` samples cloud color and height from the same camera
 probe.
+
+`CloudRenderer.java:137` through `CloudRenderer.java:168` derives cloud texture
+position from camera X/Z plus a slow game-time X drift. X advances by
+`gameTime * 0.03` blocks, while player movement contributes directly through
+camera X/Z.
 
 ## Sky And Lightmap Consumers
 

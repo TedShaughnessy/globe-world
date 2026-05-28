@@ -20,3 +20,6 @@
 
 ## animals
 - getting on a horse triggers teleport
+
+## new debug screen
+

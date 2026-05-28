@@ -27,6 +27,9 @@ load time. Overworld and Nether curvature are saved separately in
 can be disabled with `0%`.
 Cloud vertices use the same shader curvature transform as terrain so vanilla's
 flat cloud layer bends with the world presentation.
+For small tiles, cloud texture sampling scales the camera X/Z contribution so
+player movement produces stronger cloud parallax. The vanilla time drift and
+cloud height are unchanged.
 The sky renderer applies a matching camera-relative horizon offset to the sky
 disc, lower dark disc, sunrise/sunset fan, sun, moon, and stars. The offset is
 derived from the terrain curvature radius and the camera's height above the
@@ -58,6 +61,7 @@ tracking, tile borders, and settings state.
 - `src/client/java/globe/world/client/GlobeWorldSettingsControls.java`
 - `src/client/java/globe/world/client/GlobeWorldSettingsScreen.java`
 - `src/client/java/globe/world/client/GlobeClientTilingSettings.java`
+- `src/client/java/globe/world/client/mixin/CloudRendererMixin.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
 - `src/main/java/globe/world/config/DayNightCycleMode.java`
 - `src/client/java/globe/world/client/GlobeScrollingSky.java`
