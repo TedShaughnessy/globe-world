@@ -19,10 +19,15 @@ public class KeyboardHandlerMixin {
     }
 
     @Inject(method = "handleDebugKeys", at = @At("HEAD"), cancellable = true)
-    private void globeWorld$handleTileBorderKey(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
+    private void globeWorld$handleDebugKey(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
         if (event.key() == GLFW_KEY_Y) {
-            boolean enabled = GlobeDebugState.toggleTileBorders();
-            this.debugFeedbackComponent(Component.literal("Globe tile borders: " + (enabled ? "enabled" : "disabled")));
+            if (event.hasShiftDown()) {
+                boolean enabled = GlobeDebugState.toggleTileBorders();
+                this.debugFeedbackComponent(Component.literal("Globe tile borders: " + (enabled ? "enabled" : "disabled")));
+            } else {
+                boolean enabled = GlobeDebugState.toggleDebugScreen();
+                this.debugFeedbackComponent(Component.literal("Globe World debug screen: " + (enabled ? "shown" : "hidden")));
+            }
             cir.setReturnValue(true);
         }
     }

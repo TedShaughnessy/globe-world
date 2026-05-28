@@ -47,8 +47,11 @@ gameplay predicates for sleeping, monster spawning brightness, and undead
 burning also use local solar time. Other global time predicates are documented
 as scrolling day/night boundaries.
 
-Client diagnostics and debug overlays remain targeted at alias loading,
-tracking, tile borders, and settings state.
+Client diagnostics remain targeted at alias loading, tracking, tile borders,
+and settings state. The client has a dedicated Globe World debug overlay toggled
+with `F3+Y`; it draws separate wrapped/canonical and absolute/alias columns
+without adding Globe World lines to vanilla F3. Tile-border rendering remains
+available with `F3+Shift+Y`.
 
 ## Key Files
 
@@ -68,6 +71,9 @@ tracking, tile borders, and settings state.
 - `src/client/java/globe/world/client/mixin/EnvironmentAttributeSystemBuilderMixin.java`
 - `src/client/java/globe/world/client/GlobeTileBorderRenderer.java`
 - `src/client/java/globe/world/client/GlobeDebugHud.java`
+- `src/client/java/globe/world/client/GlobeDebugState.java`
+- `src/client/java/globe/world/client/mixin/GuiMixin.java`
+- `src/client/java/globe/world/client/mixin/KeyboardHandlerMixin.java`
 - `src/client/java/globe/world/client/mixin/ShaderManagerMixin.java`
 - `src/client/java/globe/world/client/mixin/SkyRendererMixin.java`
 - `src/client/java/globe/world/client/mixin/CreateWorldScreenMixin.java`
