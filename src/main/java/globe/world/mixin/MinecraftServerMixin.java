@@ -4,6 +4,7 @@ import com.mojang.datafixers.DataFixer;
 import globe.world.config.GlobeConfig;
 import globe.world.config.TilingSettings;
 import globe.world.config.TilingSettingsHolder;
+import globe.world.util.GlobeDayLength;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.Services;
 import net.minecraft.server.WorldStem;
@@ -37,5 +38,12 @@ public class MinecraftServerMixin {
         MinecraftServer server = (MinecraftServer) (Object) this;
         TilingSettings settings = ((TilingSettingsHolder) (Object) server.getWorldGenSettings()).globeWorld$getTilingSettings();
         GlobeConfig.setTilingSettings(settings);
+    }
+
+    @Inject(method = "loadLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/MinecraftServer;prepareLevels()V"))
+    private void globeWorld$applyDayLength(CallbackInfo ci) {
+        MinecraftServer server = (MinecraftServer) (Object) this;
+        TilingSettings settings = ((TilingSettingsHolder) (Object) server.getWorldGenSettings()).globeWorld$getTilingSettings();
+        GlobeDayLength.applyToServer(server, settings);
     }
 }

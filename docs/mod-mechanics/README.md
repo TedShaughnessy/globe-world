@@ -35,8 +35,8 @@ World period:
    structure edge handling, and generation risks.
 6. [Client](client.md): client-facing packet/render behavior, curvature,
    diagnostics, and planned client cache work.
-7. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation
-   and gameplay across the canonical tile.
+7. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
+   saved day-length multiplier, and gameplay across the canonical tile.
 8. [Local Solar Time](local-solar-time.md): shared longitude-based local time
    math for scrolling day/night rendering and gameplay hooks.
 
@@ -61,6 +61,7 @@ World period:
 | Client chunk/world rendering | Implemented for server-relabeled aliases | [client.md](client.md) |
 | Curvature visuals | Implemented | [client.md](client.md) |
 | Local solar time helper | Implemented | [local-solar-time.md](local-solar-time.md) |
+| Day-length multiplier | Implemented | [scrolling-day-night.md](scrolling-day-night.md) |
 | Scrolling day/night mode | Implemented | [scrolling-day-night.md](scrolling-day-night.md) |
 | Scrolling sky/lightmap visuals | Implemented | [scrolling-day-night.md](scrolling-day-night.md) |
 | Core local day/night gameplay | Implemented for sleep, monster/phantom spawning, undead burning | [scrolling-day-night.md](scrolling-day-night.md) |

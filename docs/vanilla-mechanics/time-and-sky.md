@@ -79,6 +79,32 @@ Important tracks:
 through `AttributeTrackSampler.java:45` samples the configured world clock's
 total ticks and applies the track modifier.
 
+## Time Command And Clock Rate
+
+`TimeCommand.java:91` through `TimeCommand.java:95` registers `/time rate`
+with a positive float argument. `TimeCommand.java:195` through
+`TimeCommand.java:197` implements the command by calling
+`ServerClockManager.setRate(...)` for the selected clock.
+
+`ServerClockManager.java:64` through `ServerClockManager.java:69` ticks all
+world clocks when the global `ADVANCE_TIME` game rule is true.
+`ServerClockManager.java:109` through `ServerClockManager.java:111` stores a
+new per-clock rate, and `ServerClockManager.java:162` through
+`ServerClockManager.java:168` advances each clock by accumulating that rate into
+whole ticks. A rate below `1.0` lengthens the day; a rate above `1.0` shortens
+it.
+
+`ServerClockManager.java:113` through `ServerClockManager.java:122` broadcasts
+clock changes to clients and invalidates level environment-attribute tick
+caches. Mods should therefore apply clock-rate changes only after the server's
+player list and levels exist.
+
+`DimensionTypes.java:43` through `DimensionTypes.java:62` assigns the
+Overworld dimension type the `WorldClocks.OVERWORLD` default clock. The Nether
+has no default clock at `DimensionTypes.java:64` through `DimensionTypes.java:98`,
+while the End uses `WorldClocks.THE_END` at `DimensionTypes.java:100` through
+`DimensionTypes.java:129`.
+
 ## Client Sampling
 
 `ClientLevel.java:249` builds the client level's environment attribute system.

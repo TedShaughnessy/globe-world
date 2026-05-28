@@ -84,4 +84,8 @@ public class GlobeConfig {
     public static DayNightCycleMode dayNightCycleMode() {
         return settings.dayNightCycleMode();
     }
+
+    public static double dayLengthMultiplier() {
+        return settings.dayLengthMultiplier();
+    }
 }

@@ -10,12 +10,16 @@ public record TilingSettings(
         int netherCurvaturePercent,
         TilingMode netherMode,
         boolean netherOneEighthOverworldSize,
-        DayNightCycleMode dayNightCycleMode
+        DayNightCycleMode dayNightCycleMode,
+        double dayLengthMultiplier
 ) {
     public static final int CURVATURE_DISABLED_PERCENT = 0;
     public static final int CURVATURE_COMFORTABLE_PERCENT = 50;
     public static final int CURVATURE_REALISTIC_PERCENT = 100;
     public static final float CURVATURE_REALISTIC_SCALE = 12.0F;
+    public static final double DAY_LENGTH_DEFAULT_MULTIPLIER = 1.0D;
+    public static final double DAY_LENGTH_HALF_MULTIPLIER = 0.5D;
+    public static final double DAY_LENGTH_MAX_MULTIPLIER = 10.0D;
     public static final TilingSettings DISABLED = new TilingSettings(
             TilingMode.DISABLED,
             GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS,
@@ -23,7 +27,8 @@ public record TilingSettings(
             CURVATURE_DISABLED_PERCENT,
             TilingMode.DISABLED,
             true,
-            DayNightCycleMode.VANILLA
+            DayNightCycleMode.VANILLA,
+            DAY_LENGTH_DEFAULT_MULTIPLIER
     );
     public static final TilingSettings DEFAULT = new TilingSettings(
             TilingMode.DISABLED,
@@ -32,7 +37,8 @@ public record TilingSettings(
             CURVATURE_COMFORTABLE_PERCENT,
             TilingMode.DISABLED,
             true,
-            DayNightCycleMode.VANILLA
+            DayNightCycleMode.VANILLA,
+            DAY_LENGTH_DEFAULT_MULTIPLIER
     );
     public static final Codec<TilingSettings> CODEC =
             RecordCodecBuilder.create(instance ->
@@ -50,7 +56,9 @@ public record TilingSettings(
                             Codec.BOOL.optionalFieldOf("nether_one_eighth_overworld_size", true)
                                     .forGetter(TilingSettings::netherOneEighthOverworldSize),
                             DayNightCycleMode.CODEC.optionalFieldOf("day_night_cycle", DayNightCycleMode.VANILLA)
-                                    .forGetter(TilingSettings::dayNightCycleMode)
+                                    .forGetter(TilingSettings::dayNightCycleMode),
+                            Codec.DOUBLE.optionalFieldOf("day_length_multiplier", DAY_LENGTH_DEFAULT_MULTIPLIER)
+                                    .forGetter(TilingSettings::dayLengthMultiplier)
                     ).apply(instance, TilingSettings::new)
             );
 
@@ -62,7 +70,8 @@ public record TilingSettings(
                 CURVATURE_COMFORTABLE_PERCENT,
                 TilingMode.DISABLED,
                 true,
-                DayNightCycleMode.VANILLA
+                DayNightCycleMode.VANILLA,
+                DAY_LENGTH_DEFAULT_MULTIPLIER
         ).sanitized();
     }
 
@@ -96,7 +105,8 @@ public record TilingSettings(
                 netherCurvaturePercent,
                 netherMode,
                 netherOneEighthOverworldSize,
-                dayNightCycleMode
+                dayNightCycleMode,
+                dayLengthMultiplier
         ).sanitized();
     }
 
@@ -108,7 +118,8 @@ public record TilingSettings(
                 netherCurvaturePercent,
                 netherMode,
                 netherOneEighthOverworldSize,
-                dayNightCycleMode
+                dayNightCycleMode,
+                dayLengthMultiplier
         ).sanitized();
     }
 
@@ -120,7 +131,8 @@ public record TilingSettings(
                 netherCurvaturePercent,
                 netherMode,
                 netherOneEighthOverworldSize,
-                dayNightCycleMode
+                dayNightCycleMode,
+                dayLengthMultiplier
         ).sanitized();
     }
 
@@ -132,7 +144,8 @@ public record TilingSettings(
                 newNetherCurvaturePercent,
                 netherMode,
                 netherOneEighthOverworldSize,
-                dayNightCycleMode
+                dayNightCycleMode,
+                dayLengthMultiplier
         ).sanitized();
     }
 
@@ -144,7 +157,8 @@ public record TilingSettings(
                 netherCurvaturePercent,
                 newNetherMode,
                 netherOneEighthOverworldSize,
-                dayNightCycleMode
+                dayNightCycleMode,
+                dayLengthMultiplier
         ).sanitized();
     }
 
@@ -156,7 +170,8 @@ public record TilingSettings(
                 netherCurvaturePercent,
                 netherMode,
                 newNetherOneEighthOverworldSize,
-                dayNightCycleMode
+                dayNightCycleMode,
+                dayLengthMultiplier
         ).sanitized();
     }
 
@@ -168,7 +183,21 @@ public record TilingSettings(
                 netherCurvaturePercent,
                 netherMode,
                 netherOneEighthOverworldSize,
-                newDayNightCycleMode
+                newDayNightCycleMode,
+                dayLengthMultiplier
+        ).sanitized();
+    }
+
+    public TilingSettings withDayLengthMultiplier(double newDayLengthMultiplier) {
+        return new TilingSettings(
+                mode,
+                tileSize,
+                curvaturePercent,
+                netherCurvaturePercent,
+                netherMode,
+                netherOneEighthOverworldSize,
+                dayNightCycleMode,
+                newDayLengthMultiplier
         ).sanitized();
     }
 
@@ -180,7 +209,8 @@ public record TilingSettings(
                 sanitizeCurvaturePercent(netherCurvaturePercent),
                 netherMode != null ? netherMode : TilingMode.DISABLED,
                 netherOneEighthOverworldSize && Math.max(1, tileSize) >= 16 && Math.max(1, tileSize) % 8 == 0,
-                dayNightCycleMode != null ? dayNightCycleMode : DayNightCycleMode.VANILLA
+                dayNightCycleMode != null ? dayNightCycleMode : DayNightCycleMode.VANILLA,
+                sanitizeDayLengthMultiplier(dayLengthMultiplier)
         );
     }
 
@@ -190,5 +220,15 @@ public record TilingSettings(
 
     public static float curvatureScaleFromPercent(int percent) {
         return sanitizeCurvaturePercent(percent) * CURVATURE_REALISTIC_SCALE / 100.0F;
+    }
+
+    public static double sanitizeDayLengthMultiplier(double multiplier) {
+        if (!Double.isFinite(multiplier)) {
+            return DAY_LENGTH_DEFAULT_MULTIPLIER;
+        }
+        if (multiplier <= 0.75D) {
+            return DAY_LENGTH_HALF_MULTIPLIER;
+        }
+        return Math.clamp(Math.rint(multiplier), DAY_LENGTH_DEFAULT_MULTIPLIER, DAY_LENGTH_MAX_MULTIPLIER);
     }
 }

@@ -32,6 +32,14 @@ The setting is serialized as `day_night_cycle`; legacy saved `"realistic"`
 values decode as `SCROLLING`. The world-creation UI and pause/options Globe
 World settings page expose the setting as `Day/Night Cycle`.
 
+Day length is saved separately as `TilingSettings.dayLengthMultiplier()` and
+serialized as `day_length_multiplier`. The UI exposes a discrete `Day Length`
+slider with `0.5x`, then `1x` through `10x`. This multiplier controls how long
+the Overworld day lasts in both `VANILLA` and `SCROLLING` day/night modes:
+`1x` uses vanilla speed, `2x` takes twice as long, and `0.5x` takes half as
+long. `GlobeDayLength` applies the inverse multiplier to vanilla's Overworld
+clock rate, matching the `/time rate` command model.
+
 ## Longitude Math
 
 The shared coordinate math lives in `CoordUtil`:
@@ -114,12 +122,16 @@ These systems intentionally remain global or are accepted for now:
 - Server block light and stored sky light propagation.
 - Crop/random tick behavior.
 - Commands and generic time predicates.
+- Manual `/time rate` changes can be overwritten by the saved Globe World day
+  length setting when a world loads or the pause/options day-length setting
+  changes.
 - Dusk's vanilla direction-dependent sunrise/sunset fan.
 
 ## Key Files
 
 - `src/main/java/globe/world/config/DayNightCycleMode.java`
 - `src/main/java/globe/world/config/TilingSettings.java`
+- `src/main/java/globe/world/util/GlobeDayLength.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
 - `src/main/java/globe/world/util/GlobeLocalDaylight.java`
 - `src/client/java/globe/world/client/GlobeScrollingSky.java`

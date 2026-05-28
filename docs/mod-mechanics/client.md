@@ -38,11 +38,13 @@ falls away.
 
 Local solar-time day/night is implemented for client visuals under
 `DayNightCycleMode.SCROLLING`. The world-creation and pause/options UI can
-select it, `CoordUtil` exposes shared longitude-based local solar time helpers,
-and the client replaces the Overworld visual day timeline with
-camera-position-aware environment attribute layers. Sky color, sun/moon/star
-angles, star brightness, sunrise/sunset color, and lightmap sky brightness use
-local canonical X while weather layers still run afterward. The core server
+select it and set a saved day-length multiplier. `CoordUtil` exposes shared
+longitude-based local solar time helpers, and the client replaces the Overworld
+visual day timeline with camera-position-aware environment attribute layers.
+Sky color, sun/moon/star angles, star brightness, sunrise/sunset color, and
+lightmap sky brightness use local canonical X while weather layers still run
+afterward. The day-length multiplier changes the underlying Overworld clock
+rate, so it affects both vanilla and scrolling day/night modes. The core server
 gameplay predicates for sleeping, monster spawning brightness, and undead
 burning also use local solar time. Other global time predicates are documented
 as scrolling day/night boundaries.
@@ -66,6 +68,7 @@ available with `F3+Shift+Y`.
 - `src/client/java/globe/world/client/GlobeClientTilingSettings.java`
 - `src/client/java/globe/world/client/mixin/CloudRendererMixin.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
+- `src/main/java/globe/world/util/GlobeDayLength.java`
 - `src/main/java/globe/world/config/DayNightCycleMode.java`
 - `src/client/java/globe/world/client/GlobeScrollingSky.java`
 - `src/client/java/globe/world/client/mixin/EnvironmentAttributeSystemBuilderMixin.java`

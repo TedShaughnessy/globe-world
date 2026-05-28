@@ -10,9 +10,10 @@ import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
-import net.minecraft.client.gui.layouts.CommonLayouts;
+import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.layouts.Layout;
 import net.minecraft.client.gui.layouts.LayoutElement;
+import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
@@ -23,10 +24,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.DoubleConsumer;
 import java.util.function.Supplier;
 
 public class GlobeWorldSettingsControls implements LayoutElement {
     private static final int CONTROL_WIDTH = 310;
+    private static final int DAY_LENGTH_SLIDER_WIDTH = 153;
+    private static final int DAY_NIGHT_MODE_WIDTH = 153;
     private static final int ROW_SPACING = 4;
     private static final int SECTION_SPACING = 12;
     private static final int INFO_WIDTH = CONTROL_WIDTH;
@@ -34,6 +38,19 @@ public class GlobeWorldSettingsControls implements LayoutElement {
             TilingSettings.CURVATURE_DISABLED_PERCENT,
             TilingSettings.CURVATURE_COMFORTABLE_PERCENT,
             TilingSettings.CURVATURE_REALISTIC_PERCENT
+    );
+    private static final List<Double> DAY_LENGTH_PRESETS = List.of(
+            TilingSettings.DAY_LENGTH_HALF_MULTIPLIER,
+            1.0D,
+            2.0D,
+            3.0D,
+            4.0D,
+            5.0D,
+            6.0D,
+            7.0D,
+            8.0D,
+            9.0D,
+            TilingSettings.DAY_LENGTH_MAX_MULTIPLIER
     );
     private static final List<NetherGlobeMode> ALL_NETHER_MODES = List.of(
             NetherGlobeMode.DISABLED,
@@ -91,6 +108,7 @@ public class GlobeWorldSettingsControls implements LayoutElement {
     private CycleButton<Integer> netherCurvatureButton;
     private GlobeCurvatureSlider netherCurvatureSlider;
     private CycleButton<DayNightCycleMode> dayNightCycleButton;
+    private DayLengthMultiplierSlider dayLengthSlider;
 
     private GlobeWorldSettingsControls(
             boolean createWorld,
@@ -146,7 +164,16 @@ public class GlobeWorldSettingsControls implements LayoutElement {
             }
         });
         addRow(
-                CommonLayouts.labeledElement(minecraft.font, customTileField, Component.literal("Overworld Tile Size (chunks)")),
+                new LabeledInputRow(
+                        new StringWidget(
+                                CONTROL_WIDTH - customTileField.getWidth() - ROW_SPACING,
+                                customTileField.getHeight(),
+                                Component.literal("Overworld Tile Size (chunks)"),
+                                minecraft.font
+                        ),
+                        customTileField,
+                        CONTROL_WIDTH
+                ),
                 () -> createWorld && createMode == CreateMode.CUSTOM,
                 SECTION_SPACING
         );
@@ -185,7 +212,7 @@ public class GlobeWorldSettingsControls implements LayoutElement {
                 settingsGetter.get().netherCurvaturePercent(),
                 percent -> setSettings(settingsGetter.get().withNetherCurvaturePercent(percent))
         );
-        addRow(netherCurvatureButton, () -> createWorld && settingsGetter.get().enabled());
+        addRow(netherCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && settingsGetter.get().enabled());
 
         netherCurvatureSlider = new GlobeCurvatureSlider(
                 0,
@@ -196,13 +223,26 @@ public class GlobeWorldSettingsControls implements LayoutElement {
                 settingsGetter.get().netherCurvaturePercent(),
                 percent -> setSettings(settingsGetter.get().withNetherCurvaturePercent(percent))
         );
-        addRow(netherCurvatureSlider, () -> !createWorld);
+        addRow(netherCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && settingsGetter.get().enabled());
+
+        dayLengthSlider = new DayLengthMultiplierSlider(
+                0,
+                0,
+                DAY_LENGTH_SLIDER_WIDTH,
+                20,
+                settingsGetter.get().dayLengthMultiplier(),
+                multiplier -> setSettings(settingsGetter.get().withDayLengthMultiplier(multiplier))
+        );
 
         dayNightCycleButton = CycleButton.<DayNightCycleMode>builder(mode -> Component.literal(mode.displayName()), settingsGetter.get().dayNightCycleMode())
                 .withValues(DayNightCycleMode.values())
-                .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Day/Night Cycle"),
+                .create(0, 0, DAY_NIGHT_MODE_WIDTH, 20, Component.literal("Day Cycle"),
                         (button, mode) -> setSettings(settingsGetter.get().withDayNightCycleMode(mode)));
-        addSectionRow(dayNightCycleButton, () -> settingsGetter.get().enabled());
+
+        LinearLayout dayNightRow = LinearLayout.horizontal().spacing(ROW_SPACING);
+        dayNightRow.addChild(dayLengthSlider);
+        dayNightRow.addChild(dayNightCycleButton);
+        addSectionRow(dayNightRow, () -> settingsGetter.get().enabled());
     }
 
     private CycleButton<Integer> curvatureButton(String label, int initialPercent, Consumer<Integer> onChanged) {
@@ -272,6 +312,8 @@ public class GlobeWorldSettingsControls implements LayoutElement {
         netherCurvatureSlider.active = settings.netherEnabled();
         dayNightCycleButton.setValue(settings.dayNightCycleMode());
         dayNightCycleButton.active = settings.enabled();
+        dayLengthSlider.setMultiplier(settings.dayLengthMultiplier());
+        dayLengthSlider.active = settings.enabled();
 
         arrange();
     }
@@ -317,6 +359,14 @@ public class GlobeWorldSettingsControls implements LayoutElement {
 
     private static String number(long value) {
         return NumberFormat.getIntegerInstance(Locale.US).format(value);
+    }
+
+    private static String multiplierLabel(double multiplier) {
+        double sanitized = TilingSettings.sanitizeDayLengthMultiplier(multiplier);
+        if (sanitized == TilingSettings.DAY_LENGTH_HALF_MULTIPLIER) {
+            return "0.5x";
+        }
+        return "%dx".formatted((int) sanitized);
     }
 
     private TilePreset currentTilePreset() {
@@ -424,6 +474,60 @@ public class GlobeWorldSettingsControls implements LayoutElement {
     private record Row(LayoutElement element, BooleanSupplier visible, int topSpacing) {
     }
 
+    private static class LabeledInputRow implements LayoutElement {
+        private final StringWidget label;
+        private final EditBox input;
+        private final int width;
+        private int x;
+        private int y;
+
+        private LabeledInputRow(StringWidget label, EditBox input, int width) {
+            this.label = label;
+            this.input = input;
+            this.width = width;
+        }
+
+        @Override
+        public void setX(int x) {
+            this.x = x;
+            this.label.setX(x);
+            this.input.setX(x + this.width - this.input.getWidth());
+        }
+
+        @Override
+        public void setY(int y) {
+            this.y = y;
+            this.label.setY(y);
+            this.input.setY(y);
+        }
+
+        @Override
+        public int getX() {
+            return x;
+        }
+
+        @Override
+        public int getY() {
+            return y;
+        }
+
+        @Override
+        public int getWidth() {
+            return width;
+        }
+
+        @Override
+        public int getHeight() {
+            return Math.max(label.getHeight(), input.getHeight());
+        }
+
+        @Override
+        public void visitWidgets(Consumer<AbstractWidget> widgetVisitor) {
+            widgetVisitor.accept(label);
+            widgetVisitor.accept(input);
+        }
+    }
+
     private record TilePreset(int chunks, String label) {
     }
 
@@ -507,6 +611,77 @@ public class GlobeWorldSettingsControls implements LayoutElement {
         private static TilePreset presetFromValue(double value) {
             int index = (int) Math.round(Math.clamp(value, 0.0D, 1.0D) * (TILE_PRESETS.size() - 1));
             return TILE_PRESETS.get(index);
+        }
+    }
+
+    private static class DayLengthMultiplierSlider extends AbstractSliderButton {
+        private final DoubleConsumer onValueChanged;
+        private boolean changingWithMouse;
+        private double pendingMultiplier;
+
+        private DayLengthMultiplierSlider(
+                int x,
+                int y,
+                int width,
+                int height,
+                double initialMultiplier,
+                DoubleConsumer onValueChanged) {
+            super(x, y, width, height, Component.empty(), valueFromMultiplier(initialMultiplier));
+            this.onValueChanged = onValueChanged;
+            this.pendingMultiplier = multiplierFromValue(this.value);
+            updateMessage();
+        }
+
+        private void setMultiplier(double multiplier) {
+            this.value = valueFromMultiplier(multiplier);
+            this.pendingMultiplier = multiplierFromValue(this.value);
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            this.setMessage(Component.literal("Day Length: ").append(Component.literal(multiplierLabel(multiplierFromValue(this.value)))));
+        }
+
+        @Override
+        protected void applyValue() {
+            double multiplier = multiplierFromValue(this.value);
+            this.value = valueFromMultiplier(multiplier);
+            if (this.changingWithMouse) {
+                this.pendingMultiplier = multiplier;
+            } else {
+                this.onValueChanged.accept(multiplier);
+            }
+        }
+
+        @Override
+        public void onClick(MouseButtonEvent event, boolean doubleClick) {
+            this.changingWithMouse = true;
+            this.pendingMultiplier = multiplierFromValue(this.value);
+            super.onClick(event, doubleClick);
+        }
+
+        @Override
+        public void onRelease(MouseButtonEvent event) {
+            super.onRelease(event);
+            this.changingWithMouse = false;
+            double multiplier = multiplierFromValue(this.value);
+            this.pendingMultiplier = multiplier;
+            this.onValueChanged.accept(multiplier);
+        }
+
+        private static double valueFromMultiplier(double multiplier) {
+            double sanitized = TilingSettings.sanitizeDayLengthMultiplier(multiplier);
+            int index = DAY_LENGTH_PRESETS.indexOf(sanitized);
+            if (index < 0 || DAY_LENGTH_PRESETS.size() <= 1) {
+                return 0.0D;
+            }
+            return (double) index / (double) (DAY_LENGTH_PRESETS.size() - 1);
+        }
+
+        private static double multiplierFromValue(double value) {
+            int index = (int) Math.round(Math.clamp(value, 0.0D, 1.0D) * (DAY_LENGTH_PRESETS.size() - 1));
+            return DAY_LENGTH_PRESETS.get(index);
         }
     }
 
