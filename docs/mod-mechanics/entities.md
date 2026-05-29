@@ -15,9 +15,11 @@ opposite edge.
 
 ## Implementation
 
-Mobs are canonicalized before being added to `ServerLevel`. Entity add,
-teleport, and absolute position-sync packets are virtualized per viewer. Relative
-movement packets stay relative where possible.
+Mobs and item entities are canonicalized before being added to `ServerLevel`.
+Item entities also re-canonicalize after ticking so drops that drift across a
+tile edge remain stored in the finite tile. Entity add, teleport, and absolute
+position-sync packets are virtualized per viewer. Relative movement packets stay
+relative where possible.
 
 Players may travel through virtual coordinates during normal play. On login,
 respawn, and bed wake-up, the server rebases the player to the canonical X/Z
@@ -36,6 +38,19 @@ uses local burn-time and brightness predicates at the mob position. Pillager
 patrol attempts also use local daylight at the selected spawn position instead
 of the dimension-wide bright-outside gate.
 
+For alias chunks, entity tracking treats chunks inside the player's tracking
+view as eligible even while vanilla still has the chunk packet marked pending.
+This avoids a slow one-by-one trickle of add-entity packets as alias chunks
+finish sending. After a chunk packet is sent, player entity tracking is also
+refreshed immediately. Each real entity still has one client entity id, so tiny
+tiles that show multiple aliases at once render the nearest visible copy; when
+that nearest alias changes, the server sends an absolute position sync to rebase
+the client entity.
+
+Player item pickup scans include the player's canonical pickup box as well as
+the raw box. This lets a player standing in an alias collect the same canonical
+item entity they see through virtualized packets.
+
 Mob sensing and targeting have partial wrapped-distance support. Pathfinding is
 still an MVP compromise because vanilla path nodes and goals are raw Euclidean
 positions.
@@ -43,9 +58,12 @@ positions.
 ## Key Files
 
 - `src/main/java/globe/world/util/EntityPacketUtil.java`
+- `src/main/java/globe/world/util/EntityCanonicalizer.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
 - `src/main/java/globe/world/util/PlayerCanonicalizer.java`
 - `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java`
+- `src/main/java/globe/world/mixin/ItemEntityMixin.java`
+- `src/main/java/globe/world/mixin/PlayerItemPickupMixin.java`
 - `src/main/java/globe/world/mixin/PlayerListCanonicalPositionMixin.java`
 - `src/main/java/globe/world/mixin/ServerPlayerCanonicalPositionMixin.java`
 - `src/main/java/globe/world/mixin/ServerEntityMixin.java`

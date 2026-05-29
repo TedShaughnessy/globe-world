@@ -6,6 +6,7 @@ import globe.world.util.CoordUtil;
 import globe.world.util.EntityPacketUtil;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -16,7 +17,15 @@ import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 @Mixin(targets = "net.minecraft.server.level.ChunkMap$TrackedEntity")
 public class ChunkMapTrackedEntityMixin {
@@ -24,6 +33,13 @@ public class ChunkMapTrackedEntityMixin {
     @Shadow
     @Final
     private Entity entity;
+
+    @Shadow
+    @Final
+    private Set<ServerPlayerConnection> seenBy;
+
+    @Unique
+    private final Map<UUID, Long> globeWorld$lastVirtualChunkByPlayer = new HashMap<>();
 
     @WrapOperation(
         method = "updatePlayer",
@@ -57,7 +73,36 @@ public class ChunkMapTrackedEntityMixin {
         ChunkPos playerChunk = player.chunkPosition();
         int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
         int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
+        if (virtualX != chunkX || virtualZ != chunkZ) {
+            return player.getChunkTrackingView().contains(virtualX, virtualZ);
+        }
         return original.call(chunkMap, player, virtualX, virtualZ);
+    }
+
+    @Inject(method = "updatePlayer", at = @At("TAIL"))
+    private void resyncNearestAliasWhenVisibleCopyChanges(ServerPlayer player, CallbackInfo ci) {
+        if (!this.seenBy.contains(player.connection)) {
+            this.globeWorld$lastVirtualChunkByPlayer.remove(player.getUUID());
+            return;
+        }
+
+        ChunkPos playerChunk = player.chunkPosition();
+        int virtualX = CoordUtil.virtualChunk(
+                player.level(),
+                CoordUtil.wrapChunk(player.level(), this.entity.chunkPosition().x()),
+                playerChunk.x()
+        );
+        int virtualZ = CoordUtil.virtualChunk(
+                player.level(),
+                CoordUtil.wrapChunk(player.level(), this.entity.chunkPosition().z()),
+                playerChunk.z()
+        );
+        long virtualChunk = new ChunkPos(virtualX, virtualZ).pack();
+        Long previous = this.globeWorld$lastVirtualChunkByPlayer.put(player.getUUID(), virtualChunk);
+        if (previous != null && previous != virtualChunk) {
+            Packet<? super ClientGamePacketListener> packet = ClientboundEntityPositionSyncPacket.of(this.entity);
+            player.connection.send(EntityPacketUtil.virtualizeFor(packet, player));
+        }
     }
 
     @WrapOperation(

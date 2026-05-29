@@ -35,6 +35,8 @@ Important anchors:
 - `ServerLevel.java:1830` `getEntities`
 - `ServerLevel.java:1886` `areEntitiesLoaded`
 - `ServerLevel.java:1894` `isPositionEntityTicking`
+- `Player.java:439` `aiStep` pickup scan calls `Level.getEntities(player, pickupArea)`
+- `ItemEntity.java:329` `playerTouch` transfers the stack into the player's inventory
 
 Entity manager callbacks wire entities into chunk tracking:
 
@@ -128,12 +130,17 @@ Project hooks for entity storage and visibility:
 
 - `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:18` canonicalizes mobs before `ServerLevel.addEntity(...)` stores them.
 - `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:23` and `:28` canonicalize mobs loaded from chunk/entity streams.
+- `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java:57` maps an entity's canonical chunk to the viewer's nearest alias and allows alias tracking by tracking-view membership rather than vanilla's pending-chunk gate.
+- `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java:69` tracks each player's current virtual chunk for a visible entity and sends an absolute sync when the nearest alias changes.
 - `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:27` and `:46` translate canonical chunk lookup to each player's nearest tracked virtual chunk for player-provider queries.
+- `src/main/java/globe/world/mixin/PlayerChunkSenderMixin.java:74` refreshes entity tracking after a chunk packet is sent, so entities missed while the chunk was pending pair immediately.
 - `src/main/java/globe/world/util/ChunkAliasTracker.java:16` tracks loaded aliases per player and canonical chunk for block/entity packet fanout.
 
 Current status:
 
 - Good: spawned mobs are stored in canonical coordinates.
+- Good: item entities are stored in canonical coordinates, kept canonical after
+  ticking, and player pickup scans also query the player's canonical pickup box.
 - Good: spawn position math and mob caps are mostly wrapped to canonical chunk identity.
 - Good: `ServerChunkCache.tickSpawningChunk(...)` now receives each canonical chunk at most once per `collectSpawningChunks(...)` pass, avoiding duplicate spawn attempts, inhabited-time increments, and thunder work from aliases.
 - Partial: despawn, sensors, targeting, and pathfinding each have their own distance/visibility assumptions. Some are wrapped elsewhere, but this page should remain the entry point for auditing them.

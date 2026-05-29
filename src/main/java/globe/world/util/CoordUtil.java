@@ -317,6 +317,21 @@ public class CoordUtil {
         return canonical.move(dx, 0.0, dz);
     }
 
+    public static AABB wrapAabb(Level level, AABB box) {
+        return wrapAabb(DimensionTiling.forLevel(level), box);
+    }
+
+    public static AABB wrapAabb(DimensionTiling tiling, AABB box) {
+        double centerX = (box.minX + box.maxX) * 0.5;
+        double centerZ = (box.minZ + box.maxZ) * 0.5;
+        double dx = wrapBlock(tiling, centerX) - centerX;
+        double dz = wrapBlock(tiling, centerZ) - centerZ;
+        if (dx == 0.0 && dz == 0.0) {
+            return box;
+        }
+        return box.move(dx, 0.0, dz);
+    }
+
     /** Returns the virtual tile of canonical coord nearest to playerCoord. */
     public static int virtualChunk(int canonical, int playerChunk) {
         return virtualChunk(DimensionTiling.currentOrOverworld(), canonical, playerChunk);

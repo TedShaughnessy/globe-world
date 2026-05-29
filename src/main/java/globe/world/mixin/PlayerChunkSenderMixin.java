@@ -72,6 +72,22 @@ public class PlayerChunkSenderMixin {
         }
     }
 
+    @Inject(
+        method = "sendChunk(Lnet/minecraft/server/network/ServerGamePacketListenerImpl;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/LevelChunk;)V",
+        at = @At("TAIL")
+    )
+    private static void refreshEntityTrackingAfterChunkSend(
+            ServerGamePacketListenerImpl connection,
+            ServerLevel level,
+            LevelChunk chunk,
+            CallbackInfo ci) {
+        int cx = chunk.getPos().x(), cz = chunk.getPos().z();
+        int wcx = CoordUtil.wrapChunk(level, cx), wcz = CoordUtil.wrapChunk(level, cz);
+        if (wcx != cx || wcz != cz) {
+            level.getChunkSource().chunkMap.move(connection.player);
+        }
+    }
+
     // Each non-canonical alias is sent at its raw position as the virtual coord.
     // Multiple aliases of the same canonical coexist on the client — this is
     // intentional and necessary for the tiling illusion as the player moves.
