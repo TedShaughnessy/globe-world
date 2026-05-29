@@ -37,4 +37,4 @@ Player coordinates grow unboundedly during a session. On death, bed wake-up, or 
 | 1 | Done | Core chunk wrapping — terrain repeats, no seams yet |
 | 2 | Done | Periodic noise, biome and structure seam fix |
 | 3 | Planned | Entity multiplayer — tracking, spawn/despawn, packet translation |
-| 4 | Partial | Cosmetic shader bends terrain downward with a 0-100% world-creation curvature slider |
+| 4 | Done | Cosmetic shader bends terrain downward with a 0-100% world-creation curvature slider |
