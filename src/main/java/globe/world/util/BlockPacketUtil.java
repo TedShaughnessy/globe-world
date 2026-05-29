@@ -1,19 +1,26 @@
 package globe.world.util;
 
+import globe.world.GlobeWorld;
 import globe.world.mixin.ClientboundBlockEntityDataPacketAccessor;
+import globe.world.mixin.ClientboundLightUpdatePacketAccessor;
 import globe.world.mixin.ClientboundSectionBlocksUpdatePacketAccessor;
+import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.shorts.ShortArraySet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundSectionBlocksUpdatePacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class BlockPacketUtil {
     public static Packet<?> virtualizeFor(Packet<?> packet, ServerPlayer viewer) {
@@ -25,6 +32,9 @@ public class BlockPacketUtil {
         }
         if (packet instanceof ClientboundSectionBlocksUpdatePacket sectionUpdate) {
             return virtualizeSectionUpdate(sectionUpdate, viewer);
+        }
+        if (packet instanceof ClientboundLightUpdatePacket lightUpdate) {
+            return virtualizeLightUpdate(lightUpdate, viewer);
         }
         return packet;
     }
@@ -38,6 +48,9 @@ public class BlockPacketUtil {
         }
         if (packet instanceof ClientboundSectionBlocksUpdatePacket sectionUpdate) {
             return virtualizeSectionUpdateForLoadedAliases(sectionUpdate, viewer);
+        }
+        if (packet instanceof ClientboundLightUpdatePacket lightUpdate) {
+            return virtualizeLightUpdateForLoadedAliases(lightUpdate, viewer);
         }
         return List.of(packet);
     }
@@ -89,6 +102,14 @@ public class BlockPacketUtil {
         copyAccess.globeWorld$setPositions(positions.clone());
         copyAccess.globeWorld$setStates(access.globeWorld$getStates().clone());
         return copy;
+    }
+
+    private static ClientboundLightUpdatePacket virtualizeLightUpdate(
+            ClientboundLightUpdatePacket packet,
+            ServerPlayer viewer) {
+        ChunkPos virtualChunk = virtualLightChunk(packet, viewer);
+        if (virtualChunk.x() == packet.getX() && virtualChunk.z() == packet.getZ()) return packet;
+        return copyLightUpdate(packet, virtualChunk);
     }
 
     private static List<Packet<?>> virtualizeBlockUpdateForLoadedAliases(
@@ -164,6 +185,35 @@ public class BlockPacketUtil {
         return packets;
     }
 
+    private static List<Packet<?>> virtualizeLightUpdateForLoadedAliases(
+            ClientboundLightUpdatePacket packet,
+            ServerPlayer viewer) {
+        int canonicalChunkX = CoordUtil.wrapChunk(viewer.level(), packet.getX());
+        int canonicalChunkZ = CoordUtil.wrapChunk(viewer.level(), packet.getZ());
+        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
+                viewer,
+                viewer.level().dimension(),
+                canonicalChunkX,
+                canonicalChunkZ);
+        if (aliases.isEmpty()) {
+            ChunkPos virtualChunk = virtualLightChunk(packet, viewer, canonicalChunkX, canonicalChunkZ);
+            logLightFallback(packet, viewer, canonicalChunkX, canonicalChunkZ, virtualChunk);
+            if (virtualChunk.x() == packet.getX() && virtualChunk.z() == packet.getZ()) {
+                return List.of(packet);
+            }
+            return List.of(copyLightUpdate(packet, virtualChunk));
+        }
+
+        Set<Long> seenAliases = new HashSet<>(aliases.size());
+        List<Packet<?>> packets = new ArrayList<>(aliases.size());
+        for (ChunkPos alias : aliases) {
+            if (seenAliases.add(alias.pack())) {
+                packets.add(copyLightUpdate(packet, alias));
+            }
+        }
+        return packets;
+    }
+
     private static BlockPos virtualBlockPos(BlockPos pos, ServerPlayer viewer) {
         int x = (int) CoordUtil.virtualBlock(viewer.level(), pos.getX(), viewer.getX());
         int z = (int) CoordUtil.virtualBlock(viewer.level(), pos.getZ(), viewer.getZ());
@@ -194,5 +244,60 @@ public class BlockPacketUtil {
         copyAccess.globeWorld$setPositions(access.globeWorld$getPositions().clone());
         copyAccess.globeWorld$setStates(access.globeWorld$getStates().clone());
         return copy;
+    }
+
+    private static ChunkPos virtualLightChunk(ClientboundLightUpdatePacket packet, ServerPlayer viewer) {
+        int canonicalChunkX = CoordUtil.wrapChunk(viewer.level(), packet.getX());
+        int canonicalChunkZ = CoordUtil.wrapChunk(viewer.level(), packet.getZ());
+        return virtualLightChunk(packet, viewer, canonicalChunkX, canonicalChunkZ);
+    }
+
+    private static ChunkPos virtualLightChunk(
+            ClientboundLightUpdatePacket packet,
+            ServerPlayer viewer,
+            int canonicalChunkX,
+            int canonicalChunkZ) {
+        ChunkPos playerChunk = viewer.chunkPosition();
+        int virtualX = CoordUtil.virtualChunk(viewer.level(), canonicalChunkX, playerChunk.x());
+        int virtualZ = CoordUtil.virtualChunk(viewer.level(), canonicalChunkZ, playerChunk.z());
+        if (virtualX == packet.getX() && virtualZ == packet.getZ()) {
+            return new ChunkPos(packet.getX(), packet.getZ());
+        }
+        return new ChunkPos(virtualX, virtualZ);
+    }
+
+    private static ClientboundLightUpdatePacket copyLightUpdate(
+            ClientboundLightUpdatePacket packet,
+            ChunkPos visibleChunk) {
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            buffer.writeVarInt(visibleChunk.x());
+            buffer.writeVarInt(visibleChunk.z());
+            packet.getLightData().write(buffer);
+            return ClientboundLightUpdatePacketAccessor.globeWorld$new(buffer);
+        } finally {
+            buffer.release();
+        }
+    }
+
+    private static void logLightFallback(
+            ClientboundLightUpdatePacket packet,
+            ServerPlayer viewer,
+            int canonicalChunkX,
+            int canonicalChunkZ,
+            ChunkPos virtualChunk) {
+        if (!DimensionTiling.forLevel(viewer.level()).enabled()
+                || !GlobeWorld.LOGGER.isDebugEnabled()
+                || (virtualChunk.x() == packet.getX() && virtualChunk.z() == packet.getZ())) {
+            return;
+        }
+
+        GlobeWorld.LOGGER.debug(
+                "GW_LIGHT_ALIAS_FANOUT fallback player={} original={} canonical={} virtual={}",
+                viewer.getScoreboardName(),
+                new ChunkPos(packet.getX(), packet.getZ()),
+                new ChunkPos(canonicalChunkX, canonicalChunkZ),
+                virtualChunk
+        );
     }
 }

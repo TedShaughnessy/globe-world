@@ -17,6 +17,7 @@
 		"ChunkHolderMixin",
 		"ClientboundBlockEntityDataPacketAccessor",
 		"ClientboundLevelChunkWithLightMixin",
+		"ClientboundLightUpdatePacketAccessor",
 		"ClientboundSectionBlocksUpdatePacketAccessor",
 		"ChunkMapPlayerProviderMixin",
 		"DensityFunctionsNoiseMixin",

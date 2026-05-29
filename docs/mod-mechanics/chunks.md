@@ -24,9 +24,9 @@ relabeled to the alias chunk position on the wire. Forget/unload packets keep
 the raw alias position because that is the client-visible chunk being removed.
 
 The server tracks which alias chunks each player has loaded for a canonical
-chunk in that player's current dimension. Later block, section, and
-block-entity updates fan out to every visible alias, not just the nearest
-virtual copy.
+chunk in that player's current dimension. Later block, section, block-entity,
+and incremental light updates fan out to every visible alias, not just the
+nearest virtual copy.
 
 Alias tracking is client-visibility bookkeeping. It is populated when chunk
 packets are sent, trimmed when chunk drop packets are sent, and force-cleared

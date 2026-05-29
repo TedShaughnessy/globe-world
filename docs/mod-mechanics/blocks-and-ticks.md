@@ -24,9 +24,9 @@ state so the client still receives redstone shape changes such as dot-to-line
 updates.
 
 `BlockPacketUtil` virtualizes single-block updates, multi-block section updates,
-and block-entity data packets. When a player has multiple loaded aliases for the
-same canonical chunk, it emits one packet per alias with positions offset into
-that alias.
+block-entity data packets, and incremental light update packets. When a player
+has multiple loaded aliases for the same canonical chunk, it emits one packet
+per alias with positions or chunk coordinates offset into that alias.
 
 Random block ticks are canonicalized and deduped during
 `ChunkMap.forEachBlockTickingChunk`. Globe snapshots the ticking chunk keys
@@ -55,6 +55,7 @@ outside the canonical tile.
 - `src/main/java/globe/world/mixin/LevelTicksMixin.java`
 - `src/main/java/globe/world/mixin/ServerLevelTicksDimensionMixin.java`
 - `src/main/java/globe/world/mixin/ClientboundBlockEntityDataPacketAccessor.java`
+- `src/main/java/globe/world/mixin/ClientboundLightUpdatePacketAccessor.java`
 - `src/main/java/globe/world/mixin/ClientboundSectionBlocksUpdatePacketAccessor.java`
 
 ## Related Vanilla Mechanics
@@ -73,3 +74,5 @@ outside the canonical tile.
   edge-case testing.
 - Redstone, pistons, observers, doors, and similar neighbor-sensitive blocks
   need focused cross-edge testing.
+- Server-side light propagation across canonical tile edges needs investigation
+  if visible seams remain after incremental light packet fanout.
