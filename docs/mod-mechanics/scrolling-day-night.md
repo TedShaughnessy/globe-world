@@ -59,7 +59,10 @@ clock, and the wrapped X seam maps back to the same solar phase modulo one day.
 
 Minecraft 26.1.2 drives most sky and lightmap visuals through environment
 attributes. `GlobeScrollingSky` replaces the Overworld visual day timeline with
-camera-position-aware positional layers while scrolling mode is active.
+mode-aware layers in Globe worlds. The layers sample the vanilla global clock
+while `DayNightCycleMode.VANILLA` is active and switch to local solar time while
+`DayNightCycleMode.SCROLLING` is active, so pause/options mode changes apply to
+the existing loaded level.
 
 Locally sampled visual attributes include:
 

@@ -10,6 +10,7 @@ import net.minecraft.util.EasingType;
 import net.minecraft.util.KeyframeTrack;
 import net.minecraft.util.KeyframeTrackSampler;
 import net.minecraft.world.attribute.EnvironmentAttribute;
+import net.minecraft.world.attribute.EnvironmentAttributeLayer;
 import net.minecraft.world.attribute.EnvironmentAttributeSystem;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.attribute.LerpFunction;
@@ -109,7 +110,7 @@ public final class GlobeScrollingSky {
             EnvironmentAttribute<?> attribute,
             ClockManager clockManager
     ) {
-        if (!enabled() || !timeline.is(Timelines.OVERWORLD_DAY)) {
+        if (!timelineLayersEnabled() || !timeline.is(Timelines.OVERWORLD_DAY)) {
             return false;
         }
 
@@ -126,9 +127,12 @@ public final class GlobeScrollingSky {
             return true;
         }
         if (attribute == EnvironmentAttributes.STAR_BRIGHTNESS) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.STAR_BRIGHTNESS, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.STAR_BRIGHTNESS,
-                    (baseValue, pos, biomeInterpolator) -> Math.max(baseValue, sample(STAR_BRIGHTNESS, timeline, clockManager, pos.x))
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? Math.max(baseValue, sample(STAR_BRIGHTNESS, timeline, clockManager, pos.x))
+                            : baseValue
             );
             return true;
         }
@@ -137,23 +141,32 @@ public final class GlobeScrollingSky {
             return true;
         }
         if (attribute == EnvironmentAttributes.SKY_COLOR) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.SKY_COLOR, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.SKY_COLOR,
-                    (baseValue, pos, biomeInterpolator) -> ARGB.multiply(baseValue, sample(SKY_COLOR_MULTIPLIER, timeline, clockManager, pos.x))
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? ARGB.multiply(baseValue, sample(SKY_COLOR_MULTIPLIER, timeline, clockManager, pos.x))
+                            : baseValue
             );
             return true;
         }
         if (attribute == EnvironmentAttributes.SKY_LIGHT_FACTOR) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.SKY_LIGHT_FACTOR, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.SKY_LIGHT_FACTOR,
-                    (baseValue, pos, biomeInterpolator) -> baseValue * sample(SKY_LIGHT_FACTOR, timeline, clockManager, pos.x)
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? baseValue * sample(SKY_LIGHT_FACTOR, timeline, clockManager, pos.x)
+                            : baseValue
             );
             return true;
         }
         if (attribute == EnvironmentAttributes.SKY_LIGHT_COLOR) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.SKY_LIGHT_COLOR, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.SKY_LIGHT_COLOR,
-                    (baseValue, pos, biomeInterpolator) -> ARGB.multiply(baseValue, sample(SKY_LIGHT_COLOR_MULTIPLIER, timeline, clockManager, pos.x))
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? ARGB.multiply(baseValue, sample(SKY_LIGHT_COLOR_MULTIPLIER, timeline, clockManager, pos.x))
+                            : baseValue
             );
             return true;
         }
@@ -161,7 +174,11 @@ public final class GlobeScrollingSky {
         return false;
     }
 
-    private static boolean enabled() {
+    private static boolean timelineLayersEnabled() {
+        return GlobeConfig.enabled();
+    }
+
+    private static boolean localTimelineActive() {
         return GlobeConfig.enabled() && GlobeConfig.dayNightCycleMode() == DayNightCycleMode.SCROLLING;
     }
 
@@ -172,7 +189,9 @@ public final class GlobeScrollingSky {
             ClockManager clockManager,
             KeyframeTrackSampler<Float> sampler
     ) {
-        builder.addPositionalLayer(attribute, (baseValue, pos, biomeInterpolator) -> sample(sampler, timeline, clockManager, pos.x));
+        addVanillaTimelineLayer(builder, timeline, attribute, clockManager);
+        builder.addPositionalLayer(attribute, (baseValue, pos, biomeInterpolator) ->
+                localTimelineActive() ? sample(sampler, timeline, clockManager, pos.x) : baseValue);
     }
 
     private static void addColorOverride(
@@ -182,7 +201,20 @@ public final class GlobeScrollingSky {
             ClockManager clockManager,
             KeyframeTrackSampler<Integer> sampler
     ) {
-        builder.addPositionalLayer(attribute, (baseValue, pos, biomeInterpolator) -> sample(sampler, timeline, clockManager, pos.x));
+        addVanillaTimelineLayer(builder, timeline, attribute, clockManager);
+        builder.addPositionalLayer(attribute, (baseValue, pos, biomeInterpolator) ->
+                localTimelineActive() ? sample(sampler, timeline, clockManager, pos.x) : baseValue);
+    }
+
+    private static <T> void addVanillaTimelineLayer(
+            EnvironmentAttributeSystem.Builder builder,
+            Holder<Timeline> timeline,
+            EnvironmentAttribute<T> attribute,
+            ClockManager clockManager
+    ) {
+        EnvironmentAttributeLayer.TimeBased<T> vanillaLayer = timeline.value().createTrackSampler(attribute, clockManager);
+        builder.addTimeBasedLayer(attribute, (baseValue, cacheTickId) ->
+                localTimelineActive() ? baseValue : vanillaLayer.applyTimeBased(baseValue, cacheTickId));
     }
 
     private static <T> T sample(KeyframeTrackSampler<T> sampler, Holder<Timeline> timeline, ClockManager clockManager, double x) {

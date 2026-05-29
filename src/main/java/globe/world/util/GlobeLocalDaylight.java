@@ -13,6 +13,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.TriState;
 import net.minecraft.world.attribute.BedRule;
 import net.minecraft.world.attribute.EnvironmentAttribute;
+import net.minecraft.world.attribute.EnvironmentAttributeLayer;
 import net.minecraft.world.attribute.EnvironmentAttributeSystem;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.attribute.LerpFunction;
@@ -191,6 +192,10 @@ public final class GlobeLocalDaylight {
     }
 
     private static boolean enabledForTimelineLayers() {
+        return DimensionTiling.currentOrOverworld().enabled();
+    }
+
+    private static boolean localTimelineActive() {
         return GlobeConfig.dayNightCycleMode() == DayNightCycleMode.SCROLLING
                 && DimensionTiling.currentOrOverworld().enabled();
     }
@@ -202,44 +207,62 @@ public final class GlobeLocalDaylight {
             ClockManager clockManager
     ) {
         if (attribute == EnvironmentAttributes.BEES_STAY_IN_HIVE) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.BEES_STAY_IN_HIVE, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.BEES_STAY_IN_HIVE,
-                    (baseValue, pos, biomeInterpolator) -> baseValue || sample(BEES_STAY_IN_HIVE, timeline, clockManager, pos.x)
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? baseValue || sample(BEES_STAY_IN_HIVE, timeline, clockManager, pos.x)
+                            : baseValue
             );
             return true;
         }
         if (attribute == EnvironmentAttributes.TURTLE_EGG_HATCH_CHANCE) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.TURTLE_EGG_HATCH_CHANCE, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.TURTLE_EGG_HATCH_CHANCE,
-                    (baseValue, pos, biomeInterpolator) -> Math.max(baseValue, sample(TURTLE_EGG_HATCH_CHANCE, timeline, clockManager, pos.x))
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? Math.max(baseValue, sample(TURTLE_EGG_HATCH_CHANCE, timeline, clockManager, pos.x))
+                            : baseValue
             );
             return true;
         }
         if (attribute == EnvironmentAttributes.CAT_WAKING_UP_GIFT_CHANCE) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.CAT_WAKING_UP_GIFT_CHANCE, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.CAT_WAKING_UP_GIFT_CHANCE,
-                    (baseValue, pos, biomeInterpolator) -> Math.max(baseValue, sample(CAT_WAKING_UP_GIFT_CHANCE, timeline, clockManager, pos.x))
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? Math.max(baseValue, sample(CAT_WAKING_UP_GIFT_CHANCE, timeline, clockManager, pos.x))
+                            : baseValue
             );
             return true;
         }
         if (attribute == EnvironmentAttributes.EYEBLOSSOM_OPEN) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.EYEBLOSSOM_OPEN, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.EYEBLOSSOM_OPEN,
-                    (baseValue, pos, biomeInterpolator) -> sample(EYEBLOSSOM_OPEN, timeline, clockManager, pos.x)
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? sample(EYEBLOSSOM_OPEN, timeline, clockManager, pos.x)
+                            : baseValue
             );
             return true;
         }
         if (attribute == EnvironmentAttributes.CREAKING_ACTIVE) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.CREAKING_ACTIVE, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.CREAKING_ACTIVE,
-                    (baseValue, pos, biomeInterpolator) -> baseValue || sample(CREAKING_ACTIVE, timeline, clockManager, pos.x)
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? baseValue || sample(CREAKING_ACTIVE, timeline, clockManager, pos.x)
+                            : baseValue
             );
             return true;
         }
         if (attribute == EnvironmentAttributes.MONSTERS_BURN) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.MONSTERS_BURN, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.MONSTERS_BURN,
-                    (baseValue, pos, biomeInterpolator) -> baseValue || sample(MONSTERS_BURN, timeline, clockManager, pos.x)
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? baseValue || sample(MONSTERS_BURN, timeline, clockManager, pos.x)
+                            : baseValue
             );
             return true;
         }
@@ -254,21 +277,38 @@ public final class GlobeLocalDaylight {
             ClockManager clockManager
     ) {
         if (attribute == EnvironmentAttributes.VILLAGER_ACTIVITY) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.VILLAGER_ACTIVITY, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.VILLAGER_ACTIVITY,
-                    (baseValue, pos, biomeInterpolator) -> sample(VILLAGER_ACTIVITY, timeline, clockManager, pos.x)
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? sample(VILLAGER_ACTIVITY, timeline, clockManager, pos.x)
+                            : baseValue
             );
             return true;
         }
         if (attribute == EnvironmentAttributes.BABY_VILLAGER_ACTIVITY) {
+            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.BABY_VILLAGER_ACTIVITY, clockManager);
             builder.addPositionalLayer(
                     EnvironmentAttributes.BABY_VILLAGER_ACTIVITY,
-                    (baseValue, pos, biomeInterpolator) -> sample(BABY_VILLAGER_ACTIVITY, timeline, clockManager, pos.x)
+                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
+                            ? sample(BABY_VILLAGER_ACTIVITY, timeline, clockManager, pos.x)
+                            : baseValue
             );
             return true;
         }
 
         return false;
+    }
+
+    private static <T> void addVanillaTimelineLayer(
+            EnvironmentAttributeSystem.Builder builder,
+            Holder<Timeline> timeline,
+            EnvironmentAttribute<T> attribute,
+            ClockManager clockManager
+    ) {
+        EnvironmentAttributeLayer.TimeBased<T> vanillaLayer = timeline.value().createTrackSampler(attribute, clockManager);
+        builder.addTimeBasedLayer(attribute, (baseValue, cacheTickId) ->
+                localTimelineActive() ? baseValue : vanillaLayer.applyTimeBased(baseValue, cacheTickId));
     }
 
     private static <T> T sample(KeyframeTrackSampler<T> sampler, Holder<Timeline> timeline, ClockManager clockManager, double x) {

@@ -44,6 +44,9 @@ Local solar-time day/night is implemented for client visuals under
 select it and set a saved day-length multiplier. `CoordUtil` exposes shared
 longitude-based local solar time helpers, and the client replaces the Overworld
 visual day timeline with camera-position-aware environment attribute layers.
+Those layers are installed for Globe worlds and choose vanilla or local sampling
+from the current day-cycle mode, so pause/options mode changes take effect
+without reloading the save.
 Sky color, sun/moon/star angles, star brightness, sunrise/sunset color, and
 lightmap sky brightness use local canonical X while weather layers still run
 afterward. The day-length multiplier changes the underlying Overworld clock

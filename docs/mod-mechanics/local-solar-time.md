@@ -83,14 +83,17 @@ phantom darkening threshold at each player position. Undead burning wraps
 `Mob.isSunBurnTick(...)` so both the `MONSTERS_BURN` predicate and the
 brightness curve use the mob's local solar phase.
 
-Timeline-driven gameplay attributes are installed as positional layers while
-scrolling mode is active. Villager and baby villager schedules use the local
-solar phase at the villager position. Bee hive entry uses local
-`BEES_STAY_IN_HIVE`, turtle eggs use local `TURTLE_EGG_HATCH_CHANCE`, and the
-same local timeline path covers cat waking gifts, eyeblossoms, creaking, and
-other direct callers of the localized attributes. Clock item daytime display
-already samples `SUN_ANGLE` at the item owner position, so it follows the local
-client sky layer instead of needing a separate item hook.
+Timeline-driven gameplay attributes are installed as mode-aware layers for
+Globe worlds. The layers sample vanilla global time in vanilla day-cycle mode
+and local solar time in scrolling day-cycle mode, so a pause/options mode change
+does not require rebuilding the loaded level. Villager and baby villager
+schedules use the local solar phase at the villager position. Bee hive entry
+uses local `BEES_STAY_IN_HIVE`, turtle eggs use local
+`TURTLE_EGG_HATCH_CHANCE`, and the same local timeline path covers cat waking
+gifts, eyeblossoms, creaking, and other direct callers of the localized
+attributes. Clock item daytime display already samples `SUN_ANGLE` at the item
+owner position, so it follows the local client sky layer instead of needing a
+separate item hook.
 
 Patrol spawning has an extra global `ServerLevel.isBrightOutside()` gate before
 it chooses a player or spawn position. In scrolling mode, that gate is opened so
