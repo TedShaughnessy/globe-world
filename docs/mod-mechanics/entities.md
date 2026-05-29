@@ -19,6 +19,12 @@ Mobs are canonicalized before being added to `ServerLevel`. Entity add,
 teleport, and absolute position-sync packets are virtualized per viewer. Relative
 movement packets stay relative where possible.
 
+Players may travel through virtual coordinates during normal play. On login,
+respawn, and bed wake-up, the server rebases the player to the canonical X/Z
+equivalent before sending vanilla's position packet to the client. This keeps
+long-running aliases from being persisted across those lifecycle boundaries
+without changing in-session movement.
+
 Entity tracking uses wrapped X/Z distance and checks the virtual chunk nearest
 to the player. Natural spawning stores candidates in canonical chunks, wraps
 candidate positions, wraps player distance checks, counts mob caps by canonical
@@ -38,7 +44,10 @@ positions.
 
 - `src/main/java/globe/world/util/EntityPacketUtil.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
+- `src/main/java/globe/world/util/PlayerCanonicalizer.java`
 - `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java`
+- `src/main/java/globe/world/mixin/PlayerListCanonicalPositionMixin.java`
+- `src/main/java/globe/world/mixin/ServerPlayerCanonicalPositionMixin.java`
 - `src/main/java/globe/world/mixin/ServerEntityMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapPlayerProviderMixin.java`

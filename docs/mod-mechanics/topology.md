@@ -80,6 +80,7 @@ Overworld period supports it exactly.
 - Server chunk lookup, alias tickets, random ticks, spawning collection,
   tracking, block mutation, and worldgen region access use dimension-aware
   wrapping.
+- Players are rebased to canonical X/Z on login, bed wake-up, and respawn.
 - Scheduled tick containers are tagged with their `ServerLevel` dimension when
   exposed by `ServerLevel`.
 - Nether portal approximate exits are wrapped in the target dimension before

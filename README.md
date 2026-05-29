@@ -12,7 +12,7 @@ kill:    pkill -f runClient
 
 The world has a finite canonical tile of `W_CHUNKS × W_CHUNKS` chunks centered at the origin. Any chunk access outside that tile is transparently redirected to the canonical equivalent on the server. Outbound chunk and entity packets are relabeled to the player's virtual coordinate frame, so the client renders a continuous world with no seams and no client mod required.
 
-Player coordinates grow unboundedly during a session. On death or world load the player is rebased to the canonical equivalent position.
+Player coordinates grow unboundedly during a session. On death, bed wake-up, or world load the player is rebased to the canonical equivalent position.
 
 ## What is and isn't changed
 
