@@ -121,10 +121,10 @@ public final class GlobeDebugHud {
             default -> capitalize(direction.getName());
         };
         if (direction == Direction.WEST) {
-            return label + " (toward sunrise)";
+            return label + " (toward sunset)";
         }
         if (direction == Direction.EAST) {
-            return label + " (toward sunset)";
+            return label + " (toward sunrise)";
         }
         return label;
     }

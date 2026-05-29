@@ -16,10 +16,6 @@
 ## Events
 - tp on spawn to canon
 
-## time
-
 ## animals
 - getting on a horse triggers teleport
-
-## new debug screen
 

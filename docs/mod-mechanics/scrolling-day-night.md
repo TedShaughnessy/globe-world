@@ -76,9 +76,12 @@ modify the locally computed sky. Weather interaction is not yet manually tested.
 Curvature has separate client presentation hooks. `GlobeCurvatureShader` bends
 terrain and cloud vertices downward in relevant world vertex shaders.
 `GlobeSkyHorizon` and `SkyRendererMixin` apply a camera-relative vertical
-offset to the sky disc, lower dark disc, sunrise/sunset fan, sun, moon, and
-stars so the sky horizon better matches the curved terrain horizon. Cloud
-curvature uses a larger radius than terrain so clouds fall away more gently.
+offset to the sky disc, lower dark disc, sunrise/sunset fan, sun, and moon so
+the sky horizon better matches the curved terrain horizon. Sun and moon render
+on a larger effective sky sphere, preserving their apparent size while reducing
+the offset's midday and midnight angular distortion. Stars stay on the vanilla
+dome. Cloud curvature uses a larger radius than terrain so clouds fall away
+more gently.
 
 The vanilla directional sunrise/sunset fan is still rendered. This means dusk
 color can vary by whether the player faces the sun or moon; that behavior is

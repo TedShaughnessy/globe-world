@@ -34,7 +34,7 @@ public record TilingSettings(
             TilingMode.DISABLED,
             GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS,
             CURVATURE_COMFORTABLE_PERCENT,
-            CURVATURE_COMFORTABLE_PERCENT,
+            CURVATURE_DISABLED_PERCENT,
             TilingMode.DISABLED,
             true,
             DayNightCycleMode.VANILLA,

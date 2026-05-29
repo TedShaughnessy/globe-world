@@ -31,10 +31,13 @@ For small tiles, cloud texture sampling scales the camera X/Z contribution so
 player movement produces stronger cloud parallax. The vanilla time drift and
 cloud height are unchanged.
 The sky renderer applies a matching camera-relative horizon offset to the sky
-disc, lower dark disc, sunrise/sunset fan, sun, moon, and stars. The offset is
-derived from the terrain curvature radius and the camera's height above the
-dimension horizon, so the sky horizon moves down as the curved terrain horizon
-falls away.
+disc, lower dark disc, sunrise/sunset fan, sun, and moon. The offset is derived
+from the terrain curvature radius and the camera's height above the dimension
+horizon, so the sky horizon moves down as the curved terrain horizon falls
+away. Sun and moon quads are rendered on a larger effective sky sphere and
+scaled up with it, which keeps noon and midnight high while still letting
+sunrise, sunset, moonrise, and moonset track the lowered visual horizon. Stars
+keep their vanilla/local-time dome.
 
 Local solar-time day/night is implemented for client visuals under
 `DayNightCycleMode.SCROLLING`. The world-creation and pause/options UI can
@@ -52,8 +55,9 @@ as scrolling day/night boundaries.
 Client diagnostics remain targeted at alias loading, tracking, tile borders,
 and settings state. The client has a dedicated Globe World debug overlay toggled
 with `F3+Y`; it draws separate wrapped/canonical and absolute/alias columns
-without adding Globe World lines to vanilla F3. Tile-border rendering remains
-available with `F3+Shift+Y`.
+without adding Globe World lines to vanilla F3. The wrapped/canonical column
+shows local solar time plus the active day-cycle mode and day-length multiplier.
+Tile-border rendering remains available with `F3+Shift+Y`.
 
 ## Key Files
 

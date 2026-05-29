@@ -12,7 +12,9 @@ import org.joml.Matrix4fStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(SkyRenderer.class)
@@ -48,37 +50,62 @@ public class SkyRendererMixin {
         RenderSystem.getModelViewStack().popMatrix();
     }
 
-    @Inject(method = "renderSunMoonAndStars", at = @At("HEAD"))
-    private void globeWorld$pushCelestialHorizonOffset(
-            PoseStack poseStack,
-            float sunAngle,
-            float moonAngle,
-            float starAngle,
-            MoonPhase moonPhase,
+    @Inject(method = "renderSun", at = @At("HEAD"))
+    private void globeWorld$pushSunHorizonOffset(
             float rainBrightness,
-            float starBrightness,
+            PoseStack poseStack,
             CallbackInfo ci
     ) {
-        globeWorld$pushHorizonOffset(GlobeSkyHorizon.celestialYOffset());
+        globeWorld$pushHorizonOffset(GlobeSkyHorizon.horizonEffectYOffset());
     }
 
-    @Inject(method = "renderSunMoonAndStars", at = @At("RETURN"))
-    private void globeWorld$popCelestialHorizonOffset(
-            PoseStack poseStack,
-            float sunAngle,
-            float moonAngle,
-            float starAngle,
-            MoonPhase moonPhase,
+    @Inject(method = "renderSun", at = @At("RETURN"))
+    private void globeWorld$popSunHorizonOffset(
             float rainBrightness,
-            float starBrightness,
+            PoseStack poseStack,
             CallbackInfo ci
     ) {
         RenderSystem.getModelViewStack().popMatrix();
     }
 
+    @Inject(method = "renderMoon", at = @At("HEAD"))
+    private void globeWorld$pushMoonHorizonOffset(
+            MoonPhase moonPhase,
+            float rainBrightness,
+            PoseStack poseStack,
+            CallbackInfo ci
+    ) {
+        globeWorld$pushHorizonOffset(GlobeSkyHorizon.horizonEffectYOffset());
+    }
+
+    @Inject(method = "renderMoon", at = @At("RETURN"))
+    private void globeWorld$popMoonHorizonOffset(
+            MoonPhase moonPhase,
+            float rainBrightness,
+            PoseStack poseStack,
+            CallbackInfo ci
+    ) {
+        RenderSystem.getModelViewStack().popMatrix();
+    }
+
+    @ModifyConstant(method = {"renderSun", "renderMoon"}, constant = @Constant(floatValue = 100.0F))
+    private float globeWorld$increaseCelestialRadius(float radius) {
+        return GlobeSkyHorizon.celestialRadius();
+    }
+
+    @ModifyConstant(method = "renderSun", constant = @Constant(floatValue = 30.0F))
+    private float globeWorld$keepSunAngularSize(float size) {
+        return size * GlobeSkyHorizon.celestialScale();
+    }
+
+    @ModifyConstant(method = "renderMoon", constant = @Constant(floatValue = 20.0F))
+    private float globeWorld$keepMoonAngularSize(float size) {
+        return size * GlobeSkyHorizon.celestialScale();
+    }
+
     @Inject(method = "renderSunriseAndSunset", at = @At("HEAD"))
     private void globeWorld$pushSunriseHorizonOffset(PoseStack poseStack, float sunAngle, int sunriseAndSunsetColor, CallbackInfo ci) {
-        globeWorld$pushHorizonOffset(GlobeSkyHorizon.celestialYOffset());
+        globeWorld$pushHorizonOffset(GlobeSkyHorizon.horizonEffectYOffset());
     }
 
     @Inject(method = "renderSunriseAndSunset", at = @At("RETURN"))
