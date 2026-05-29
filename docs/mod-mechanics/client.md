@@ -21,6 +21,11 @@ Full chunk packets are sourced from canonical chunk data and relabeled to the
 alias chunk position. Block, section, block-entity, and entity packets are copied
 or virtualized per viewer.
 
+Spawn and lodestone compass needles resolve their target block through the
+nearest virtual alias in tiled dimensions. They point across the shortest
+wrapped X/Z path to world spawn or the bound lodestone instead of always aiming
+at the raw stored `GlobalPos`.
+
 The curvature visual pass rewrites relevant world vertex shaders at resource
 load time. Overworld and Nether curvature are saved separately in
 `TilingSettings`, exposed through the world creation and pause/options UI, and
@@ -67,6 +72,7 @@ Tile-border rendering remains available with `F3+Shift+Y`.
 - `src/main/java/globe/world/mixin/ClientboundLevelChunkWithLightMixin.java`
 - `src/main/java/globe/world/util/BlockPacketUtil.java`
 - `src/main/java/globe/world/util/EntityPacketUtil.java`
+- `src/client/java/globe/world/client/mixin/CompassAngleStateMixin.java`
 - `src/client/java/globe/world/client/GlobeCurvatureShader.java`
 - `src/client/java/globe/world/client/GlobeSkyHorizon.java`
 - `src/client/java/globe/world/client/GlobeCurvatureSlider.java`

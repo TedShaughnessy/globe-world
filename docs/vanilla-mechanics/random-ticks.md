@@ -63,15 +63,20 @@ Why this matters:
 
 Project hooks:
 
+- `src/main/java/globe/world/mixin/ChunkMapBlockTickingMixin.java:27` replaces
+  `ChunkMap.forEachBlockTickingChunk(...)` with a snapshot-based pass over the
+  entity-ticking chunk keys, then canonicalizes and dedupes the chunks before
+  invoking the tick callback.
 - `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:28` tracks the game time for the current `ServerLevel.tickChunk(...)` pass.
 - `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:34` injects at the head of `ServerLevel.tickChunk(...)`.
 - `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:48` clears canonical tick tracking when the server game time changes.
 - `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:53` skips duplicate aliases of the same canonical chunk during the same game tick.
-- `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:61`-`:70` swaps alias chunks for the canonical `LevelChunk`, calls vanilla `tickChunk(...)` once through a guarded recursive call, and cancels the alias tick.
+- `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:61`-`:70` remains a direct-call guard: if an alias chunk reaches `ServerLevel.tickChunk(...)`, it swaps in the canonical `LevelChunk`, calls vanilla `tickChunk(...)` once through a guarded recursive call, and cancels the alias tick.
 
 Current status:
 
 - Good: random block/fluid ticks run once per canonical chunk per `forEachBlockTickingChunk(...)` pass.
 - Good: multiplayer aliases dedupe together because the dedupe key is the canonical `ChunkPos`.
 - Good: random tick positions are sampled from canonical chunk coordinates, so block/fluid logic sees canonical `BlockPos`.
+- Good: the block-ticking pass snapshots the distance-manager keys before running tick callbacks, avoiding live-map iterator corruption when tick side effects update chunk tickets or simulation state.
 - Note: `ServerLevel.tickChunk(...)` also performs its `iceandsnow` precipitation pass before random block/fluid ticks, so this canonical chunk swap covers that lane too. Thunder is handled from the spawning chunk lane.

@@ -5,6 +5,7 @@
 	"client": [
 		"ClientChunkCacheDiagnosticsMixin",
 		"CloudRendererMixin",
+		"CompassAngleStateMixin",
 		"CreateWorldScreenMixin",
 		"DebugRendererMixin",
 		"EnvironmentAttributeSystemBuilderMixin",

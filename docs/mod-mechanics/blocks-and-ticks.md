@@ -29,15 +29,25 @@ same canonical chunk, it emits one packet per alias with positions offset into
 that alias.
 
 Random block ticks are canonicalized and deduped during
-`ChunkMap.forEachBlockTickingChunk`. Scheduled block/fluid ticks canonicalize
-positions in `LevelTicks.schedule`, `hasScheduledTick`, and `willTickThisTick`.
+`ChunkMap.forEachBlockTickingChunk`. Globe snapshots the ticking chunk keys
+before running callbacks so side effects during block ticks cannot mutate the
+distance-manager map while vanilla is still iterating it. Scheduled block/fluid
+ticks canonicalize positions in `LevelTicks.schedule`, `hasScheduledTick`, and
+`willTickThisTick`.
+
+Lodestone compass tracking validates the lodestone point of interest at the
+canonical target position in tiled dimensions. This keeps compasses bound to an
+alias lodestone from being cleared just because the stored `GlobalPos` is
+outside the canonical tile.
 
 ## Key Files
 
 - `src/main/java/globe/world/util/BlockPacketUtil.java`
 - `src/main/java/globe/world/util/ChunkAliasTracker.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
+- `src/main/java/globe/world/mixin/ChunkMapBlockTickingMixin.java`
 - `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java`
+- `src/main/java/globe/world/mixin/LodestoneTrackerMixin.java`
 - `src/main/java/globe/world/mixin/ServerPlayerGameModeMixin.java`
 - `src/main/java/globe/world/mixin/BulkSectionAccessMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapPlayerProviderMixin.java`
