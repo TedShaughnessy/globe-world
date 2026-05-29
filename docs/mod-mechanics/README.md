@@ -35,9 +35,10 @@ World period:
    structure edge handling, and generation risks.
 6. [Client](client.md): client-facing packet/render behavior, curvature,
    diagnostics, and planned client cache work.
-7. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
+7. [Maps](maps.md): filled-map pixel updates and player marker aliasing.
+8. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
    saved day-length multiplier, and gameplay across the canonical tile.
-8. [Local Solar Time](local-solar-time.md): shared longitude-based local time
+9. [Local Solar Time](local-solar-time.md): shared longitude-based local time
    math for scrolling day/night rendering and gameplay hooks.
 
 ## Status By Area
@@ -59,6 +60,7 @@ World period:
 | Periodic terrain/noise | In progress | [worldgen.md](worldgen.md) |
 | Structures and feature edge generation | Needs validation | [worldgen.md](worldgen.md) |
 | Client chunk/world rendering | Implemented for server-relabeled aliases | [client.md](client.md) |
+| Filled maps | Implemented for player marker aliasing | [maps.md](maps.md) |
 | Curvature visuals | Implemented | [client.md](client.md) |
 | Local solar time helper | Implemented | [local-solar-time.md](local-solar-time.md) |
 | Day-length multiplier | Implemented | [scrolling-day-night.md](scrolling-day-night.md) |

@@ -7,10 +7,8 @@
 3. light related things
 
 ## Items
-    - lodestone needs to point to nearest lodestone, check is dimension is tiling first
     - recovery compass point to canon death point
     - bed, teleport on wake to canon
-    - Map, all player should always be on it
 
 
 ## Events
@@ -18,4 +16,3 @@
 
 ## animals
 - getting on a horse triggers teleport
-

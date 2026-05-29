@@ -32,6 +32,8 @@
 		"LevelChunkPostProcessMixin",
 		"LodestoneTrackerMixin",
 		"LevelTicksMixin",
+		"MapItemMixin",
+		"MapItemSavedDataMixin",
 		"MinecraftServerMixin",
 		"MobLocalDaylightMixin",
 		"MonsterLocalDaylightMixin",
