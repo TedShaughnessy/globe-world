@@ -21,10 +21,10 @@ Full chunk packets are sourced from canonical chunk data and relabeled to the
 alias chunk position. Block, section, block-entity, and entity packets are copied
 or virtualized per viewer.
 
-Spawn and lodestone compass needles resolve their target block through the
-nearest virtual alias in tiled dimensions. They point across the shortest
-wrapped X/Z path to world spawn or the bound lodestone instead of always aiming
-at the raw stored `GlobalPos`.
+Spawn, lodestone, and recovery compass needles resolve their target block
+through the nearest virtual alias in tiled dimensions. They point across the
+shortest wrapped X/Z path to world spawn, the bound lodestone, or the last death
+location instead of always aiming at the raw stored `GlobalPos`.
 
 The curvature visual pass rewrites relevant world vertex shaders at resource
 load time. Overworld and Nether curvature are saved separately in

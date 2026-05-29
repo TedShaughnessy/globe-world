@@ -47,6 +47,7 @@ public class CompassAngleStateMixin {
 
     private static boolean globeWorld$usesNearestAlias(CompassAngleState.CompassTarget compassTarget) {
         return compassTarget == CompassAngleState.CompassTarget.LODESTONE
+                || compassTarget == CompassAngleState.CompassTarget.RECOVERY
                 || compassTarget == CompassAngleState.CompassTarget.SPAWN;
     }
 }
