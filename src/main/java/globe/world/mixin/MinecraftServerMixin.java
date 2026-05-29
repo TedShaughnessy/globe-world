@@ -6,6 +6,8 @@ import globe.world.config.TilingSettings;
 import globe.world.config.TilingSettingsHolder;
 import globe.world.util.ChunkAliasTracker;
 import globe.world.util.GlobeDayLength;
+import globe.world.util.WorldGenSpillover;
+import globe.world.util.WorldGenSpilloverOwner;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.Services;
 import net.minecraft.server.WorldStem;
@@ -14,6 +16,7 @@ import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -22,7 +25,15 @@ import java.net.Proxy;
 import java.util.Optional;
 
 @Mixin(MinecraftServer.class)
-public class MinecraftServerMixin {
+public class MinecraftServerMixin implements WorldGenSpilloverOwner {
+    @Unique
+    private final WorldGenSpillover.State globeWorld$spilloverState = new WorldGenSpillover.State();
+
+    @Override
+    public WorldGenSpillover.State globeWorld$spilloverState() {
+        return this.globeWorld$spilloverState;
+    }
+
     @Inject(method = "<init>", at = @At("TAIL"))
     private void globeWorld$loadTilingSettings(
             Thread serverThread,
@@ -50,6 +61,7 @@ public class MinecraftServerMixin {
 
     @Inject(method = "stopServer", at = @At("HEAD"))
     private void globeWorld$clearChunkAliasTrackerOnStop(CallbackInfo ci) {
+        WorldGenSpillover.clearAll((MinecraftServer) (Object) this);
         ChunkAliasTracker.clearAll();
     }
 }

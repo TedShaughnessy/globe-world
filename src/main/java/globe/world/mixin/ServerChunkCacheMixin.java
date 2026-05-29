@@ -3,6 +3,7 @@ package globe.world.mixin;
 import globe.world.util.CanonicalChunkTickets;
 import globe.world.util.ChunkAliasTracker;
 import globe.world.util.CoordUtil;
+import globe.world.util.WorldGenSpillover;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.core.BlockPos;
@@ -53,11 +54,13 @@ public class ServerChunkCacheMixin {
     private void clearCanonicalAliasTicketsOnClosing(CallbackInfo ci) {
         CanonicalChunkTickets.clearLevel(this.level);
         ChunkAliasTracker.clearLevel(this.level.dimension());
+        WorldGenSpillover.clearLevel(this.level);
     }
 
     @Inject(method = "close", at = @At("HEAD"))
     private void clearCanonicalAliasTicketsOnClose(CallbackInfo ci) {
         CanonicalChunkTickets.clearLevel(this.level);
         ChunkAliasTracker.clearLevel(this.level.dimension());
+        WorldGenSpillover.clearLevel(this.level);
     }
 }
