@@ -27,7 +27,7 @@ import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.Supplier;
 
-public class GlobeWorldSettingsControls implements LayoutElement {
+public class GlobeWorldSettingsControls implements Layout {
     private static final int CONTROL_WIDTH = 310;
     private static final int DAY_LENGTH_SLIDER_WIDTH = 153;
     private static final int DAY_NIGHT_MODE_WIDTH = 153;
@@ -96,6 +96,8 @@ public class GlobeWorldSettingsControls implements LayoutElement {
     private int height;
     private CreateMode createMode;
     private boolean updatingText;
+    private Runnable layoutChangedCallback = () -> {
+    };
 
     private CycleButton<CreateMode> createModeButton;
     private TilePresetSlider simpleTileSlider;
@@ -132,6 +134,11 @@ public class GlobeWorldSettingsControls implements LayoutElement {
             Supplier<TilingSettings> settingsGetter,
             Consumer<TilingSettings> settingsSetter) {
         return new GlobeWorldSettingsControls(false, settingsGetter, settingsSetter);
+    }
+
+    public void setLayoutChangedCallback(Runnable layoutChangedCallback) {
+        this.layoutChangedCallback = layoutChangedCallback != null ? layoutChangedCallback : () -> {
+        };
     }
 
     private void build() {
@@ -316,6 +323,7 @@ public class GlobeWorldSettingsControls implements LayoutElement {
         dayLengthSlider.active = settings.enabled();
 
         arrange();
+        layoutChangedCallback.run();
     }
 
     private Component overworldInfo(TilingSettings settings) {
@@ -467,8 +475,8 @@ public class GlobeWorldSettingsControls implements LayoutElement {
     }
 
     @Override
-    public void visitWidgets(Consumer<AbstractWidget> widgetVisitor) {
-        elements.forEach(element -> element.visitWidgets(widgetVisitor));
+    public void visitChildren(Consumer<LayoutElement> layoutElementVisitor) {
+        elements.forEach(layoutElementVisitor);
     }
 
     private record Row(LayoutElement element, BooleanSupplier visible, int topSpacing) {

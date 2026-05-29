@@ -1,5 +1,7 @@
 package globe.world.client;
 
+import globe.world.config.GlobeConfig;
+import globe.world.config.TilingSettings;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.client.Minecraft;
@@ -67,6 +69,7 @@ public final class GlobeDebugHud {
                 formatClock(localDayTicks),
                 formatOffset(CoordUtil.longitudeOffsetTicks(currentTiling, cameraEntity.getX())),
                 (int) Math.floor(localDayTicks)));
+        leftLines.add("Day Cycle: " + dayCycleSummary());
         leftLines.add("");
         leftLines.add("Facing: " + directionSummary(cameraEntity.getDirection()));
         leftLines.add("Local light level: " + lightSummary(level, pos));
@@ -154,6 +157,18 @@ public final class GlobeDebugHud {
         double local = positiveModulo(coordinate + tileSize / 2.0, tileSize);
         double distance = Math.min(local, tileSize - local);
         return String.format(Locale.ROOT, "%.1f m (tile %d m)", distance, tileSize);
+    }
+
+    private static String dayCycleSummary() {
+        TilingSettings settings = GlobeConfig.tilingSettings().sanitized();
+        return settings.dayNightCycleMode().displayName() + " x" + formatMultiplier(settings.dayLengthMultiplier());
+    }
+
+    private static String formatMultiplier(double multiplier) {
+        if (multiplier == Math.rint(multiplier)) {
+            return String.format(Locale.ROOT, "%.0f", multiplier);
+        }
+        return String.format(Locale.ROOT, "%.1f", multiplier);
     }
 
     private static String formatClock(double dayTicks) {
