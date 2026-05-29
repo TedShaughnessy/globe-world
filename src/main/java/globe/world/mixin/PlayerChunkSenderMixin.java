@@ -113,7 +113,7 @@ public class PlayerChunkSenderMixin {
             }
         }
 
-        ChunkAliasTracker.addAlias(conn.player, wcx, wcz, cx, cz);
+        ChunkAliasTracker.addAlias(conn.player, level.dimension(), wcx, wcz, cx, cz);
 
         // Virtual coord = raw coord; client stores each alias at its natural position.
         // Multiple aliases of the same canonical chunk may coexist in the view,
@@ -137,7 +137,7 @@ public class PlayerChunkSenderMixin {
         int cx = pos.x(), cz = pos.z();
         int wcx = CoordUtil.wrapChunk(player.level(), cx), wcz = CoordUtil.wrapChunk(player.level(), cz);
 
-        ChunkAliasTracker.removeAlias(player, wcx, wcz, cx, cz);
+        ChunkAliasTracker.removeAlias(player, player.level().dimension(), wcx, wcz, cx, cz);
 
         // Drop uses the raw position — matches the virtual coord used at send time.
         return original.call(pos);

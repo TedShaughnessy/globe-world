@@ -97,7 +97,11 @@ public class BlockPacketUtil {
         BlockPos canonicalPos = CoordUtil.wrapBlockPos(viewer.level(), packet.getPos());
         int canonicalChunkX = SectionPos.blockToSectionCoord(canonicalPos.getX());
         int canonicalChunkZ = SectionPos.blockToSectionCoord(canonicalPos.getZ());
-        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(viewer, canonicalChunkX, canonicalChunkZ);
+        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
+                viewer,
+                viewer.level().dimension(),
+                canonicalChunkX,
+                canonicalChunkZ);
         if (aliases.isEmpty()) {
             return List.of(virtualizeBlockUpdate(packet, viewer));
         }
@@ -116,7 +120,11 @@ public class BlockPacketUtil {
         BlockPos canonicalPos = CoordUtil.wrapBlockPos(viewer.level(), packet.getPos());
         int canonicalChunkX = SectionPos.blockToSectionCoord(canonicalPos.getX());
         int canonicalChunkZ = SectionPos.blockToSectionCoord(canonicalPos.getZ());
-        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(viewer, canonicalChunkX, canonicalChunkZ);
+        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
+                viewer,
+                viewer.level().dimension(),
+                canonicalChunkX,
+                canonicalChunkZ);
         if (aliases.isEmpty()) {
             return List.of(virtualizeBlockEntityUpdate(packet, viewer));
         }
@@ -140,7 +148,11 @@ public class BlockPacketUtil {
         SectionPos sectionPos = access.globeWorld$getSectionPos();
         int canonicalChunkX = CoordUtil.wrapChunk(viewer.level(), sectionPos.x());
         int canonicalChunkZ = CoordUtil.wrapChunk(viewer.level(), sectionPos.z());
-        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(viewer, canonicalChunkX, canonicalChunkZ);
+        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
+                viewer,
+                viewer.level().dimension(),
+                canonicalChunkX,
+                canonicalChunkZ);
         if (aliases.isEmpty()) {
             return List.of(virtualizeSectionUpdate(packet, viewer));
         }

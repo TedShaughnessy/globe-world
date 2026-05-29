@@ -83,8 +83,10 @@ Overworld period supports it exactly.
 - Players are rebased to canonical X/Z on login, bed wake-up, and respawn.
 - Scheduled tick containers are tagged with their `ServerLevel` dimension when
   exposed by `ServerLevel`.
-- Nether portal approximate exits are wrapped in the target dimension before
-  portal search/creation.
+- Nether portal approximate exits canonicalize the source X/Z before applying
+  vanilla's dimension scale, then wrap the target dimension before portal
+  search/creation. This keeps different aliases of the same source portal from
+  creating separate scaled target portals.
 - `/globeworld debug pos` reports the current dimension's effective tiling.
 
 ## Related Vanilla Mechanics

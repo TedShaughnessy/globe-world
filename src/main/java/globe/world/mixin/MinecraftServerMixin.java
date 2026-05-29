@@ -4,6 +4,7 @@ import com.mojang.datafixers.DataFixer;
 import globe.world.config.GlobeConfig;
 import globe.world.config.TilingSettings;
 import globe.world.config.TilingSettingsHolder;
+import globe.world.util.ChunkAliasTracker;
 import globe.world.util.GlobeDayLength;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.Services;
@@ -45,5 +46,10 @@ public class MinecraftServerMixin {
         MinecraftServer server = (MinecraftServer) (Object) this;
         TilingSettings settings = ((TilingSettingsHolder) (Object) server.getWorldGenSettings()).globeWorld$getTilingSettings();
         GlobeDayLength.applyToServer(server, settings);
+    }
+
+    @Inject(method = "stopServer", at = @At("HEAD"))
+    private void globeWorld$clearChunkAliasTrackerOnStop(CallbackInfo ci) {
+        ChunkAliasTracker.clearAll();
     }
 }
