@@ -15,11 +15,14 @@ opposite edge.
 
 ## Implementation
 
-Mobs and item entities are canonicalized before being added to `ServerLevel`.
-Item entities also re-canonicalize after ticking so drops that drift across a
-tile edge remain stored in the finite tile. Entity add, teleport, and absolute
-position-sync packets are virtualized per viewer. Relative movement packets stay
-relative where possible.
+Finite-world non-player entities are canonicalized before being added to
+`ServerLevel`, after server entity ticks, and after same-dimension teleport
+positioning. This includes mobs, item entities, vehicles, projectiles, XP orbs,
+falling blocks, and other non-player entities in tiled dimensions. Mounted
+stacks are shifted together when the root vehicle wraps, so passengers preserve
+their offsets from the vehicle. Entity add, teleport, and absolute position-sync
+packets are virtualized per viewer. Relative movement packets stay relative
+where possible.
 
 Players may travel through virtual coordinates during normal play. On login,
 respawn, and bed wake-up, the server rebases the player to the canonical X/Z
@@ -75,7 +78,8 @@ positions.
 - `src/main/java/globe/world/util/CoordUtil.java`
 - `src/main/java/globe/world/util/PlayerCanonicalizer.java`
 - `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java`
-- `src/main/java/globe/world/mixin/ItemEntityMixin.java`
+- `src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java`
+- `src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java`
 - `src/main/java/globe/world/mixin/PlayerItemPickupMixin.java`
 - `src/main/java/globe/world/mixin/PlayerListCanonicalPositionMixin.java`
 - `src/main/java/globe/world/mixin/ServerPlayerCanonicalPositionMixin.java`

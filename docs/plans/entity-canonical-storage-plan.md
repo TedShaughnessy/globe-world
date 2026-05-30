@@ -1,15 +1,15 @@
 # Entity Canonical Storage Plan
 
-## Problem
+## Original Problem
 
-The canonical tile should own mutable entity state, but the current entity path
-only canonicalizes mobs and item entities when they are added to `ServerLevel`.
-Item entities are canonicalized again after ticking; mobs, vehicles, projectiles,
-XP orbs, and other moving entities are not.
+The canonical tile should own mutable entity state, but the original entity path
+only canonicalized mobs and item entities when they were added to `ServerLevel`.
+Item entities were canonicalized again after ticking; mobs, vehicles,
+projectiles, XP orbs, and other moving entities were not.
 
-This means an entity can cross a tile edge and remain stored in an alias chunk.
-Once that happens, wrapped tracking and viewer-relative packets are working from
-a non-canonical backing position.
+That meant an entity could cross a tile edge and remain stored in an alias
+chunk. Once that happened, wrapped tracking and viewer-relative packets were
+working from a non-canonical backing position.
 
 Accepted limitation: a single real entity may still render in only the nearest
 visible alias for a player. This plan does not try to render multiple copies of
@@ -18,8 +18,12 @@ one entity id at once.
 ## Current Hooks
 
 - `EntityCanonicalizer` wraps X/Z and syncs packet position codecs.
-- `ServerLevelEntityMixin` canonicalizes mobs and item entities before storage.
-- `ItemEntityMixin` canonicalizes item entities after ticking.
+- `ServerLevelEntityMixin` canonicalizes finite-world non-player entities before
+  storage.
+- `ServerLevelEntityTickMixin` canonicalizes finite-world non-player entities
+  after server root/passenger ticks.
+- `EntityTeleportCanonicalizationMixin` canonicalizes finite-world non-player
+  entities after same-level teleport positioning.
 - `ChunkMapTrackedEntityMixin` virtualizes entity tracking and outbound packets.
 - `PlayerCanonicalizer` canonicalizes players only at lifecycle boundaries.
 
@@ -58,6 +62,8 @@ does not require remove/re-add.
 
 ### 1. Make canonicalization policy explicit
 
+Status: implemented.
+
 Files:
 
 - `src/main/java/globe/world/util/EntityCanonicalizer.java`
@@ -84,6 +90,8 @@ makes storage-on-add, legacy chunk load, and worldgen chunk entity load all use
 the same policy.
 
 ### 2. Add a root-stack canonicalizer
+
+Status: implemented.
 
 Files:
 
@@ -121,12 +129,14 @@ stacked test cases move as one unit.
 
 ### 3. Canonicalize after server entity ticks
 
+Status: implemented.
+
 Files:
 
-- Add `src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java`
-- Remove `src/main/java/globe/world/mixin/ItemEntityMixin.java` after the generic
+- Added `src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java`
+- Removed `src/main/java/globe/world/mixin/ItemEntityMixin.java` after the generic
   hook covers item entities.
-- Update `src/main/resources/globe-world.mixins.json`.
+- Updated `src/main/resources/globe-world.mixins.json`.
 
 Mixin hooks:
 
@@ -148,12 +158,12 @@ Expected behavior:
 
 ### 4. Canonicalize same-dimension teleports
 
+Status: implemented.
+
 Files:
 
-- Add `src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java`
-  or fold this into the generic entity tick mixin if the target class stays
-  small.
-- Update `src/main/resources/globe-world.mixins.json`.
+- Added `src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java`.
+- Updated `src/main/resources/globe-world.mixins.json`.
 
 Mixin hooks:
 
@@ -182,6 +192,9 @@ tracking.
 
 ### 5. Ensure first post-wrap packet is absolute when needed
 
+Status: not implemented. Keep this as a fallback until manual testing shows a
+client snap or large relative-delta issue after wrapping.
+
 Files:
 
 - `src/main/java/globe/world/util/EntityCanonicalizer.java`
@@ -205,6 +218,8 @@ fallback, not the first implementation step.
 
 ### 6. Add diagnostics before manual testing
 
+Status: not implemented.
+
 Files:
 
 - `src/main/java/globe/world/GlobeDebugCommands.java`
@@ -222,6 +237,8 @@ This gives a fast way to validate manual tests without reading save files after
 every case.
 
 ### 7. Manual validation sequence
+
+Status: pending.
 
 Run these in a small tile, ideally with two players or one client plus logs:
 
@@ -247,6 +264,9 @@ Ask the user to run:
 - `./gradlew runClient`
 
 ### 8. Documentation updates when implemented
+
+Status: partially implemented. Core mechanics and vanilla notes are updated;
+keep this plan active until debug support and manual validation are complete.
 
 Files:
 

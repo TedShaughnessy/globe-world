@@ -26,8 +26,8 @@ and keep only historical investigation here if it is still useful.
 ## Recommended Implementation Order
 
 1. [Entity Canonical Storage Plan](entity-canonical-storage-plan.md): active
-   entity correctness work; keep moving non-player entities stored in canonical
-   X/Z after the packet and lifecycle foundations are tighter.
+   entity correctness work; core non-player canonicalization is implemented,
+   with diagnostics and vehicle/projectile validation still pending.
 
 ## Optional Optimizations
 

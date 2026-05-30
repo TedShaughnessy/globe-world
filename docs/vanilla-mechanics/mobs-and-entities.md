@@ -128,8 +128,19 @@ Project hooks for natural spawning:
 
 Project hooks for entity storage and visibility:
 
-- `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:18` canonicalizes mobs before `ServerLevel.addEntity(...)` stores them.
-- `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:23` and `:28` canonicalize mobs loaded from chunk/entity streams.
+- `src/main/java/globe/world/util/EntityCanonicalizer.java:11` defines the shared
+  policy for continuously canonicalized finite-world non-player entities.
+- `src/main/java/globe/world/util/EntityCanonicalizer.java:50` canonicalizes a
+  root entity and shifts its mounted passenger stack together.
+- `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:18` canonicalizes
+  non-player entities before `ServerLevel.addEntity(...)` stores them.
+- `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:23` and `:28`
+  canonicalize non-player entities loaded from chunk/entity streams.
+- `src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java:13` and `:18`
+  canonicalize non-player entities after root/passenger server ticks.
+- `src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java:15`
+  and `:27` canonicalize non-player entities after same-level teleport
+  positioning.
 - `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java:57` maps an entity's canonical chunk to the viewer's nearest alias and allows alias tracking by tracking-view membership rather than vanilla's pending-chunk gate.
 - `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java:69` tracks each player's current virtual chunk for a visible entity and sends an absolute sync when the nearest alias changes.
 - `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:27` and `:46` translate canonical chunk lookup to each player's nearest tracked virtual chunk for player-provider queries.
@@ -138,9 +149,11 @@ Project hooks for entity storage and visibility:
 
 Current status:
 
-- Good: spawned mobs are stored in canonical coordinates.
-- Good: item entities are stored in canonical coordinates, kept canonical after
-  ticking, and player pickup scans also query the player's canonical pickup box.
+- Good: finite-world non-player entities are stored in canonical coordinates on
+  add/load, after server ticks, and after same-level teleport positioning.
+- Good: mounted stacks are shifted together when the non-player root wraps.
+- Good: player pickup scans query the player's canonical pickup box as well as
+  the raw box.
 - Good: spawn position math and mob caps are mostly wrapped to canonical chunk identity.
 - Good: `ServerChunkCache.tickSpawningChunk(...)` now receives each canonical chunk at most once per `collectSpawningChunks(...)` pass, avoiding duplicate spawn attempts, inhabited-time increments, and thunder work from aliases.
 - Partial: despawn, sensors, targeting, and pathfinding each have their own distance/visibility assumptions. Some are wrapped elsewhere, but this page should remain the entry point for auditing them.

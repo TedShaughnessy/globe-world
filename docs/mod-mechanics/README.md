@@ -55,7 +55,7 @@ World period:
 | Block entities | Mostly done | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Random ticks | Done | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Scheduled ticks | Done for gameplay path | [blocks-and-ticks.md](blocks-and-ticks.md) |
-| Entity storage and packets | Done for mobs | [entities.md](entities.md) |
+| Entity storage and packets | Implemented for non-player entities, needs vehicle validation | [entities.md](entities.md) |
 | Player lifecycle canonicalization | Done for login, wake-up, and respawn | [entities.md](entities.md) |
 | Entity tracking and spawning | Done for main paths | [entities.md](entities.md) |
 | Mob despawn, sensing, pathfinding | Needs audit | [entities.md](entities.md) |
