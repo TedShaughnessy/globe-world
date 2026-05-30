@@ -51,6 +51,7 @@ World period:
 | Canonical chunk lifetime | Done | [chunks.md](chunks.md) |
 | Multiple rendered aliases | Done | [chunks.md](chunks.md) |
 | Block edits and block/light packets | Done, needs light seam validation | [blocks-and-ticks.md](blocks-and-ticks.md) |
+| Position-bearing packet audit | Done for Minecraft 26.1.2 | [client.md](client.md) |
 | Block entities | Mostly done | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Random ticks | Done | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Scheduled ticks | Done for gameplay path | [blocks-and-ticks.md](blocks-and-ticks.md) |

@@ -1,23 +1,19 @@
 # Packet Virtualization Audit Plan
 
-Status: active concrete plan. Light update fanout is implemented; this plan now
-tracks the remaining position-bearing clientbound packet work for Minecraft
-26.1.2. Phase 1 world-event and cosmetic packet virtualization is implemented,
-phase 2 biome resend packet fanout is implemented, and phase 3 residual entity
-packet virtualization is implemented. The sign-editor slice of phase 4 is also
-implemented, and look-at packets now preserve entity-target metadata while
-virtualizing fallback/explicit positions. Block/chunk waypoint packets now use
-wrapped connection decisions and alias positions. These are pending build and
-manual seam validation. Player-position packets are classified as intentionally
-not broadly virtualized because they are tied to teleport acknowledgement state.
+Status: complete. The Minecraft 26.1.2 position-bearing clientbound packet
+audit is finished. High and medium priority packets are either virtualized,
+fanned out to loaded aliases, covered upstream before packet construction, or
+explicitly classified as intentionally unchanged. Player-position packets are
+not broadly virtualized because they are tied to vanilla teleport
+acknowledgement state.
 
 ## Problem
 
 Globe World relies on server packets being relabeled from canonical X/Z to the
-player-visible alias X/Z. The current implementation covers the major chunk,
-block, light, block-entity, and entity tracking packets, but vanilla still sends
-other position-bearing packets through direct player-list, server-level, player,
-and entity-tracking paths.
+player-visible alias X/Z. Before this audit, the implementation covered the
+major chunk, block, light, block-entity, and entity tracking packets, but
+vanilla still sent other position-bearing packets through direct player-list,
+server-level, player, and entity-tracking paths.
 
 Any missed packet can leak canonical coordinates to the client. Depending on
 the packet, that can mean missed sends near tile edges, sounds or particles at
@@ -25,7 +21,7 @@ the wrong copy, stale biome data in aliases, break animations on the wrong
 block, or command/interaction visuals that point across the whole tile instead
 of across the wrapped path.
 
-## Current Coverage
+## Final Coverage
 
 Implemented behavior:
 
@@ -106,7 +102,7 @@ Checked against local Loom sources for Minecraft 26.1.2:
 
 ## Packet Triage
 
-| Packet | Coordinate Type | Status | Next Action |
+| Packet | Coordinate Type | Status | Disposition |
 | --- | --- | --- | --- |
 | `ClientboundLevelChunkWithLightPacket` | `ChunkPos` | covered | Keep as implemented. |
 | `ClientboundForgetLevelChunkPacket` | `ChunkPos` | covered | Keep as implemented. |
@@ -118,44 +114,44 @@ Checked against local Loom sources for Minecraft 26.1.2:
 | `ClientboundEntityPositionSyncPacket` | entity X/Y/Z | covered | Keep as implemented. |
 | `ClientboundTeleportEntityPacket` | entity X/Y/Z plus relatives | covered | Keep as implemented. |
 | `ClientboundMoveEntityPacket` | relative deltas | safe with current rebase sync | Recheck only if entity alias snapping regresses. |
-| `ClientboundMapItemDataPacket` | map-local decoration bytes | covered upstream | Document that map packet data is corrected before packet construction. |
-| `ClientboundSoundPacket` | quantized sound X/Y/Z | implemented, pending validation | Covered by phase 1. |
-| `ClientboundSoundEntityPacket` | entity id, positional send gate | implemented, pending validation | Covered by phase 1 send-distance wrapping; packet stays unchanged. |
-| `ClientboundLevelEventPacket` | `BlockPos` | implemented, pending validation | Covered by phase 1. |
-| `ClientboundBlockEventPacket` | `BlockPos` | implemented, pending validation | Covered by phase 1. |
-| `ClientboundBlockDestructionPacket` | `BlockPos` | implemented, pending validation | Covered by phase 1. |
-| `ClientboundLevelParticlesPacket` | particle X/Y/Z | implemented, pending validation | Covered by phase 1. |
-| `ClientboundExplodePacket` | center `Vec3` | implemented, pending validation | Covered by phase 1. |
-| `ClientboundChunksBiomesPacket` | list of `ChunkPos` | implemented, pending validation | Covered by phase 2. |
-| `ClientboundDamageEventPacket` | optional source `Vec3` | implemented, pending validation | Covered by phase 3. |
-| `ClientboundMoveVehiclePacket` | vehicle `Vec3` | implemented, pending validation | Covered by phase 3. |
-| `ClientboundMoveMinecartPacket` | minecart step `Vec3` list | implemented, pending validation | Covered by phase 3. |
+| `ClientboundMapItemDataPacket` | map-local decoration bytes | covered upstream | Map packet data is corrected before packet construction. |
+| `ClientboundSoundPacket` | quantized sound X/Y/Z | covered | Covered by world-event packet utilities. |
+| `ClientboundSoundEntityPacket` | entity id, positional send gate | covered | Send-distance wrapping is covered; packet stays unchanged. |
+| `ClientboundLevelEventPacket` | `BlockPos` | covered | Covered by world-event packet utilities. |
+| `ClientboundBlockEventPacket` | `BlockPos` | covered | Covered by world-event packet utilities. |
+| `ClientboundBlockDestructionPacket` | `BlockPos` | covered | Covered by direct per-player send handling. |
+| `ClientboundLevelParticlesPacket` | particle X/Y/Z | covered | Covered by direct per-player send handling. |
+| `ClientboundExplodePacket` | center `Vec3` | covered | Center is virtualized; knockback remains relative. |
+| `ClientboundChunksBiomesPacket` | list of `ChunkPos` | covered | Covered by loaded-alias fanout. |
+| `ClientboundDamageEventPacket` | optional source `Vec3` | covered | Covered by entity packet utilities when a source position is present. |
+| `ClientboundMoveVehiclePacket` | vehicle `Vec3` | covered | Covered by entity packet utilities and direct vehicle correction handling. |
+| `ClientboundMoveMinecartPacket` | minecart step `Vec3` list | covered | Covered by entity packet utilities. |
 | `ClientboundSetEntityMotionPacket` | velocity `Vec3` | intentionally unchanged | Movement vector is entity velocity, not a world position. |
-| `ClientboundOpenSignEditorPacket` | `BlockPos` | implemented, pending validation | Sign-editor slice of phase 4 is covered. |
-| `ClientboundPlayerLookAtPacket` | explicit fallback X/Y/Z | implemented, pending validation | Covered by phase 4 while preserving entity-target metadata. |
+| `ClientboundOpenSignEditorPacket` | `BlockPos` | covered | Direct sign-editor sends and inbound sign saves are covered. |
+| `ClientboundPlayerLookAtPacket` | explicit fallback X/Y/Z | covered | Covered while preserving entity-target metadata. |
 | `ClientboundPlayerPositionPacket` | player X/Y/Z | intentionally not broadly virtualized | Existing lifecycle hooks canonicalize login, respawn, and wake-up before vanilla teleport ack state is created; normal in-session teleports should stay in the player's current coordinate space. |
 | `ClientboundSetDefaultSpawnPositionPacket` | respawn `BlockPos` | intentionally canonical for now | Client stores dimension respawn data as a world anchor; do not virtualize unless a visible UI/navigation leak is proven. |
-| `ClientboundTrackedWaypointPacket` | waypoint `Vec3i`, `ChunkPos`, or azimuth | implemented, pending validation | Block/chunk positions use wrapped aliases; azimuth angles use the shortest wrapped path. |
+| `ClientboundTrackedWaypointPacket` | waypoint `Vec3i`, `ChunkPos`, or azimuth | covered | Block/chunk positions use wrapped aliases; azimuth angles use the shortest wrapped path. |
 | Debug and GameTest packets | debug `BlockPos`/`ChunkPos` | low priority | Classify as intentionally ignored unless gameplay uses them. |
 
-## Concrete Implementation Plan
+## Completed Implementation Record
 
 ### 1. World Event And Cosmetic Packets
 
-Status: implemented, pending build and manual validation.
+Status: implemented.
 
 Goal: cover packet families that are visible immediately during ordinary
 survival play and often have both a packet coordinate and a raw-distance send
 gate.
 
-Mitigation for blast radius: implement phase 1 in two small slices.
+This landed in two small slices.
 
 - Phase 1a: `PlayerList.broadcast(...)` packets only. This covers positional
   sounds, non-global level events, and block events.
 - Phase 1b: custom `ServerLevel` per-player send paths. This covers block
   destruction, particles, explosions, and global level events.
 
-Add `src/main/java/globe/world/util/WorldEventPacketUtil.java`.
+Implemented by `src/main/java/globe/world/util/WorldEventPacketUtil.java`.
 
 Public API:
 
@@ -194,7 +190,7 @@ Packet copy behavior:
   knockback, particles, sound, and block particle list. Do not virtualize the
   knockback vector; it is a relative push for that player.
 
-Add `PlayerListBroadcastMixin`.
+Implemented by `PlayerListBroadcastMixin`.
 
 - Target `PlayerList.broadcast(@Nullable Player, double, double, double,
   double, ResourceKey<Level>, Packet<?>)`.
@@ -216,7 +212,7 @@ Mitigations:
   class, original coordinate, virtual coordinate, and whether wrapped distance
   changed the send decision.
 
-Add `ServerLevelWorldEventMixin`.
+Implemented by `ServerLevelWorldEventMixin`.
 
 - In `ServerLevel.destroyBlockProgress(...)`, wrap the raw distance calculation
   and packet send. Use wrapped distance for send eligibility and virtualize
@@ -245,7 +241,7 @@ Mitigations:
   Minecraft 26.1.2 source and retarget the smallest send or distance operation
   that still has `ServerPlayer` context.
 
-Phase 1 acceptance tests:
+Phase 1 regression checklist:
 
 - Breaking a block near each tile edge shows crack progress at every visible
   alias being interacted with and never at the canonical-only copy.
@@ -260,12 +256,12 @@ Phase 1 acceptance tests:
 
 ### 2. Chunk Biome Resend Packets
 
-Status: implemented, pending build and manual validation.
+Status: implemented.
 
 Goal: when vanilla resends biome data for canonical chunks, clients that have
 loaded alias chunks should receive biome payloads at those alias chunk keys.
 
-Extend `BlockPacketUtil` or add `ChunkPacketUtil` with:
+Implemented in `ChunkPacketUtil` with:
 
 ```java
 public static List<Packet<?>> virtualizeBiomeResendForLoadedAliases(
@@ -300,14 +296,14 @@ Mitigations:
   debug command or diagnostic hook for validation, then remove or guard it
   before keeping the implementation.
 
-Add `ChunkMapBiomeResendMixin`.
+Implemented by `ChunkMapBiomeResendMixin`.
 
 - Target `ChunkMap.resendBiomesForChunks(...)`.
 - Wrap the `player.connection.send(ClientboundChunksBiomesPacket.forChunks(...))`
   call.
 - Send every packet returned by the biome resend helper.
 
-Phase 2 acceptance tests:
+Phase 2 regression checklist:
 
 - Trigger biome resend near all four edges if a vanilla or debug path is
   available.
@@ -318,12 +314,12 @@ Phase 2 acceptance tests:
 
 ### 3. Entity-Tracking Residual Packets
 
-Status: implemented, pending build and manual validation.
+Status: implemented.
 
 Goal: close entity-related packet leaks that already pass through
 `ChunkMapTrackedEntityMixin` but are not yet copied by `EntityPacketUtil`.
 
-Extend `EntityPacketUtil.virtualizeFor(...)` with:
+Implemented in `EntityPacketUtil.virtualizeFor(...)` with:
 
 - `ClientboundDamageEventPacket`: if `sourcePosition` is present, copy it with
   virtual X/Z for the receiving viewer. Entity-id based damage sources can stay
@@ -349,7 +345,7 @@ Mitigations:
 - Add source comments only where the distinction between absolute position and
   relative movement is easy to confuse.
 
-Phase 3 acceptance tests:
+Phase 3 regression checklist:
 
 - Damage from an explosion, projectile, and point damage source near a seam
   produces client effects from the visible alias.
@@ -360,16 +356,16 @@ Phase 3 acceptance tests:
 
 ### 4. Player, Interaction, Waypoint, And Spawn Packets
 
-Status: sign-editor, look-at, and waypoint slices implemented,
-pending build and manual validation. Player-position is intentionally not
-broadly virtualized because the packet participates in vanilla teleport
-acknowledgement state. Spawn packets are classified intentionally canonical
-unless testing proves a visible client-side leak.
+Status: sign-editor, look-at, and waypoint slices implemented.
+Player-position is intentionally not broadly virtualized because the packet
+participates in vanilla teleport acknowledgement state. Spawn packets are
+classified intentionally canonical unless testing proves a visible client-side
+leak.
 
 Goal: handle packets that are either player-self coordinates or UI/navigation
 state and therefore need packet-specific semantics instead of blind wrapping.
 
-Implement these in separate small changes:
+Implemented or classified in separate packet-specific slices:
 
 - `ClientboundOpenSignEditorPacket`: virtualize the sign `BlockPos` before it
   is sent from `ServerPlayer.openTextEdit(...)`. Reuse the same block-position
@@ -420,7 +416,7 @@ Mitigations:
 - Waypoints need their own source-backed mini-audit before code changes because
   position, chunk, and azimuth waypoints have different semantics.
 
-Phase 4 acceptance tests:
+Phase 4 regression checklist:
 
 - Opening and saving a sign editor from an alias edits the visible sign and
   writes the canonical sign text without closing due to a coordinate mismatch.
@@ -433,9 +429,9 @@ Phase 4 acceptance tests:
 
 ### 5. Documentation And Audit Artifacts
 
-Add `docs/vanilla-mechanics/position-bearing-packets.md`.
+Completed in `docs/vanilla-mechanics/position-bearing-packets.md`.
 
-Required content:
+Completed content:
 
 - The source-search command or method used against the Minecraft 26.1.2 Loom
   source jar.
@@ -448,24 +444,18 @@ Required content:
   relative-only, entity-id-only, or already transformed before packet
   construction.
 
-Update durable mod docs after each phase:
+Durable mod docs updated by this audit:
 
-- `docs/mod-mechanics/client.md`: extend the packet coverage paragraph/table.
+- `docs/mod-mechanics/client.md`: packet coverage paragraph and key files.
 - `docs/mod-mechanics/blocks-and-ticks.md`: document block event, block
-  destruction, sound, particle, and level-event behavior once phase 1 lands.
+  destruction, sound, particle, and level-event behavior.
 - `docs/mod-mechanics/entities.md`: document damage, vehicle, and minecart
-  packet virtualization once phase 3 lands.
+  packet virtualization.
 - `docs/mod-mechanics/maps.md`: mention why map packets are classified covered
   upstream rather than wrapped at send time.
-- `docs/plans/README.md`: move this plan out of the active slot only after the
-  position-bearing packet table is complete and all high/medium priority
-  packets are either implemented or explicitly classified.
+- `docs/plans/README.md`: this plan is now in the completed list.
 
-## Validation
-
-Ask the user to run:
-
-- `./gradlew build`
+## Regression Validation
 
 Manual validation should use a small tile size so a player can see multiple
 aliases of the same canonical area at once.
@@ -483,7 +473,7 @@ Core scenarios:
    is incomplete if the packet is still canonical; a packet copy is incomplete
    if vanilla's distance check prevents the player from receiving it.
 
-Useful debug logging while implementing:
+Useful debug logging for future regressions:
 
 - packet class
 - original coordinate
@@ -497,7 +487,7 @@ Keep permanent logs behind `GlobeWorld.LOGGER.isDebugEnabled()`.
 
 If manual reproduction is too slow, add temporary debug commands that emit one
 packet family at a chosen canonical/alias position. Keep those commands
-debug-only or remove them before marking the phase implemented.
+debug-only or remove them after the regression is diagnosed.
 
 ## Risks And Rules
 
@@ -514,7 +504,5 @@ debug-only or remove them before marking the phase implemented.
 - Keep mixin names tied to the vanilla path they intercept, for example
   `PlayerListBroadcastMixin`, `ServerLevelWorldEventMixin`, and
   `ChunkMapBiomeResendMixin`.
-- When a phase exposes multiple independent hooks, land and validate the safest
-  hook first instead of bundling all hooks into one large change.
 - After a Minecraft version bump, rerun the packet inventory against the new
   Loom source jars before trusting this classification.

@@ -25,6 +25,10 @@ center-relative alias rule before vanilla calculates whether the icon is on-map,
 off-map, or off-limits. This applies to tracked player icons only; banners,
 frames, and static exploration markers keep their stored map coordinates.
 
+`ClientboundMapItemDataPacket` is therefore covered upstream: map-local pixels
+and tracked-player decorations are corrected before vanilla builds the packet,
+instead of being rewritten during send.
+
 ## Key Files
 
 - `src/main/java/globe/world/mixin/MapItemMixin.java`

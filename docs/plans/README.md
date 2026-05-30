@@ -18,15 +18,14 @@ and keep only historical investigation here if it is still useful.
    diagnostics.
 5. [Light Update Alias Fanout Plan](light-update-alias-fanout-plan.md):
    implemented incremental light update fanout for loaded aliases.
+6. [Packet Virtualization Audit Plan](packet-virtualization-audit-plan.md):
+   completed the Minecraft 26.1.2 position-bearing packet audit. High and
+   medium priority packets are implemented or explicitly classified; durable
+   behavior now lives in the mod mechanics and vanilla packet inventory docs.
 
 ## Recommended Implementation Order
 
-1. [Packet Virtualization Audit Plan](packet-virtualization-audit-plan.md):
-   active concrete packet plan; world-event, biome, and entity-residual phases
-   plus sign-editor, look-at, and waypoint packets are implemented
-   pending validation. Player-position is intentionally not broadly virtualized;
-   spawn packets are currently classified intentionally canonical.
-2. [Entity Canonical Storage Plan](entity-canonical-storage-plan.md): active
+1. [Entity Canonical Storage Plan](entity-canonical-storage-plan.md): active
    entity correctness work; keep moving non-player entities stored in canonical
    X/Z after the packet and lifecycle foundations are tighter.
 
