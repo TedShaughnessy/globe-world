@@ -3,7 +3,12 @@
 Status: active concrete plan. Light update fanout is implemented; this plan now
 tracks the remaining position-bearing clientbound packet work for Minecraft
 26.1.2. Phase 1 world-event and cosmetic packet virtualization is implemented,
-pending build and manual seam validation.
+phase 2 biome resend packet fanout is implemented, and phase 3 residual entity
+packet virtualization is implemented. The sign-editor slice of phase 4 is also
+implemented, and look-at packets now preserve entity-target metadata while
+virtualizing fallback/explicit positions. Block/chunk waypoint packets now use
+wrapped connection decisions and alias positions. These are pending build and
+manual seam validation.
 
 ## Problem
 
@@ -51,6 +56,23 @@ Implemented behavior:
   `ClientboundBlockDestructionPacket`, `ClientboundLevelParticlesPacket`, and
   `ClientboundExplodePacket` are handled by `WorldEventPacketUtil`,
   `PlayerListBroadcastMixin`, and `ServerLevelWorldEventMixin`.
+- `ClientboundChunksBiomesPacket` is fanned out to loaded aliases by
+  `ChunkPacketUtil` through `ChunkMapBiomeResendMixin`.
+- `ClientboundDamageEventPacket`, `ClientboundMoveVehiclePacket`, and
+  `ClientboundMoveMinecartPacket` are copied by `EntityPacketUtil`. Vehicle
+  correction packets sent directly from `ServerGamePacketListenerImpl` are
+  routed through the same helper.
+- Direct `ServerPlayer.openTextEdit(...)` sends for
+  `ClientboundBlockUpdatePacket` and `ClientboundOpenSignEditorPacket` are
+  virtualized by `ServerPlayerInteractionPacketMixin`.
+- Direct `ServerPlayer.lookAt(...)` sends for `ClientboundPlayerLookAtPacket`
+  are virtualized by `ServerPlayerInteractionPacketMixin` and
+  `ClientboundPlayerLookAtPacketAccessor`.
+- Entity block/chunk waypoint connections use wrapped distance and nearest
+  visible chunk checks through `LivingEntityWaypointMixin`, then send alias
+  positions through `WaypointBlockConnectionMixin` and
+  `WaypointChunkConnectionMixin`. Azimuth-only waypoint packets remain
+  unchanged.
 
 ## Source Snapshot
 
@@ -103,15 +125,15 @@ Checked against local Loom sources for Minecraft 26.1.2:
 | `ClientboundBlockDestructionPacket` | `BlockPos` | implemented, pending validation | Covered by phase 1. |
 | `ClientboundLevelParticlesPacket` | particle X/Y/Z | implemented, pending validation | Covered by phase 1. |
 | `ClientboundExplodePacket` | center `Vec3` | implemented, pending validation | Covered by phase 1. |
-| `ClientboundChunksBiomesPacket` | list of `ChunkPos` | missing | Implement in phase 2. |
-| `ClientboundDamageEventPacket` | optional source `Vec3` | missing | Implement in phase 3. |
-| `ClientboundMoveVehiclePacket` | vehicle `Vec3` | missing | Implement in phase 3. |
-| `ClientboundMoveMinecartPacket` | minecart step `Vec3` list | missing | Implement in phase 3. |
-| `ClientboundOpenSignEditorPacket` | `BlockPos` | missing | Implement in phase 4. |
-| `ClientboundPlayerLookAtPacket` | explicit fallback X/Y/Z | missing | Implement in phase 4. |
+| `ClientboundChunksBiomesPacket` | list of `ChunkPos` | implemented, pending validation | Covered by phase 2. |
+| `ClientboundDamageEventPacket` | optional source `Vec3` | implemented, pending validation | Covered by phase 3. |
+| `ClientboundMoveVehiclePacket` | vehicle `Vec3` | implemented, pending validation | Covered by phase 3. |
+| `ClientboundMoveMinecartPacket` | minecart step `Vec3` list | implemented, pending validation | Covered by phase 3. |
+| `ClientboundOpenSignEditorPacket` | `BlockPos` | implemented, pending validation | Sign-editor slice of phase 4 is covered. |
+| `ClientboundPlayerLookAtPacket` | explicit fallback X/Y/Z | implemented, pending validation | Covered by phase 4 while preserving entity-target metadata. |
 | `ClientboundPlayerPositionPacket` | player X/Y/Z | partial lifecycle coverage | Audit in phase 4 before changing. |
-| `ClientboundSetDefaultSpawnPositionPacket` | respawn `BlockPos` | behavior-specific | Audit in phase 4; compass/spawn UI may already have separate fixes. |
-| `ClientboundTrackedWaypointPacket` | waypoint `Vec3i` or `ChunkPos` | missing/unknown impact | Audit in phase 4. |
+| `ClientboundSetDefaultSpawnPositionPacket` | respawn `BlockPos` | intentionally canonical for now | Client stores dimension respawn data as a world anchor; do not virtualize unless a visible UI/navigation leak is proven. |
+| `ClientboundTrackedWaypointPacket` | waypoint `Vec3i` or `ChunkPos` | implemented for block/chunk, pending validation | Azimuth-only packets stay angle-based; block/chunk connection selection and positions use wrapped aliases. |
 | Debug and GameTest packets | debug `BlockPos`/`ChunkPos` | low priority | Classify as intentionally ignored unless gameplay uses them. |
 
 ## Concrete Implementation Plan
@@ -236,6 +258,8 @@ Phase 1 acceptance tests:
 
 ### 2. Chunk Biome Resend Packets
 
+Status: implemented, pending build and manual validation.
+
 Goal: when vanilla resends biome data for canonical chunks, clients that have
 loaded alias chunks should receive biome payloads at those alias chunk keys.
 
@@ -292,6 +316,8 @@ Phase 2 acceptance tests:
 
 ### 3. Entity-Tracking Residual Packets
 
+Status: implemented, pending build and manual validation.
+
 Goal: close entity-related packet leaks that already pass through
 `ChunkMapTrackedEntityMixin` but are not yet copied by `EntityPacketUtil`.
 
@@ -332,6 +358,11 @@ Phase 3 acceptance tests:
   alias.
 
 ### 4. Player, Interaction, Waypoint, And Spawn Packets
+
+Status: sign-editor, look-at, and block/chunk waypoint slices implemented,
+pending build and manual validation. Player-position still needs a mini-audit
+before implementation. Spawn packets are classified intentionally canonical
+unless testing proves a visible client-side leak.
 
 Goal: handle packets that are either player-self coordinates or UI/navigation
 state and therefore need packet-specific semantics instead of blind wrapping.

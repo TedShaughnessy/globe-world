@@ -22,8 +22,14 @@ alias chunk position. Block, section, block-entity, incremental light, and
 entity packets are copied or virtualized per viewer. World-event packets such as
 sounds, particles, level events, block events, block destruction progress, and
 explosion centers are also copied per viewer so their visible X/Z matches the
-nearest loaded alias. Full chunk light data and later incremental light updates
-both arrive at the alias chunk coordinates the client has loaded.
+nearest loaded alias. Biome resend packets are copied to loaded alias chunk
+positions. Entity-adjacent damage, vehicle, and minecart packets with absolute
+positions are copied to the receiving viewer's nearest alias. Direct sign-editor
+and look-at packets are also copied so the client opens or aims at the visible
+alias target. Block/chunk locator-bar waypoint packets use wrapped connection
+checks and alias positions; azimuth-only waypoints remain angle-based. Full
+chunk light data and later incremental light updates both arrive at the alias
+chunk coordinates the client has loaded.
 
 Spawn, lodestone, and recovery compass needles resolve their target block
 through the nearest virtual alias in tiled dimensions. They point across the
@@ -76,10 +82,17 @@ Tile-border rendering remains available with `F3+Shift+Y`.
 - `src/main/java/globe/world/mixin/ClientboundLevelChunkWithLightMixin.java`
 - `src/main/java/globe/world/mixin/ClientboundLightUpdatePacketAccessor.java`
 - `src/main/java/globe/world/util/BlockPacketUtil.java`
+- `src/main/java/globe/world/util/ChunkPacketUtil.java`
 - `src/main/java/globe/world/util/WorldEventPacketUtil.java`
 - `src/main/java/globe/world/util/EntityPacketUtil.java`
+- `src/main/java/globe/world/mixin/ClientboundPlayerLookAtPacketAccessor.java`
+- `src/main/java/globe/world/mixin/ChunkMapBiomeResendMixin.java`
 - `src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
 - `src/main/java/globe/world/mixin/ServerLevelWorldEventMixin.java`
+- `src/main/java/globe/world/mixin/ServerPlayerInteractionPacketMixin.java`
+- `src/main/java/globe/world/mixin/LivingEntityWaypointMixin.java`
+- `src/main/java/globe/world/mixin/WaypointBlockConnectionMixin.java`
+- `src/main/java/globe/world/mixin/WaypointChunkConnectionMixin.java`
 - `src/client/java/globe/world/client/mixin/CompassAngleStateMixin.java`
 - `src/client/java/globe/world/client/GlobeCurvatureShader.java`
 - `src/client/java/globe/world/client/GlobeSkyHorizon.java`

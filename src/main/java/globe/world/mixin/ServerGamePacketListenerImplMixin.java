@@ -3,7 +3,10 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.util.ClientActionDiagnostics;
+import globe.world.util.EntityPacketUtil;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -13,6 +16,22 @@ import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(ServerGamePacketListenerImpl.class)
 public class ServerGamePacketListenerImplMixin {
+    @WrapOperation(
+        method = "handleMoveVehicle",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/server/network/ServerGamePacketListenerImpl;send(Lnet/minecraft/network/protocol/Packet;)V"
+        )
+    )
+    private void virtualizeVehicleCorrectionPacket(
+            ServerGamePacketListenerImpl connection,
+            Packet<?> packet,
+            Operation<Void> original) {
+        @SuppressWarnings("unchecked")
+        Packet<? super ClientGamePacketListener> gamePacket = (Packet<? super ClientGamePacketListener>) packet;
+        original.call(connection, EntityPacketUtil.virtualizeFor(gamePacket, connection.player));
+    }
+
     @WrapOperation(
         method = "handleUseItemOn",
         at = @At(

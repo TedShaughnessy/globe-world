@@ -28,6 +28,11 @@ chunk in that player's current dimension. Later block, section, block-entity,
 and incremental light updates fan out to every visible alias, not just the
 nearest virtual copy.
 
+Biome resend packets also use loaded alias tracking. When vanilla resends biome
+data for canonical chunks, `ChunkPacketUtil` copies each biome payload under
+the alias chunk positions that the receiving player has loaded. If an alias
+record is missing, it falls back to the nearest virtual chunk for that player.
+
 Alias tracking is client-visibility bookkeeping. It is populated when chunk
 packets are sent, trimmed when chunk drop packets are sent, and force-cleared
 for player disconnect, respawn, dimension transfer, level close, and server
@@ -39,7 +44,9 @@ safe to discard because new chunk sends repopulate them.
 - `src/main/java/globe/world/GlobeChunkPacket.java`
 - `src/main/java/globe/world/util/CanonicalChunkTickets.java`
 - `src/main/java/globe/world/util/ChunkAliasTracker.java`
+- `src/main/java/globe/world/util/ChunkPacketUtil.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
+- `src/main/java/globe/world/mixin/ChunkMapBiomeResendMixin.java`
 - `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java`
 - `src/main/java/globe/world/mixin/PlayerChunkSenderMixin.java`
 - `src/main/java/globe/world/mixin/PlayerListCanonicalPositionMixin.java`

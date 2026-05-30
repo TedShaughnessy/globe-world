@@ -47,6 +47,14 @@ tiles that show multiple aliases at once render the nearest visible copy; when
 that nearest alias changes, the server sends an absolute position sync to rebase
 the client entity.
 
+Additional entity-adjacent packets with absolute positions are virtualized per
+viewer. Damage event source positions, vehicle correction positions, and
+minecart interpolation step positions are copied to the nearest visible alias.
+Relative movement, velocity, rotations, minecart step movement, and knockback
+vectors remain unchanged. Vehicle correction packets sent directly from
+`ServerGamePacketListenerImpl.handleMoveVehicle(...)` use the same
+`EntityPacketUtil` path as tracked-entity packets.
+
 Player item pickup scans include the player's canonical pickup box as well as
 the raw box. This lets a player standing in an alias collect the same canonical
 item entity they see through virtualized packets.
@@ -67,6 +75,7 @@ positions.
 - `src/main/java/globe/world/mixin/PlayerListCanonicalPositionMixin.java`
 - `src/main/java/globe/world/mixin/ServerPlayerCanonicalPositionMixin.java`
 - `src/main/java/globe/world/mixin/ServerEntityMixin.java`
+- `src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapPlayerProviderMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java`
