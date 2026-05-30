@@ -19,9 +19,11 @@ shape and change their coordinates before the client receives them.
 
 Full chunk packets are sourced from canonical chunk data and relabeled to the
 alias chunk position. Block, section, block-entity, incremental light, and
-entity packets are copied or virtualized per viewer. Full chunk light data and
-later incremental light updates both arrive at the alias chunk coordinates the
-client has loaded.
+entity packets are copied or virtualized per viewer. World-event packets such as
+sounds, particles, level events, block events, block destruction progress, and
+explosion centers are also copied per viewer so their visible X/Z matches the
+nearest loaded alias. Full chunk light data and later incremental light updates
+both arrive at the alias chunk coordinates the client has loaded.
 
 Spawn, lodestone, and recovery compass needles resolve their target block
 through the nearest virtual alias in tiled dimensions. They point across the
@@ -74,7 +76,10 @@ Tile-border rendering remains available with `F3+Shift+Y`.
 - `src/main/java/globe/world/mixin/ClientboundLevelChunkWithLightMixin.java`
 - `src/main/java/globe/world/mixin/ClientboundLightUpdatePacketAccessor.java`
 - `src/main/java/globe/world/util/BlockPacketUtil.java`
+- `src/main/java/globe/world/util/WorldEventPacketUtil.java`
 - `src/main/java/globe/world/util/EntityPacketUtil.java`
+- `src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
+- `src/main/java/globe/world/mixin/ServerLevelWorldEventMixin.java`
 - `src/client/java/globe/world/client/mixin/CompassAngleStateMixin.java`
 - `src/client/java/globe/world/client/GlobeCurvatureShader.java`
 - `src/client/java/globe/world/client/GlobeSkyHorizon.java`

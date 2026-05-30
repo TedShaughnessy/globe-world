@@ -22,8 +22,9 @@ and keep only historical investigation here if it is still useful.
 ## Recommended Implementation Order
 
 1. [Packet Virtualization Audit Plan](packet-virtualization-audit-plan.md):
-   active audit work; inventory and close remaining position-bearing packet
-   leaks now that the known light-update gap is addressed.
+   active concrete packet plan; world-event phase is implemented pending
+   validation, then biome, entity-residual, player, waypoint, and spawn packet
+   phases remain.
 2. [Entity Canonical Storage Plan](entity-canonical-storage-plan.md): active
    entity correctness work; keep moving non-player entities stored in canonical
    X/Z after the packet and lifecycle foundations are tighter.

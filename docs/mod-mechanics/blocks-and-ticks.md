@@ -28,6 +28,14 @@ block-entity data packets, and incremental light update packets. When a player
 has multiple loaded aliases for the same canonical chunk, it emits one packet
 per alias with positions or chunk coordinates offset into that alias.
 
+`WorldEventPacketUtil` virtualizes world-event and cosmetic packets whose
+positions are not sent through `ChunkHolder`: positional sounds, level events,
+block events, block destruction progress, particles, and explosion centers.
+`PlayerListBroadcastMixin` wraps vanilla's positional broadcast path so players
+near an alias receive sounds and events using wrapped distance checks.
+`ServerLevelWorldEventMixin` handles the custom per-player send paths for block
+destruction, particles, explosions, and global level events.
+
 Random block ticks are canonicalized and deduped during
 `ChunkMap.forEachBlockTickingChunk`. Globe snapshots the ticking chunk keys
 before running callbacks so side effects during block ticks cannot mutate the
@@ -43,10 +51,13 @@ outside the canonical tile.
 ## Key Files
 
 - `src/main/java/globe/world/util/BlockPacketUtil.java`
+- `src/main/java/globe/world/util/WorldEventPacketUtil.java`
 - `src/main/java/globe/world/util/ChunkAliasTracker.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
 - `src/main/java/globe/world/mixin/ChunkMapBlockTickingMixin.java`
 - `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java`
+- `src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
+- `src/main/java/globe/world/mixin/ServerLevelWorldEventMixin.java`
 - `src/main/java/globe/world/mixin/LodestoneTrackerMixin.java`
 - `src/main/java/globe/world/mixin/ServerPlayerGameModeMixin.java`
 - `src/main/java/globe/world/mixin/BulkSectionAccessMixin.java`
