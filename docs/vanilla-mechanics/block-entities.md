@@ -50,6 +50,13 @@ Important anchors:
 - `Level.java:707` `setBlockEntity`
 - `Level.java:879` `blockEntityChanged`
 
+`Level.getBlockEntity(pos)` asks `getChunkAt(pos)` for a chunk and then passes
+the same `pos` into `LevelChunk.getBlockEntity(...)`. If a mod redirects chunk
+lookup from an alias chunk to a canonical chunk but leaves `pos` unchanged,
+`LevelChunk` can miss the canonical block entity map entry and create a new
+block entity keyed by the alias `BlockPos`. That entry is not a valid canonical
+chunk resident and can fail update fanout or reload persistence.
+
 `ServerLevel` integrates block entities with chunk unload and debug sync:
 
 - `ServerLevel.java:441` `tickBlockEntities`
@@ -90,4 +97,3 @@ Client application:
 - Does the block entity save tag contain coordinates that must agree with chunk-local storage?
 - Are tickers added and removed exactly once per actual storage block entity?
 - Do comparator, inventory, sign, container-open, and game-event side effects use the same position identity?
-

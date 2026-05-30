@@ -71,6 +71,7 @@
 		"ServerEntityMixin",
 		"ServerChunkCacheMixin",
 		"ServerGamePacketListenerImplMixin",
+		"SignBlockEntityFacingMixin",
 		"StructureGenerationContextMixin",
 		"ServerPlayerGameModeMixin",
 		"ServerLevelLocalSleepTimeMixin",
@@ -79,6 +80,7 @@
 		"SurfaceSystemMixin",
 		"TargetingConditionsMixin",
 		"WorldGenRegionMixin",
+		"WaypointAzimuthConnectionMixin",
 		"WaypointBlockConnectionMixin",
 		"WaypointChunkConnectionMixin",
 		"WorldGenSettingsMixin"

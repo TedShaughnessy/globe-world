@@ -27,6 +27,18 @@ public class PlayerInteractionRangeMixin {
     }
 
     @WrapOperation(
+        method = "isWithinBlockInteractionRange",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/world/phys/AABB;distanceToSqr(Lnet/minecraft/world/phys/Vec3;)D"
+        )
+    )
+    private double wrapBlockInteractionDistance(AABB box, Vec3 eyePosition, Operation<Double> original) {
+        Player player = (Player) (Object) this;
+        return original.call(CoordUtil.virtualAabb(player.level(), box, player.getX(), player.getZ()), eyePosition);
+    }
+
+    @WrapOperation(
         method = "isWithinAttackRange",
         at = @At(
             value = "INVOKE",

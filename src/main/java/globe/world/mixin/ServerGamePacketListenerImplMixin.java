@@ -3,19 +3,27 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.util.ClientActionDiagnostics;
+import globe.world.util.CoordUtil;
 import globe.world.util.EntityPacketUtil;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ServerGamePacketListenerImpl.class)
 public class ServerGamePacketListenerImplMixin {
+    @Shadow public ServerPlayer player;
+
     @WrapOperation(
         method = "handleMoveVehicle",
         at = @At(
@@ -53,5 +61,29 @@ public class ServerGamePacketListenerImplMixin {
             return false;
         }
         return true;
+    }
+
+    @Inject(method = "updateSignText", at = @At("HEAD"), cancellable = true)
+    private void rejectAliasSignUpdateOutsideCanonicalSimulation(
+            ServerboundSignUpdatePacket packet,
+            List<?> lines,
+            CallbackInfo ci) {
+        ServerLevel level = this.player.level();
+        if (ClientActionDiagnostics.shouldRejectAliasMutation(this.player, level, packet.getPos(), "sign_update")) {
+            ci.cancel();
+        }
+    }
+
+    @WrapOperation(
+        method = "updateSignText",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/protocol/game/ServerboundSignUpdatePacket;getPos()Lnet/minecraft/core/BlockPos;"
+        )
+    )
+    private BlockPos canonicalizeSignUpdatePos(
+            ServerboundSignUpdatePacket packet,
+            Operation<BlockPos> original) {
+        return CoordUtil.wrapBlockPos(this.player.level(), original.call(packet));
     }
 }

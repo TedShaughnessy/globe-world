@@ -8,7 +8,8 @@ packet virtualization is implemented. The sign-editor slice of phase 4 is also
 implemented, and look-at packets now preserve entity-target metadata while
 virtualizing fallback/explicit positions. Block/chunk waypoint packets now use
 wrapped connection decisions and alias positions. These are pending build and
-manual seam validation.
+manual seam validation. Player-position packets are classified as intentionally
+not broadly virtualized because they are tied to teleport acknowledgement state.
 
 ## Problem
 
@@ -68,11 +69,11 @@ Implemented behavior:
 - Direct `ServerPlayer.lookAt(...)` sends for `ClientboundPlayerLookAtPacket`
   are virtualized by `ServerPlayerInteractionPacketMixin` and
   `ClientboundPlayerLookAtPacketAccessor`.
-- Entity block/chunk waypoint connections use wrapped distance and nearest
-  visible chunk checks through `LivingEntityWaypointMixin`, then send alias
-  positions through `WaypointBlockConnectionMixin` and
-  `WaypointChunkConnectionMixin`. Azimuth-only waypoint packets remain
-  unchanged.
+- Entity waypoint connections use wrapped distance, nearest visible chunk
+  checks, and wrapped azimuth direction through `LivingEntityWaypointMixin` and
+  the waypoint connection mixins. Block/chunk waypoint packets send alias
+  positions; azimuth packets remain angle-based but the angle is computed
+  through the shortest wrapped path.
 
 ## Source Snapshot
 
@@ -129,11 +130,12 @@ Checked against local Loom sources for Minecraft 26.1.2:
 | `ClientboundDamageEventPacket` | optional source `Vec3` | implemented, pending validation | Covered by phase 3. |
 | `ClientboundMoveVehiclePacket` | vehicle `Vec3` | implemented, pending validation | Covered by phase 3. |
 | `ClientboundMoveMinecartPacket` | minecart step `Vec3` list | implemented, pending validation | Covered by phase 3. |
+| `ClientboundSetEntityMotionPacket` | velocity `Vec3` | intentionally unchanged | Movement vector is entity velocity, not a world position. |
 | `ClientboundOpenSignEditorPacket` | `BlockPos` | implemented, pending validation | Sign-editor slice of phase 4 is covered. |
 | `ClientboundPlayerLookAtPacket` | explicit fallback X/Y/Z | implemented, pending validation | Covered by phase 4 while preserving entity-target metadata. |
-| `ClientboundPlayerPositionPacket` | player X/Y/Z | partial lifecycle coverage | Audit in phase 4 before changing. |
+| `ClientboundPlayerPositionPacket` | player X/Y/Z | intentionally not broadly virtualized | Existing lifecycle hooks canonicalize login, respawn, and wake-up before vanilla teleport ack state is created; normal in-session teleports should stay in the player's current coordinate space. |
 | `ClientboundSetDefaultSpawnPositionPacket` | respawn `BlockPos` | intentionally canonical for now | Client stores dimension respawn data as a world anchor; do not virtualize unless a visible UI/navigation leak is proven. |
-| `ClientboundTrackedWaypointPacket` | waypoint `Vec3i` or `ChunkPos` | implemented for block/chunk, pending validation | Azimuth-only packets stay angle-based; block/chunk connection selection and positions use wrapped aliases. |
+| `ClientboundTrackedWaypointPacket` | waypoint `Vec3i`, `ChunkPos`, or azimuth | implemented, pending validation | Block/chunk positions use wrapped aliases; azimuth angles use the shortest wrapped path. |
 | Debug and GameTest packets | debug `BlockPos`/`ChunkPos` | low priority | Classify as intentionally ignored unless gameplay uses them. |
 
 ## Concrete Implementation Plan
@@ -333,9 +335,8 @@ Extend `EntityPacketUtil.virtualizeFor(...)` with:
   `NewMinecartBehavior.MinecartStep` with virtualized `position`; keep movement,
   rotation, and weight unchanged.
 
-Recheck whether `ClientboundSetEntityMotionPacket` needs any action. Its values
-are velocity, not world position, so it should remain safe unless a later source
-audit finds encoded absolute coordinates in the payload.
+`ClientboundSetEntityMotionPacket` is classified intentionally unchanged. Its
+`Vec3` is entity velocity, not a world position.
 
 Mitigations:
 
@@ -359,9 +360,10 @@ Phase 3 acceptance tests:
 
 ### 4. Player, Interaction, Waypoint, And Spawn Packets
 
-Status: sign-editor, look-at, and block/chunk waypoint slices implemented,
-pending build and manual validation. Player-position still needs a mini-audit
-before implementation. Spawn packets are classified intentionally canonical
+Status: sign-editor, look-at, and waypoint slices implemented,
+pending build and manual validation. Player-position is intentionally not
+broadly virtualized because the packet participates in vanilla teleport
+acknowledgement state. Spawn packets are classified intentionally canonical
 unless testing proves a visible client-side leak.
 
 Goal: handle packets that are either player-self coordinates or UI/navigation
@@ -371,31 +373,37 @@ Implement these in separate small changes:
 
 - `ClientboundOpenSignEditorPacket`: virtualize the sign `BlockPos` before it
   is sent from `ServerPlayer.openTextEdit(...)`. Reuse the same block-position
-  helper as world events.
+  helper as world events. Canonicalize the matching
+  `ServerboundSignUpdatePacket` position before vanilla looks up the sign block
+  entity, with the same alias-mutation guard used by block break/use. Keep
+  `Player.isWithinBlockInteractionRange(...)` wrapped too, because the sign
+  block entity clears edit permission if the player appears too far away while
+  the editor is open.
 - `ClientboundPlayerLookAtPacket`: add an accessor or constructor-copy helper
   because vanilla exposes only `getPosition(Level)`, not raw fields. Virtualize
   explicit fallback X/Z for the receiving player. If `atEntity` is true, keep
   the entity id and target anchor, but also virtualize the fallback coordinates.
-- `ClientboundPlayerPositionPacket`: audit all call sites before changing.
-  Existing code canonicalizes login, respawn, and bed wake-up positions. Normal
-  in-session teleports may intentionally keep the player's current alias
-  coordinate. Only virtualize a teleport packet if a concrete leak is found.
+- `ClientboundPlayerPositionPacket`: do not broadly virtualize this packet.
+  Existing code canonicalizes login, respawn, and bed wake-up positions before
+  vanilla creates teleport acknowledgement state. Normal in-session teleports
+  should remain in the player's current coordinate space unless a specific leak
+  is found and fixed together with the server-side awaited position.
 - `ClientboundSetDefaultSpawnPositionPacket`: audit whether client UI,
   compass-like behavior, or respawn preview uses the packet position directly.
   If it does, virtualize to the nearest alias for each receiving player; if
   vanilla treats it as a dimension-level canonical anchor, document it as
   intentionally canonical.
-- `ClientboundTrackedWaypointPacket`: inspect `TrackedWaypoint` semantics and
-  the client display path. For position or chunk waypoints in tiled dimensions,
-  copy to the nearest alias for the receiving player. For azimuth-only
-  waypoints, leave unchanged.
+- `ClientboundTrackedWaypointPacket`: block and chunk waypoint positions are
+  copied to the nearest alias for the receiving player. Azimuth packets still
+  carry an angle, but connection selection and angle calculation use wrapped
+  distance and direction.
 
 Mitigations:
 
-- Do not change `ClientboundPlayerPositionPacket` in the first pass. First
-  document all vanilla call sites and the existing Globe lifecycle hooks, then
-  decide whether any normal in-session teleport is actually leaking canonical
-  coordinates.
+- Do not add a generic `ClientboundPlayerPositionPacket` wrapper. If a later
+  test finds a specific teleport leak, fix that teleport source before
+  `ServerGamePacketListenerImpl.teleport(...)` stores
+  `awaitingPositionFromClient`.
 - Keep `ClientboundSetDefaultSpawnPositionPacket` canonical unless client
   behavior proves it is a visible player-relative navigation packet. Spawn is a
   world anchor, so blindly virtualizing it could fight the existing compass and
@@ -405,14 +413,17 @@ Mitigations:
   explicit fallback X/Z should move.
 - For sign editing, virtualize both the preceding `ClientboundBlockUpdatePacket`
   and `ClientboundOpenSignEditorPacket` if they are sent directly from
-  `ServerPlayer.openTextEdit(...)` outside the `ChunkHolder` fanout path.
+  `ServerPlayer.openTextEdit(...)` outside the `ChunkHolder` fanout path, then
+  canonicalize the inbound save packet so alias text edits reach the canonical
+  sign. Preserve wrapped block interaction range so vanilla's sign edit
+  permission does not expire against the canonical sign position.
 - Waypoints need their own source-backed mini-audit before code changes because
   position, chunk, and azimuth waypoints have different semantics.
 
 Phase 4 acceptance tests:
 
-- Opening a sign editor from an alias opens the visible sign and does not close
-  due to a coordinate mismatch.
+- Opening and saving a sign editor from an alias edits the visible sign and
+  writes the canonical sign text without closing due to a coordinate mismatch.
 - `/tp` and `/lookat` style command behavior near seams points at the nearest
   visible target.
 - Spawn/waypoint UI, if visible in the tested version, does not point across an

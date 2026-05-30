@@ -59,6 +59,11 @@ Player item pickup scans include the player's canonical pickup box as well as
 the raw box. This lets a player standing in an alias collect the same canonical
 item entity they see through virtualized packets.
 
+Entity, attack, and block interaction range checks use wrapped target boxes so
+players near a tile seam interact with the nearest visible copy instead of the
+canonical copy's raw distance. The block-range path also protects vanilla flows
+that revalidate block reach after an interaction begins, such as sign editing.
+
 Mob sensing and targeting have partial wrapped-distance support. Pathfinding is
 still an MVP compromise because vanilla path nodes and goals are raw Euclidean
 positions.

@@ -46,6 +46,21 @@ public abstract class LevelSetBlockBroadcastMixin {
         return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
     }
 
+    @ModifyVariable(method = "getBlockEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private BlockPos canonicalizeServerGetBlockEntityPos(BlockPos pos) {
+        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+    }
+
+    @ModifyVariable(method = "removeBlockEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private BlockPos canonicalizeServerRemoveBlockEntityPos(BlockPos pos) {
+        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+    }
+
+    @ModifyVariable(method = "blockEntityChanged", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private BlockPos canonicalizeServerBlockEntityChangedPos(BlockPos pos) {
+        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+    }
+
     @Inject(
         method = "setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;II)Z",
         at = @At("HEAD"),

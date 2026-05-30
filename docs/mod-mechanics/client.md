@@ -26,10 +26,21 @@ nearest loaded alias. Biome resend packets are copied to loaded alias chunk
 positions. Entity-adjacent damage, vehicle, and minecart packets with absolute
 positions are copied to the receiving viewer's nearest alias. Direct sign-editor
 and look-at packets are also copied so the client opens or aims at the visible
-alias target. Block/chunk locator-bar waypoint packets use wrapped connection
-checks and alias positions; azimuth-only waypoints remain angle-based. Full
-chunk light data and later incremental light updates both arrive at the alias
-chunk coordinates the client has loaded.
+alias target; the client's sign text update packet is canonicalized on the way
+back to the server so alias sign edits save to the canonical `SignBlockEntity`.
+When the server decides whether the player is editing the front or back text, it
+uses the sign's nearest virtual alias so the opened side matches the visible
+side the player clicked.
+Locator-bar waypoint connections use wrapped distance, visibility,
+and azimuth direction; block/chunk waypoint packets carry alias positions while
+azimuth waypoints remain angle-based. Full chunk light data and later
+incremental light updates both arrive at the alias chunk coordinates the client
+has loaded.
+
+`ClientboundPlayerPositionPacket` is not broadly virtualized. Vanilla uses it as
+part of player teleport acknowledgement state, so Globe canonicalizes login,
+respawn, and bed wake-up before vanilla sends the packet, while normal
+in-session teleports remain in the player's current coordinate space.
 
 Spawn, lodestone, and recovery compass needles resolve their target block
 through the nearest virtual alias in tiled dimensions. They point across the
@@ -128,6 +139,7 @@ Tile-border rendering remains available with `F3+Shift+Y`.
 ## Related Vanilla Mechanics
 
 - [Vanilla client world](../vanilla-mechanics/client-world.md)
+- [Position-bearing packets](../vanilla-mechanics/position-bearing-packets.md)
 - [Vanilla lighting](../vanilla-mechanics/lighting.md)
 - [Vanilla time and sky](../vanilla-mechanics/time-and-sky.md)
 

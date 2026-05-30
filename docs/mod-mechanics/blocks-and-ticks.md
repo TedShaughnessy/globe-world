@@ -23,6 +23,24 @@ Reentrant or skipped block-update notification paths send the actual post-update
 state so the client still receives redstone shape changes such as dot-to-line
 updates.
 
+Server block-entity lookup, removal, and dirty marking also canonicalize X/Z.
+This prevents alias interactions from creating transient alias-position block
+entities inside canonical chunks. Those transient entries can appear editable in
+memory, but their update packets do not fan out correctly and their coordinates
+do not belong to the canonical chunk on reload.
+
+Client block actions that originate from alias coordinates are allowed to mutate
+the canonical block only while the matching canonical chunk is in block-ticking
+range. Block breaking, item use on blocks, and sign text saves use this guard.
+Sign text packets also canonicalize the client-sent sign position before vanilla
+checks chunk availability and fetches the `SignBlockEntity`, so editing a sign
+through a visible alias writes the canonical sign text. Player block-interaction
+range checks use the nearest wrapped copy of the target block, which keeps
+vanilla's sign edit permission from expiring just because the editable sign is
+stored at its canonical coordinates. Sign front/back detection also compares the
+player against the sign's nearest virtual alias, so editing an existing alias
+sign opens the same side the player is actually looking at.
+
 `BlockPacketUtil` virtualizes single-block updates, multi-block section updates,
 block-entity data packets, and incremental light update packets. When a player
 has multiple loaded aliases for the same canonical chunk, it emits one packet
@@ -59,6 +77,9 @@ outside the canonical tile.
 - `src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
 - `src/main/java/globe/world/mixin/ServerLevelWorldEventMixin.java`
 - `src/main/java/globe/world/mixin/LodestoneTrackerMixin.java`
+- `src/main/java/globe/world/mixin/PlayerInteractionRangeMixin.java`
+- `src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java`
+- `src/main/java/globe/world/mixin/SignBlockEntityFacingMixin.java`
 - `src/main/java/globe/world/mixin/ServerPlayerGameModeMixin.java`
 - `src/main/java/globe/world/mixin/BulkSectionAccessMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapPlayerProviderMixin.java`
