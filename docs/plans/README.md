@@ -9,10 +9,6 @@ and keep only historical investigation here if it is still useful.
 1. [Client-Advertised Curvature Interactions](client-advertised-curvature-interactions.md):
    design for making curvature a per-client visual preference while keeping
    block, fluid, bucket, and boat interactions aligned with the client view.
-2. [Entity Visual Alias Rendering](entity-visual-alias-rendering-plan.md):
-   plan for drawing nearby client-only entity aliases, mapping alias picks back
-   to the canonical entity, and snapping wrap rebases instead of interpolating
-   them across tiny tiles.
 
 ## Completed Plans
 
@@ -40,6 +36,11 @@ and keep only historical investigation here if it is still useful.
    canonicalization, player-passenger visible-tile positioning,
    player-controlled vehicle packet translation, and diagnostics. Manual
    validation cases remain listed in the plan.
+9. [Entity Visual Alias Rendering](entity-visual-alias-rendering-plan.md):
+   implemented client-only visual aliases for non-player, unmounted, not-leashed
+   entities, alias-aware client picking, debug toggles/diagnostics, and
+   snap-on-rebase behavior. Remaining edge cases live in the entity mechanics
+   open audits.
 
 ## Optional Optimizations
 

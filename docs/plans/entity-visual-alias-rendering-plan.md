@@ -1,5 +1,11 @@
 # Entity Visual Alias Rendering
 
+Status: implemented as an MVP for non-player, unmounted, not-leashed entities.
+Durable behavior now lives in
+[client mechanics](../mod-mechanics/client.md) and
+[entity mechanics](../mod-mechanics/entities.md). This file remains as the
+historical design note and validation checklist for future broadening.
+
 ## Goal
 
 Render nearby visual copies of a canonical entity at every loaded tile alias
@@ -59,6 +65,47 @@ Project hooks:
 
 ## Implementation Plan
 
+### 0. Feature Toggle And Activation Rules
+
+Add a client-side feature toggle before implementing rendering. Entity aliases
+are presentation-only, so the toggle should live with client/debug settings
+rather than world generation settings.
+
+Suggested modes:
+
+- `OFF`: never render entity aliases and do not run alias entity picking.
+- `AUTO`: default. Render aliases only when tiling is enabled and a neighboring
+  tile can fall inside the effective entity render radius.
+- `FORCE_DEBUG`: run alias enumeration even when the automatic large-tile skip
+  would normally avoid it, but still do final distance/frustum/chunk culling
+  before submitting any render copy.
+
+The automatic gate should happen before per-entity alias enumeration:
+
+```text
+tileWidth = tiling.tileSizeBlocks()
+maxPossibleEntityRenderRadius = current effective entity render distance
+
+if mode == OFF:
+    skip aliases
+
+if mode == AUTO and maxPossibleEntityRenderRadius < tileWidth:
+    skip aliases for the frame
+```
+
+This keeps large tiles cheap. If mobs cannot normally render one tile away,
+visual aliases are irrelevant and the renderer should behave like vanilla.
+
+Debug behavior:
+
+- Expose the current mode in the Globe debug HUD.
+- Add a keyboard/debug toggle near the existing `F3+Y`/tile-border debug
+  controls, or add a temporary config option if a keybind would be noisy.
+- When aliases are disabled by the automatic radius gate, show that state in
+  diagnostics so it is clear the feature is not broken.
+- Alias-aware picking should follow the same toggle. If aliases are not being
+  rendered, the pick path should not select invisible alias copies.
+
 ### 1. Shared Alias Offset Utility
 
 Add a small utility, probably `GlobeEntityAliasRenderer` or
@@ -66,6 +113,7 @@ Add a small utility, probably `GlobeEntityAliasRenderer` or
 
 Responsibilities:
 
+- Respect the entity alias feature mode.
 - Return no offsets when dimension tiling is disabled.
 - Read tile width from `DimensionTiling.forLevel(level).tileSizeBlocks()`.
 - Compute the effective vanilla entity render distance for the entity, including
@@ -100,9 +148,10 @@ for offsetZ in [-maxOffset, maxOffset]
     keep only if aliasBox is within renderRadius of the camera
 ```
 
-For most large tiles, `maxOffset` will be `0`, so the feature adds no clone
-checks. For tiny tiles, the radius naturally expands to the few neighboring tile
-copies that could be visible, while still respecting vanilla mob render range.
+For most large tiles, `AUTO` mode will skip the whole feature before this point,
+or `maxOffset` will be `0`, so the feature adds no clone checks. For tiny tiles,
+the radius naturally expands to the few neighboring tile copies that could be
+visible, while still respecting vanilla mob render range.
 
 ### 2. Render Alias Copies
 
@@ -209,12 +258,16 @@ Behavior:
 This phase is independent from alias rendering. It fixes the remaining visual
 case where the real client entity changes its alias.
 
-### 6. Diagnostics And Toggle
+### 6. Diagnostics
 
-Add a temporary client debug toggle while developing.
+Keep the feature toggle visible while developing and retain useful diagnostics
+after the MVP.
 
 Useful diagnostics:
 
+- Current alias-rendering mode: `OFF`, `AUTO`, or `FORCE_DEBUG`.
+- Whether aliases were skipped because entity render distance is smaller than
+  tile width.
 - Count alias entity submissions per frame.
 - Count culled alias candidates.
 - Show selected alias offset for the current crosshair entity in the debug HUD.

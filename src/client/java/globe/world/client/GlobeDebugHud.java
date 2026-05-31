@@ -77,6 +77,12 @@ public final class GlobeDebugHud {
         leftLines.add("Distance to next wrap seam in Z: " + seamDistance(currentTiling, cameraEntity.getZ()));
         leftLines.add("Overworld tile width: " + tileSummary(overworldTiling));
         leftLines.add("Nether tile width: " + tileSummary(netherTiling));
+        leftLines.add(String.format(Locale.ROOT, "Entity aliases: %s, rings %s (%d shown, %d culled, %d auto-skipped)",
+                GlobeEntityAliasDiagnostics.mode().displayName(),
+                GlobeDebugState.entityAliasRingLimitDisplayName(),
+                GlobeEntityAliasDiagnostics.submittedThisFrame(),
+                GlobeEntityAliasDiagnostics.culledThisFrame(),
+                GlobeEntityAliasDiagnostics.autoSkippedThisFrame()));
 
         rightLines.add("[Real / Alias]");
         rightLines.add(String.format(Locale.ROOT, "Absolute XYZ: %.3f / %.3f / %.3f",

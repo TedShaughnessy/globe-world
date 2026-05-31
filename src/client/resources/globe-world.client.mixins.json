@@ -4,6 +4,7 @@
 	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"ClientChunkCacheDiagnosticsMixin",
+		"ClientPacketListenerMixin",
 		"CloudRendererMixin",
 		"CompassAngleStateMixin",
 		"CreateWorldScreenMixin",
@@ -13,6 +14,7 @@
 		"GuiMixin",
 		"ItemEntityRendererMixin",
 		"KeyboardHandlerMixin",
+		"LevelRendererMixin",
 		"LocalPlayerMixin",
 		"OptionsMixin",
 		"OptionsScreenMixin",

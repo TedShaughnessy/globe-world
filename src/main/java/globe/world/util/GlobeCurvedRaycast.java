@@ -126,37 +126,68 @@ public final class GlobeCurvedRaycast {
         Vec3 nearestLocation = null;
         double nearestDistance = Double.MAX_VALUE;
 
-        for (Entity entity : level.getEntities(cameraEntity, searchArea.inflate(1.0D), EntitySelector.CAN_BE_PICKED)) {
-            AABB box = entity.getBoundingBox().inflate(entity.getPickRadius());
-            for (int segment = 1; segment <= segments; segment++) {
-                Vec3 previous = points[segment - 1];
-                Vec3 current = points[segment];
-                double previousDistance = range * (segment - 1) / segments;
-                double currentDistance = range * segment / segments;
-                Optional<Vec3> clipPoint = box.clip(previous, current);
-                Vec3 location = null;
-                double distance = Double.MAX_VALUE;
+        for (Entity entity : level.getEntities(cameraEntity, entitySearchArea(level, searchArea, range), EntitySelector.CAN_BE_PICKED)) {
+            PickCandidate canonical = testEntityBox(cameraEntity, entity, entity.getBoundingBox().inflate(entity.getPickRadius()), points, range);
+            if (canonical != null && canonical.distance() < nearestDistance) {
+                nearestEntity = entity;
+                nearestLocation = canonical.location();
+                nearestDistance = canonical.distance();
+            }
 
-                if (box.contains(previous)) {
-                    location = previous;
-                    distance = previousDistance;
-                } else if (clipPoint.isPresent()) {
-                    location = clipPoint.get();
-                    distance = hitDistance(previous, current, previousDistance, currentDistance, location);
+            for (GlobeEntityAliasing.AliasOffset offset : GlobeEntityAliasing.visualOffsets(entity, from)) {
+                AABB aliasBox = offset.box().inflate(entity.getPickRadius());
+                if (!aliasBox.intersects(searchArea.inflate(1.0D))) {
+                    continue;
                 }
-
-                if (location != null && distance < nearestDistance) {
-                    if (entity.getRootVehicle() == cameraEntity.getRootVehicle() && distance > 0.0D) {
-                        continue;
-                    }
+                PickCandidate alias = testEntityBox(cameraEntity, entity, aliasBox, points, range);
+                if (alias != null && alias.distance() < nearestDistance) {
                     nearestEntity = entity;
-                    nearestLocation = location;
-                    nearestDistance = distance;
+                    nearestLocation = alias.location();
+                    nearestDistance = alias.distance();
                 }
             }
         }
 
         return nearestEntity == null ? null : new EntityPick(new EntityHitResult(nearestEntity, nearestLocation), nearestDistance);
+    }
+
+    private static AABB entitySearchArea(Level level, AABB searchArea, double range) {
+        DimensionTiling tiling = DimensionTiling.forLevel(level);
+        double broadRadius = 128.0D * Entity.getViewScale();
+        if (!GlobeEntityAliasing.aliasesEnabled(tiling, broadRadius)) {
+            return searchArea.inflate(1.0D);
+        }
+        double expansion = broadRadius + range + 1.0D;
+        return searchArea.inflate(expansion, 1.0D, expansion);
+    }
+
+    private static PickCandidate testEntityBox(Entity cameraEntity, Entity entity, AABB box, Vec3[] points, double range) {
+        int segments = points.length - 1;
+        for (int segment = 1; segment <= segments; segment++) {
+            Vec3 previous = points[segment - 1];
+            Vec3 current = points[segment];
+            double previousDistance = range * (segment - 1) / segments;
+            double currentDistance = range * segment / segments;
+            Optional<Vec3> clipPoint = box.clip(previous, current);
+            Vec3 location = null;
+            double distance = Double.MAX_VALUE;
+
+            if (box.contains(previous)) {
+                location = previous;
+                distance = previousDistance;
+            } else if (clipPoint.isPresent()) {
+                location = clipPoint.get();
+                distance = hitDistance(previous, current, previousDistance, currentDistance, location);
+            }
+
+            if (location != null) {
+                if (entity.getRootVehicle() == cameraEntity.getRootVehicle() && distance > 0.0D) {
+                    continue;
+                }
+                return new PickCandidate(location, distance);
+            }
+        }
+        return null;
     }
 
     private static double hitDistance(Vec3 from, Vec3 to, double fromDistance, double toDistance, Vec3 hit) {
@@ -174,5 +205,8 @@ public final class GlobeCurvedRaycast {
     }
 
     private record EntityPick(EntityHitResult hit, double distance) {
+    }
+
+    private record PickCandidate(Vec3 location, double distance) {
     }
 }

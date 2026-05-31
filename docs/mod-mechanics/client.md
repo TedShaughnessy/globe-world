@@ -63,6 +63,19 @@ visually selected block, entity, or fluid. A future client-advertised curvature
 option is tracked in `docs/plans/client-advertised-curvature-interactions.md`.
 Entity physics and collision boxes remain uncurved; the curved entity pick only
 aligns client targeting with the rendered entity.
+When tiling is enabled, non-player, unmounted, not-leashed entities can receive
+extra client-only render states at neighboring whole-tile offsets. The aliases
+use the same real client entity and are culled by vanilla-style render distance,
+the configured camera tile-ring limit, the camera frustum, and compiled-section
+visibility. The default ring limit is `1`, meaning only the camera tile and the
+eight neighboring tile copies can receive visual aliases, and distance culling
+still applies inside that ring. `AUTO` mode skips alias enumeration when the
+tile is larger than the entity's effective render radius; `FORCE_DEBUG` keeps
+enumeration active for diagnostics, and `OFF` disables both alias rendering and
+alias picking. Alias picking tests shifted entity boxes and returns the
+canonical entity, so server interactions still use the one real entity id.
+Tile-sized entity position rebases from server packets are snapped on the client
+to avoid interpolation slides between aliases.
 Vanilla line rendering is also curved so selected-block outlines follow the
 visually bent block geometry. The boat water-mask pass is curved too, keeping
 the boat's water occlusion patch aligned with the rendered boat and curved
@@ -104,7 +117,10 @@ and settings state. The client has a dedicated Globe World debug overlay toggled
 with `F3+Y`; it draws separate wrapped/canonical and absolute/alias columns
 without adding Globe World lines to vanilla F3. The wrapped/canonical column
 shows local solar time plus the active day-cycle mode and day-length multiplier.
-Tile-border rendering remains available with `F3+Shift+Y`.
+Tile-border rendering remains available with `F3+Shift+Y`. Entity visual alias
+mode cycles with `F3+Ctrl+Y`, the alias ring limit cycles with
+`F3+Ctrl+Shift+Y`, and the debug overlay shows the current mode, ring limit,
+and per-frame alias submission, cull, and automatic-skip counts.
 
 ## Key Files
 
@@ -126,6 +142,8 @@ Tile-border rendering remains available with `F3+Shift+Y`.
 - `src/client/java/globe/world/client/GlobeCurvatureShader.java`
 - `src/main/java/globe/world/util/GlobeCurvature.java`
 - `src/main/java/globe/world/util/GlobeCurvedRaycast.java`
+- `src/main/java/globe/world/util/GlobeEntityAliasing.java`
+- `src/main/java/globe/world/util/GlobeEntityAliasMode.java`
 - `src/main/java/globe/world/mixin/ItemMixin.java`
 - `src/client/java/globe/world/client/GlobeSkyHorizon.java`
 - `src/client/java/globe/world/client/GlobeCurvatureSlider.java`
@@ -141,9 +159,13 @@ Tile-border rendering remains available with `F3+Shift+Y`.
 - `src/client/java/globe/world/client/GlobeTileBorderRenderer.java`
 - `src/client/java/globe/world/client/GlobeDebugHud.java`
 - `src/client/java/globe/world/client/GlobeDebugState.java`
+- `src/client/java/globe/world/client/GlobeEntityAliasDiagnostics.java`
+- `src/client/java/globe/world/client/GlobeVisualAliasUtil.java`
 - `src/client/java/globe/world/client/mixin/GuiMixin.java`
 - `src/client/java/globe/world/client/mixin/ItemEntityRendererMixin.java`
 - `src/client/java/globe/world/client/mixin/KeyboardHandlerMixin.java`
+- `src/client/java/globe/world/client/mixin/LevelRendererMixin.java`
+- `src/client/java/globe/world/client/mixin/ClientPacketListenerMixin.java`
 - `src/client/java/globe/world/client/mixin/ShaderManagerMixin.java`
 - `src/client/java/globe/world/client/mixin/LocalPlayerMixin.java`
 - `src/client/java/globe/world/client/mixin/SkyRendererMixin.java`
