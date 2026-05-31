@@ -39,7 +39,7 @@ public class MapItemMixin {
     }
 
     private static double nearestMapAlias(Level level, MapItemSavedData data, double coordinate, int center) {
-        if (level.dimension() != data.dimension || !DimensionTiling.forLevel(level).enabled()) {
+        if (!level.dimension().equals(data.dimension) || !DimensionTiling.forLevel(level).enabled()) {
             return coordinate;
         }
         return CoordUtil.virtualBlock(level, CoordUtil.wrapBlock(level, coordinate), center);

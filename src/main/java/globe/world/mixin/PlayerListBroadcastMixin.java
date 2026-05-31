@@ -42,7 +42,7 @@ public class PlayerListBroadcastMixin {
         Vec3 source = new Vec3(x, y, z);
         double rangeSqr = range * range;
         for (ServerPlayer player : this.players) {
-            if (player != except && player.level().dimension() == dimension) {
+            if (player != except && player.level().dimension().equals(dimension)) {
                 ServerLevel level = player.level();
                 if (WorldEventPacketUtil.wrappedDistanceSqr(level, source, player) < rangeSqr) {
                     player.connection.send(WorldEventPacketUtil.virtualizeFor(packet, player));

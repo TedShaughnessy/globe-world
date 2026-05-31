@@ -31,7 +31,10 @@ clean large multiples, and edge blend for awkward medium/large sizes.
 
 Terrain and biome hooks route many X/Z-dependent samples through periodic noise
 utilities or terrain-mode-aware sampling. Positional random factories are wrapped
-where the caller's coordinate unit is known.
+where the caller's coordinate unit is known. Generator phases that rely on raw
+ambient `CoordUtil` calls run inside scoped dimension tiling contexts; async
+biome/noise work captures the caller's dimension context and restores it on the
+worker thread.
 
 Alias `LevelChunk.postProcessGeneration` is cancelled and queued
 post-processing offsets are cleared so alias neighbor-shape fixes do not write
@@ -48,6 +51,8 @@ spillover queues are runtime bookkeeping and are not saved world data.
 Structure edge handling stores virtual source keys during reference generation,
 resolves them during biome decoration, and places vanilla starts with a
 whole-tile chunk-box shift. Alias starts are treated as transient worldgen data.
+Alias biome decoration and reference generation are skipped without leaking
+their tiling context into surrounding generation work.
 
 ## Key Files
 

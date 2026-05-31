@@ -47,10 +47,10 @@ public class ChunkStatusTasksMixin {
             ChunkStep step,
             StaticCache2D<GenerationChunkHolder> chunks,
             ChunkAccess chunk) {
-        withDimensionTiling(context.level(), () -> {
-            original.call(generator, registryAccess, state, structureManager, centerChunk, structureTemplateManager, levelKey);
-            return null;
-        });
+        runWithDimensionTiling(
+                context.level(),
+                () -> original.call(generator, registryAccess, state, structureManager, centerChunk, structureTemplateManager, levelKey)
+        );
     }
 
     @WrapOperation(
@@ -97,5 +97,9 @@ public class ChunkStatusTasksMixin {
 
     private static <T> T withDimensionTiling(ServerLevel level, Supplier<T> action) {
         return DimensionTiling.with(DimensionTiling.forLevel(level), action);
+    }
+
+    private static void runWithDimensionTiling(ServerLevel level, Runnable action) {
+        DimensionTiling.runWith(DimensionTiling.forLevel(level), action);
     }
 }

@@ -2,6 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.server.level.WorldGenRegion;
@@ -12,9 +13,7 @@ import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -52,48 +51,32 @@ public class NoiseBasedChunkGeneratorMixin {
         return original.call((Supplier<ChunkAccess>) () -> DimensionTiling.with(tiling, supplier), executor);
     }
 
-    @Inject(method = "applyCarvers", at = @At("HEAD"))
-    private void pushCarverTilingContext(
+    @WrapMethod(method = "applyCarvers(Lnet/minecraft/server/level/WorldGenRegion;JLnet/minecraft/world/level/levelgen/RandomState;Lnet/minecraft/world/level/biome/BiomeManager;Lnet/minecraft/world/level/StructureManager;Lnet/minecraft/world/level/chunk/ChunkAccess;)V")
+    private void applyCarversWithTilingContext(
             WorldGenRegion region,
             long seed,
             RandomState randomState,
             BiomeManager biomeManager,
             StructureManager structureManager,
             ChunkAccess chunk,
-            CallbackInfo ci) {
-        DimensionTiling.push(DimensionTiling.forLevel(region.getLevel()));
+            Operation<Void> original) {
+        DimensionTiling.runWith(
+                DimensionTiling.forLevel(((WorldGenRegionAccessor) region).globeWorld$level()),
+                () -> original.call(region, seed, randomState, biomeManager, structureManager, chunk)
+        );
     }
 
-    @Inject(method = "applyCarvers", at = @At("RETURN"))
-    private void clearCarverTilingContext(
-            WorldGenRegion region,
-            long seed,
-            RandomState randomState,
-            BiomeManager biomeManager,
-            StructureManager structureManager,
-            ChunkAccess chunk,
-            CallbackInfo ci) {
-        DimensionTiling.clear();
-    }
-
-    @Inject(method = "buildSurface", at = @At("HEAD"))
-    private void pushSurfaceTilingContext(
+    @WrapMethod(method = "buildSurface(Lnet/minecraft/server/level/WorldGenRegion;Lnet/minecraft/world/level/StructureManager;Lnet/minecraft/world/level/levelgen/RandomState;Lnet/minecraft/world/level/chunk/ChunkAccess;)V")
+    private void buildSurfaceWithTilingContext(
             WorldGenRegion level,
             StructureManager structureManager,
             RandomState randomState,
             ChunkAccess protoChunk,
-            CallbackInfo ci) {
-        DimensionTiling.push(DimensionTiling.forLevel(level.getLevel()));
-    }
-
-    @Inject(method = "buildSurface", at = @At("RETURN"))
-    private void clearSurfaceTilingContext(
-            WorldGenRegion level,
-            StructureManager structureManager,
-            RandomState randomState,
-            ChunkAccess protoChunk,
-            CallbackInfo ci) {
-        DimensionTiling.clear();
+            Operation<Void> original) {
+        DimensionTiling.runWith(
+                DimensionTiling.forLevel(((WorldGenRegionAccessor) level).globeWorld$level()),
+                () -> original.call(level, structureManager, randomState, protoChunk)
+        );
     }
 
     @ModifyArg(

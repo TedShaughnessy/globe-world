@@ -49,11 +49,11 @@ public record DimensionTiling(boolean enabled, int tileSizeChunks, TerrainMode t
         return current != null ? current : forDimension(Level.OVERWORLD);
     }
 
-    public static void push(DimensionTiling tiling) {
+    private static void push(DimensionTiling tiling) {
         CURRENT.set(tiling);
     }
 
-    public static void clear() {
+    private static void clear() {
         CURRENT.remove();
     }
 
@@ -67,6 +67,20 @@ public record DimensionTiling(boolean enabled, int tileSizeChunks, TerrainMode t
                 CURRENT.remove();
             } else {
                 CURRENT.set(previous);
+            }
+        }
+    }
+
+    public static void runWith(DimensionTiling tiling, Runnable action) {
+        DimensionTiling previous = CURRENT.get();
+        push(tiling);
+        try {
+            action.run();
+        } finally {
+            if (previous == null) {
+                clear();
+            } else {
+                push(previous);
             }
         }
     }

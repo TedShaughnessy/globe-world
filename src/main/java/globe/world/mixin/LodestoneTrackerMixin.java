@@ -24,7 +24,7 @@ public class LodestoneTrackerMixin {
 
         LodestoneTracker tracker = (LodestoneTracker) (Object) this;
         Optional<GlobalPos> target = tracker.target();
-        if (!tracker.tracked() || target.isEmpty() || target.get().dimension() != level.dimension()) {
+        if (!tracker.tracked() || target.isEmpty() || !target.get().dimension().equals(level.dimension())) {
             return;
         }
 

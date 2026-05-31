@@ -2,6 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
@@ -17,48 +18,30 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(NaturalSpawner.class)
 public class NaturalSpawnerMixin {
-    @Inject(method = "getRandomPosWithin(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/chunk/LevelChunk;)Lnet/minecraft/core/BlockPos;", at = @At("HEAD"))
-    private static void pushRandomSpawnPosTilingContext(Level level, LevelChunk chunk, CallbackInfoReturnable<BlockPos> cir) {
-        DimensionTiling.push(DimensionTiling.forLevel(level));
+    @WrapMethod(method = "getRandomPosWithin(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/chunk/LevelChunk;)Lnet/minecraft/core/BlockPos;")
+    private static BlockPos getRandomPosWithinWithTilingContext(
+            Level level,
+            LevelChunk chunk,
+            Operation<BlockPos> original) {
+        return DimensionTiling.with(DimensionTiling.forLevel(level), () -> original.call(level, chunk));
     }
 
-    @Inject(method = "getRandomPosWithin(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/chunk/LevelChunk;)Lnet/minecraft/core/BlockPos;", at = @At("RETURN"))
-    private static void clearRandomSpawnPosTilingContext(Level level, LevelChunk chunk, CallbackInfoReturnable<BlockPos> cir) {
-        DimensionTiling.clear();
-    }
-
-    @Inject(
-        method = "spawnCategoryForPosition(Lnet/minecraft/world/entity/MobCategory;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/NaturalSpawner$SpawnPredicate;Lnet/minecraft/world/level/NaturalSpawner$AfterSpawnCallback;)V",
-        at = @At("HEAD")
-    )
-    private static void pushSpawnCategoryTilingContext(
+    @WrapMethod(method = "spawnCategoryForPosition(Lnet/minecraft/world/entity/MobCategory;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/NaturalSpawner$SpawnPredicate;Lnet/minecraft/world/level/NaturalSpawner$AfterSpawnCallback;)V")
+    private static void spawnCategoryForPositionWithTilingContext(
             net.minecraft.world.entity.MobCategory mobCategory,
             ServerLevel level,
             ChunkAccess chunk,
             BlockPos start,
             NaturalSpawner.SpawnPredicate extraTest,
             NaturalSpawner.AfterSpawnCallback spawnCallback,
-            CallbackInfo ci) {
-        DimensionTiling.push(DimensionTiling.forLevel(level));
-    }
-
-    @Inject(
-        method = "spawnCategoryForPosition(Lnet/minecraft/world/entity/MobCategory;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/NaturalSpawner$SpawnPredicate;Lnet/minecraft/world/level/NaturalSpawner$AfterSpawnCallback;)V",
-        at = @At("RETURN")
-    )
-    private static void clearSpawnCategoryTilingContext(
-            net.minecraft.world.entity.MobCategory mobCategory,
-            ServerLevel level,
-            ChunkAccess chunk,
-            BlockPos start,
-            NaturalSpawner.SpawnPredicate extraTest,
-            NaturalSpawner.AfterSpawnCallback spawnCallback,
-            CallbackInfo ci) {
-        DimensionTiling.clear();
+            Operation<Void> original) {
+        DimensionTiling.runWith(
+                DimensionTiling.forLevel(level),
+                () -> original.call(mobCategory, level, chunk, start, extraTest, spawnCallback)
+        );
     }
 
     @Inject(

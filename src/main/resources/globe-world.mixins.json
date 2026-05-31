@@ -82,6 +82,7 @@
 		"SurfaceSystemMixin",
 		"TargetingConditionsMixin",
 		"WorldGenRegionMixin",
+		"WorldGenRegionAccessor",
 		"WaypointAzimuthConnectionMixin",
 		"WaypointBlockConnectionMixin",
 		"WaypointChunkConnectionMixin",

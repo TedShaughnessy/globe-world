@@ -61,7 +61,7 @@ public class NetherPortalBlockMixin {
             ServerLevel currentLevel,
             Entity entity,
             BlockPos portalEntryPos) {
-        ServerLevel newLevel = currentLevel.getServer().getLevel(currentLevel.dimension() == Level.NETHER ? Level.OVERWORLD : Level.NETHER);
+        ServerLevel newLevel = currentLevel.getServer().getLevel(Level.NETHER.equals(currentLevel.dimension()) ? Level.OVERWORLD : Level.NETHER);
         if (newLevel == null) {
             return original.call(worldBorder, x, y, z);
         }

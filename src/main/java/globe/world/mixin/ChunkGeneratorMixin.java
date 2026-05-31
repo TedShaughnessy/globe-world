@@ -2,6 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.StructurePlacementShifts;
@@ -20,8 +21,6 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,53 +28,42 @@ import java.util.List;
 
 @Mixin(ChunkGenerator.class)
 public class ChunkGeneratorMixin {
-    @Inject(method = "applyBiomeDecoration", at = @At("HEAD"), cancellable = true)
-    private void skipAliasBiomeDecoration(
+    @WrapMethod(method = "applyBiomeDecoration")
+    private void applyBiomeDecorationWithTilingContext(
             WorldGenLevel level,
             ChunkAccess chunk,
             StructureManager structureManager,
-            CallbackInfo ci) {
-        DimensionTiling.push(DimensionTiling.forLevel(level.getLevel()));
-        StructurePlacementShifts.clear();
-        if (!isCanonical(level.getLevel(), chunk.getPos())) {
-            DimensionTiling.clear();
-            ci.cancel();
-            return;
-        }
+            Operation<Void> original) {
+        DimensionTiling.runWith(DimensionTiling.forLevel(level.getLevel()), () -> {
+            StructurePlacementShifts.clear();
+            if (!isCanonical(level.getLevel(), chunk.getPos())) {
+                return;
+            }
 
-        WorldGenSpillover.applyToChunk(level.getLevel(), chunk);
-    }
-
-    @Inject(method = "applyBiomeDecoration", at = @At("RETURN"))
-    private void applyQueuedSpilloverAfterBiomeDecoration(
-            WorldGenLevel level,
-            ChunkAccess chunk,
-            StructureManager structureManager,
-            CallbackInfo ci) {
-        StructurePlacementShifts.clear();
-        DimensionTiling.clear();
-        if (isCanonical(level.getLevel(), chunk.getPos())) {
             WorldGenSpillover.applyToChunk(level.getLevel(), chunk);
-        }
+            try {
+                original.call(level, chunk, structureManager);
+                WorldGenSpillover.applyToChunk(level.getLevel(), chunk);
+            } finally {
+                StructurePlacementShifts.clear();
+            }
+        });
     }
 
-    @Inject(method = "createReferences", at = @At("HEAD"), cancellable = true)
+    @WrapMethod(method = "createReferences")
     private void createToroidalStructureReferences(
             WorldGenLevel level,
             StructureManager structureManager,
             ChunkAccess centerChunk,
-            CallbackInfo ci) {
-        DimensionTiling.push(DimensionTiling.forLevel(level.getLevel()));
-        if (!isCanonical(level.getLevel(), centerChunk.getPos())) {
-            centerChunk.setAllReferences(Collections.emptyMap());
-            DimensionTiling.clear();
-            ci.cancel();
-            return;
-        }
+            Operation<Void> original) {
+        DimensionTiling.runWith(DimensionTiling.forLevel(level.getLevel()), () -> {
+            if (!isCanonical(level.getLevel(), centerChunk.getPos())) {
+                centerChunk.setAllReferences(Collections.emptyMap());
+                return;
+            }
 
-        addToroidalStructureReferences(level, structureManager, centerChunk);
-        DimensionTiling.clear();
-        ci.cancel();
+            addToroidalStructureReferences(level, structureManager, centerChunk);
+        });
     }
 
     @WrapOperation(

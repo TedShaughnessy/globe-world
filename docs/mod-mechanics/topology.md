@@ -45,7 +45,9 @@ building viewer-facing positions, especially packets and tracking decisions.
 `DimensionTiling` resolves the effective tiling context for Overworld, Nether,
 and End. Runtime paths use level/player dimension context where available.
 Worldgen paths that do not receive a `ServerLevel` use a scoped
-`DimensionTiling` context.
+`DimensionTiling` context. Scoped context helpers restore any previous tiling
+after nested worldgen calls, cancellations, or exceptions, so Nether generation
+does not accidentally inherit the Overworld fallback.
 
 `nether_one_eighth_overworld_size` is effective only when the Overworld tile size
 is at least `16` chunks and cleanly divisible by 8. This keeps the derived
@@ -80,6 +82,8 @@ Overworld period supports it exactly.
 - Server chunk lookup, alias tickets, random ticks, spawning collection,
   tracking, block mutation, and worldgen region access use dimension-aware
   wrapping.
+- Worldgen and natural-spawn paths that still need ambient coordinate helpers
+  enter them through scoped `DimensionTiling` wrappers.
 - Players are rebased to canonical X/Z on login, bed wake-up, and respawn.
 - Scheduled tick containers are tagged with their `ServerLevel` dimension when
   exposed by `ServerLevel`.

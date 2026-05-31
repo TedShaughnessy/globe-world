@@ -34,7 +34,7 @@ public class CompassAngleStateMixin {
         if (target == null
                 || owner == null
                 || !globeWorld$usesNearestAlias(compassTarget)
-                || target.dimension() != level.dimension()
+                || !target.dimension().equals(level.dimension())
                 || !tiling.enabled()) {
             return target;
         }
