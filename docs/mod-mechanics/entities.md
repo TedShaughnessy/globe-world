@@ -111,10 +111,18 @@ coordinates, including the crossbow goal variant. `Sensing.hasLineOfSight(...)`
 owns the alias line-of-sight fallback so vanilla's per-tick seen/unseen cache
 agrees with targets accepted through a tile seam.
 
-Entity path targets remain ordinary vanilla paths, but entity-derived path
-requests are redirected to the target's nearest alias block position. This
+Entity path targets remain ordinary vanilla paths. Entity-derived path requests
+in tiled dimensions use the nearest alias block position on ordinary tiles. When
+the tile is smaller than the mob's follow range, the request expands to a
+one-tile-radius set of target alias block positions around the nearest alias.
+Vanilla's multi-target path method then picks the best path it can find. This
 avoids preserving duplicate entities or server-side player canonicalization
-while letting mobs path toward the short seam-crossing copy of a real target.
+while letting mobs path toward the short seam-crossing copy of a real target,
+and gives small-tile worlds a chance to choose a nearby adjacent alias when the
+single nearest folded target is a poor raw-node path. Ground and flying
+navigation both override vanilla's base entity-path method, so Globe patches
+those overrides as well as the base navigation method; ground paths still run
+their vanilla surface-position adjustment before the multi-target search.
 When a non-player mob canonicalizes after crossing a tile edge, its current
 navigation state is marked for immediate recompute; melee goals clear their
 cached target coordinates on the next tick so vanilla does not sit on a stale
@@ -132,9 +140,9 @@ that should be continuously canonicalized but are currently outside canonical
 X/Z.
 
 Mob pathfinding is still an MVP compromise because the underlying vanilla
-`PathFinder` and node evaluator are not fully toroidal. The first path request
-uses the nearest alias target, but the path search itself still works in one raw
-coordinate frame.
+`PathFinder` and node evaluator are not fully toroidal. Small-tile entity path
+requests offer nearby alias targets, but the path search itself still works in
+one raw coordinate frame.
 
 ## Key Files
 
@@ -163,6 +171,8 @@ coordinate frame.
 - `src/main/java/globe/world/mixin/ServerEntityGetterMixin.java`
 - `src/main/java/globe/world/mixin/TargetGoalMixin.java`
 - `src/main/java/globe/world/mixin/PathNavigationMixin.java`
+- `src/main/java/globe/world/mixin/GroundPathNavigationMixin.java`
+- `src/main/java/globe/world/mixin/FlyingPathNavigationMixin.java`
 - `src/main/java/globe/world/mixin/MeleeAttackGoalMixin.java`
 - `src/main/java/globe/world/mixin/RangedAttackGoalMixin.java`
 - `src/main/java/globe/world/mixin/RangedBowAttackGoalMixin.java`

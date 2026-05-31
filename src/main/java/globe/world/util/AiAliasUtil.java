@@ -3,13 +3,20 @@ package globe.world.util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 public final class AiAliasUtil {
+    private static final int ENTITY_TARGET_ALIAS_RADIUS = 1;
+
     private AiAliasUtil() {
     }
 
@@ -71,6 +78,40 @@ public final class AiAliasUtil {
         }
         Vec3 alias = nearestAliasPosition(actor, target);
         return BlockPos.containing(alias.x, alias.y, alias.z);
+    }
+
+    public static Set<BlockPos> aliasBlockPositions(Entity actor, Entity target, int tileRadius) {
+        if (!canAlias(actor, target)) {
+            return Set.of(target.blockPosition());
+        }
+
+        DimensionTiling tiling = DimensionTiling.forLevel(actor.level());
+        BlockPos center = nearestAliasBlockPos(actor, target);
+        if (tileRadius <= 0) {
+            return Set.of(center);
+        }
+
+        int tileSize = tiling.tileSizeBlocks();
+        Set<BlockPos> positions = new LinkedHashSet<>();
+        for (int tileX = -tileRadius; tileX <= tileRadius; tileX++) {
+            for (int tileZ = -tileRadius; tileZ <= tileRadius; tileZ++) {
+                positions.add(center.offset(tileX * tileSize, 0, tileZ * tileSize));
+            }
+        }
+        return positions;
+    }
+
+    public static Set<BlockPos> pathTargetBlockPositions(Mob actor, Entity target) {
+        if (!canAlias(actor, target)) {
+            return Set.of(target.blockPosition());
+        }
+
+        DimensionTiling tiling = DimensionTiling.forLevel(actor.level());
+        double followRange = actor.getAttributeValue(Attributes.FOLLOW_RANGE);
+        if (tiling.tileSizeBlocks() >= followRange) {
+            return Set.of(nearestAliasBlockPos(actor, target));
+        }
+        return aliasBlockPositions(actor, target, ENTITY_TARGET_ALIAS_RADIUS);
     }
 
     public static double distanceToSqr(Entity actor, Entity target) {

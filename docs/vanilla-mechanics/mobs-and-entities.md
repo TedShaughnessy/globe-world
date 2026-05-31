@@ -109,7 +109,10 @@ has already been accepted as a candidate:
   control, and
   `PathNavigation.moveTo(target, ...)`.
 - `PathNavigation.createPath(Entity, int)` converts the entity to
-  `target.blockPosition()` before the pathfinder searches raw nodes.
+  `target.blockPosition()` before the pathfinder searches raw nodes. Ground and
+  flying navigation override that entity method and do the same conversion in
+  the subclass; ground navigation also adjusts a block target to a surface
+  position before delegating to the raw path search.
 - `LookControl.setLookAt(Entity, ...)` and `Mob.lookAt(Entity, ...)` turn toward
   raw target X/Z.
 
@@ -209,8 +212,13 @@ Project hooks for entity storage and visibility:
   `RangedBowAttackGoalMixin.java` keep target retention, movement, and attack
   distance checks in the acting mob's alias frame. Crossbow mobs receive the
   same distance treatment through `RangedCrossbowAttackGoalMixin.java`.
-- `src/main/java/globe/world/mixin/PathNavigationMixin.java` redirects
-  entity-derived path requests to the target's nearest alias block position.
+- `src/main/java/globe/world/mixin/PathNavigationMixin.java`,
+  `GroundPathNavigationMixin.java`, and `FlyingPathNavigationMixin.java`
+  redirect entity-derived path requests to the nearest alias block position. If
+  the tile is smaller than the mob's follow range, they instead offer a
+  one-tile-radius set of nearby target alias block positions, preserving each
+  vanilla navigation class's entity-path search settings while letting vanilla
+  choose the best reachable alias.
 - `src/main/java/globe/world/mixin/LookControlMixin.java` and
   `MobLookMixin.java` turn mobs toward nearest target aliases and use alias
   hitboxes for melee reach.
@@ -245,9 +253,9 @@ Current status:
 - Good: spawn position math and mob caps are mostly wrapped to canonical chunk identity.
 - Good: `ServerChunkCache.tickSpawningChunk(...)` now receives each canonical chunk at most once per `collectSpawningChunks(...)` pass, avoiding duplicate spawn attempts, inhabited-time increments, and thunder work from aliases.
 - Partial: mob AI now uses nearest-alias distance, sight cache, look, melee
-  reach, and entity path targets. The underlying pathfinder/node evaluator is
-  still raw rather than fully toroidal, and projectile physics across seams are
-  not part of this AI pass.
+  reach, and a small-tile multi-alias entity path target set. The underlying
+  pathfinder/node evaluator is still raw rather than fully toroidal, and
+  projectile physics across seams are not part of this AI pass.
 
 Best rule of thumb:
 

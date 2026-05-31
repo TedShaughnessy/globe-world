@@ -32,6 +32,8 @@
 		"EntityPassengerPositionMixin",
 		"EntityTeleportCanonicalizationMixin",
 		"EnvironmentAttributeSystemBuilderGameplayMixin",
+		"FlyingPathNavigationMixin",
+		"GroundPathNavigationMixin",
 		"ImprovedNoiseAccessor",
 		"ItemMixin",
 		"LevelSetBlockBroadcastMixin",
