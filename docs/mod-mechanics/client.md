@@ -68,7 +68,9 @@ visually bent block geometry. The boat water-mask pass is curved too, keeping
 the boat's water occlusion patch aligned with the rendered boat and curved
 terrain/cloud presentation.
 Cloud vertices use the same shader curvature transform as terrain so vanilla's
-flat cloud layer bends with the world presentation.
+flat cloud layer bends with the world presentation. Their alpha fade keeps a
+separate unscaled horizontal fog distance, which preserves the vanilla fade-out
+at the circular cloud mesh edge even when tiny-tile terrain fog is compressed.
 For small tiles, cloud texture sampling scales the camera X/Z contribution so
 player movement produces stronger cloud parallax. The vanilla time drift and
 cloud height are unchanged.

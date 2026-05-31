@@ -21,6 +21,7 @@ public final class GlobeCurvatureShader {
     private static final String LINE_POSITION_END_LINE = "    vec4 linePosEnd = ProjMat * VIEW_SCALE * ModelViewMat * vec4(Position + Normal, 1.0);";
     private static final String RAW_POSITION_LINE = "    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);";
     private static final String FOG_POSITION_VARIABLE = "globeWorld_fogPos";
+    private static final String CLOUD_FOG_POSITION_VARIABLE = "globeWorld_cloudFogPos";
     private static int loadedSettingsVersion = GlobeConfig.settingsVersion();
     private static ResourceKey<Level> loadedDimension = Level.OVERWORLD;
     private static boolean reloadQueued = false;
@@ -56,10 +57,10 @@ public final class GlobeCurvatureShader {
         } else if (transformed.contains(CLOUD_POSITION_LINE)) {
             transformed = transformed.replace(
                             CLOUD_POSITION_LINE,
-                            CLOUD_POSITION_LINE + "\n    vec3 " + FOG_POSITION_VARIABLE + " = globeWorld_fogPosition(pos);\n    pos = globeWorld_applyCloudCurvature(pos);"
+                            CLOUD_POSITION_LINE + "\n    vec3 " + CLOUD_FOG_POSITION_VARIABLE + " = globeWorld_cloudFogPosition(pos);\n    pos = globeWorld_applyCloudCurvature(pos);"
                     )
-                    .replace("fog_spherical_distance(pos)", "fog_spherical_distance(" + FOG_POSITION_VARIABLE + ")")
-                    .replace("fog_cylindrical_distance(pos)", "fog_cylindrical_distance(" + FOG_POSITION_VARIABLE + ")");
+                    .replace("fog_spherical_distance(pos)", "fog_spherical_distance(" + CLOUD_FOG_POSITION_VARIABLE + ")")
+                    .replace("fog_cylindrical_distance(pos)", "fog_cylindrical_distance(" + CLOUD_FOG_POSITION_VARIABLE + ")");
         } else if (transformed.contains(LINE_POSITION_START_LINE) && transformed.contains(LINE_POSITION_END_LINE)) {
             transformed = transformed
                     .replace(LINE_POSITION_START_LINE, """
@@ -148,7 +149,7 @@ vec3 globeWorld_applyCloudCurvature(vec3 pos) {
         return pos;
     }
 
-    float cloudRadius = (radius + max(pos.y, 0.0)) * 2.0; // doubling makes it less distracting
+    float cloudRadius = (radius + max(pos.y, 0.0));
     float distanceSqr = dot(pos.xz, pos.xz);
     float drop = min(distanceSqr / (2.0 * cloudRadius), globeWorld_curvatureDropClamp());
     pos.y -= drop;
@@ -161,6 +162,14 @@ vec3 globeWorld_fogPosition(vec3 pos) {
     }
 
     return vec3(pos.x * globeWorld_fogDistanceScale(), 0.0, pos.z * globeWorld_fogDistanceScale());
+}
+
+vec3 globeWorld_cloudFogPosition(vec3 pos) {
+    if (globeWorld_curvatureRadius() <= 0.0) {
+        return pos;
+    }
+
+    return vec3(pos.x, 0.0, pos.z);
 }
 """.formatted(
                 String.format(Locale.ROOT, "%.1f", configuredCurvatureRadius()),
