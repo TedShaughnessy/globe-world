@@ -6,7 +6,9 @@ and keep only historical investigation here if it is still useful.
 
 ## Active Plans
 
-None.
+1. [Client-Advertised Curvature Interactions](client-advertised-curvature-interactions.md):
+   design for making curvature a per-client visual preference while keeping
+   block, fluid, bucket, and boat interactions aligned with the client view.
 
 ## Completed Plans
 

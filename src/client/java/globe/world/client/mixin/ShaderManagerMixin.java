@@ -30,6 +30,7 @@ public class ShaderManagerMixin {
             "shaders/core/rendertype_leash.vsh",
             "shaders/core/rendertype_lines.vsh",
             "shaders/core/rendertype_outline.vsh",
+            "shaders/core/rendertype_water_mask.vsh",
             "shaders/core/particle.vsh",
             "shaders/core/rendertype_clouds.vsh"
     );

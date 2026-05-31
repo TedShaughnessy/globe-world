@@ -33,6 +33,7 @@
 		"EntityTeleportCanonicalizationMixin",
 		"EnvironmentAttributeSystemBuilderGameplayMixin",
 		"ImprovedNoiseAccessor",
+		"ItemMixin",
 		"LevelSetBlockBroadcastMixin",
 		"LevelChunkPostProcessMixin",
 		"LivingEntityWaypointMixin",

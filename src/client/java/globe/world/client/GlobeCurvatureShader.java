@@ -1,8 +1,8 @@
 package globe.world.client;
 
 import globe.world.config.GlobeConfig;
-import globe.world.config.TilingSettings;
 import globe.world.util.DimensionTiling;
+import globe.world.util.GlobeCurvature;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceKey;
@@ -11,14 +11,7 @@ import net.minecraft.world.level.Level;
 import java.util.Locale;
 
 public final class GlobeCurvatureShader {
-    private static final double DEFAULT_CURVATURE_DROP_CLAMP_RADIUS_MULTIPLIER = 32.0D;
-    private static final double TINY_TILE_CURVATURE_DROP_CLAMP_RADIUS_MULTIPLIER = 512.0D;
-    private static final double MIN_TINY_TILE_CURVATURE_DROP_CLAMP_DISTANCE_BLOCKS = 64.0D;
     private static final double RENDER_DISTANCE_SAFETY_MARGIN_BLOCKS = 16.0D;
-    private static final int SMALL_TILE_CURVATURE_LIMIT_CHUNKS = 15;
-    private static final int TINY_TILE_CURVATURE_LIMIT_CHUNKS = 6;
-    private static final float NORMAL_MAX_CURVATURE_SCALE = TilingSettings.CURVATURE_REALISTIC_SCALE;
-    private static final float TINY_TILE_MAX_CURVATURE_SCALE = 24.0F;
     private static final int TINY_TILE_FOG_LIMIT_CHUNKS = 6;
     private static final float MIN_TINY_TILE_FOG_DISTANCE_SCALE = 0.65F;
     private static final String TERRAIN_POSITION_LINE = "    vec3 pos = Position + (ChunkPosition - CameraBlockPos) + CameraOffset;";
@@ -95,7 +88,7 @@ public final class GlobeCurvatureShader {
         if (radius <= 0.0D) {
             return 0.0D;
         }
-        return Math.min(distanceSqr / (2.0D * radius), curvatureDropClamp(radius));
+        return GlobeCurvature.curvatureDrop(radius, currentTiling(), distanceSqr);
     }
 
     public static int curvatureRenderDistanceCapChunks() {
@@ -126,10 +119,6 @@ public final class GlobeCurvatureShader {
         return """
 
 float globeWorld_curvatureRadius() {
-    return %s;
-}
-
-float globeWorld_curvatureDropClampMultiplier() {
     return %s;
 }
 
@@ -175,7 +164,6 @@ vec3 globeWorld_fogPosition(vec3 pos) {
 }
 """.formatted(
                 String.format(Locale.ROOT, "%.1f", configuredCurvatureRadius()),
-                String.format(Locale.ROOT, "%.1f", curvatureDropClampMultiplier()),
                 String.format(Locale.ROOT, "%.1f", curvatureDropClamp(configuredCurvatureRadius())),
                 String.format(Locale.ROOT, "%.3f", fogDistanceScale())
         );
@@ -185,38 +173,10 @@ vec3 globeWorld_fogPosition(vec3 pos) {
         return positionLine + "\n    vec3 " + FOG_POSITION_VARIABLE + " = globeWorld_fogPosition(pos);\n    pos = globeWorld_applyCurvature(pos);";
     }
 
-    private static float configuredCurvatureRadius() {
-        DimensionTiling tiling = currentTiling();
-        float tileSize = (float) tiling.tileSizeBlocks();
-        if (!tiling.enabled() || tileSize <= 0.0F) {
-            return 0.0F;
-        }
-
-        float curvatureScale = curvatureScaleForTile(tiling);
-        if (curvatureScale <= 0.0F) {
-            return 0.0F;
-        }
-
-        float radius = tileSize / curvatureScale;
-        return tiling.tileSizeChunks() < SMALL_TILE_CURVATURE_LIMIT_CHUNKS ? radius : Math.max(radius, 16.0F);
-    }
-
-    private static float curvatureScaleForTile(DimensionTiling tiling) {
+    private static double configuredCurvatureRadius() {
         Minecraft minecraft = Minecraft.getInstance();
-        int curvaturePercent = minecraft.level == null
-                ? GlobeConfig.curvaturePercent()
-                : GlobeConfig.curvaturePercent(minecraft.level.dimension());
-        float curvatureScale = TilingSettings.curvatureScaleFromPercent(curvaturePercent);
-        int tileSizeChunks = tiling.tileSizeChunks();
-        if (tileSizeChunks >= TINY_TILE_CURVATURE_LIMIT_CHUNKS) {
-            return curvatureScale;
-        }
-
-        float tinyTileRange = TINY_TILE_CURVATURE_LIMIT_CHUNKS - 2.0F;
-        float tileProgress = Math.max(0.0F, tileSizeChunks - 2.0F) / tinyTileRange;
-        float maxCurvatureScale = TINY_TILE_MAX_CURVATURE_SCALE
-                + (NORMAL_MAX_CURVATURE_SCALE - TINY_TILE_MAX_CURVATURE_SCALE) * tileProgress;
-        return curvatureScale * (maxCurvatureScale / NORMAL_MAX_CURVATURE_SCALE);
+        ResourceKey<Level> dimension = minecraft.level == null ? Level.OVERWORLD : minecraft.level.dimension();
+        return GlobeCurvature.curvatureRadius(currentTiling(), dimension);
     }
 
     private static float fogDistanceScale() {
@@ -230,35 +190,12 @@ vec3 globeWorld_fogPosition(vec3 pos) {
         return MIN_TINY_TILE_FOG_DISTANCE_SCALE + (1.0F - MIN_TINY_TILE_FOG_DISTANCE_SCALE) * tileProgress;
     }
 
-    private static double curvatureDropClampMultiplier() {
-        DimensionTiling tiling = currentTiling();
-        if (!tiling.enabled() || tiling.tileSizeChunks() >= TINY_TILE_CURVATURE_LIMIT_CHUNKS) {
-            return DEFAULT_CURVATURE_DROP_CLAMP_RADIUS_MULTIPLIER;
-        }
-
-        double tinyTileRange = TINY_TILE_CURVATURE_LIMIT_CHUNKS - 2.0D;
-        double tileProgress = Math.max(0.0D, tiling.tileSizeChunks() - 2.0D) / tinyTileRange;
-        return TINY_TILE_CURVATURE_DROP_CLAMP_RADIUS_MULTIPLIER
-                + (DEFAULT_CURVATURE_DROP_CLAMP_RADIUS_MULTIPLIER - TINY_TILE_CURVATURE_DROP_CLAMP_RADIUS_MULTIPLIER) * tileProgress;
-    }
-
     private static double curvatureDropClamp(double radius) {
-        return Math.max(radius * curvatureDropClampMultiplier(), minimumTinyTileCurvatureDropClamp(radius));
+        return GlobeCurvature.curvatureDropClamp(currentTiling(), radius);
     }
 
     private static double curvatureDropClampDistance(double radius) {
         return Math.sqrt(2.0D * radius * curvatureDropClamp(radius));
-    }
-
-    private static double minimumTinyTileCurvatureDropClamp(double radius) {
-        DimensionTiling tiling = currentTiling();
-        if (!tiling.enabled() || tiling.tileSizeChunks() >= TINY_TILE_CURVATURE_LIMIT_CHUNKS || radius <= 0.0D) {
-            return 0.0D;
-        }
-
-        return MIN_TINY_TILE_CURVATURE_DROP_CLAMP_DISTANCE_BLOCKS
-                * MIN_TINY_TILE_CURVATURE_DROP_CLAMP_DISTANCE_BLOCKS
-                / (2.0D * radius);
     }
 
     private static DimensionTiling currentTiling() {

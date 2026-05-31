@@ -51,12 +51,19 @@ The curvature visual pass rewrites relevant world vertex shaders at resource
 load time. Overworld and Nether curvature are saved separately in
 `TilingSettings`, exposed through the world creation and pause/options UI, and
 can be disabled with `0%`.
-Block picking follows the same visual curve on the client by tracing short
-vanilla block-clip segments through the inverse rendered curve. The hit result
-still contains the real block position, so normal client-to-server interaction
-packets and server validation continue to use uncurved world coordinates.
+Block, entity, and item POV picking currently use the server/world curvature
+setting and follow the same visual curve by tracing short vanilla block-clip
+segments through the inverse rendered curve. The returned hit result still
+contains the real block or entity target, so interaction packets and server-side
+item validation continue to use normal world coordinates while targeting the
+visually selected block, entity, or fluid. A future client-advertised curvature
+option is tracked in `docs/plans/client-advertised-curvature-interactions.md`.
+Entity physics and collision boxes remain uncurved; the curved entity pick only
+aligns client targeting with the rendered entity.
 Vanilla line rendering is also curved so selected-block outlines follow the
-visually bent block geometry.
+visually bent block geometry. The boat water-mask pass is curved too, keeping
+the boat's water occlusion patch aligned with the rendered boat and curved
+terrain/cloud presentation.
 Cloud vertices use the same shader curvature transform as terrain so vanilla's
 flat cloud layer bends with the world presentation.
 For small tiles, cloud texture sampling scales the camera X/Z contribution so
@@ -112,7 +119,9 @@ Tile-border rendering remains available with `F3+Shift+Y`.
 - `src/main/java/globe/world/mixin/WaypointChunkConnectionMixin.java`
 - `src/client/java/globe/world/client/mixin/CompassAngleStateMixin.java`
 - `src/client/java/globe/world/client/GlobeCurvatureShader.java`
-- `src/client/java/globe/world/client/GlobeCurvedRaycast.java`
+- `src/main/java/globe/world/util/GlobeCurvature.java`
+- `src/main/java/globe/world/util/GlobeCurvedRaycast.java`
+- `src/main/java/globe/world/mixin/ItemMixin.java`
 - `src/client/java/globe/world/client/GlobeSkyHorizon.java`
 - `src/client/java/globe/world/client/GlobeCurvatureSlider.java`
 - `src/client/java/globe/world/client/GlobeWorldSettingsControls.java`
