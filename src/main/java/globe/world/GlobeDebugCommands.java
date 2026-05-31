@@ -3,6 +3,7 @@ package globe.world;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.EntityCanonicalizer;
+import globe.world.util.AiAliasUtil;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -12,8 +13,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.Locale;
 
@@ -105,6 +109,22 @@ public final class GlobeDebugCommands {
                 root.typeHolder().getRegisteredName(),
                 root.getPassengers().size(),
                 yesNo(entity.isRemoved()))), false);
+        if (entity instanceof Mob mob && mob.getTarget() != null) {
+            LivingEntity target = mob.getTarget();
+            Vec3 alias = AiAliasUtil.nearestAliasPosition(mob, target);
+            BlockPos navigationTarget = mob.getNavigation().getTargetPos();
+            source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                    "Mob target=%d %s raw=%.3f %.3f %.3f alias=%.3f %.3f %.3f",
+                    target.getId(),
+                    target.typeHolder().getRegisteredName(),
+                    target.getX(), target.getY(), target.getZ(),
+                    alias.x, alias.y, alias.z)), false);
+            source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                    "Target distance raw=%.3f wrapped=%.3f navigation target=%s",
+                    mob.distanceToSqr(target),
+                    AiAliasUtil.distanceToSqr(mob, target),
+                    navigationTarget == null ? "none" : formatBlock(navigationTarget))), false);
+        }
         return 1;
     }
 

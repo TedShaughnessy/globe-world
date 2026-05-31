@@ -61,9 +61,11 @@ public final class EntityCanonicalizer {
         }
 
         snapAndSync(root, x, root.getY(), z);
+        MobNavigationAliasUtil.resetAfterAliasCanonicalization(root);
         for (Entity passenger : root.getIndirectPassengers()) {
             if (!passenger.isRemoved() && !(passenger instanceof ServerPlayer)) {
                 snapAndSync(passenger, passenger.getX() + dx, passenger.getY(), passenger.getZ() + dz);
+                MobNavigationAliasUtil.resetAfterAliasCanonicalization(passenger);
             }
         }
         return true;
@@ -77,6 +79,7 @@ public final class EntityCanonicalizer {
         }
 
         snapAndSync(entity, x, entity.getY(), z);
+        MobNavigationAliasUtil.resetAfterAliasCanonicalization(entity);
         return true;
     }
 

@@ -101,21 +101,47 @@ players near a tile seam interact with the nearest visible copy instead of the
 canonical copy's raw distance. The block-range path also protects vanilla flows
 that revalidate block reach after an interaction begins, such as sign editing.
 
+Mob sensing and targeting keep entity identity canonical while evaluating the
+nearest topological alias for AI decisions. `AiAliasUtil` maps target positions,
+hitboxes, and query boxes into the acting mob's local tile frame. Targeting
+conditions, nearest-entity selection, brain nearest-living memories, target goal
+continuation, look-at goals, move-towards-target goals, melee goals, and ranged
+attack goals use wrapped distance where vanilla would otherwise compare raw
+coordinates, including the crossbow goal variant. `Sensing.hasLineOfSight(...)`
+owns the alias line-of-sight fallback so vanilla's per-tick seen/unseen cache
+agrees with targets accepted through a tile seam.
+
+Entity path targets remain ordinary vanilla paths, but entity-derived path
+requests are redirected to the target's nearest alias block position. This
+avoids preserving duplicate entities or server-side player canonicalization
+while letting mobs path toward the short seam-crossing copy of a real target.
+When a non-player mob canonicalizes after crossing a tile edge, its current
+navigation state is marked for immediate recompute; melee goals clear their
+cached target coordinates on the next tick so vanilla does not sit on a stale
+path or wait for the normal path-recalculation cooldown. Mob look controls and
+melee hitbox checks also use the
+nearest alias, so edge-adjacent mobs face and attack the visible nearby copy
+instead of the raw far-away coordinate.
+
 Entity storage diagnostics are available under `/globeworld debug`. Use
 `/globeworld debug entity <target>` to inspect one entity's raw/canonical
-position, canonicalization policy, and root/passenger state. Use
+position, canonicalization policy, root/passenger state, and current mob target
+alias/pathing distances when the selected entity is a targeting mob. Use
 `/globeworld debug entities` to count loaded entities in the current dimension
 that should be continuously canonicalized but are currently outside canonical
 X/Z.
 
-Mob sensing and targeting have partial wrapped-distance support. Pathfinding is
-still an MVP compromise because vanilla path nodes and goals are raw Euclidean
-positions.
+Mob pathfinding is still an MVP compromise because the underlying vanilla
+`PathFinder` and node evaluator are not fully toroidal. The first path request
+uses the nearest alias target, but the path search itself still works in one raw
+coordinate frame.
 
 ## Key Files
 
 - `src/main/java/globe/world/util/EntityPacketUtil.java`
 - `src/main/java/globe/world/util/EntityCanonicalizer.java`
+- `src/main/java/globe/world/util/AiAliasUtil.java`
+- `src/main/java/globe/world/util/MobNavigationAliasUtil.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
 - `src/main/java/globe/world/util/GlobeEntityAliasing.java`
 - `src/main/java/globe/world/util/GlobeCurvedRaycast.java`
@@ -133,6 +159,18 @@ positions.
 - `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapPlayerProviderMixin.java`
 - `src/main/java/globe/world/mixin/MobDespawnDistanceMixin.java`
+- `src/main/java/globe/world/mixin/SensingMixin.java`
+- `src/main/java/globe/world/mixin/ServerEntityGetterMixin.java`
+- `src/main/java/globe/world/mixin/TargetGoalMixin.java`
+- `src/main/java/globe/world/mixin/PathNavigationMixin.java`
+- `src/main/java/globe/world/mixin/MeleeAttackGoalMixin.java`
+- `src/main/java/globe/world/mixin/RangedAttackGoalMixin.java`
+- `src/main/java/globe/world/mixin/RangedBowAttackGoalMixin.java`
+- `src/main/java/globe/world/mixin/RangedCrossbowAttackGoalMixin.java`
+- `src/main/java/globe/world/mixin/LookAtPlayerGoalMixin.java`
+- `src/main/java/globe/world/mixin/MoveTowardsTargetGoalMixin.java`
+- `src/main/java/globe/world/mixin/LookControlMixin.java`
+- `src/main/java/globe/world/mixin/MobLookMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java`
 - `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java`
 - `src/main/java/globe/world/mixin/MonsterLocalDaylightMixin.java`
@@ -158,8 +196,11 @@ positions.
   layouts; despawn distance itself is wrapped.
 - Manually validate canonical entity ticking from alias simulation chunks under
   heavy death/despawn cases.
-- Improve wrapped sensing, targeting, line of sight, and pathfinding across tile
-  edges.
+- Full toroidal `PathFinder`/node-evaluator behavior remains deferred; current
+  mob path requests target the nearest alias but do not make every path search
+  neighbor relation wrap.
+- Projectile physics across tile seams remain separate from ranged mob target
+  selection and facing.
 - Visual entity aliases currently skip players and leashed entities; player
   passenger/vehicle stacks still need a dedicated multiplayer audit.
 - Visual alias nameplates, shadows, and light sampling are first-pass behavior;
