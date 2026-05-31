@@ -62,7 +62,7 @@ public final class EntityCanonicalizer {
 
         snapAndSync(root, x, root.getY(), z);
         for (Entity passenger : root.getIndirectPassengers()) {
-            if (!passenger.isRemoved()) {
+            if (!passenger.isRemoved() && !(passenger instanceof ServerPlayer)) {
                 snapAndSync(passenger, passenger.getX() + dx, passenger.getY(), passenger.getZ() + dz);
             }
         }

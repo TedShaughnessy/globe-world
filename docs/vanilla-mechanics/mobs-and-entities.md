@@ -10,6 +10,7 @@ Common sources jar:
 - `net/minecraft/server/level/ServerChunkCache.java`
 - `net/minecraft/server/level/ChunkMap.java`
 - `net/minecraft/server/level/ServerEntity.java`
+- `net/minecraft/server/network/ServerGamePacketListenerImpl.java`
 - `net/minecraft/world/entity/Entity.java`
 - `net/minecraft/world/entity/Mob.java`
 - `net/minecraft/world/level/NaturalSpawner.java`
@@ -30,6 +31,8 @@ Important anchors:
 - `ServerLevel.java:423` entity-ticking range check
 - `ServerLevel.java:812` `tickNonPassenger`
 - `ServerLevel.java:826` `tickPassenger`
+- `Entity.java:2319` `positionRider`
+- `ServerGamePacketListenerImpl.java:442` `handleMoveVehicle`
 - `ServerLevel.java:948` `addFreshEntity`
 - `ServerLevel.java:983` `addEntity`
 - `ServerLevel.java:1830` `getEntities`
@@ -131,7 +134,7 @@ Project hooks for entity storage and visibility:
 - `src/main/java/globe/world/util/EntityCanonicalizer.java:11` defines the shared
   policy for continuously canonicalized finite-world non-player entities.
 - `src/main/java/globe/world/util/EntityCanonicalizer.java:50` canonicalizes a
-  root entity and shifts its mounted passenger stack together.
+  root entity and shifts its mounted non-player passenger stack together.
 - `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:18` canonicalizes
   non-player entities before `ServerLevel.addEntity(...)` stores them.
 - `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:23` and `:28`
@@ -141,19 +144,34 @@ Project hooks for entity storage and visibility:
 - `src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java:15`
   and `:27` canonicalize non-player entities after same-level teleport
   positioning.
+- `src/main/java/globe/world/mixin/EntityPassengerPositionMixin.java:12`
+  keeps player passengers in their visible virtual tile when canonical
+  non-player vehicles position riders.
+- `src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java:38`
+  maps client vehicle movement packets from the visible alias frame to the
+  nearest storage frame before vanilla movement validation, then canonicalizes
+  the mounted stack after accepted vehicle moves.
 - `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java:57` maps an entity's canonical chunk to the viewer's nearest alias and allows alias tracking by tracking-view membership rather than vanilla's pending-chunk gate.
 - `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java:69` tracks each player's current virtual chunk for a visible entity and sends an absolute sync when the nearest alias changes.
 - `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:27` and `:46` translate canonical chunk lookup to each player's nearest tracked virtual chunk for player-provider queries.
 - `src/main/java/globe/world/mixin/PlayerChunkSenderMixin.java:74` refreshes entity tracking after a chunk packet is sent, so entities missed while the chunk was pending pair immediately.
 - `src/main/java/globe/world/util/ChunkAliasTracker.java:16` tracks loaded aliases per player and canonical chunk for block/entity packet fanout.
+- `src/main/java/globe/world/GlobeDebugCommands.java:74` reports one entity's
+  canonical storage status; `:111` summarizes loaded entities outside canonical
+  X/Z in the command source's dimension.
 
 Current status:
 
 - Good: finite-world non-player entities are stored in canonical coordinates on
   add/load, after server ticks, and after same-level teleport positioning.
-- Good: mounted stacks are shifted together when the non-player root wraps.
+- Good: mounted non-player stacks are shifted together when the non-player root
+  wraps, while player passengers keep the visible tile used for chunk streaming.
+- Good: player-controlled vehicle movement packets are translated from visible
+  alias coordinates before vanilla can store the vehicle in an alias section.
 - Good: player pickup scans query the player's canonical pickup box as well as
   the raw box.
+- Good: debug commands can report selected entity storage state and count loaded
+  non-player entities outside canonical X/Z.
 - Good: spawn position math and mob caps are mostly wrapped to canonical chunk identity.
 - Good: `ServerChunkCache.tickSpawningChunk(...)` now receives each canonical chunk at most once per `collectSpawningChunks(...)` pass, avoiding duplicate spawn attempts, inhabited-time increments, and thunder work from aliases.
 - Partial: despawn, sensors, targeting, and pathfinding each have their own distance/visibility assumptions. Some are wrapped elsewhere, but this page should remain the entry point for auditing them.

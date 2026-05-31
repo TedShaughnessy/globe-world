@@ -29,6 +29,7 @@
 		"DensityFunctionsShiftedNoiseMixin",
 		"DensityFunctionsWeirdScaledSamplerMixin",
 		"DualNoiseProviderMixin",
+		"EntityPassengerPositionMixin",
 		"EntityTeleportCanonicalizationMixin",
 		"EnvironmentAttributeSystemBuilderGameplayMixin",
 		"ImprovedNoiseAccessor",

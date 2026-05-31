@@ -24,6 +24,11 @@ one entity id at once.
   after server root/passenger ticks.
 - `EntityTeleportCanonicalizationMixin` canonicalizes finite-world non-player
   entities after same-level teleport positioning.
+- `EntityPassengerPositionMixin` keeps player passengers in their visible
+  virtual tile when canonical non-player vehicles position riders.
+- `ServerGamePacketListenerImplMixin` maps inbound player-controlled vehicle
+  movement from the client's visible alias frame into the nearest storage frame,
+  then canonicalizes the mounted stack after accepted vehicle moves.
 - `ChunkMapTrackedEntityMixin` virtualizes entity tracking and outbound packets.
 - `PlayerCanonicalizer` canonicalizes players only at lifecycle boundaries.
 
@@ -113,12 +118,13 @@ Behavior:
    compute canonical X/Z and the shift delta.
 3. If no X/Z shift is needed, return `false`.
 4. Snap the root to canonical X/Z and sync its packet position codec.
-5. Apply the same X/Z shift to every indirect passenger and sync each passenger
-   packet position codec after the snap.
-6. Allow player passengers to be shifted only as part of a vehicle stack. This is
-   the narrow exception to "players are not canonicalized during normal play";
-   without it, vanilla's mounted positions can diverge from the canonical
-   vehicle. Keep direct standalone player movement under `PlayerCanonicalizer`.
+5. Apply the same X/Z shift to every indirect non-player passenger and sync each
+   passenger packet position codec after the snap.
+6. Do not canonicalize `ServerPlayer` passengers as entity storage. Instead,
+   `EntityPassengerPositionMixin` keeps them in the visible virtual tile nearest
+   their current server position when a canonical non-player vehicle positions
+   riders. This keeps chunk streaming aligned with the client while the
+   non-player vehicle remains canonical.
 
 Return `true` when a wrap occurred. This return value is useful for diagnostics
 and for future packet-resync work.
@@ -190,7 +196,43 @@ This closes the gap where command/plugin/portal-like same-dimension teleports
 place non-player entities in an alias and they do not tick again before saving or
 tracking.
 
-### 5. Ensure first post-wrap packet is absolute when needed
+### 5. Canonicalize client-controlled vehicle movement
+
+Status: implemented.
+
+Files:
+
+- Updated `src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java`.
+- Updated `src/main/java/globe/world/mixin/EntityPassengerPositionMixin.java`.
+- Updated `src/main/java/globe/world/util/EntityCanonicalizer.java`.
+
+Vanilla `ServerGamePacketListenerImpl.handleMoveVehicle(...)` treats
+`ServerboundMoveVehiclePacket.position()` as an absolute server position. When a
+player is riding through an alias, the client reports the mount at that visible
+alias coordinate, so vanilla can snap the horse, pig, boat, or other controlled
+vehicle into an alias entity section before the next entity tick.
+
+Mixin hooks:
+
+- Modify the method argument at `HEAD` of `handleMoveVehicle(...)`.
+- Inject at `TAIL` of `handleMoveVehicle(...)`.
+
+Behavior:
+
+1. Wrap the packet X/Z to canonical coordinates.
+2. Re-expand that canonical coordinate to the virtual copy nearest vanilla's
+   `vehicleLastGoodX/Z`, so ordinary movement and crossing a tile edge remain a
+   small delta for vanilla's movement checks.
+3. Let vanilla validate collisions, movement speed, and vehicle correction as
+   usual.
+4. Position direct passengers on the accepted vehicle. Player passengers remain
+   in their visible virtual tile; non-player passengers use the vehicle storage
+   frame.
+5. Canonicalize the mounted stack, then refresh `vehicleFirstGood*` and
+   `vehicleLastGood*` to the canonicalized vehicle position. This prevents a
+   second packet in the same connection tick from seeing a full-tile jump.
+
+### 6. Ensure first post-wrap packet is absolute when needed
 
 Status: not implemented. Keep this as a fallback until manual testing shows a
 client snap or large relative-delta issue after wrapping.
@@ -216,16 +258,17 @@ Add only if testing shows a client snap or large relative delta after a wrap:
 Do not add this extra resync until a reproducible packet issue appears. It is a
 fallback, not the first implementation step.
 
-### 6. Add diagnostics before manual testing
+### 7. Add diagnostics before manual testing
 
-Status: not implemented.
+Status: implemented.
 
 Files:
 
 - `src/main/java/globe/world/GlobeDebugCommands.java`
 - `src/main/java/globe/world/util/EntityCanonicalizer.java`
 
-Add a debug command or extend an existing one to report:
+Added `/globeworld debug entity <target>` and `/globeworld debug entities` to
+report:
 
 - Entity id, type, UUID, block position, chunk position, and canonical chunk.
 - Whether `shouldCanonicalizeContinuously(...)` applies.
@@ -236,7 +279,7 @@ Add a debug command or extend an existing one to report:
 This gives a fast way to validate manual tests without reading save files after
 every case.
 
-### 7. Manual validation sequence
+### 8. Manual validation sequence
 
 Status: pending.
 
@@ -258,15 +301,19 @@ Run these in a small tile, ideally with two players or one client plus logs:
 6. Save and reload after crossing. Non-player entity save data should contain
    canonical X/Z.
 
+During each pass, use `/globeworld debug entity <target>` for the entity under
+test and `/globeworld debug entities` for the current dimension. The summary
+should report `outside canonical=0` after each crossing settles.
+
 Ask the user to run:
 
 - `./gradlew build`
 - `./gradlew runClient`
 
-### 8. Documentation updates when implemented
+### 9. Documentation updates when implemented
 
-Status: partially implemented. Core mechanics and vanilla notes are updated;
-keep this plan active until debug support and manual validation are complete.
+Status: implemented. Core mechanics, diagnostics, and vanilla notes are updated;
+manual validation cases remain above.
 
 Files:
 
@@ -279,11 +326,10 @@ Move the durable behavior into `docs/mod-mechanics/entities.md`:
 
 - Non-player entities canonicalize on add/load, after ticks, and after
   same-dimension teleports.
-- Mounted stacks are shifted together; standalone player movement remains
-  virtual during a session.
+- Mounted non-player stacks are shifted together; player passengers remain in
+  the visible virtual tile used for chunk streaming; standalone player movement
+  remains virtual during a session.
 - Packet codecs are synced after canonical wraps.
 
 Update `docs/vanilla-mechanics/mobs-and-entities.md` with the exact vanilla
-anchors used during implementation. When the validation list is complete, move
-this plan to completed in `docs/plans/README.md` or keep only residual packet or
-vehicle notes if something remains unresolved.
+anchors used during implementation.

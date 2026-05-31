@@ -22,12 +22,11 @@ and keep only historical investigation here if it is still useful.
    completed the Minecraft 26.1.2 position-bearing packet audit. High and
    medium priority packets are implemented or explicitly classified; durable
    behavior now lives in the mod mechanics and vanilla packet inventory docs.
-
-## Recommended Implementation Order
-
-1. [Entity Canonical Storage Plan](entity-canonical-storage-plan.md): active
-   entity correctness work; core non-player canonicalization is implemented,
-   with diagnostics and vehicle/projectile validation still pending.
+7. [Entity Canonical Storage Plan](entity-canonical-storage-plan.md):
+   implemented non-player canonical entity storage, mounted-stack
+   canonicalization, player-passenger visible-tile positioning,
+   player-controlled vehicle packet translation, and diagnostics. Manual
+   validation cases remain listed in the plan.
 
 ## Optional Optimizations
 

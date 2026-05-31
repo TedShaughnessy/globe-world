@@ -19,10 +19,19 @@ Finite-world non-player entities are canonicalized before being added to
 `ServerLevel`, after server entity ticks, and after same-dimension teleport
 positioning. This includes mobs, item entities, vehicles, projectiles, XP orbs,
 falling blocks, and other non-player entities in tiled dimensions. Mounted
-stacks are shifted together when the root vehicle wraps, so passengers preserve
-their offsets from the vehicle. Entity add, teleport, and absolute position-sync
-packets are virtualized per viewer. Relative movement packets stay relative
-where possible.
+non-player stacks are shifted together when the root vehicle wraps, so
+passengers preserve their offsets from the vehicle. Player passengers stay in
+the visible virtual tile nearest their current server position when canonical
+vehicles position riders, which keeps player chunk streaming aligned with the
+client while the vehicle remains canonical. Entity add, teleport, and absolute
+position-sync packets are virtualized per viewer. Relative movement packets stay
+relative where possible.
+
+Player-controlled vehicle movement is received from the client in the visible
+alias coordinate frame. Before vanilla validates a `ServerboundMoveVehiclePacket`,
+Globe World maps the packet position into the storage frame nearest vanilla's
+last accepted vehicle position. After vanilla accepts the move, the mounted
+stack is canonicalized and the vehicle movement anchors are refreshed.
 
 Players may travel through virtual coordinates during normal play. On login,
 respawn, and bed wake-up, the server rebases the player to the canonical X/Z
@@ -67,6 +76,13 @@ players near a tile seam interact with the nearest visible copy instead of the
 canonical copy's raw distance. The block-range path also protects vanilla flows
 that revalidate block reach after an interaction begins, such as sign editing.
 
+Entity storage diagnostics are available under `/globeworld debug`. Use
+`/globeworld debug entity <target>` to inspect one entity's raw/canonical
+position, canonicalization policy, and root/passenger state. Use
+`/globeworld debug entities` to count loaded entities in the current dimension
+that should be continuously canonicalized but are currently outside canonical
+X/Z.
+
 Mob sensing and targeting have partial wrapped-distance support. Pathfinding is
 still an MVP compromise because vanilla path nodes and goals are raw Euclidean
 positions.
@@ -77,8 +93,10 @@ positions.
 - `src/main/java/globe/world/util/EntityCanonicalizer.java`
 - `src/main/java/globe/world/util/CoordUtil.java`
 - `src/main/java/globe/world/util/PlayerCanonicalizer.java`
+- `src/main/java/globe/world/GlobeDebugCommands.java`
 - `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java`
 - `src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java`
+- `src/main/java/globe/world/mixin/EntityPassengerPositionMixin.java`
 - `src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java`
 - `src/main/java/globe/world/mixin/PlayerItemPickupMixin.java`
 - `src/main/java/globe/world/mixin/PlayerListCanonicalPositionMixin.java`
