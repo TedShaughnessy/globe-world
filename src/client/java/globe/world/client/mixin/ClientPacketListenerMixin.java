@@ -28,6 +28,7 @@ public class ClientPacketListenerMixin {
         if (shouldSnapRebase(entity, position)) {
             entity.snapTo(position, yRot, xRot);
             cancelInterpolation(entity);
+            snapMountedStackToVehicle(entity);
         } else {
             original.call(entity, position, yRot, xRot);
         }
@@ -47,6 +48,7 @@ public class ClientPacketListenerMixin {
             entity.snapTo(newValues.position(), newValues.yRot(), newValues.xRot());
             entity.setDeltaMovement(newValues.deltaMovement());
             cancelInterpolation(entity);
+            snapMountedStackToVehicle(entity);
             return false;
         } else {
             return original.call(change, relatives, entity, interpolate);
@@ -55,13 +57,25 @@ public class ClientPacketListenerMixin {
 
     private boolean shouldSnapRebase(Entity entity, Vec3 position) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (entity == minecraft.player || entity.isPassenger() || entity.isVehicle()) {
-            return false;
-        }
-        if (minecraft.player != null && entity.hasIndirectPassenger(minecraft.player)) {
+        if (entity == minecraft.player || GlobeEntityAliasing.hasPlayerInStack(entity)) {
             return false;
         }
         return GlobeEntityAliasing.isWholeTileRebase(entity.level(), entity.position(), position);
+    }
+
+    private static void snapMountedStackToVehicle(Entity entity) {
+        Entity root = entity.getRootVehicle();
+        if (!root.isVehicle() || GlobeEntityAliasing.hasPlayerInStack(root)) {
+            return;
+        }
+
+        root.getSelfAndPassengers().forEach(vehicle -> {
+            for (Entity passenger : vehicle.getPassengers()) {
+                vehicle.positionRider(passenger);
+                passenger.setOldPosAndRot();
+                cancelInterpolation(passenger);
+            }
+        });
     }
 
     private static void cancelInterpolation(Entity entity) {

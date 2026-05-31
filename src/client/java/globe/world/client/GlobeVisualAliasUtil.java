@@ -20,7 +20,7 @@ public final class GlobeVisualAliasUtil {
             Vec3 cameraPos,
             Frustum frustum,
             Predicate<BlockPos> compiledSectionVisible) {
-        double renderRadius = GlobeEntityAliasing.vanillaEntityRenderRadius(entity);
+        double renderRadius = GlobeEntityAliasing.visualAliasRenderRadius(entity);
         if (GlobeEntityAliasing.disabledByAutoGate(entity.level(), renderRadius)) {
             GlobeEntityAliasDiagnostics.recordAutoSkipped();
             return List.of();

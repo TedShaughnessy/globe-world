@@ -58,7 +58,7 @@ World period:
 | Entity storage and packets | Implemented, vehicle manual validation pending | [entities.md](entities.md) |
 | Player lifecycle canonicalization | Done for login, wake-up, and respawn | [entities.md](entities.md) |
 | Entity tracking and spawning | Done for main paths | [entities.md](entities.md) |
-| Entity visual aliases | Implemented for non-player, unmounted, not-leashed entities; needs manual validation | [entities.md](entities.md) |
+| Entity visual aliases | Implemented for non-player, not-leashed entities, including non-player mounted stacks; needs manual validation | [entities.md](entities.md) |
 | Mob despawn, sensing, pathfinding | Needs audit | [entities.md](entities.md) |
 | Periodic terrain/noise | In progress | [worldgen.md](worldgen.md) |
 | Structures and feature edge generation | Needs validation | [worldgen.md](worldgen.md) |

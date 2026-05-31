@@ -37,10 +37,10 @@ and keep only historical investigation here if it is still useful.
    player-controlled vehicle packet translation, and diagnostics. Manual
    validation cases remain listed in the plan.
 9. [Entity Visual Alias Rendering](entity-visual-alias-rendering-plan.md):
-   implemented client-only visual aliases for non-player, unmounted, not-leashed
-   entities, alias-aware client picking, debug toggles/diagnostics, and
-   snap-on-rebase behavior. Remaining edge cases live in the entity mechanics
-   open audits.
+   implemented client-only visual aliases for non-player, not-leashed entities
+   including non-player mounted stacks, alias-aware client picking, debug
+   toggles/diagnostics, and snap-on-rebase behavior. Remaining edge cases live
+   in the entity mechanics open audits.
 
 ## Optional Optimizations
 

@@ -66,19 +66,23 @@ finish sending. After a chunk packet is sent, player entity tracking is also
 refreshed immediately. Each real entity still has one client entity id. The
 client can draw presentation-only visual aliases of that one entity at whole
 tile offsets when multiple terrain aliases are close enough to be visible.
-The client limits those aliases to a configurable number of tile rings around
-the camera while still respecting vanilla entity view distance. Alias-aware
-client picking tests those visual alias boxes but returns the same canonical
-entity id, so interaction and attack packets still target the real entity. When
-the nearest network alias changes, the server sends an absolute position sync to
-rebase the client entity. Rebase detection uses the same block-level tile offset
-as packet virtualization, not just the entity's chunk alias, so it changes at
-the same threshold as the viewer-facing position. Player-driven alias changes
-sync immediately. Entity-driven alias changes replace the next relative
-movement packet with an absolute position sync, avoiding a same-tick
-absolute-sync plus relative-move double application on the client. The client
-snaps tile-sized rebases instead of interpolating them, which prevents the real
-client entity from visually sliding across the tile during a wrap correction.
+Non-player mounted stacks share the root vehicle's alias offsets so vehicles
+and passengers stay together in each visual copy. The client limits those
+aliases to a configurable number of tile rings around the camera while still
+respecting vanilla entity view distance. Alias-aware client picking tests those
+visual alias boxes but returns the same canonical entity id, so interaction and
+attack packets still target the real entity. When the nearest network alias
+changes, the server sends an absolute position sync to rebase the client entity.
+Rebase detection uses the same block-level tile offset as packet virtualization,
+not just the entity's chunk alias, so it changes at the same threshold as the
+viewer-facing position. Player-driven alias changes sync immediately.
+Entity-driven alias changes replace the next relative movement packet with an
+absolute position sync, avoiding a same-tick absolute-sync plus relative-move
+double application on the client. The client snaps tile-sized rebases instead
+of interpolating them, which prevents the real client entity from visually
+sliding across the tile during a wrap correction. When a non-player vehicle
+stack snaps, client passenger positioning also refreshes passenger old-position
+state so multiple riders do not interpolate from the previous tile alias.
 
 Additional entity-adjacent packets with absolute positions are virtualized per
 viewer. Damage event source positions, vehicle correction positions, and
@@ -156,7 +160,7 @@ positions.
   heavy death/despawn cases.
 - Improve wrapped sensing, targeting, line of sight, and pathfinding across tile
   edges.
-- Visual entity aliases currently skip players, passengers, vehicles, and
-  leashed entities until multi-entity render-state offsets are audited.
+- Visual entity aliases currently skip players and leashed entities; player
+  passenger/vehicle stacks still need a dedicated multiplayer audit.
 - Visual alias nameplates, shadows, and light sampling are first-pass behavior;
   verify them in tiny tiles before broadening entity-type support.

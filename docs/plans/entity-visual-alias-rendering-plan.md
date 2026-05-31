@@ -1,6 +1,7 @@
 # Entity Visual Alias Rendering
 
-Status: implemented as an MVP for non-player, unmounted, not-leashed entities.
+Status: implemented as an MVP for non-player, not-leashed entities, including
+non-player mounted stacks.
 Durable behavior now lives in
 [client mechanics](../mod-mechanics/client.md) and
 [entity mechanics](../mod-mechanics/entities.md). This file remains as the
@@ -176,13 +177,12 @@ MVP acceptable scope:
 
 - Render `LivingEntity` mobs and other non-player entities.
 - Skip the camera entity and local player.
-- Skip aliases for entities that are passengers until passenger offset behavior
-  is verified.
+- Render non-player mounted stacks by sharing the root vehicle's alias offsets
+  across vehicle and passenger render states.
 - Keep vanilla rendering for the canonical submission.
 
 Follow-up scope:
 
-- Passengers and vehicles.
 - Leashes.
 - Remote player aliases if wanted.
 - Projectiles and item entities.
@@ -252,8 +252,11 @@ Behavior:
 - Snap the entity to the new alias position and reset old position/rotation
   state, instead of letting vanilla `moveOrInterpolateTo(...)` animate it.
 - Do not apply this to the local player.
-- Be careful with player-controlled vehicles; validate manually before enabling
-  the snap path for mounted entities.
+- Apply to non-player mounted stacks only; player-controlled vehicles still
+  need dedicated multiplayer validation before enabling the snap path.
+- When a non-player vehicle stack snaps, refresh passenger old-position state
+  after vanilla rider positioning so multiple passengers do not render from the
+  previous tile alias.
 
 This phase is independent from alias rendering. It fixes the remaining visual
 case where the real client entity changes its alias.

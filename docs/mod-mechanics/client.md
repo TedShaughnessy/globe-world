@@ -63,19 +63,23 @@ visually selected block, entity, or fluid. A future client-advertised curvature
 option is tracked in `docs/plans/client-advertised-curvature-interactions.md`.
 Entity physics and collision boxes remain uncurved; the curved entity pick only
 aligns client targeting with the rendered entity.
-When tiling is enabled, non-player, unmounted, not-leashed entities can receive
-extra client-only render states at neighboring whole-tile offsets. The aliases
-use the same real client entity and are culled by vanilla-style render distance,
-the configured camera tile-ring limit, the camera frustum, and compiled-section
+When tiling is enabled, non-player, not-leashed entities can receive extra
+client-only render states at neighboring whole-tile offsets. Non-player mounted
+stacks use the root vehicle's alias offsets for every entity in the stack, so a
+mob riding a boat appears with the boat in each visual copy. The aliases use the
+same real client entity and are culled by vanilla-style render distance, the
+configured camera tile-ring limit, the camera frustum, and compiled-section
 visibility. The default ring limit is `1`, meaning only the camera tile and the
 eight neighboring tile copies can receive visual aliases, and distance culling
 still applies inside that ring. `AUTO` mode skips alias enumeration when the
-tile is larger than the entity's effective render radius; `FORCE_DEBUG` keeps
+tile is larger than the stack's effective render radius; `FORCE_DEBUG` keeps
 enumeration active for diagnostics, and `OFF` disables both alias rendering and
 alias picking. Alias picking tests shifted entity boxes and returns the
 canonical entity, so server interactions still use the one real entity id.
 Tile-sized entity position rebases from server packets are snapped on the client
-to avoid interpolation slides between aliases.
+to avoid interpolation slides between aliases, including for non-player mounted
+stacks. Passenger old-position state is refreshed when a non-player vehicle
+stack snaps so multiple riders stay visually attached to the snapped vehicle.
 Vanilla line rendering is also curved so selected-block outlines follow the
 visually bent block geometry. The boat water-mask pass is curved too, keeping
 the boat's water occlusion patch aligned with the rendered boat and curved
