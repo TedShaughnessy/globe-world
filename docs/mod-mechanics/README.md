@@ -74,10 +74,10 @@ World period:
 
 ## Current High-Risk Audits
 
-1. Mob despawn: confirm `Mob.checkDespawn` and nearest-player lookup always use
-   wrapped distance where a tile edge can make a nearby mob look far away.
-2. Entity ticking: prove canonical mobs tick exactly once when only an alias is
-   in entity-ticking range.
+1. Mob despawn: audit nearest-player selection in multiplayer alias layouts;
+   despawn distance itself is wrapped.
+2. Entity ticking: manually stress-test canonical mobs when only an alias is in
+   entity-ticking range, especially death and despawn cleanup.
 3. Cross-edge neighbor updates: redstone, pistons, observers, doors, and similar
    blocks need focused testing over tile boundaries.
 4. Structures and feature origins: alias starts are transient worldgen data and

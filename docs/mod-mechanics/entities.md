@@ -50,6 +50,15 @@ uses local burn-time and brightness predicates at the mob position. Pillager
 patrol attempts also use local daylight at the selected spawn position instead
 of the dimension-wide bright-outside gate.
 
+Canonical non-player entities tick when their canonical chunk is entity-ticking
+or when any visible alias of that canonical chunk is entity-ticking. The tick
+still runs once on the canonical entity; alias chunks only satisfy vanilla's
+entity-ticking range gate. This prevents canonical mobs from becoming invisible
+stale entities when a player is simulating an alias chunk, including dead mobs
+that need `LivingEntity.tickDeath()` to finish removal.
+Mob despawn checks use wrapped player distance, so canonical hostile mobs near
+a virtual player alias are not instantly discarded by raw tile-offset distance.
+
 For alias chunks, entity tracking treats chunks inside the player's tracking
 view as eligible even while vanilla still has the chunk packet marked pending.
 This avoids a slow one-by-one trickle of add-entity packets as alias chunks
@@ -119,6 +128,7 @@ positions.
 - `src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapPlayerProviderMixin.java`
+- `src/main/java/globe/world/mixin/MobDespawnDistanceMixin.java`
 - `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java`
 - `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java`
 - `src/main/java/globe/world/mixin/MonsterLocalDaylightMixin.java`
@@ -140,9 +150,10 @@ positions.
 
 ## Open Audits
 
-- Verify `Mob.checkDespawn` uses wrapped distance everywhere it needs to.
-- Prove entity ticking runs exactly once for canonical entities when only aliases
-  are entity-ticking.
+- Audit `Mob.checkDespawn` nearest-player selection in multiplayer alias
+  layouts; despawn distance itself is wrapped.
+- Manually validate canonical entity ticking from alias simulation chunks under
+  heavy death/despawn cases.
 - Improve wrapped sensing, targeting, line of sight, and pathfinding across tile
   edges.
 - Visual entity aliases currently skip players, passengers, vehicles, and

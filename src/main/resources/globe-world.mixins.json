@@ -42,6 +42,7 @@
 		"MapItemMixin",
 		"MapItemSavedDataMixin",
 		"MinecraftServerMixin",
+		"MobDespawnDistanceMixin",
 		"MobLocalDaylightMixin",
 		"MonsterLocalDaylightMixin",
 		"NaturalSpawnerMixin",

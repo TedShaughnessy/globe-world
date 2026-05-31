@@ -139,14 +139,19 @@ Project hooks for entity storage and visibility:
   non-player entities before `ServerLevel.addEntity(...)` stores them.
 - `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:23` and `:28`
   canonicalize non-player entities loaded from chunk/entity streams.
-- `src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java:13` and `:18`
-  canonicalize non-player entities after root/passenger server ticks.
+- `src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java` lets a
+  canonical entity satisfy `ServerLevel.tick(...)`'s entity-ticking range gate
+  through the viewer-nearest entity-ticking alias chunk, then canonicalizes
+  non-player entities after root/passenger server ticks.
 - `src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java:15`
   and `:27` canonicalize non-player entities after same-level teleport
   positioning.
 - `src/main/java/globe/world/mixin/EntityPassengerPositionMixin.java:12`
   keeps player passengers in their visible virtual tile when canonical
   non-player vehicles position riders.
+- `src/main/java/globe/world/mixin/MobDespawnDistanceMixin.java` wraps
+  `Mob.checkDespawn()`'s player-to-mob distance so canonical mobs near a player
+  alias are not treated as raw-distance far away.
 - `src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java:38`
   maps client vehicle movement packets from the visible alias frame to the
   nearest storage frame before vanilla movement validation, then canonicalizes
