@@ -7,6 +7,8 @@ import globe.world.util.EntityPacketUtil;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
+import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -39,7 +41,10 @@ public class ChunkMapTrackedEntityMixin {
     private Set<ServerPlayerConnection> seenBy;
 
     @Unique
-    private final Map<UUID, Long> globeWorld$lastVirtualChunkByPlayer = new HashMap<>();
+    private final Map<UUID, Long> globeWorld$lastVirtualTileOffsetByPlayer = new HashMap<>();
+
+    @Unique
+    private final Map<UUID, Vec3> globeWorld$lastTrackingPositionByPlayer = new HashMap<>();
 
     @WrapOperation(
         method = "updatePlayer",
@@ -82,24 +87,12 @@ public class ChunkMapTrackedEntityMixin {
     @Inject(method = "updatePlayer", at = @At("TAIL"))
     private void resyncNearestAliasWhenVisibleCopyChanges(ServerPlayer player, CallbackInfo ci) {
         if (!this.seenBy.contains(player.connection)) {
-            this.globeWorld$lastVirtualChunkByPlayer.remove(player.getUUID());
+            this.globeWorld$lastVirtualTileOffsetByPlayer.remove(player.getUUID());
+            this.globeWorld$lastTrackingPositionByPlayer.remove(player.getUUID());
             return;
         }
 
-        ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(
-                player.level(),
-                CoordUtil.wrapChunk(player.level(), this.entity.chunkPosition().x()),
-                playerChunk.x()
-        );
-        int virtualZ = CoordUtil.virtualChunk(
-                player.level(),
-                CoordUtil.wrapChunk(player.level(), this.entity.chunkPosition().z()),
-                playerChunk.z()
-        );
-        long virtualChunk = new ChunkPos(virtualX, virtualZ).pack();
-        Long previous = this.globeWorld$lastVirtualChunkByPlayer.put(player.getUUID(), virtualChunk);
-        if (previous != null && previous != virtualChunk) {
+        if (this.globeWorld$updateVirtualTileOffset(player, true)) {
             Packet<? super ClientGamePacketListener> packet = ClientboundEntityPositionSyncPacket.of(this.entity);
             player.connection.send(EntityPacketUtil.virtualizeFor(packet, player));
         }
@@ -119,7 +112,18 @@ public class ChunkMapTrackedEntityMixin {
             ServerPlayerConnection connection,
             Packet<? super ClientGamePacketListener> packet,
             Operation<Void> original) {
-        original.call(connection, EntityPacketUtil.virtualizeFor(packet, connection.getPlayer()));
+        ServerPlayer player = connection.getPlayer();
+        if (packet instanceof ClientboundMoveEntityPacket move && move.hasPosition()
+                && this.globeWorld$updateVirtualTileOffset(player, false)) {
+            Packet<? super ClientGamePacketListener> syncPacket = ClientboundEntityPositionSyncPacket.of(this.entity);
+            original.call(connection, EntityPacketUtil.virtualizeFor(syncPacket, player));
+            return;
+        }
+        if (packet instanceof ClientboundEntityPositionSyncPacket || packet instanceof ClientboundTeleportEntityPacket) {
+            this.globeWorld$updateVirtualTileOffset(player, false);
+        }
+
+        original.call(connection, EntityPacketUtil.virtualizeFor(packet, player));
     }
 
     @WrapOperation(
@@ -138,5 +142,35 @@ public class ChunkMapTrackedEntityMixin {
             return;
         }
         original.call(connection, packet);
+    }
+
+    @Unique
+    private boolean globeWorld$updateVirtualTileOffset(ServerPlayer player, boolean deferWhenEntityMoved) {
+        Vec3 trackingPosition = this.entity.trackingPosition();
+        UUID playerId = player.getUUID();
+        Vec3 previousTrackingPosition = this.globeWorld$lastTrackingPositionByPlayer.get(playerId);
+        int offsetX = CoordUtil.virtualBlockTileOffset(
+                player.level(),
+                trackingPosition.x,
+                player.getX()
+        );
+        int offsetZ = CoordUtil.virtualBlockTileOffset(
+                player.level(),
+                trackingPosition.z,
+                player.getZ()
+        );
+        long virtualTileOffset = new ChunkPos(offsetX, offsetZ).pack();
+        Long previous = this.globeWorld$lastVirtualTileOffsetByPlayer.get(playerId);
+        boolean offsetChanged = previous != null && previous != virtualTileOffset;
+        boolean entityMoved = previousTrackingPosition != null
+                && previousTrackingPosition.distanceToSqr(trackingPosition) > 1.0E-12D;
+
+        this.globeWorld$lastTrackingPositionByPlayer.put(playerId, trackingPosition);
+        if (offsetChanged && deferWhenEntityMoved && entityMoved) {
+            return false;
+        }
+
+        this.globeWorld$lastVirtualTileOffsetByPlayer.put(playerId, virtualTileOffset);
+        return offsetChanged;
     }
 }

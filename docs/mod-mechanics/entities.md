@@ -57,7 +57,12 @@ finish sending. After a chunk packet is sent, player entity tracking is also
 refreshed immediately. Each real entity still has one client entity id, so tiny
 tiles that show multiple aliases at once render the nearest visible copy; when
 that nearest alias changes, the server sends an absolute position sync to rebase
-the client entity.
+the client entity. Rebase detection uses the same block-level tile offset as
+packet virtualization, not just the entity's chunk alias, so it changes at the
+same threshold as the viewer-facing position. Player-driven alias changes sync
+immediately. Entity-driven alias changes replace the next relative movement
+packet with an absolute position sync, avoiding a same-tick absolute-sync plus
+relative-move double application on the client.
 
 Additional entity-adjacent packets with absolute positions are virtualized per
 viewer. Damage event source positions, vehicle correction positions, and

@@ -295,7 +295,22 @@ public class CoordUtil {
             return canonical;
         }
         int tileSize = tiling.tileSizeBlocks();
-        return canonical + Math.rint((viewer - canonical) / tileSize) * tileSize;
+        return canonical + virtualBlockTileOffset(tiling, canonical, viewer) * (double) tileSize;
+    }
+
+    public static int virtualBlockTileOffset(double canonical, double viewer) {
+        return virtualBlockTileOffset(DimensionTiling.currentOrOverworld(), canonical, viewer);
+    }
+
+    public static int virtualBlockTileOffset(Level level, double canonical, double viewer) {
+        return virtualBlockTileOffset(DimensionTiling.forLevel(level), canonical, viewer);
+    }
+
+    public static int virtualBlockTileOffset(DimensionTiling tiling, double canonical, double viewer) {
+        if (!tiling.enabled()) {
+            return 0;
+        }
+        return (int) Math.rint((viewer - canonical) / tiling.tileSizeBlocks());
     }
 
     public static AABB virtualAabb(AABB canonical, double viewerX, double viewerZ) {

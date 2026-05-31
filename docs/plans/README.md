@@ -9,6 +9,10 @@ and keep only historical investigation here if it is still useful.
 1. [Client-Advertised Curvature Interactions](client-advertised-curvature-interactions.md):
    design for making curvature a per-client visual preference while keeping
    block, fluid, bucket, and boat interactions aligned with the client view.
+2. [Entity Visual Alias Rendering](entity-visual-alias-rendering-plan.md):
+   plan for drawing nearby client-only entity aliases, mapping alias picks back
+   to the canonical entity, and snapping wrap rebases instead of interpolating
+   them across tiny tiles.
 
 ## Completed Plans
 
