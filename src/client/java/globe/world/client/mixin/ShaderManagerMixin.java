@@ -28,6 +28,7 @@ public class ShaderManagerMixin {
             "shaders/core/block.vsh",
             "shaders/core/rendertype_entity_shadow.vsh",
             "shaders/core/rendertype_leash.vsh",
+            "shaders/core/rendertype_lines.vsh",
             "shaders/core/rendertype_outline.vsh",
             "shaders/core/particle.vsh",
             "shaders/core/rendertype_clouds.vsh"

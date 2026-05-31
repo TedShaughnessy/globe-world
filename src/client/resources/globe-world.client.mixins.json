@@ -12,6 +12,7 @@
 		"FrustumMixin",
 		"GuiMixin",
 		"KeyboardHandlerMixin",
+		"LocalPlayerMixin",
 		"OptionsMixin",
 		"OptionsScreenMixin",
 		"SectionOcclusionGraphMixin",

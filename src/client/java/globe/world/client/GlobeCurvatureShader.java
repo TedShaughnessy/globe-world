@@ -24,6 +24,8 @@ public final class GlobeCurvatureShader {
     private static final String TERRAIN_POSITION_LINE = "    vec3 pos = Position + (ChunkPosition - CameraBlockPos) + CameraOffset;";
     private static final String BLOCK_POSITION_LINE = "    vec3 pos = Position + ModelOffset;";
     private static final String CLOUD_POSITION_LINE = "    vec3 pos = (faceVertex * CellSize) + (vec3(cellX, 0, cellZ) * CellSize) + CloudOffset;";
+    private static final String LINE_POSITION_START_LINE = "    vec4 linePosStart = ProjMat * VIEW_SCALE * ModelViewMat * vec4(Position, 1.0);";
+    private static final String LINE_POSITION_END_LINE = "    vec4 linePosEnd = ProjMat * VIEW_SCALE * ModelViewMat * vec4(Position + Normal, 1.0);";
     private static final String RAW_POSITION_LINE = "    gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);";
     private static final String FOG_POSITION_VARIABLE = "globeWorld_fogPos";
     private static int loadedSettingsVersion = GlobeConfig.settingsVersion();
@@ -65,6 +67,13 @@ public final class GlobeCurvatureShader {
                     )
                     .replace("fog_spherical_distance(pos)", "fog_spherical_distance(" + FOG_POSITION_VARIABLE + ")")
                     .replace("fog_cylindrical_distance(pos)", "fog_cylindrical_distance(" + FOG_POSITION_VARIABLE + ")");
+        } else if (transformed.contains(LINE_POSITION_START_LINE) && transformed.contains(LINE_POSITION_END_LINE)) {
+            transformed = transformed
+                    .replace(LINE_POSITION_START_LINE, """
+    vec3 globeWorld_lineStart = globeWorld_applyCurvature(Position);
+    vec3 globeWorld_lineEnd = globeWorld_applyCurvature(Position + Normal);
+    vec4 linePosStart = ProjMat * VIEW_SCALE * ModelViewMat * vec4(globeWorld_lineStart, 1.0);""")
+                    .replace(LINE_POSITION_END_LINE, "    vec4 linePosEnd = ProjMat * VIEW_SCALE * ModelViewMat * vec4(globeWorld_lineEnd, 1.0);");
         } else if (transformed.contains(RAW_POSITION_LINE)) {
             transformed = transformed.replace(RAW_POSITION_LINE, "    vec3 pos = globeWorld_applyCurvature(Position);\n    gl_Position = ProjMat * ModelViewMat * vec4(pos, 1.0);");
         } else {

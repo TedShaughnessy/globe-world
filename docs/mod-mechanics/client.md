@@ -51,6 +51,12 @@ The curvature visual pass rewrites relevant world vertex shaders at resource
 load time. Overworld and Nether curvature are saved separately in
 `TilingSettings`, exposed through the world creation and pause/options UI, and
 can be disabled with `0%`.
+Block picking follows the same visual curve on the client by tracing short
+vanilla block-clip segments through the inverse rendered curve. The hit result
+still contains the real block position, so normal client-to-server interaction
+packets and server validation continue to use uncurved world coordinates.
+Vanilla line rendering is also curved so selected-block outlines follow the
+visually bent block geometry.
 Cloud vertices use the same shader curvature transform as terrain so vanilla's
 flat cloud layer bends with the world presentation.
 For small tiles, cloud texture sampling scales the camera X/Z contribution so
@@ -106,6 +112,7 @@ Tile-border rendering remains available with `F3+Shift+Y`.
 - `src/main/java/globe/world/mixin/WaypointChunkConnectionMixin.java`
 - `src/client/java/globe/world/client/mixin/CompassAngleStateMixin.java`
 - `src/client/java/globe/world/client/GlobeCurvatureShader.java`
+- `src/client/java/globe/world/client/GlobeCurvedRaycast.java`
 - `src/client/java/globe/world/client/GlobeSkyHorizon.java`
 - `src/client/java/globe/world/client/GlobeCurvatureSlider.java`
 - `src/client/java/globe/world/client/GlobeWorldSettingsControls.java`
@@ -123,6 +130,7 @@ Tile-border rendering remains available with `F3+Shift+Y`.
 - `src/client/java/globe/world/client/mixin/GuiMixin.java`
 - `src/client/java/globe/world/client/mixin/KeyboardHandlerMixin.java`
 - `src/client/java/globe/world/client/mixin/ShaderManagerMixin.java`
+- `src/client/java/globe/world/client/mixin/LocalPlayerMixin.java`
 - `src/client/java/globe/world/client/mixin/SkyRendererMixin.java`
 - `src/client/java/globe/world/client/mixin/CreateWorldScreenMixin.java`
 - `src/client/java/globe/world/client/mixin/OptionsScreenMixin.java`
