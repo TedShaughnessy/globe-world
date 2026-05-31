@@ -43,10 +43,15 @@ through wrapped `Level.setBlock` into canonical storage.
 Worldgen spillover handles block writes that wrap across X/Z tile edges during
 generation. `WorldGenRegion` write hooks enqueue the wrapped canonical block
 state into server-owned transient spillover state keyed by dimension and
-canonical chunk. Canonical chunks apply queued spillover during biome
-decoration, post-processing, and before chunk packet serialization. Level close
-and server stop discard any remaining queues and warn if writes were abandoned;
-spillover queues are runtime bookkeeping and are not saved world data.
+canonical chunk. Each queued write also records the block state observed when
+vanilla accepted the original write. Canonical chunks apply queued spillover
+during biome decoration, post-processing, and before chunk packet serialization,
+but replay a queued write only if the destination still matches the observed
+state. This prevents stale leaf, grass, or other decoration writes from
+overwriting trunks and other blocks placed by the destination chunk after the
+spillover write was queued. Level close and server stop discard any remaining
+queues and warn if writes were abandoned; spillover queues are runtime
+bookkeeping and are not saved world data.
 
 Structure edge handling stores virtual source keys during reference generation,
 resolves them during biome decoration, and places vanilla starts with a

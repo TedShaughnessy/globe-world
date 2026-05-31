@@ -22,12 +22,12 @@ public final class WorldGenSpillover {
     private WorldGenSpillover() {
     }
 
-    public static void enqueue(ServerLevel level, BlockPos pos, BlockState blockState, int flags) {
+    public static void enqueue(ServerLevel level, BlockPos pos, BlockState expectedState, BlockState blockState, int flags) {
         if (!DimensionTiling.forLevel(level).enabled()) {
             return;
         }
 
-        spilloverState(level).enqueue(level, pos, blockState, flags);
+        spilloverState(level).enqueue(level, pos, expectedState, blockState, flags);
     }
 
     public static void applyToChunk(ServerLevel level, ChunkAccess chunk) {
@@ -69,7 +69,7 @@ public final class WorldGenSpillover {
     public static final class State {
         private final Map<Key, Queue> pendingWrites = new HashMap<>();
 
-        public synchronized void enqueue(ServerLevel level, BlockPos pos, BlockState state, int flags) {
+        public synchronized void enqueue(ServerLevel level, BlockPos pos, BlockState expectedState, BlockState state, int flags) {
             BlockPos wrapped = CoordUtil.wrapBlockPos(level, pos).immutable();
             ChunkPos chunkPos = new ChunkPos(
                     SectionPos.blockToSectionCoord(wrapped.getX()),
@@ -77,7 +77,7 @@ public final class WorldGenSpillover {
             );
             Key key = new Key(level.dimension(), chunkPos.pack());
             Queue queue = this.pendingWrites.computeIfAbsent(key, ignored -> new Queue(level.getGameTime()));
-            queue.add(new Write(wrapped, state, flags), level.getGameTime());
+            queue.add(new Write(wrapped, expectedState, state, flags), level.getGameTime());
             warnIfStale(level, key, queue);
         }
 
@@ -106,7 +106,20 @@ public final class WorldGenSpillover {
             }
 
             for (Write write : queue.writes()) {
-                chunk.setBlockState(write.pos(), write.state(), write.flags());
+                BlockState currentState = chunk.getBlockState(write.pos());
+                if (currentState.equals(write.expectedState())) {
+                    chunk.setBlockState(write.pos(), write.state(), write.flags());
+                } else if (GlobeWorld.LOGGER.isDebugEnabled()) {
+                    GlobeWorld.LOGGER.debug(
+                            "GW_WORLDGEN_SPILLOVER skip dimension={} canonical={} pos={} expected={} actual={} queued={}",
+                            dimensionName(key.dimension()),
+                            format(chunkPos),
+                            write.pos().toShortString(),
+                            write.expectedState(),
+                            currentState,
+                            write.state()
+                    );
+                }
             }
         }
 
@@ -252,6 +265,6 @@ public final class WorldGenSpillover {
     private record Key(ResourceKey<Level> dimension, long canonicalChunk) {
     }
 
-    private record Write(BlockPos pos, BlockState state, int flags) {
+    private record Write(BlockPos pos, BlockState expectedState, BlockState state, int flags) {
     }
 }

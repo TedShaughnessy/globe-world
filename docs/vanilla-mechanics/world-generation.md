@@ -154,6 +154,10 @@ Current project hooks:
 - `src/main/java/globe/world/mixin/WorldGenRegionMixin.java` canonicalizes `WorldGenRegion` block read/write positions for `getBlockState`, `getFluidState`, `getBlockEntity`, and `setBlock`.
 - `src/main/java/globe/world/mixin/WorldGenRegionMixin.java` also applies toroidal chunk distance in `ensureCanWrite(...)`; in a 6-chunk tile, canonical chunks `2` and `-3` are adjacent across the tile seam even though vanilla's raw distance is 5.
 - `src/main/java/globe/world/mixin/BulkSectionAccessMixin.java` canonicalizes `BulkSectionAccess.getSection(...)` because vanilla ore placement calls `WorldGenLevel.ensureCanWrite(...)` and then writes directly through a chunk section instead of going through `WorldGenRegion.setBlock(...)`.
+- `src/main/java/globe/world/util/WorldGenSpillover.java` stores the state a
+  wrapped write expected to replace, and replays the write only if the
+  canonical destination still has that state. This keeps stale spillover from
+  bypassing vanilla placement checks after the destination chunk decorates.
 
 Why read/write symmetry matters:
 
@@ -235,7 +239,9 @@ Possible next design:
 - Good: `WorldGenRegion` reads/writes now use canonical block positions for direct block/fluid/entity lookups, toroidal write-radius checks, `setBlock`, and queued postprocessing positions.
 - Good: ore placement's `BulkSectionAccess` path now resolves sections from canonical positions after `ensureCanWrite(...)` accepts a wrapped write.
 - Good: alias chunk packets are only allowed to serialize canonical chunk data; if the canonical source is unavailable, `PlayerChunkSenderMixin` requeues the alias send instead of falling back to alias-local terrain.
-- Done: tree/foliage spillover now has a queued canonical replay path.
+- Done: tree/foliage spillover now has a queued canonical replay path, and
+  delayed replay is conditional on the destination still matching the state
+  observed when the write was queued.
 - Needs validation: villages/structures crossing tile boundaries.
 - Open: dungeons/monster rooms crossing tile boundaries still cut off.
 - Needs audit: worldgen APIs that bypass `WorldGenRegion.getBlockState` / `setBlock`, direct `ChunkAccess.setBlockState` calls, block entity writes, tick scheduling in `WorldGenRegion`, carvers, surface building, and noise/biome sampling.

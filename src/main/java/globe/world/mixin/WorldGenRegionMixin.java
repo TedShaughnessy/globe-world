@@ -129,8 +129,18 @@ public class WorldGenRegionMixin {
     ) {
         BlockPos wrapped = CoordUtil.wrapBlockPos(this.level, pos);
         if (wrapped != pos) {
-            WorldGenSpillover.enqueue(this.level, wrapped, blockState, updateFlags);
-            cir.setReturnValue(((WorldGenRegion)(Object)this).setBlock(wrapped, blockState, updateFlags, updateLimit));
+            WorldGenRegion region = (WorldGenRegion) (Object) this;
+            if (!region.ensureCanWrite(wrapped)) {
+                cir.setReturnValue(false);
+                return;
+            }
+
+            BlockState expectedState = region.getBlockState(wrapped);
+            boolean placed = region.setBlock(wrapped, blockState, updateFlags, updateLimit);
+            if (placed) {
+                WorldGenSpillover.enqueue(this.level, wrapped, expectedState, blockState, updateFlags);
+            }
+            cir.setReturnValue(placed);
         }
     }
 
