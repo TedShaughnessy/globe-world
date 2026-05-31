@@ -51,6 +51,9 @@ The curvature visual pass rewrites relevant world vertex shaders at resource
 load time. Overworld and Nether curvature are saved separately in
 `TilingSettings`, exposed through the world creation and pause/options UI, and
 can be disabled with `0%`.
+Dropped item entities render through vanilla's item shader, which is also used
+for GUI item atlases, so their item pose receives a client-only curvature
+translation instead of globally curving `item.vsh`.
 Block, entity, and item POV picking currently use the server/world curvature
 setting and follow the same visual curve by tracing short vanilla block-clip
 segments through the inverse rendered curve. The returned hit result still
@@ -137,6 +140,7 @@ Tile-border rendering remains available with `F3+Shift+Y`.
 - `src/client/java/globe/world/client/GlobeDebugHud.java`
 - `src/client/java/globe/world/client/GlobeDebugState.java`
 - `src/client/java/globe/world/client/mixin/GuiMixin.java`
+- `src/client/java/globe/world/client/mixin/ItemEntityRendererMixin.java`
 - `src/client/java/globe/world/client/mixin/KeyboardHandlerMixin.java`
 - `src/client/java/globe/world/client/mixin/ShaderManagerMixin.java`
 - `src/client/java/globe/world/client/mixin/LocalPlayerMixin.java`

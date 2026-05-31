@@ -11,6 +11,7 @@
 		"EnvironmentAttributeSystemBuilderMixin",
 		"FrustumMixin",
 		"GuiMixin",
+		"ItemEntityRendererMixin",
 		"KeyboardHandlerMixin",
 		"LocalPlayerMixin",
 		"OptionsMixin",
