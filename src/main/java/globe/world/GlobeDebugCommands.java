@@ -4,6 +4,7 @@ import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.EntityCanonicalizer;
 import globe.world.util.AiAliasUtil;
+import globe.world.util.GlobeDistanceCaps;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -29,6 +30,7 @@ public final class GlobeDebugCommands {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(Commands.literal("globeworld")
                         .then(Commands.literal("debug")
+                                .executes(context -> printPos(context.getSource()))
                                 .then(Commands.literal("pos")
                                         .executes(context -> printPos(context.getSource())))
                                 .then(Commands.literal("entity")
@@ -51,11 +53,17 @@ public final class GlobeDebugCommands {
         int canonBlockZ = CoordUtil.wrapBlock(tiling, pos.getZ());
         int canonChunkX = CoordUtil.wrapChunk(tiling, chunk.x());
         int canonChunkZ = CoordUtil.wrapChunk(tiling, chunk.z());
+        int configuredSimulationDistance = source.getServer().getPlayerList().getSimulationDistance();
+        int effectiveSimulationDistance = GlobeDistanceCaps.effectiveSimulationDistance(tiling, configuredSimulationDistance);
 
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Globe World: dimension=%s current tile=%s",
                 player.level().dimension().identifier(),
                 tileSummary(tiling))), false);
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Server simulation distance: configured=%d effective=%d",
+                configuredSimulationDistance,
+                effectiveSimulationDistance)), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Configured tiles: overworld=%s nether=%s nether 1/8 requested/effective=%s/%s",
                 tileSummary(overworldTiling),

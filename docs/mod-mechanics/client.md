@@ -51,6 +51,12 @@ The curvature visual pass rewrites relevant world vertex shaders at resource
 load time. Overworld and Nether curvature are saved separately in
 `TilingSettings`, exposed through the world creation and pause/options UI, and
 can be disabled with `0%`.
+`Options.getEffectiveRenderDistance()` is capped after vanilla applies the
+server-advertised view-distance limit. Tiled dimensions first apply the
+curvature horizon cap, then small tiles below `32` chunks at `50%` or higher
+curvature also cap effective render distance to at most one tile width, with a
+minimum of `2` chunks. This changes only the client value used for rendering;
+the saved render-distance option is not rewritten.
 Dropped item entities render through vanilla's item shader, which is also used
 for GUI item atlases, so their item pose receives a client-only curvature
 translation instead of globally curving `item.vsh`.
@@ -145,6 +151,8 @@ and per-frame alias submission, cull, and automatic-skip counts.
 - `src/client/java/globe/world/client/mixin/CompassAngleStateMixin.java`
 - `src/client/java/globe/world/client/GlobeCurvatureShader.java`
 - `src/main/java/globe/world/util/GlobeCurvature.java`
+- `src/main/java/globe/world/util/GlobeDistanceCaps.java`
+- `src/client/java/globe/world/client/mixin/OptionsMixin.java`
 - `src/main/java/globe/world/util/GlobeCurvedRaycast.java`
 - `src/main/java/globe/world/util/GlobeEntityAliasing.java`
 - `src/main/java/globe/world/util/GlobeEntityAliasMode.java`

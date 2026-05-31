@@ -24,10 +24,12 @@ Client-only sources jar:
 
 - `ServerChunkCache.getChunk(...)` looks up or requests a chunk by `(x, z, status, loadOrGenerate)`.
 - `ServerChunkCache.getChunkFutureMainThread(...)` uses `ChunkHolder` futures and ticket promotion.
+- The constructor creates `ChunkMap`, gets its `DistanceManager`, and forwards the configured simulation distance to `DistanceManager.updateSimulationDistance(...)`.
 - `ServerChunkCache.tick(...)` runs distance manager updates, ticking chunks, and `ChunkMap.tick(...)`.
 - `ServerChunkCache.tickChunks(...)` separates spawning chunks from block-ticking chunks.
 - `ServerChunkCache.blockChanged(...)` marks a visible chunk holder for block update broadcast.
 - `ServerChunkCache.onLightUpdate(...)` marks a visible chunk holder for light update broadcast.
+- `ServerChunkCache.setSimulationDistance(...)` forwards runtime simulation-distance changes to `DistanceManager.updateSimulationDistance(...)`.
 
 Important anchors:
 
@@ -38,6 +40,32 @@ Important anchors:
 - `ServerChunkCache.java:340` `tickChunks`
 - `ServerChunkCache.java:465` `blockChanged`
 - `ServerChunkCache.java:475` `onLightUpdate`
+- `ServerChunkCache.java:121` constructor call to `DistanceManager.updateSimulationDistance(...)`
+- `ServerChunkCache.java:553` `setSimulationDistance`
+
+Simulation distance is stored globally in `PlayerList`, but applied per level
+through each `ServerChunkCache`.
+
+- `PlayerList.placeNewPlayer(...)` sends `getSimulationDistance()` in the login packet.
+- `PlayerList.setSimulationDistance(...)` stores the configured value, broadcasts `ClientboundSetSimulationDistancePacket`, then calls `level.getChunkSource().setSimulationDistance(...)` for every level.
+- `DistanceManager.updateSimulationDistance(...)` stores the value and replaces `PLAYER_SIMULATION` ticket levels using `ChunkLevel.byStatus(FullChunkStatus.ENTITY_TICKING) - simulationDistance`.
+- `SimulationChunkTracker` inherits `ChunkTracker`, whose distance propagation checks all eight neighboring chunks and adds one level per step. Simulation radius therefore behaves like Chebyshev chunk distance for square regions, so diagonal corners are not farther than edges for this tracker.
+
+Important anchors:
+
+- `ChunkTracker.java:18` `checkNeighborsAfterUpdate`
+- `ChunkTracker.java:36` `getComputedLevel`
+- `ChunkTracker.java:58` `computeLevelFromNeighbor`
+- `PlayerList.java:169` login packet construction
+- `PlayerList.java:175` login simulation-distance value
+- `PlayerList.java:691` `getSimulationDistance`
+- `PlayerList.java:808` `setSimulationDistance`
+- `PlayerList.java:810` `ClientboundSetSimulationDistancePacket`
+- `PlayerList.java:813` per-level `ServerChunkCache.setSimulationDistance(...)`
+- `DistanceManager.java:49` `simulationDistance`
+- `DistanceManager.java:119` adds `PLAYER_SIMULATION` tickets
+- `DistanceManager.java:135` `getPlayerTicketLevel`
+- `DistanceManager.java:155` `updateSimulationDistance`
 
 `ChunkMap` owns the live chunk-holder maps and player-facing tracking.
 
@@ -101,13 +129,16 @@ The current project model splits chunk behavior into two identities:
 
 Project hooks:
 
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:27` wraps `ServerChunkCache.getChunk(...)` to canonical chunk coordinates.
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:37` wraps `ServerChunkCache.getChunkNow(...)`.
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:46` wraps `blockChanged(...)` to canonical block coordinates before vanilla chunk-holder broadcast bookkeeping.
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:51` clears Globe alias tickets during vanilla shutdown ticket deactivation, with `close()` as a backup.
+- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:28` caps the constructor simulation-distance argument before it reaches `DistanceManager`.
+- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:39` caps the runtime `setSimulationDistance(...)` argument before it reaches `DistanceManager`.
+- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:50` wraps `ServerChunkCache.getChunk(...)` to canonical chunk coordinates.
+- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:60` wraps `ServerChunkCache.getChunkNow(...)`.
+- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:69` wraps `blockChanged(...)` to canonical block coordinates before vanilla chunk-holder broadcast bookkeeping.
+- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:78` clears Globe alias tickets during vanilla shutdown ticket deactivation, with `close()` as a backup.
 - `src/main/java/globe/world/mixin/ChunkMapCanonicalTicketMixin.java:19` observes `ChunkMap.onFullChunkStatusChange(...)` and tracks non-canonical aliases.
-- `src/main/java/globe/world/util/CanonicalChunkTickets.java:21` records alias full-chunk status.
-- `src/main/java/globe/world/util/CanonicalChunkTickets.java:69` and `:80` ref-count canonical alias tickets, so multiple players or multiple aliases can keep the same canonical chunk loaded without prematurely unloading it.
+- `src/main/java/globe/world/util/CanonicalChunkTickets.java:25` records alias full-chunk status.
+- `src/main/java/globe/world/util/CanonicalChunkTickets.java:121` and `:140` ref-count canonical alias tickets, so multiple players or multiple aliases can keep the same canonical chunk loaded without prematurely unloading it.
+- `src/main/java/globe/world/util/GlobeDistanceCaps.java` owns the pure effective render and simulation distance policy.
 
 Current status:
 

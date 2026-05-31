@@ -61,10 +61,15 @@ public final class GlobeDebugHud {
         long worldTime = level.getDefaultClockTime();
         double localDayTicks = CoordUtil.localSolarDayTicks(currentTiling, worldTime, cameraEntity.getX());
         double absoluteDayTicks = positiveModulo(worldTime, CoordUtil.MINECRAFT_DAY_TICKS);
+        int configuredRenderDistance = Minecraft.getInstance().options.renderDistance().get();
+        int effectiveRenderDistance = Minecraft.getInstance().options.getEffectiveRenderDistance();
 
         leftLines.add("[Globe World]");
         leftLines.add(String.format(Locale.ROOT, "Wrapped XYZ: %.3f / %.3f / %.3f", canonX, cameraEntity.getY(), canonZ));
         leftLines.add(String.format(Locale.ROOT, "Canon chunk: %d %d (%s)", canonChunkX, canonChunkZ, canonicalChunk ? "Canon" : "Alias"));
+        leftLines.add(String.format(Locale.ROOT, "Render distance: configured %d, effective %d",
+                configuredRenderDistance,
+                effectiveRenderDistance));
         leftLines.add(String.format(Locale.ROOT, "Local time: %s (%s, %dt)",
                 formatClock(localDayTicks),
                 formatOffset(CoordUtil.longitudeOffsetTicks(currentTiling, cameraEntity.getX())),

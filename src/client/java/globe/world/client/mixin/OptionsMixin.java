@@ -11,6 +11,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class OptionsMixin {
     @Inject(method = "getEffectiveRenderDistance", at = @At("RETURN"), cancellable = true)
     private void globeWorld$capCurvedRenderDistance(CallbackInfoReturnable<Integer> cir) {
-        cir.setReturnValue(Math.min(cir.getReturnValue(), GlobeCurvatureShader.curvatureRenderDistanceCapChunks()));
+        cir.setReturnValue(GlobeCurvatureShader.effectiveRenderDistanceChunks(cir.getReturnValue()));
     }
 }

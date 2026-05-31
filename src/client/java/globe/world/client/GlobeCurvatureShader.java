@@ -2,6 +2,7 @@ package globe.world.client;
 
 import globe.world.config.GlobeConfig;
 import globe.world.util.DimensionTiling;
+import globe.world.util.GlobeDistanceCaps;
 import globe.world.util.GlobeCurvature;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
@@ -100,6 +101,17 @@ public final class GlobeCurvatureShader {
 
         double maxDistanceBlocks = curvatureDropClampDistance(radius) - RENDER_DISTANCE_SAFETY_MARGIN_BLOCKS;
         return Math.max(2, (int) Math.floor(maxDistanceBlocks / (16.0D * Math.sqrt(2.0D))));
+    }
+
+    public static int effectiveRenderDistanceChunks(int configuredEffectiveDistance) {
+        Minecraft minecraft = Minecraft.getInstance();
+        ResourceKey<Level> dimension = minecraft.level == null ? Level.OVERWORLD : minecraft.level.dimension();
+        return GlobeDistanceCaps.effectiveRenderDistance(
+                currentTiling(),
+                GlobeConfig.curvaturePercent(dimension),
+                configuredEffectiveDistance,
+                curvatureRenderDistanceCapChunks()
+        );
     }
 
     private static void reloadShadersWhenSettingsChange(Minecraft minecraft) {
