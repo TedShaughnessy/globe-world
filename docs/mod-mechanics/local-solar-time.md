@@ -51,17 +51,17 @@ the vanilla clock.
 
 ## Implementation
 
-- `src/main/java/globe/world/util/CoordUtil.java`
-- `src/main/java/globe/world/util/GlobeLocalDaylight.java`
-- `src/main/java/globe/world/mixin/PlayerLocalSleepMixin.java`
-- `src/main/java/globe/world/mixin/ServerPlayerLocalSleepMixin.java`
-- `src/main/java/globe/world/mixin/ServerLevelLocalSleepTimeMixin.java`
-- `src/main/java/globe/world/mixin/EnvironmentAttributeSystemBuilderGameplayMixin.java`
-- `src/main/java/globe/world/mixin/MonsterLocalDaylightMixin.java`
-- `src/main/java/globe/world/mixin/PhantomSpawnerLocalDaylightMixin.java`
-- `src/main/java/globe/world/mixin/MobLocalDaylightMixin.java`
-- `src/main/java/globe/world/mixin/PatrolSpawnerLocalDaylightMixin.java`
-- `src/client/java/globe/world/client/GlobeScrollingSky.java`
+- `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/GlobeLocalDaylight.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PlayerLocalSleepMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerPlayerLocalSleepMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelLocalSleepTimeMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/EnvironmentAttributeSystemBuilderGameplayMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/MonsterLocalDaylightMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PhantomSpawnerLocalDaylightMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/MobLocalDaylightMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PatrolSpawnerLocalDaylightMixin.java`
+- `mod-fabric/src/client/java/globe/world/client/GlobeScrollingSky.java`
 
 The helper uses `Level.getDefaultClockTime()` for level-based overloads and also
 exposes overloads that accept a `DimensionTiling` and explicit world time. The

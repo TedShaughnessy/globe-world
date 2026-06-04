@@ -11,10 +11,10 @@ The likely root cause is that the current sampler guarantees repetition by
 embedding each 2D sample point on a sine/cosine torus and averaging four vanilla
 noise samples:
 
-- `src/main/java/globe/world/util/PeriodicNoiseUtil.java`
-- `src/main/java/globe/world/mixin/DensityFunctionsNoiseMixin.java`
-- `src/main/java/globe/world/mixin/BlendedNoiseMixin.java`
-- `src/main/java/globe/world/mixin/SurfaceSystemMixin.java`
+- `mod-fabric/src/main/java/globe/world/util/PeriodicNoiseUtil.java`
+- `mod-fabric/src/main/java/globe/world/mixin/DensityFunctionsNoiseMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/BlendedNoiseMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/SurfaceSystemMixin.java`
 
 This is periodic, but it is not vanilla-equivalent noise with periodic
 boundaries. It changes the sample-space geometry and the output distribution

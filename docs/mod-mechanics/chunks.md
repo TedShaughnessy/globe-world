@@ -54,21 +54,21 @@ safe to discard because new chunk sends repopulate them.
 
 ## Key Files
 
-- `src/main/java/globe/world/GlobeChunkPacket.java`
-- `src/main/java/globe/world/util/CanonicalChunkTickets.java`
-- `src/main/java/globe/world/util/ChunkAliasTracker.java`
-- `src/main/java/globe/world/util/ChunkPacketUtil.java`
-- `src/main/java/globe/world/util/CoordUtil.java`
-- `src/main/java/globe/world/util/GlobeDistanceCaps.java`
-- `src/main/java/globe/world/mixin/ChunkMapBiomeResendMixin.java`
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java`
-- `src/main/java/globe/world/mixin/PlayerChunkSenderMixin.java`
-- `src/main/java/globe/world/mixin/PlayerListCanonicalPositionMixin.java`
-- `src/main/java/globe/world/mixin/ServerPlayerCanonicalPositionMixin.java`
-- `src/main/java/globe/world/mixin/ClientboundLevelChunkWithLightMixin.java`
-- `src/main/java/globe/world/mixin/ChunkHolderMixin.java`
-- `src/main/java/globe/world/mixin/ChunkMapCanonicalTicketMixin.java`
-- `src/main/java/globe/world/mixin/MinecraftServerMixin.java`
+- `mod-fabric/src/main/java/globe/world/GlobeChunkPacket.java`
+- `mod-fabric/src/main/java/globe/world/util/CanonicalChunkTickets.java`
+- `mod-fabric/src/main/java/globe/world/util/ChunkAliasTracker.java`
+- `mod-fabric/src/main/java/globe/world/util/ChunkPacketUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/GlobeDistanceCaps.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapBiomeResendMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerChunkCacheMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PlayerChunkSenderMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PlayerListCanonicalPositionMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerPlayerCanonicalPositionMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ClientboundLevelChunkWithLightMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkHolderMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapCanonicalTicketMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/MinecraftServerMixin.java`
 
 ## Related Vanilla Mechanics
 

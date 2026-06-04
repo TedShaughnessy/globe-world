@@ -8,6 +8,21 @@ client:  ./gradlew runClient --debug > debug_log.txt 2>&1
 kill:    pkill -f runClient
 ```
 
+## Repository layout
+
+Globe World is organized as a small monorepo. The root Gradle project is an
+aggregator, and the current Fabric mod lives in `mod-fabric/`.
+
+```
+mod-fabric/
+  build.gradle
+  src/main/      shared/server-side mod sources and resources
+  src/client/    client-only sources and resources
+```
+
+Root tasks such as `./gradlew build` and `./gradlew runClient` delegate to the
+Fabric module so day-to-day commands can still be run from the repository root.
+
 ## How it works
 
 The world has a finite canonical tile of `W_CHUNKS × W_CHUNKS` chunks centered at the origin. Any chunk access outside that tile is transparently redirected to the canonical equivalent on the server. Outbound chunk and entity packets are relabeled to the player's virtual coordinate frame, so the client renders a continuous world with no seams and no client mod required.

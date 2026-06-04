@@ -31,9 +31,9 @@ instead of being rewritten during send.
 
 ## Key Files
 
-- `src/main/java/globe/world/mixin/MapItemMixin.java`
-- `src/main/java/globe/world/mixin/MapItemSavedDataMixin.java`
-- `src/main/java/globe/world/util/CoordUtil.java`
+- `mod-fabric/src/main/java/globe/world/mixin/MapItemMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/MapItemSavedDataMixin.java`
+- `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 
 ## Related Vanilla Mechanics
 

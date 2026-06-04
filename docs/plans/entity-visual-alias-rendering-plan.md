@@ -59,10 +59,10 @@ Minecraft 26.1.2 client sources:
 
 Project hooks:
 
-- `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java`
-- `src/main/java/globe/world/util/EntityPacketUtil.java`
-- `src/main/java/globe/world/util/GlobeCurvedRaycast.java`
-- `src/client/java/globe/world/client/mixin/LocalPlayerMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java`
+- `mod-fabric/src/main/java/globe/world/util/EntityPacketUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/GlobeCurvedRaycast.java`
+- `mod-fabric/src/client/java/globe/world/client/mixin/LocalPlayerMixin.java`
 
 ## Implementation Plan
 
@@ -110,7 +110,7 @@ Debug behavior:
 ### 1. Shared Alias Offset Utility
 
 Add a small utility, probably `GlobeEntityAliasRenderer` or
-`GlobeVisualAliasUtil`, under `src/client/java/globe/world/client/`.
+`GlobeVisualAliasUtil`, under `mod-fabric/src/client/java/globe/world/client/`.
 
 Responsibilities:
 

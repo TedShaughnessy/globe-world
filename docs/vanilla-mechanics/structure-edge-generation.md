@@ -105,7 +105,7 @@ The implementation preserves the virtual source coordinate through reference cre
 
 Project anchors:
 
-- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:27` clears queued structure placement shifts and cancels biome decoration for non-canonical chunks.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:27` clears queued structure placement shifts and cancels biome decoration for non-canonical chunks.
 - `ChunkGeneratorMixin.java:58` intercepts `createReferences(...)`.
 - `ChunkGeneratorMixin.java:65` clears references, but not starts, for non-canonical chunks during reference generation.
 - `ChunkGeneratorMixin.java:70` replaces canonical reference creation with `addToroidalStructureReferences(...)`.
@@ -124,11 +124,11 @@ The important part is that the shifted intersection test no longer discards the 
 
 Project anchors:
 
-- `src/main/java/globe/world/mixin/StructurePlacementMixin.java:15` intercepts `StructurePlacement.isStructureChunk(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/StructurePlacementMixin.java:15` intercepts `StructurePlacement.isStructureChunk(...)`.
 - `StructurePlacementMixin.java:17` wraps source chunk X/Z.
 - `StructurePlacementMixin.java:20` delegates alias placement checks to the wrapped canonical chunk.
 - `StructurePlacementMixin.java:24` through `StructurePlacementMixin.java:94` wrap several placement probability seed inputs.
-- `src/main/java/globe/world/mixin/StructureGenerationContextMixin.java` wraps the structure generation random seed to canonical chunk coordinates.
+- `mod-fabric/src/main/java/globe/world/mixin/StructureGenerationContextMixin.java` wraps the structure generation random seed to canonical chunk coordinates.
 
 Alias structure starts now keep their virtual start position, but their placement decision and structure-generation random seed are canonicalized. The goal is a transient virtual copy with the same layout as the canonical start, translated by whole tile periods.
 
@@ -136,7 +136,7 @@ Alias structure starts now keep their virtual start position, but their placemen
 
 Project anchors:
 
-- `src/main/java/globe/world/mixin/StructureStartMixin.java:19` intercepts `StructureStart.placeInChunk(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/StructureStartMixin.java:19` intercepts `StructureStart.placeInChunk(...)`.
 - `StructureStartMixin.java:31` consumes the queued shift for this start occurrence.
 - `StructureStartMixin.java:36` moves the chunk bounding box by the exact stored whole-tile shift.
 - `StructureStartMixin.java:37` moves the placement chunk position by the same shift.
@@ -148,14 +148,14 @@ This replaces the old guessed shift with the shift recovered from the virtual re
 
 Project anchors:
 
-- `src/main/java/globe/world/mixin/WorldGenRegionMixin.java:37` wraps `getBlockState(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/WorldGenRegionMixin.java:37` wraps `getBlockState(...)`.
 - `WorldGenRegionMixin.java:42` virtualizes worldgen chunk lookup inside the bounded `WorldGenRegion` cache.
 - `WorldGenRegionMixin.java:70` wraps `getFluidState(...)`.
 - `WorldGenRegionMixin.java:75` wraps `getBlockEntity(...)`.
 - `WorldGenRegionMixin.java:80` replaces `ensureCanWrite(...)` with toroidal write-radius logic.
 - `WorldGenRegionMixin.java:128` wraps `setBlock(...)` and queues spillover writes.
 - `WorldGenRegionMixin.java:148` wraps post-processing positions.
-- `src/main/java/globe/world/util/WorldGenSpillover.java:23` queues wrapped writes.
+- `mod-fabric/src/main/java/globe/world/util/WorldGenSpillover.java:23` queues wrapped writes.
 - `WorldGenSpillover.java:37` applies queued writes to canonical chunks.
 
 These hooks are useful for feature/tree spillover and for final structure block writes. They do not solve structure identity by themselves; the reference-key and placement-shift hooks above decide whether vanilla reaches the write path.

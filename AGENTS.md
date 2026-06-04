@@ -1,6 +1,8 @@
 # Globe World Agent Notes
 
 This repository is a Fabric mod for Minecraft 26.1.2.
+The root Gradle project is a small monorepo aggregator; the current Fabric mod
+module lives in `mod-fabric/`.
 
 ## Mod Idea
 

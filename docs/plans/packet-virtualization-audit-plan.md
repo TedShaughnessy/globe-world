@@ -151,7 +151,7 @@ This landed in two small slices.
 - Phase 1b: custom `ServerLevel` per-player send paths. This covers block
   destruction, particles, explosions, and global level events.
 
-Implemented by `src/main/java/globe/world/util/WorldEventPacketUtil.java`.
+Implemented by `mod-fabric/src/main/java/globe/world/util/WorldEventPacketUtil.java`.
 
 Public API:
 

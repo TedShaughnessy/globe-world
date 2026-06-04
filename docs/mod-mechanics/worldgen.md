@@ -61,26 +61,26 @@ their tiling context into surrounding generation work.
 
 ## Key Files
 
-- `src/main/java/globe/world/util/TerrainMode.java`
-- `src/main/java/globe/world/util/PeriodicNoiseUtil.java`
-- `src/main/java/globe/world/util/PeriodicPositionalRandomFactory.java`
-- `src/main/java/globe/world/util/WorldGenSpillover.java`
-- `src/main/java/globe/world/util/StructurePlacementShifts.java`
-- `src/main/java/globe/world/mixin/DensityFunctionsNoiseMixin.java`
-- `src/main/java/globe/world/mixin/DensityFunctionsShiftMixin.java`
-- `src/main/java/globe/world/mixin/DensityFunctionsShiftAMixin.java`
-- `src/main/java/globe/world/mixin/DensityFunctionsShiftBMixin.java`
-- `src/main/java/globe/world/mixin/DensityFunctionsShiftedNoiseMixin.java`
-- `src/main/java/globe/world/mixin/DensityFunctionsWeirdScaledSamplerMixin.java`
-- `src/main/java/globe/world/mixin/BlendedNoiseMixin.java`
-- `src/main/java/globe/world/mixin/SurfaceSystemMixin.java`
-- `src/main/java/globe/world/mixin/NoiseBasedChunkGeneratorMixin.java`
-- `src/main/java/globe/world/mixin/WorldGenRegionMixin.java`
-- `src/main/java/globe/world/mixin/LevelChunkPostProcessMixin.java`
-- `src/main/java/globe/world/mixin/RandomSpreadStructurePlacementMixin.java`
-- `src/main/java/globe/world/mixin/StructureGenerationContextMixin.java`
-- `src/main/java/globe/world/mixin/StructurePlacementMixin.java`
-- `src/main/java/globe/world/mixin/StructureStartMixin.java`
+- `mod-fabric/src/main/java/globe/world/util/TerrainMode.java`
+- `mod-fabric/src/main/java/globe/world/util/PeriodicNoiseUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/PeriodicPositionalRandomFactory.java`
+- `mod-fabric/src/main/java/globe/world/util/WorldGenSpillover.java`
+- `mod-fabric/src/main/java/globe/world/util/StructurePlacementShifts.java`
+- `mod-fabric/src/main/java/globe/world/mixin/DensityFunctionsNoiseMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/DensityFunctionsShiftMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/DensityFunctionsShiftAMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/DensityFunctionsShiftBMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/DensityFunctionsShiftedNoiseMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/DensityFunctionsWeirdScaledSamplerMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/BlendedNoiseMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/SurfaceSystemMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/NoiseBasedChunkGeneratorMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/WorldGenRegionMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/LevelChunkPostProcessMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/RandomSpreadStructurePlacementMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/StructureGenerationContextMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/StructurePlacementMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/StructureStartMixin.java`
 
 ## Related Plans
 

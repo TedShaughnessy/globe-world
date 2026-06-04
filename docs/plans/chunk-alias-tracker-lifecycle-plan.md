@@ -97,7 +97,7 @@ Add a `ServerPlayer` dimension-transfer mixin:
 - Do not clear aliases for same-dimension teleports; those are ordinary
   movement within the same client chunk space.
 - If new mixin classes are added, register them in
-  `src/main/resources/globe-world.mixins.json`.
+  `mod-fabric/src/main/resources/globe-world.mixins.json`.
 
 Vanilla source anchors checked in the local Loom cache:
 

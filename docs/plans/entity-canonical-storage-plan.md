@@ -71,8 +71,8 @@ Status: implemented.
 
 Files:
 
-- `src/main/java/globe/world/util/EntityCanonicalizer.java`
-- `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java`
+- `mod-fabric/src/main/java/globe/world/util/EntityCanonicalizer.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelEntityMixin.java`
 
 Add one shared predicate:
 
@@ -100,7 +100,7 @@ Status: implemented.
 
 Files:
 
-- `src/main/java/globe/world/util/EntityCanonicalizer.java`
+- `mod-fabric/src/main/java/globe/world/util/EntityCanonicalizer.java`
 
 Add helpers with names close to:
 
@@ -139,10 +139,10 @@ Status: implemented.
 
 Files:
 
-- Added `src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java`
-- Removed `src/main/java/globe/world/mixin/ItemEntityMixin.java` after the generic
+- Added `mod-fabric/src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java`
+- Removed `mod-fabric/src/main/java/globe/world/mixin/ItemEntityMixin.java` after the generic
   hook covers item entities.
-- Updated `src/main/resources/globe-world.mixins.json`.
+- Updated `mod-fabric/src/main/resources/globe-world.mixins.json`.
 
 Mixin hooks:
 
@@ -168,8 +168,8 @@ Status: implemented.
 
 Files:
 
-- Added `src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java`.
-- Updated `src/main/resources/globe-world.mixins.json`.
+- Added `mod-fabric/src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java`.
+- Updated `mod-fabric/src/main/resources/globe-world.mixins.json`.
 
 Mixin hooks:
 
@@ -202,9 +202,9 @@ Status: implemented.
 
 Files:
 
-- Updated `src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java`.
-- Updated `src/main/java/globe/world/mixin/EntityPassengerPositionMixin.java`.
-- Updated `src/main/java/globe/world/util/EntityCanonicalizer.java`.
+- Updated `mod-fabric/src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java`.
+- Updated `mod-fabric/src/main/java/globe/world/mixin/EntityPassengerPositionMixin.java`.
+- Updated `mod-fabric/src/main/java/globe/world/util/EntityCanonicalizer.java`.
 
 Vanilla `ServerGamePacketListenerImpl.handleMoveVehicle(...)` treats
 `ServerboundMoveVehiclePacket.position()` as an absolute server position. When a
@@ -239,9 +239,9 @@ client snap or large relative-delta issue after wrapping.
 
 Files:
 
-- `src/main/java/globe/world/util/EntityCanonicalizer.java`
-- `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java`
-- `src/main/java/globe/world/util/EntityPacketUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/EntityCanonicalizer.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java`
+- `mod-fabric/src/main/java/globe/world/util/EntityPacketUtil.java`
 
 Current code already syncs packet position codecs after canonicalization and
 virtualizes add, teleport, and absolute position-sync packets. Keep relative
@@ -264,8 +264,8 @@ Status: implemented.
 
 Files:
 
-- `src/main/java/globe/world/GlobeDebugCommands.java`
-- `src/main/java/globe/world/util/EntityCanonicalizer.java`
+- `mod-fabric/src/main/java/globe/world/GlobeDebugCommands.java`
+- `mod-fabric/src/main/java/globe/world/util/EntityCanonicalizer.java`
 
 Added `/globeworld debug entity <target>` and `/globeworld debug entities` to
 report:

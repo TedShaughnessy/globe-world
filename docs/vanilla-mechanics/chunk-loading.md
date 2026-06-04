@@ -129,16 +129,16 @@ The current project model splits chunk behavior into two identities:
 
 Project hooks:
 
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:28` caps the constructor simulation-distance argument before it reaches `DistanceManager`.
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:39` caps the runtime `setSimulationDistance(...)` argument before it reaches `DistanceManager`.
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:50` wraps `ServerChunkCache.getChunk(...)` to canonical chunk coordinates.
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:60` wraps `ServerChunkCache.getChunkNow(...)`.
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:69` wraps `blockChanged(...)` to canonical block coordinates before vanilla chunk-holder broadcast bookkeeping.
-- `src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:78` clears Globe alias tickets during vanilla shutdown ticket deactivation, with `close()` as a backup.
-- `src/main/java/globe/world/mixin/ChunkMapCanonicalTicketMixin.java:19` observes `ChunkMap.onFullChunkStatusChange(...)` and tracks non-canonical aliases.
-- `src/main/java/globe/world/util/CanonicalChunkTickets.java:25` records alias full-chunk status.
-- `src/main/java/globe/world/util/CanonicalChunkTickets.java:121` and `:140` ref-count canonical alias tickets, so multiple players or multiple aliases can keep the same canonical chunk loaded without prematurely unloading it.
-- `src/main/java/globe/world/util/GlobeDistanceCaps.java` owns the pure effective render and simulation distance policy.
+- `mod-fabric/src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:28` caps the constructor simulation-distance argument before it reaches `DistanceManager`.
+- `mod-fabric/src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:39` caps the runtime `setSimulationDistance(...)` argument before it reaches `DistanceManager`.
+- `mod-fabric/src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:50` wraps `ServerChunkCache.getChunk(...)` to canonical chunk coordinates.
+- `mod-fabric/src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:60` wraps `ServerChunkCache.getChunkNow(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:69` wraps `blockChanged(...)` to canonical block coordinates before vanilla chunk-holder broadcast bookkeeping.
+- `mod-fabric/src/main/java/globe/world/mixin/ServerChunkCacheMixin.java:78` clears Globe alias tickets during vanilla shutdown ticket deactivation, with `close()` as a backup.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapCanonicalTicketMixin.java:19` observes `ChunkMap.onFullChunkStatusChange(...)` and tracks non-canonical aliases.
+- `mod-fabric/src/main/java/globe/world/util/CanonicalChunkTickets.java:25` records alias full-chunk status.
+- `mod-fabric/src/main/java/globe/world/util/CanonicalChunkTickets.java:121` and `:140` ref-count canonical alias tickets, so multiple players or multiple aliases can keep the same canonical chunk loaded without prematurely unloading it.
+- `mod-fabric/src/main/java/globe/world/util/GlobeDistanceCaps.java` owns the pure effective render and simulation distance policy.
 
 Current status:
 

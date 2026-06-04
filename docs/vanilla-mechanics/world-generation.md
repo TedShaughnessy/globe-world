@@ -127,7 +127,7 @@ Observed symptom:
 
 Project hook:
 
-- `src/main/java/globe/world/mixin/LevelChunkPostProcessMixin.java:20` cancels `LevelChunk.postProcessGeneration(...)` for non-canonical chunks and clears queued post-processing offsets.
+- `mod-fabric/src/main/java/globe/world/mixin/LevelChunkPostProcessMixin.java:20` cancels `LevelChunk.postProcessGeneration(...)` for non-canonical chunks and clears queued post-processing offsets.
 
 ### Alias Feature Decoration
 
@@ -137,7 +137,7 @@ For Globe World, non-canonical chunks are views. Letting an alias run feature de
 
 Project hook:
 
-- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:23` cancels biome decoration for non-canonical chunks.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkGeneratorMixin.java:23` cancels biome decoration for non-canonical chunks.
 
 ### Canonical Feature Spillover
 
@@ -151,10 +151,10 @@ Observed symptom:
 
 Current project hooks:
 
-- `src/main/java/globe/world/mixin/WorldGenRegionMixin.java` canonicalizes `WorldGenRegion` block read/write positions for `getBlockState`, `getFluidState`, `getBlockEntity`, and `setBlock`.
-- `src/main/java/globe/world/mixin/WorldGenRegionMixin.java` also applies toroidal chunk distance in `ensureCanWrite(...)`; in a 6-chunk tile, canonical chunks `2` and `-3` are adjacent across the tile seam even though vanilla's raw distance is 5.
-- `src/main/java/globe/world/mixin/BulkSectionAccessMixin.java` canonicalizes `BulkSectionAccess.getSection(...)` because vanilla ore placement calls `WorldGenLevel.ensureCanWrite(...)` and then writes directly through a chunk section instead of going through `WorldGenRegion.setBlock(...)`.
-- `src/main/java/globe/world/util/WorldGenSpillover.java` stores the state a
+- `mod-fabric/src/main/java/globe/world/mixin/WorldGenRegionMixin.java` canonicalizes `WorldGenRegion` block read/write positions for `getBlockState`, `getFluidState`, `getBlockEntity`, and `setBlock`.
+- `mod-fabric/src/main/java/globe/world/mixin/WorldGenRegionMixin.java` also applies toroidal chunk distance in `ensureCanWrite(...)`; in a 6-chunk tile, canonical chunks `2` and `-3` are adjacent across the tile seam even though vanilla's raw distance is 5.
+- `mod-fabric/src/main/java/globe/world/mixin/BulkSectionAccessMixin.java` canonicalizes `BulkSectionAccess.getSection(...)` because vanilla ore placement calls `WorldGenLevel.ensureCanWrite(...)` and then writes directly through a chunk section instead of going through `WorldGenRegion.setBlock(...)`.
+- `mod-fabric/src/main/java/globe/world/util/WorldGenSpillover.java` stores the state a
   wrapped write expected to replace, and replays the write only if the
   canonical destination still has that state. This keeps stale spillover from
   bypassing vanilla placement checks after the destination chunk decorates.
@@ -188,10 +188,10 @@ For Globe World, this means a village crossing the east/west seam needs all of t
 Current project hooks:
 
 - Earlier behavior canceled structure starts and references for non-canonical chunks. That prevented duplicate alias structure data, but it also removed virtual starts needed by canonical edge chunks to place the opposite side of a seam-crossing village.
-- `src/main/java/globe/world/mixin/ChunkGeneratorMixin.java` currently clears alias structure references, stores virtual source keys during canonical reference creation, and queues exact placement shifts during biome decoration.
-- `src/main/java/globe/world/mixin/StructurePlacementMixin.java` makes `StructurePlacement.isStructureChunk(...)` periodic for alias start generation.
-- `src/main/java/globe/world/mixin/StructureGenerationContextMixin.java` canonicalizes structure-generation random seeds while keeping alias start positions virtual.
-- `src/main/java/globe/world/mixin/StructureStartMixin.java` consumes the queued shift and calls vanilla placement with a shifted chunk bounding box.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkGeneratorMixin.java` currently clears alias structure references, stores virtual source keys during canonical reference creation, and queues exact placement shifts during biome decoration.
+- `mod-fabric/src/main/java/globe/world/mixin/StructurePlacementMixin.java` makes `StructurePlacement.isStructureChunk(...)` periodic for alias start generation.
+- `mod-fabric/src/main/java/globe/world/mixin/StructureGenerationContextMixin.java` canonicalizes structure-generation random seeds while keeping alias start positions virtual.
+- `mod-fabric/src/main/java/globe/world/mixin/StructureStartMixin.java` consumes the queued shift and calls vanilla placement with a shifted chunk bounding box.
 - This needs in-game validation: the implementation is designed to preserve coherent virtual structure-start identity, but villages crossing all four edges/corners still need testing.
 
 Important constraint:

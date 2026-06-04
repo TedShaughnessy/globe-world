@@ -85,7 +85,7 @@ an alias chunk, because the server light engine stores canonical light data.
 
 ### 1. Add A Light Packet Copy Invoker
 
-Add `src/main/java/globe/world/mixin/ClientboundLightUpdatePacketAccessor.java`.
+Add `mod-fabric/src/main/java/globe/world/mixin/ClientboundLightUpdatePacketAccessor.java`.
 
 Use a mixin `@Invoker("<init>")` for the private vanilla constructor:
 
@@ -93,7 +93,7 @@ Use a mixin `@Invoker("<init>")` for the private vanilla constructor:
 - constructor signature: `(FriendlyByteBuf input)`
 - method name: `globeWorld$new(FriendlyByteBuf input)`
 
-Register the accessor in `src/main/resources/globe-world.mixins.json`.
+Register the accessor in `mod-fabric/src/main/resources/globe-world.mixins.json`.
 
 Reason: vanilla has no constructor that accepts `int x`, `int z`, and an
 already-copied `ClientboundLightUpdatePacketData`. The private decode

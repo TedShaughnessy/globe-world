@@ -135,25 +135,25 @@ These systems intentionally remain global or are accepted for now:
 
 ## Key Files
 
-- `src/main/java/globe/world/config/DayNightCycleMode.java`
-- `src/main/java/globe/world/config/TilingSettings.java`
-- `src/main/java/globe/world/util/GlobeDayLength.java`
-- `src/main/java/globe/world/util/CoordUtil.java`
-- `src/main/java/globe/world/util/GlobeLocalDaylight.java`
-- `src/client/java/globe/world/client/GlobeScrollingSky.java`
-- `src/client/java/globe/world/client/GlobeSkyHorizon.java`
-- `src/client/java/globe/world/client/GlobeCurvatureShader.java`
-- `src/client/java/globe/world/client/mixin/EnvironmentAttributeSystemBuilderMixin.java`
-- `src/main/java/globe/world/mixin/EnvironmentAttributeSystemBuilderGameplayMixin.java`
-- `src/main/java/globe/world/mixin/PlayerLocalSleepMixin.java`
-- `src/main/java/globe/world/mixin/ServerPlayerLocalSleepMixin.java`
-- `src/main/java/globe/world/mixin/ServerLevelLocalSleepTimeMixin.java`
-- `src/main/java/globe/world/mixin/MonsterLocalDaylightMixin.java`
-- `src/main/java/globe/world/mixin/PhantomSpawnerLocalDaylightMixin.java`
-- `src/main/java/globe/world/mixin/MobLocalDaylightMixin.java`
-- `src/main/java/globe/world/mixin/PatrolSpawnerLocalDaylightMixin.java`
-- `src/client/java/globe/world/client/mixin/SkyRendererMixin.java`
-- `src/client/java/globe/world/client/mixin/ShaderManagerMixin.java`
+- `mod-fabric/src/main/java/globe/world/config/DayNightCycleMode.java`
+- `mod-fabric/src/main/java/globe/world/config/TilingSettings.java`
+- `mod-fabric/src/main/java/globe/world/util/GlobeDayLength.java`
+- `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/GlobeLocalDaylight.java`
+- `mod-fabric/src/client/java/globe/world/client/GlobeScrollingSky.java`
+- `mod-fabric/src/client/java/globe/world/client/GlobeSkyHorizon.java`
+- `mod-fabric/src/client/java/globe/world/client/GlobeCurvatureShader.java`
+- `mod-fabric/src/client/java/globe/world/client/mixin/EnvironmentAttributeSystemBuilderMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/EnvironmentAttributeSystemBuilderGameplayMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PlayerLocalSleepMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerPlayerLocalSleepMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelLocalSleepTimeMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/MonsterLocalDaylightMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PhantomSpawnerLocalDaylightMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/MobLocalDaylightMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PatrolSpawnerLocalDaylightMixin.java`
+- `mod-fabric/src/client/java/globe/world/client/mixin/SkyRendererMixin.java`
+- `mod-fabric/src/client/java/globe/world/client/mixin/ShaderManagerMixin.java`
 
 ## Related Docs
 

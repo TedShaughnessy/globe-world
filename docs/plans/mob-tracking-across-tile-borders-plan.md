@@ -102,7 +102,7 @@ vanilla's `Sensing` unseen cache in the wrong state.
 
 ## Phase 1: Add Shared AI Alias Utilities
 
-Add `src/main/java/globe/world/util/AiAliasUtil.java`.
+Add `mod-fabric/src/main/java/globe/world/util/AiAliasUtil.java`.
 
 Responsibilities:
 
@@ -176,9 +176,9 @@ Implementation:
 
 Files:
 
-- Add `src/main/java/globe/world/mixin/SensingMixin.java`.
-- Update `src/main/java/globe/world/mixin/TargetingConditionsMixin.java`.
-- Add `SensingMixin` to `src/main/resources/globe-world.mixins.json`.
+- Add `mod-fabric/src/main/java/globe/world/mixin/SensingMixin.java`.
+- Update `mod-fabric/src/main/java/globe/world/mixin/TargetingConditionsMixin.java`.
+- Add `SensingMixin` to `mod-fabric/src/main/resources/globe-world.mixins.json`.
 
 Acceptance:
 
@@ -215,9 +215,9 @@ Implementation:
 
 Files:
 
-- Add `src/main/java/globe/world/mixin/ServerEntityGetterMixin.java`.
+- Add `mod-fabric/src/main/java/globe/world/mixin/ServerEntityGetterMixin.java`.
 - Add or update the goal mixins listed above.
-- Update `src/main/resources/globe-world.mixins.json`.
+- Update `mod-fabric/src/main/resources/globe-world.mixins.json`.
 
 Acceptance:
 
@@ -251,10 +251,10 @@ Implementation:
 
 Files:
 
-- Add `src/main/java/globe/world/mixin/PathNavigationMixin.java`.
-- Extend `src/main/java/globe/world/mixin/TargetGoalMixin.java`.
-- Add `src/main/java/globe/world/mixin/MeleeAttackGoalMixin.java`.
-- Update `src/main/resources/globe-world.mixins.json`.
+- Add `mod-fabric/src/main/java/globe/world/mixin/PathNavigationMixin.java`.
+- Extend `mod-fabric/src/main/java/globe/world/mixin/TargetGoalMixin.java`.
+- Add `mod-fabric/src/main/java/globe/world/mixin/MeleeAttackGoalMixin.java`.
+- Update `mod-fabric/src/main/resources/globe-world.mixins.json`.
 
 Acceptance:
 
@@ -281,8 +281,8 @@ Implementation:
 
 Files:
 
-- Update `src/main/java/globe/world/util/EntityCanonicalizer.java`.
-- Add `src/main/java/globe/world/util/MobNavigationAliasUtil.java` if the logic
+- Update `mod-fabric/src/main/java/globe/world/util/EntityCanonicalizer.java`.
+- Add `mod-fabric/src/main/java/globe/world/util/MobNavigationAliasUtil.java` if the logic
   is more than a couple of lines.
 - Add accessors only if stopping navigation is not enough.
 
@@ -314,10 +314,10 @@ Implementation:
 
 Files:
 
-- Add `src/main/java/globe/world/mixin/LookControlMixin.java`.
-- Add `src/main/java/globe/world/mixin/MobLookMixin.java` if needed.
+- Add `mod-fabric/src/main/java/globe/world/mixin/LookControlMixin.java`.
+- Add `mod-fabric/src/main/java/globe/world/mixin/MobLookMixin.java` if needed.
 - Extend ranged goal mixins from Phase 3.
-- Update `src/main/resources/globe-world.mixins.json`.
+- Update `mod-fabric/src/main/resources/globe-world.mixins.json`.
 
 Acceptance:
 
@@ -345,7 +345,7 @@ Useful fields:
 
 Files:
 
-- Update `src/main/java/globe/world/GlobeDebugCommands.java`.
+- Update `mod-fabric/src/main/java/globe/world/GlobeDebugCommands.java`.
 - Add helper state only where needed; avoid storing per-entity diagnostics on
   all mobs unless it is cheap.
 

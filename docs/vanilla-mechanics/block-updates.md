@@ -135,10 +135,10 @@ Why this matters:
 
 Project hooks:
 
-- `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:34` canonicalizes the server-side `setBlock(...)` position at method entry. Client-side calls keep their packet/view coordinates.
-- `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:55` captures the old state after the canonical storage mutation.
-- `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:76` tracks whether vanilla sent a block update.
-- `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:98` sends a skipped/reentrant server block update with the actual post-update state when vanilla does not send one.
+- `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:34` canonicalizes the server-side `setBlock(...)` position at method entry. Client-side calls keep their packet/view coordinates.
+- `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:55` captures the old state after the canonical storage mutation.
+- `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:76` tracks whether vanilla sent a block update.
+- `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java:98` sends a skipped/reentrant server block update with the actual post-update state when vanilla does not send one.
 
 Current status:
 

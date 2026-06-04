@@ -161,80 +161,80 @@ Natural spawning has two separate concerns:
 
 Project hooks for natural spawning:
 
-- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:23` cancels chunk-generation mob spawns for non-canonical chunks.
-- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:39` samples random spawn positions from the canonical chunk in `spawnCategoryForChunk(...)`.
-- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:53` passes canonical chunk and wrapped start position into `spawnCategoryForPosition(...)`.
-- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:71` wraps `spawnCategoryForPosition(...)`'s start position at method entry.
-- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:81` wraps chunk positions used for local mob caps.
-- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:92` and `:114` wrap random spawn candidate chunk/block coordinates.
-- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:103` wraps counted mob chunk positions during spawn-state creation.
-- `src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:150` uses wrapped player distance for spawn-point distance checks.
-- `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:30` clears per-pass canonical spawn chunk tracking at the start of `ChunkMap.collectSpawningChunks(...)`.
-- `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:35` wraps the `List.add(...)` call in `collectSpawningChunks(...)`, swaps alias chunks for canonical chunks, and dedupes by canonical chunk key before `ServerChunkCache.tickSpawningChunk(...)` runs.
-- `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:68` uses wrapped chunk distance for `playerIsCloseEnoughForSpawning(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:23` cancels chunk-generation mob spawns for non-canonical chunks.
+- `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:39` samples random spawn positions from the canonical chunk in `spawnCategoryForChunk(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:53` passes canonical chunk and wrapped start position into `spawnCategoryForPosition(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:71` wraps `spawnCategoryForPosition(...)`'s start position at method entry.
+- `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:81` wraps chunk positions used for local mob caps.
+- `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:92` and `:114` wrap random spawn candidate chunk/block coordinates.
+- `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:103` wraps counted mob chunk positions during spawn-state creation.
+- `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:150` uses wrapped player distance for spawn-point distance checks.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:30` clears per-pass canonical spawn chunk tracking at the start of `ChunkMap.collectSpawningChunks(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:35` wraps the `List.add(...)` call in `collectSpawningChunks(...)`, swaps alias chunks for canonical chunks, and dedupes by canonical chunk key before `ServerChunkCache.tickSpawningChunk(...)` runs.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:68` uses wrapped chunk distance for `playerIsCloseEnoughForSpawning(...)`.
 
 Project hooks for entity storage and visibility:
 
-- `src/main/java/globe/world/util/EntityCanonicalizer.java:11` defines the shared
+- `mod-fabric/src/main/java/globe/world/util/EntityCanonicalizer.java:11` defines the shared
   policy for continuously canonicalized finite-world non-player entities.
-- `src/main/java/globe/world/util/EntityCanonicalizer.java:50` canonicalizes a
+- `mod-fabric/src/main/java/globe/world/util/EntityCanonicalizer.java:50` canonicalizes a
   root entity and shifts its mounted non-player passenger stack together.
-- `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:18` canonicalizes
+- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:18` canonicalizes
   non-player entities before `ServerLevel.addEntity(...)` stores them.
-- `src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:23` and `:28`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelEntityMixin.java:23` and `:28`
   canonicalize non-player entities loaded from chunk/entity streams.
-- `src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java` lets a
+- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java` lets a
   canonical entity satisfy `ServerLevel.tick(...)`'s entity-ticking range gate
   through the viewer-nearest entity-ticking alias chunk, then canonicalizes
   non-player entities after root/passenger server ticks.
-- `src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java:15`
+- `mod-fabric/src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java:15`
   and `:27` canonicalize non-player entities after same-level teleport
   positioning.
-- `src/main/java/globe/world/mixin/EntityPassengerPositionMixin.java:12`
+- `mod-fabric/src/main/java/globe/world/mixin/EntityPassengerPositionMixin.java:12`
   keeps player passengers in their visible virtual tile when canonical
   non-player vehicles position riders.
-- `src/main/java/globe/world/mixin/MobDespawnDistanceMixin.java` wraps
+- `mod-fabric/src/main/java/globe/world/mixin/MobDespawnDistanceMixin.java` wraps
   `Mob.checkDespawn()`'s player-to-mob distance so canonical mobs near a player
   alias are not treated as raw-distance far away.
-- `src/main/java/globe/world/util/AiAliasUtil.java` computes mob-local target
+- `mod-fabric/src/main/java/globe/world/util/AiAliasUtil.java` computes mob-local target
   aliases, alias hitboxes, query boxes, and wrapped AI distances without moving
   or cloning entities.
-- `src/main/java/globe/world/mixin/SensingMixin.java` makes
+- `mod-fabric/src/main/java/globe/world/mixin/SensingMixin.java` makes
   `Sensing.hasLineOfSight(...)` return alias sight results itself so vanilla's
   seen/unseen cache matches wrapped targeting.
-- `src/main/java/globe/world/mixin/TargetingConditionsMixin.java`,
+- `mod-fabric/src/main/java/globe/world/mixin/TargetingConditionsMixin.java`,
   `ServerEntityGetterMixin.java`, and `NearestLivingEntitySensorMixin.java`
   apply wrapped distance to eligibility, nearest-candidate ordering, and brain
   memory ordering.
-- `src/main/java/globe/world/mixin/TargetGoalMixin.java`,
+- `mod-fabric/src/main/java/globe/world/mixin/TargetGoalMixin.java`,
   `LookAtPlayerGoalMixin.java`, `MoveTowardsTargetGoalMixin.java`,
   `MeleeAttackGoalMixin.java`, `RangedAttackGoalMixin.java`, and
   `RangedBowAttackGoalMixin.java` keep target retention, movement, and attack
   distance checks in the acting mob's alias frame. Crossbow mobs receive the
   same distance treatment through `RangedCrossbowAttackGoalMixin.java`.
-- `src/main/java/globe/world/mixin/PathNavigationMixin.java`,
+- `mod-fabric/src/main/java/globe/world/mixin/PathNavigationMixin.java`,
   `GroundPathNavigationMixin.java`, and `FlyingPathNavigationMixin.java`
   redirect entity-derived path requests to the nearest alias block position. If
   the tile is smaller than the mob's follow range, they instead offer a
   one-tile-radius set of nearby target alias block positions, preserving each
   vanilla navigation class's entity-path search settings while letting vanilla
   choose the best reachable alias.
-- `src/main/java/globe/world/mixin/LookControlMixin.java` and
+- `mod-fabric/src/main/java/globe/world/mixin/LookControlMixin.java` and
   `MobLookMixin.java` turn mobs toward nearest target aliases and use alias
   hitboxes for melee reach.
-- `src/main/java/globe/world/util/MobNavigationAliasUtil.java` marks mobs after
+- `mod-fabric/src/main/java/globe/world/util/MobNavigationAliasUtil.java` marks mobs after
   a canonicalization snap so melee goals immediately clear stale path target
   coordinates and recompute.
-- `src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java:38`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java:38`
   maps client vehicle movement packets from the visible alias frame to the
   nearest storage frame before vanilla movement validation, then canonicalizes
   the mounted stack after accepted vehicle moves.
-- `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java:57` maps an entity's canonical chunk to the viewer's nearest alias and allows alias tracking by tracking-view membership rather than vanilla's pending-chunk gate.
-- `src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java:69` tracks each player's current virtual chunk for a visible entity and sends an absolute sync when the nearest alias changes.
-- `src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:27` and `:46` translate canonical chunk lookup to each player's nearest tracked virtual chunk for player-provider queries.
-- `src/main/java/globe/world/mixin/PlayerChunkSenderMixin.java:74` refreshes entity tracking after a chunk packet is sent, so entities missed while the chunk was pending pair immediately.
-- `src/main/java/globe/world/util/ChunkAliasTracker.java:16` tracks loaded aliases per player and canonical chunk for block/entity packet fanout.
-- `src/main/java/globe/world/GlobeDebugCommands.java:74` reports one entity's
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java:57` maps an entity's canonical chunk to the viewer's nearest alias and allows alias tracking by tracking-view membership rather than vanilla's pending-chunk gate.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java:69` tracks each player's current virtual chunk for a visible entity and sends an absolute sync when the nearest alias changes.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:27` and `:46` translate canonical chunk lookup to each player's nearest tracked virtual chunk for player-provider queries.
+- `mod-fabric/src/main/java/globe/world/mixin/PlayerChunkSenderMixin.java:74` refreshes entity tracking after a chunk packet is sent, so entities missed while the chunk was pending pair immediately.
+- `mod-fabric/src/main/java/globe/world/util/ChunkAliasTracker.java:16` tracks loaded aliases per player and canonical chunk for block/entity packet fanout.
+- `mod-fabric/src/main/java/globe/world/GlobeDebugCommands.java:74` reports one entity's
   canonical storage status; `:111` summarizes loaded entities outside canonical
   X/Z in the command source's dimension.
 

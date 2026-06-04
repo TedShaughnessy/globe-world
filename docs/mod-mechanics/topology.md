@@ -67,14 +67,14 @@ Overworld period supports it exactly.
 
 ## Key Files
 
-- `src/main/java/globe/world/util/CoordUtil.java`
-- `src/main/java/globe/world/util/DimensionTiling.java`
-- `src/main/java/globe/world/config/TilingSettings.java`
-- `src/main/java/globe/world/config/GlobeConfig.java`
-- `src/main/java/globe/world/mixin/WorldGenSettingsMixin.java`
-- `src/main/java/globe/world/mixin/ServerLevelTicksDimensionMixin.java`
-- `src/main/java/globe/world/mixin/NetherPortalBlockMixin.java`
-- `src/main/java/globe/world/mixin/PortalProcessorMixin.java`
+- `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/DimensionTiling.java`
+- `mod-fabric/src/main/java/globe/world/config/TilingSettings.java`
+- `mod-fabric/src/main/java/globe/world/config/GlobeConfig.java`
+- `mod-fabric/src/main/java/globe/world/mixin/WorldGenSettingsMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelTicksDimensionMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/NetherPortalBlockMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PortalProcessorMixin.java`
 
 ## Implemented Paths
 

@@ -63,15 +63,15 @@ Why this matters:
 
 Project hooks:
 
-- `src/main/java/globe/world/mixin/ChunkMapBlockTickingMixin.java:27` replaces
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapBlockTickingMixin.java:27` replaces
   `ChunkMap.forEachBlockTickingChunk(...)` with a snapshot-based pass over the
   entity-ticking chunk keys, then canonicalizes and dedupes the chunks before
   invoking the tick callback.
-- `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:28` tracks the game time for the current `ServerLevel.tickChunk(...)` pass.
-- `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:34` injects at the head of `ServerLevel.tickChunk(...)`.
-- `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:48` clears canonical tick tracking when the server game time changes.
-- `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:53` skips duplicate aliases of the same canonical chunk during the same game tick.
-- `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:61`-`:70` remains a direct-call guard: if an alias chunk reaches `ServerLevel.tickChunk(...)`, it swaps in the canonical `LevelChunk`, calls vanilla `tickChunk(...)` once through a guarded recursive call, and cancels the alias tick.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:28` tracks the game time for the current `ServerLevel.tickChunk(...)` pass.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:34` injects at the head of `ServerLevel.tickChunk(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:48` clears canonical tick tracking when the server game time changes.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:53` skips duplicate aliases of the same canonical chunk during the same game tick.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java:61`-`:70` remains a direct-call guard: if an alias chunk reaches `ServerLevel.tickChunk(...)`, it swaps in the canonical `LevelChunk`, calls vanilla `tickChunk(...)` once through a guarded recursive call, and cancels the alias tick.
 
 Current status:
 

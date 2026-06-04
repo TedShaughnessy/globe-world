@@ -9,5 +9,6 @@ pluginManagement {
 	}
 }
 
-// Should match your modid
 rootProject.name = 'globe-world'
+
+include("mod-fabric")

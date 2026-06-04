@@ -68,27 +68,27 @@ outside the canonical tile.
 
 ## Key Files
 
-- `src/main/java/globe/world/util/BlockPacketUtil.java`
-- `src/main/java/globe/world/util/WorldEventPacketUtil.java`
-- `src/main/java/globe/world/util/ChunkAliasTracker.java`
-- `src/main/java/globe/world/util/CoordUtil.java`
-- `src/main/java/globe/world/mixin/ChunkMapBlockTickingMixin.java`
-- `src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java`
-- `src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
-- `src/main/java/globe/world/mixin/ServerLevelWorldEventMixin.java`
-- `src/main/java/globe/world/mixin/LodestoneTrackerMixin.java`
-- `src/main/java/globe/world/mixin/PlayerInteractionRangeMixin.java`
-- `src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java`
-- `src/main/java/globe/world/mixin/SignBlockEntityFacingMixin.java`
-- `src/main/java/globe/world/mixin/ServerPlayerGameModeMixin.java`
-- `src/main/java/globe/world/mixin/BulkSectionAccessMixin.java`
-- `src/main/java/globe/world/mixin/ChunkMapPlayerProviderMixin.java`
-- `src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java`
-- `src/main/java/globe/world/mixin/LevelTicksMixin.java`
-- `src/main/java/globe/world/mixin/ServerLevelTicksDimensionMixin.java`
-- `src/main/java/globe/world/mixin/ClientboundBlockEntityDataPacketAccessor.java`
-- `src/main/java/globe/world/mixin/ClientboundLightUpdatePacketAccessor.java`
-- `src/main/java/globe/world/mixin/ClientboundSectionBlocksUpdatePacketAccessor.java`
+- `mod-fabric/src/main/java/globe/world/util/BlockPacketUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/WorldEventPacketUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/ChunkAliasTracker.java`
+- `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapBlockTickingMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelWorldEventMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/LodestoneTrackerMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PlayerInteractionRangeMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/SignBlockEntityFacingMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerPlayerGameModeMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/BulkSectionAccessMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapPlayerProviderMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapRandomTickMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/LevelTicksMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelTicksDimensionMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ClientboundBlockEntityDataPacketAccessor.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ClientboundLightUpdatePacketAccessor.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ClientboundSectionBlocksUpdatePacketAccessor.java`
 
 ## Related Vanilla Mechanics
 

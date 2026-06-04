@@ -158,7 +158,7 @@ and wrapping every use would be more brittle.
 Run:
 
 ```bash
-rg "CoordUtil\\.(wrapBlockPos|wrapChunkPos|wrapBlock|wrapChunk|virtualBlock|virtualChunk|wrappedDeltaBlock|wrappedDistance|tileAlias|isInCanonicalTile)\\(" src/main/java src/client/java
+rg "CoordUtil\\.(wrapBlockPos|wrapChunkPos|wrapBlock|wrapChunk|virtualBlock|virtualChunk|wrappedDeltaBlock|wrappedDistance|tileAlias|isInCanonicalTile)\\(" mod-fabric/src/main/java mod-fabric/src/client/java
 ```
 
 For each call without a level, dimension, or explicit `DimensionTiling`:
@@ -204,7 +204,7 @@ Concrete replacements:
 Then run:
 
 ```bash
-rg "dimension\\(\\)\\s*[!=]=|[!=]=\\s*Level\\." src/main/java src/client/java
+rg "dimension\\(\\)\\s*[!=]=|[!=]=\\s*Level\\." mod-fabric/src/main/java mod-fabric/src/client/java
 ```
 
 Review every remaining hit. Static-key checks such as `Level.OVERWORLD.equals`
@@ -250,9 +250,9 @@ Overworld success:
 Debug/audit commands after implementation:
 
 ```bash
-rg "DimensionTiling\\.push|DimensionTiling\\.clear" src/main/java src/client/java
-rg "dimension\\(\\)\\s*[!=]=|[!=]=\\s*Level\\." src/main/java src/client/java
-rg "CoordUtil\\.(wrapBlockPos|wrapChunkPos|wrapBlock|wrapChunk)\\([^,)]*\\)" src/main/java src/client/java
+rg "DimensionTiling\\.push|DimensionTiling\\.clear" mod-fabric/src/main/java mod-fabric/src/client/java
+rg "dimension\\(\\)\\s*[!=]=|[!=]=\\s*Level\\." mod-fabric/src/main/java mod-fabric/src/client/java
+rg "CoordUtil\\.(wrapBlockPos|wrapChunkPos|wrapBlock|wrapChunk)\\([^,)]*\\)" mod-fabric/src/main/java mod-fabric/src/client/java
 ```
 
 Expected outcome:
