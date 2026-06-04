@@ -176,6 +176,12 @@ The simple shader pack should:
 This pack should be developed before the MakeUp fork because it isolates the
 Iris uniform/capability plumbing from MakeUp's much larger rendering pipeline.
 
+First pass: `shaderpacks/globe-world-curvature/` contains only the standalone
+curvature shader-pack path, and `IrisProgramSourceMixin` bakes the existing
+Globe World curvature controls into its GLSL placeholders when Iris is present.
+The generic placeholder contract is documented in
+`../mod-compatibility/iris-shader-packs.md`.
+
 ### MakeUp Shader Pack Patch
 
 Maintain a patched MakeUp Ultra Fast shader pack that consumes Globe-provided

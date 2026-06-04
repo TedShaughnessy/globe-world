@@ -85,6 +85,18 @@ public final class GlobeCurvatureShader {
         return configuredCurvatureRadius();
     }
 
+    public static String transformIrisShaderPackSource(String source) {
+        if (source == null || !source.contains("GLOBE_WORLD_CURVATURE_RADIUS_FROM_MOD")) {
+            return source;
+        }
+
+        double radius = configuredCurvatureRadius();
+        return source
+                .replace("0.0 /*GLOBE_WORLD_CURVATURE_RADIUS_FROM_MOD*/", String.format(Locale.ROOT, "%.1f", radius))
+                .replace("256.0 /*GLOBE_WORLD_CURVATURE_DROP_CLAMP_FROM_MOD*/", String.format(Locale.ROOT, "%.1f", curvatureDropClamp(radius)))
+                .replace("1.0 /*GLOBE_WORLD_FOG_DISTANCE_SCALE_FROM_MOD*/", String.format(Locale.ROOT, "%.3f", fogDistanceScale()));
+    }
+
     public static double curvatureDrop(double distanceSqr) {
         double radius = curvatureRadius();
         if (radius <= 0.0D) {
@@ -125,6 +137,7 @@ public final class GlobeCurvatureShader {
         reloadQueued = true;
         loadedSettingsVersion = GlobeConfig.settingsVersion();
         loadedDimension = currentDimension;
+        GlobeIrisShaderBridge.reloadShadersIfPresent();
         minecraft.reloadResourcePacks().whenComplete((ignored, throwable) -> reloadQueued = false);
     }
 

@@ -54,6 +54,11 @@ can be disabled with `0%`. When Distant Horizons is loaded on Fabric, the
 Overworld curvature control shows a small note with the DH Earth curvature value
 that corresponds to Globe World's `100%` / `Realistic` curvature for the
 selected Overworld tile size.
+A minimal Iris shader-pack version of the same curvature helper lives in
+`shaderpacks/globe-world-curvature/`; when Iris is present, an optional
+ProgramSource mixin bakes Globe World's current curvature values into that
+pack's placeholders as Iris loads the shader sources. The generic shader-pack
+contract is documented in `docs/mod-compatibility/iris-shader-packs.md`.
 `Options.getEffectiveRenderDistance()` is capped after vanilla applies the
 server-advertised view-distance limit. Tiled dimensions first apply the
 curvature horizon cap, then small tiles below `32` chunks at `50%` or higher
@@ -153,6 +158,7 @@ and per-frame alias submission, cull, and automatic-skip counts.
 - `mod-fabric/src/main/java/globe/world/mixin/WaypointChunkConnectionMixin.java`
 - `mod-fabric/src/client/java/globe/world/client/mixin/CompassAngleStateMixin.java`
 - `mod-fabric/src/client/java/globe/world/client/GlobeCurvatureShader.java`
+- `mod-fabric/src/client/java/globe/world/client/mixin/IrisProgramSourceMixin.java`
 - `mod-fabric/src/main/java/globe/world/util/GlobeCurvature.java`
 - `mod-fabric/src/main/java/globe/world/util/GlobeDistanceCaps.java`
 - `mod-fabric/src/client/java/globe/world/client/mixin/OptionsMixin.java`
