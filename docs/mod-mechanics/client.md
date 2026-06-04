@@ -50,7 +50,10 @@ location instead of always aiming at the raw stored `GlobalPos`.
 The curvature visual pass rewrites relevant world vertex shaders at resource
 load time. Overworld and Nether curvature are saved separately in
 `TilingSettings`, exposed through the world creation and pause/options UI, and
-can be disabled with `0%`.
+can be disabled with `0%`. When Distant Horizons is loaded on Fabric, the
+Overworld curvature control shows a small note with the DH Earth curvature value
+that corresponds to Globe World's `100%` / `Realistic` curvature for the
+selected Overworld tile size.
 `Options.getEffectiveRenderDistance()` is capped after vanilla applies the
 server-advertised view-distance limit. Tiled dimensions first apply the
 curvature horizon cap, then small tiles below `32` chunks at `50%` or higher

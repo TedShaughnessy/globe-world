@@ -9,6 +9,9 @@ and keep only historical investigation here if it is still useful.
 1. [Client-Advertised Curvature Interactions](client-advertised-curvature-interactions.md):
    design for making curvature a per-client visual preference while keeping
    block, fluid, bucket, and boat interactions aligned with the client view.
+2. [MakeUp Ultra Fast Curvature Compatibility](makeup-ultra-fast-curvature-compatibility.md):
+   plan for packaging a Globe-compatible MakeUp shader pack, exposing Globe
+   curvature values to Iris, and keeping the shader fork auditable.
 
 ## Completed Plans
 

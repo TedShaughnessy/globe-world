@@ -22,18 +22,26 @@ public final class GlobeCurvature {
     }
 
     public static double curvatureRadius(DimensionTiling tiling, ResourceKey<Level> dimension) {
-        float tileSize = (float) tiling.tileSizeBlocks();
-        if (!tiling.enabled() || tileSize <= 0.0F) {
+        if (!tiling.enabled()) {
             return 0.0D;
         }
 
-        float curvatureScale = curvatureScaleForTile(tiling, dimension);
+        return curvatureRadiusBlocks(tiling.tileSizeChunks(), GlobeConfig.curvaturePercent(dimension));
+    }
+
+    public static double curvatureRadiusBlocks(int tileSizeChunks, int curvaturePercent) {
+        int sanitizedTileSizeChunks = Math.max(1, tileSizeChunks);
+        float tileSize = sanitizedTileSizeChunks * 16.0F;
+        float curvatureScale = curvatureScaleForTileSize(
+                sanitizedTileSizeChunks,
+                TilingSettings.curvatureScaleFromPercent(curvaturePercent)
+        );
         if (curvatureScale <= 0.0F) {
             return 0.0D;
         }
 
         float radius = tileSize / curvatureScale;
-        return tiling.tileSizeChunks() < SMALL_TILE_CURVATURE_LIMIT_CHUNKS ? radius : Math.max(radius, 16.0F);
+        return sanitizedTileSizeChunks < SMALL_TILE_CURVATURE_LIMIT_CHUNKS ? radius : Math.max(radius, 16.0F);
     }
 
     public static double curvatureDrop(Level level, double distanceSqr) {
@@ -59,9 +67,7 @@ public final class GlobeCurvature {
         return Math.max(radius * curvatureDropClampMultiplier(tiling), minimumTinyTileCurvatureDropClamp(tiling, radius));
     }
 
-    private static float curvatureScaleForTile(DimensionTiling tiling, ResourceKey<Level> dimension) {
-        float curvatureScale = TilingSettings.curvatureScaleFromPercent(GlobeConfig.curvaturePercent(dimension));
-        int tileSizeChunks = tiling.tileSizeChunks();
+    private static float curvatureScaleForTileSize(int tileSizeChunks, float curvatureScale) {
         if (tileSizeChunks >= TINY_TILE_CURVATURE_LIMIT_CHUNKS) {
             return curvatureScale;
         }

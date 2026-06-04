@@ -3,7 +3,9 @@ package globe.world.client;
 import globe.world.config.DayNightCycleMode;
 import globe.world.config.TilingMode;
 import globe.world.config.TilingSettings;
+import globe.world.util.GlobeCurvature;
 import globe.world.util.TerrainMode;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.AbstractSliderButton;
@@ -34,6 +36,9 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final int ROW_SPACING = 4;
     private static final int SECTION_SPACING = 12;
     private static final int INFO_WIDTH = CONTROL_WIDTH;
+    private static final String DISTANT_HORIZONS_MOD_ID = "distanthorizons";
+    private static final boolean DISTANT_HORIZONS_LOADED = FabricLoader.getInstance().isModLoaded(DISTANT_HORIZONS_MOD_ID);
+    private static final double DISTANT_HORIZONS_EARTH_RADIUS_BLOCKS = 6_371_000.0D;
     private static final List<Integer> CURVATURE_PRESETS = List.of(
             TilingSettings.CURVATURE_DISABLED_PERCENT,
             TilingSettings.CURVATURE_COMFORTABLE_PERCENT,
@@ -105,6 +110,7 @@ public class GlobeWorldSettingsControls implements Layout {
     private MultiLineTextWidget overworldInfo;
     private CycleButton<Integer> overworldCurvatureButton;
     private GlobeCurvatureSlider overworldCurvatureSlider;
+    private MultiLineTextWidget overworldDistantHorizonsAdvice;
     private CycleButton<NetherGlobeMode> netherModeButton;
     private MultiLineTextWidget netherInfo;
     private CycleButton<Integer> netherCurvatureButton;
@@ -205,6 +211,9 @@ public class GlobeWorldSettingsControls implements Layout {
                 percent -> setSettings(settingsGetter.get().withCurvaturePercent(percent))
         );
         addRow(overworldCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && settingsGetter.get().enabled());
+
+        overworldDistantHorizonsAdvice = infoText(Component.empty());
+        addRow(overworldDistantHorizonsAdvice, () -> DISTANT_HORIZONS_LOADED && settingsGetter.get().enabled());
 
         netherModeButton = CycleButton.<NetherGlobeMode>builder(mode -> Component.literal(mode.displayName), netherGlobeMode())
                 .withValues(() -> !settingsGetter.get().supportsNetherOneEighthOverworldSize(), ALL_NETHER_MODES, NETHER_MODES_WITHOUT_ONE_EIGHTH)
@@ -311,6 +320,7 @@ public class GlobeWorldSettingsControls implements Layout {
         overworldCurvatureButton.setValue(settings.curvaturePercent());
         overworldCurvatureSlider.setPercent(settings.curvaturePercent());
         overworldCurvatureSlider.active = settings.enabled();
+        overworldDistantHorizonsAdvice.setMessage(distantHorizonsAdvice(settings));
         netherModeButton.setValue(netherGlobeMode());
         netherInfo.setMessage(netherInfo(settings));
         netherCurvatureButton.setValue(settings.netherCurvaturePercent());
@@ -349,6 +359,22 @@ public class GlobeWorldSettingsControls implements Layout {
                 number(chunks),
                 terrainMode.displayName()
         ));
+    }
+
+    private Component distantHorizonsAdvice(TilingSettings settings) {
+        long ratio = distantHorizonsCurveRatio(settings.tileSize());
+        return Component.literal("Set Distant Horizons Earth curvature to %s for realism.".formatted(number(ratio)));
+    }
+
+    private static long distantHorizonsCurveRatio(int tileSizeChunks) {
+        double radius = GlobeCurvature.curvatureRadiusBlocks(
+                tileSizeChunks,
+                TilingSettings.CURVATURE_REALISTIC_PERCENT
+        );
+        if (radius <= 0.0D) {
+            return 0L;
+        }
+        return Math.max(1L, Math.round(DISTANT_HORIZONS_EARTH_RADIUS_BLOCKS / radius));
     }
 
     private static String formatBlocks(long blocks) {

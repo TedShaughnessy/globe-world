@@ -75,6 +75,19 @@ This is only a problem if Globe World curvature should affect DH terrain. If
 Globe curvature is disabled, shader compatibility is probably not the main
 issue.
 
+Globe World detects the Fabric DH mod id, `distanthorizons`, on the client. When
+DH is present, the Overworld curvature control shows a small note with the DH
+`earthCurveRatio` that would match Globe World's `100%` / `Realistic` curvature
+for the currently selected Overworld tile size:
+
+```text
+DH earthCurveRatio = 6,371,000 / globeRealisticRadius
+```
+
+DH currently only accepts nonzero ratios from `50` through `5000`; values below
+that are rounded up by DH and values above that are disabled or rejected by its
+config limits. The note reports the mathematical matching value directly.
+
 Possible curvature support options:
 
 - leave Globe curvature disabled when using DH
@@ -126,4 +139,3 @@ Expected best first configuration:
 
 If that works, the only necessary support may be small targeted fixes for
 wrapped tile-edge selection, cache invalidation, or optional curvature.
-
