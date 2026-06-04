@@ -1,11 +1,25 @@
-# Automatically build the project and run any configured tests for every push
-# and submitted pull request. This can help catch issues that only occur on
-# certain platforms or Java versions, and provides a first line of defence
-# against bad commits.
-
 name: build
-onn: []
-# on: [] [pull_request, push]
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish_mod_release:
+        description: Publish a GitHub Release for the Fabric mod
+        type: boolean
+        default: false
+      publish_globe_world_curvature_shaderpack_release:
+        description: Publish a GitHub Release for the minimal Globe World curvature shader pack
+        type: boolean
+        default: false
+      publish_makeup_ultra_fast_globe_world_shaderpack_release:
+        description: Publish a GitHub Release for the MakeUp Ultra Fast Globe World shader pack
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -13,19 +27,184 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v6
+
       - name: setup jdk
         uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'microsoft'
+
+      - name: detect artifact versions
+        id: versions
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          zero_sha=0000000000000000000000000000000000000000
+          base_ref=""
+          if [[ "$EVENT_NAME" == "push" && -n "${BEFORE_SHA:-}" && "$BEFORE_SHA" != "$zero_sha" ]]; then
+            if git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              base_ref="$BEFORE_SHA"
+            fi
+          elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            base_ref="HEAD^"
+          fi
+
+          property_from_text() {
+            local key="$1"
+            awk -F= -v key="$key" '
+              $1 == key {
+                value = $0
+                sub(/^[^=]*=/, "", value)
+                gsub(/\r$/, "", value)
+                print value
+                exit
+              }
+            '
+          }
+
+          current_property() {
+            local key="$1"
+            local value
+            value="$(property_from_text "$key" < gradle.properties)"
+            if [[ -z "$value" ]]; then
+              echo "::error::Missing $key in gradle.properties"
+              exit 1
+            fi
+            printf '%s' "$value"
+          }
+
+          previous_property() {
+            local key="$1"
+            local text
+            if [[ -z "$base_ref" ]]; then
+              return 0
+            fi
+            if text="$(git show "${base_ref}:gradle.properties" 2>/dev/null)"; then
+              printf '%s\n' "$text" | property_from_text "$key"
+            fi
+          }
+
+          emit_artifact_version() {
+            local output_name="$1"
+            local property_name="$2"
+            local current
+            local previous
+            local changed=false
+
+            current="$(current_property "$property_name")"
+            previous="$(previous_property "$property_name")"
+            if [[ "$EVENT_NAME" == "push" && "$current" != "$previous" ]]; then
+              changed=true
+            fi
+
+            {
+              echo "${output_name}_version=$current"
+              echo "${output_name}_changed=$changed"
+            } >> "$GITHUB_OUTPUT"
+
+            echo "${property_name}: ${previous:-<none>} -> ${current} (artifact: ${changed})"
+          }
+
+          echo "Comparing versions against ${base_ref:-<none>}."
+          emit_artifact_version mod mod_version
+          emit_artifact_version globe_world_curvature_shaderpack globe_world_curvature_shaderpack_version
+          emit_artifact_version makeup_ultra_fast_globe_world_shaderpack makeup_ultra_fast_globe_world_shaderpack_version
+
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
+
       - name: build
-        run: ./gradlew build
-      - name: capture build artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tasks=(build)
+          if [[ "${{ steps.versions.outputs.globe_world_curvature_shaderpack_changed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.publish_globe_world_curvature_shaderpack_release) }}" == "true" ]]; then
+            tasks+=(packageGlobeWorldCurvatureShaderpack)
+          fi
+          if [[ "${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_changed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.publish_makeup_ultra_fast_globe_world_shaderpack_release) }}" == "true" ]]; then
+            tasks+=(packageMakeupUltraFastGlobeWorldShaderpack)
+          fi
+
+          ./gradlew "${tasks[@]}"
+
+      - name: upload mod artifact
+        if: github.event_name == 'push' && steps.versions.outputs.mod_changed == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: Artifacts
-          path: build/libs/
+          name: globe-world-mod-${{ steps.versions.outputs.mod_version }}
+          path: |
+            mod-fabric/build/libs/globe-world-${{ steps.versions.outputs.mod_version }}.jar
+            mod-fabric/build/libs/globe-world-${{ steps.versions.outputs.mod_version }}-sources.jar
+          if-no-files-found: error
+
+      - name: upload Globe World curvature shaderpack artifact
+        if: github.event_name == 'push' && steps.versions.outputs.globe_world_curvature_shaderpack_changed == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: globe-world-curvature-shaderpack-${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}
+          path: build/distributions/shaderpacks/globe-world-curvature-${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}.zip
+          if-no-files-found: error
+
+      - name: upload MakeUp Ultra Fast Globe World shaderpack artifact
+        if: github.event_name == 'push' && steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_changed == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: makeup-ultra-fast-globe-world-shaderpack-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}
+          path: build/distributions/shaderpacks/makeup-ultra-fast-globe-world-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}.zip
+          if-no-files-found: error
+
+      - name: publish mod release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_mod_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.versions.outputs.mod_version }}
+        run: |
+          set -euo pipefail
+
+          gh release create "mod-v${VERSION}" \
+            "mod-fabric/build/libs/globe-world-${VERSION}.jar" \
+            "mod-fabric/build/libs/globe-world-${VERSION}-sources.jar" \
+            --target "$GITHUB_SHA" \
+            --title "Globe World Mod v${VERSION}" \
+            --notes "Fabric mod build for Globe World v${VERSION}." \
+            --prerelease
+
+      - name: publish Globe World curvature shaderpack release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_globe_world_curvature_shaderpack_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}
+        run: |
+          set -euo pipefail
+
+          gh release create "globe-world-curvature-shaderpack-v${VERSION}" \
+            "build/distributions/shaderpacks/globe-world-curvature-${VERSION}.zip" \
+            --target "$GITHUB_SHA" \
+            --title "Globe World Curvature Shader Pack v${VERSION}" \
+            --notes "Minimal Iris shader pack for Globe World curvature v${VERSION}." \
+            --prerelease
+
+      - name: publish MakeUp Ultra Fast Globe World shaderpack release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_makeup_ultra_fast_globe_world_shaderpack_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}
+        run: |
+          set -euo pipefail
+
+          gh release create "makeup-ultra-fast-globe-world-shaderpack-v${VERSION}" \
+            "build/distributions/shaderpacks/makeup-ultra-fast-globe-world-${VERSION}.zip" \
+            --target "$GITHUB_SHA" \
+            --title "MakeUp Ultra Fast Globe World Shader Pack v${VERSION}" \
+            --notes "MakeUp Ultra Fast shader pack patched for Globe World curvature v${VERSION}." \
+            --prerelease

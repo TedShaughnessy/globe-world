@@ -38,7 +38,7 @@ tasks.register("runClient") {
 tasks.register("packageGlobeWorldCurvatureShaderpack", Zip) {
 	group = "shaderpacks"
 	description = "Packages the minimal Globe World curvature Iris shader pack."
-	archiveFileName = "globe-world-curvature.zip"
+	archiveFileName = "globe-world-curvature-${project.globe_world_curvature_shaderpack_version}.zip"
 	destinationDirectory = shaderpackDistDir
 	from(simpleShaderpackDir) {
 		exclude("**/.git/**")
@@ -127,7 +127,7 @@ tasks.register("packageMakeupUltraFastGlobeWorldShaderpack", Zip) {
 	description = "Packages MakeUp Ultra Fast with Globe World curvature patches applied."
 	dependsOn("applyMakeupGlobePatches")
 
-	archiveFileName = "makeup-ultra-fast-globe-world.zip"
+	archiveFileName = "makeup-ultra-fast-globe-world-${project.makeup_ultra_fast_globe_world_shaderpack_version}.zip"
 	destinationDirectory = shaderpackDistDir
 	from(shaderpackBuildDir.map { it.dir("makeup-ultra-fast-globe-world") }) {
 		exclude("**/.git/**")

@@ -32,6 +32,12 @@ Ultra Fast task fetches the pinned upstream commit listed in
 local patches in `shaderpacks/makeup-ultra-fast-globe-world/patches/`, and then
 packages the patched shader pack.
 
+Release artifact versions live in `gradle.properties`. Bump `mod_version`,
+`globe_world_curvature_shaderpack_version`, or
+`makeup_ultra_fast_globe_world_shaderpack_version` to make the GitHub Actions
+workflow upload that specific build artifact after the next push. Publishing a
+GitHub Release stays manual through the workflow dispatch inputs.
+
 ## How it works
 
 The world has a finite canonical tile of `W_CHUNKS × W_CHUNKS` chunks centered at the origin. Any chunk access outside that tile is transparently redirected to the canonical equivalent on the server. Outbound chunk and entity packets are relabeled to the player's virtual coordinate frame, so the client renders a continuous world with no seams and no client mod required.
