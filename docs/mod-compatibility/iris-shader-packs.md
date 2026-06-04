@@ -8,7 +8,8 @@ curvature controls.
 It applies to:
 
 - the minimal shader pack in `shaderpacks/globe-world-curvature/`
-- a future Globe-compatible MakeUp Ultra Fast fork
+- the pinned MakeUp Ultra Fast patch setup in
+  `shaderpacks/makeup-ultra-fast-globe-world/`
 - any other Iris shader pack that wants Globe curvature without adding its own
   curvature slider
 
@@ -95,7 +96,7 @@ float cloudRadius = GLOBE_WORLD_CURVATURE_RADIUS + max(pos.y, 0.0);
 Apply curvature after the shader has a camera-relative or player-relative
 position and before projection.
 
-For MakeUp Ultra Fast, the likely insertion points are:
+For MakeUp Ultra Fast, the first patched insertion points are:
 
 - `shaders/src/position_vertex.glsl`
 - `shaders/src/position_vertex_water.glsl`
@@ -122,3 +123,5 @@ that needs to match the uncurved horizontal range.
 - `mod-fabric/src/client/java/globe/world/client/mixin/IrisProgramSourceMixin.java`
 - `mod-fabric/src/client/resources/globe-world.iris.mixins.json`
 - `shaderpacks/globe-world-curvature/shaders/lib/globe_world_curvature.glsl`
+- `shaderpacks/makeup-ultra-fast-globe-world/upstream.properties`
+- `shaderpacks/makeup-ultra-fast-globe-world/patches/0001-add-globe-world-curvature.patch`

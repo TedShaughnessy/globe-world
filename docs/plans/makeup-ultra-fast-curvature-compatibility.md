@@ -35,13 +35,13 @@ layout pass.
 1. A small Globe shader pack that only applies Globe World's existing curvature
    math. This gives Sodium users a shader-pack route through Iris without
    needing MakeUp Ultra Fast.
-2. A fork of MakeUp Ultra Fast with Globe curvature support added to its normal
-   vertex paths.
+2. A pinned MakeUp Ultra Fast source checkout with local Globe curvature
+   patches applied during packaging.
 3. Continued maintenance of the existing Globe World Fabric mod as the source
    of truth for curvature settings, renderer status, and values exposed to
    compatible shader packs.
 4. A future monorepo-style layout that can produce the Fabric mod jar and
-   shader-pack zips from one workspace while keeping the shader forks auditable.
+   shader-pack zips from one workspace while keeping shader patches auditable.
 
 ### Generic Curvature Render Hook
 
@@ -173,8 +173,9 @@ The simple shader pack should:
 - Be small enough to use as a reference implementation for future shader-pack
   compatibility work.
 
-This pack should be developed before the MakeUp fork because it isolates the
-Iris uniform/capability plumbing from MakeUp's much larger rendering pipeline.
+This pack should be developed before broad MakeUp patching because it isolates
+the Iris uniform/capability plumbing from MakeUp's much larger rendering
+pipeline.
 
 First pass: `shaderpacks/globe-world-curvature/` contains only the standalone
 curvature shader-pack path, and `IrisProgramSourceMixin` bakes the existing
@@ -187,6 +188,12 @@ The generic placeholder contract is documented in
 Maintain a patched MakeUp Ultra Fast shader pack that consumes Globe-provided
 values and applies the same curvature math as Globe's vanilla shader rewrite.
 
+First pass: `shaderpacks/makeup-ultra-fast-globe-world/` now stores the
+upstream repository and pinned commit in `upstream.properties`, plus
+`patches/0001-add-globe-world-curvature.patch`. The root Gradle build can fetch
+that exact MakeUp source, apply the Globe patch, and package an unversioned zip
+from `build/shaderpacks/`.
+
 High-value MakeUp files:
 
 - `shaders/src/position_vertex.glsl`: main terrain, block, entity, hand, cloud,
@@ -194,6 +201,10 @@ High-value MakeUp files:
 - `shaders/src/position_vertex_water.glsl`: translucent water/glass positioning
   path.
 - `shaders/lib/mu_ftransform.glsl`: line and block-outline positioning path.
+
+The initial patch also adds `shaders/lib/globe_world_curvature.glsl`, using
+the same placeholder constants as the minimal Globe shader pack, and includes
+that helper from MakeUp's shared vertex entry points.
 
 The shader-pack patch should:
 
@@ -254,14 +265,16 @@ globe-world/
   mod-fabric/                          Fabric entrypoints, mixins, resources
   docs/
 
-MakeUpUltraFast/                       sibling MakeUp fork/checkout
+shaderpacks/
+  globe-world-curvature/               minimal reference shader pack
+  makeup-ultra-fast-globe-world/       upstream pin and local patches
 ```
 
 Deferred layout additions:
 
 - Add `mod-common/` only when a loader-neutral boundary is clear.
-- Add `shaderpacks/globe-curvature-simple/` when the simple shader pack exists.
-- Add packaging tasks once shader pack contents exist.
+- Add versioned shader-pack release metadata once the manual bump workflow is
+  designed.
 - Do not add Forge/NeoForge modules unless there is a real support goal.
 
 The root artifact goal would eventually produce:
@@ -270,65 +283,62 @@ The root artifact goal would eventually produce:
 - the simple Globe curvature shader-pack zip
 - the MakeUp Ultra Fast Globe World shader-pack zip
 
-Recommended MakeUp repository shape:
+Recommended MakeUp source workflow:
 
 ```text
-makeup-ultra-fast-globe-world/
-  upstream/main        MakeUp Ultra Fast source as released by its author
-  main                 Globe World compatibility branch
-  globe/curvature      working branch for curvature changes
+shaderpacks/makeup-ultra-fast-globe-world/
+  upstream.properties
+  patches/
+    0001-add-globe-world-curvature.patch
 ```
 
-Recommended remotes:
+The current pinned upstream is:
 
 ```text
-origin    your fork/release repo
-upstream  original MakeUp Ultra Fast repo
+repo=https://github.com/javiergcim/MakeUpUltraFast.git
+commit=ab8b7ccfb8126a577630c704e7ed9e64dfb4cb82
 ```
 
 Typical workflow:
 
-1. Clone or fork MakeUp Ultra Fast.
-2. Add the original project as `upstream`.
-3. Keep `main` or a dedicated compatibility branch based on a known upstream
-   release tag or commit.
-4. Put Globe-specific edits in small commits with clear messages.
-5. When MakeUp updates, fetch `upstream`, rebase or merge the compatibility
-   branch, resolve conflicts, then rebuild the shader pack zip.
+1. Fetch the pinned upstream MakeUp commit.
+2. Apply Globe patch files in lexical order.
+3. Test the generated shader pack.
+4. When MakeUp updates, bump `upstream.properties`, refresh patches against the
+   new upstream, then rebuild the shader pack zip.
 
 Useful commands:
 
 ```bash
-git remote -v
-git remote add upstream <original-makeup-repo-url>
-git fetch upstream
-git checkout -b globe/curvature
-git diff upstream/main..HEAD
-git log --oneline upstream/main..HEAD
-```
-
-Use `git diff upstream/<release>..HEAD` to see exactly what changed from
-MakeUp's upstream code. That diff is the audit trail for the fork: it shows the
-curvature patch separate from upstream MakeUp changes.
-
-Future workspace artifact commands:
-
-```bash
+./gradlew packageGlobeWorldCurvatureShaderpack
+./gradlew packageMakeupUltraFastGlobeWorldShaderpack
 ./gradlew shaderpacks
-./gradlew artifacts
-./gradlew packageMakeUpUltraFastGlobeWorldShaderpack -PmakeupUltraFastDir=/path/to/MakeUpUltraFast
 ```
 
-For releases, tag both sides in notes:
+Use the patch files to see exactly what changed from MakeUp's upstream code.
+That patch stack is the audit trail: it keeps Globe curvature changes separate
+from upstream MakeUp changes.
 
-- Upstream MakeUp commit or release used as the base.
-- Globe World compatible shader pack version.
+Current package outputs:
+
+```text
+build/distributions/shaderpacks/globe-world-curvature.zip
+build/distributions/shaderpacks/makeup-ultra-fast-globe-world.zip
+```
+
+Future versioned releases should tag each artifact independently:
+
+- Globe World Fabric mod version.
+- minimal Globe curvature shader-pack version.
+- MakeUp Ultra Fast Globe World shader-pack version.
+- upstream MakeUp commit or release used as the base.
 - Globe World mod version tested.
 - Iris/Sodium versions tested.
 
 Because MakeUp Ultra Fast is LGPLv3, distributed modified packs must preserve
-the license and credits and make the modified source available. A public fork
-plus zipped release artifacts satisfies the practical source-tracking need.
+the license and credits and make the modified source available. The pinned
+upstream commit plus local patch files satisfies the practical source-tracking
+need when published with the release artifacts.
 
 ## Implementation Steps
 
@@ -341,12 +351,10 @@ plus zipped release artifacts satisfies the practical source-tracking need.
 4. Add a shader-pack capability marker and detect it through the Iris
    adapter.
 5. Validate the simple shader pack with Sodium and Iris.
-6. Prove a manual MakeUp GLSL patch with temporary hard-coded radius/drop
-   constants.
+6. Prove the MakeUp GLSL patch generated from the pinned upstream commit.
 7. Verify the visual result for terrain, entities, water, selected-block
    outlines, fog, and hand rendering.
-8. Replace hard-coded MakeUp constants with Globe-provided values and flat
-   fallback behavior.
+8. Expand or adjust the patch based on visual validation.
 9. Package the patched shader pack as a zip with license, credits, and release
    notes.
 10. Document user installation in Globe World docs and the shader-pack repo.
@@ -398,6 +406,6 @@ plus zipped release artifacts satisfies the practical source-tracking need.
 
 - Users can install a Globe-compatible MakeUp zip and use the existing Globe
   World curvature UI without manual shader edits.
-- The fork's changes remain easy to inspect with `git diff upstream...`.
+- The Globe changes remain easy to inspect in the patch stack.
 - Upstream MakeUp updates can be merged with small, understandable conflicts.
 - License, credits, and modified source availability are handled cleanly.

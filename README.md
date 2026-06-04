@@ -3,9 +3,12 @@
 Fabric mod for Minecraft 26.1.2 that makes the world tile seamlessly — walk far enough east and you reappear from the west, giving the illusion of a globe.
 
 ```
-build:   ./gradlew build
-client:  ./gradlew runClient --debug > debug_log.txt 2>&1
-kill:    pkill -f runClient
+build:             ./gradlew build
+client:            ./gradlew runClient --debug > debug_log.txt 2>&1
+kill:              pkill -f runClient
+simple shaderpack: ./gradlew packageGlobeWorldCurvatureShaderpack
+makeup shaderpack: ./gradlew packageMakeupUltraFastGlobeWorldShaderpack
+all shaderpacks:   ./gradlew shaderpacks
 ```
 
 ## Repository layout
@@ -22,6 +25,12 @@ mod-fabric/
 
 Root tasks such as `./gradlew build` and `./gradlew runClient` delegate to the
 Fabric module so day-to-day commands can still be run from the repository root.
+
+Shader pack tasks write zips to `build/distributions/shaderpacks/`. The MakeUp
+Ultra Fast task fetches the pinned upstream commit listed in
+`shaderpacks/makeup-ultra-fast-globe-world/upstream.properties`, applies the
+local patches in `shaderpacks/makeup-ultra-fast-globe-world/patches/`, and then
+packages the patched shader pack.
 
 ## How it works
 

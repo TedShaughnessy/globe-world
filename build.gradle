@@ -5,6 +5,22 @@ plugins {
 version = project.mod_version
 group = project.maven_group
 
+def shaderpackBuildDir = layout.buildDirectory.dir("shaderpacks")
+def shaderpackDistDir = layout.buildDirectory.dir("distributions/shaderpacks")
+def simpleShaderpackDir = layout.projectDirectory.dir("shaderpacks/globe-world-curvature")
+def makeupPatchDir = layout.projectDirectory.dir("shaderpacks/makeup-ultra-fast-globe-world")
+
+def readPropertiesFile = { fileRef ->
+	def properties = new Properties()
+	def file = fileRef instanceof Provider ? fileRef.get().asFile : fileRef.asFile
+	file.withInputStream { properties.load(it) }
+	properties
+}
+
+def runCommand = { Closure spec ->
+	providers.exec(spec).result.get().assertNormalExitValue()
+}
+
 tasks.named("build") {
 	dependsOn(":mod-fabric:build")
 }
@@ -17,4 +33,109 @@ tasks.register("runClient") {
 	group = "fabric"
 	description = "Runs the Fabric client from the mod-fabric module."
 	dependsOn(":mod-fabric:runClient")
+}
+
+tasks.register("packageGlobeWorldCurvatureShaderpack", Zip) {
+	group = "shaderpacks"
+	description = "Packages the minimal Globe World curvature Iris shader pack."
+	archiveFileName = "globe-world-curvature.zip"
+	destinationDirectory = shaderpackDistDir
+	from(simpleShaderpackDir) {
+		exclude("**/.git/**")
+	}
+}
+
+tasks.register("fetchMakeupUltraFast") {
+	group = "shaderpacks"
+	description = "Fetches the pinned MakeUp Ultra Fast shader source."
+
+	def upstreamFile = makeupPatchDir.file("upstream.properties")
+	def checkoutDir = shaderpackBuildDir.map { it.dir("makeup-ultra-fast-upstream") }
+	inputs.file(upstreamFile)
+	outputs.dir(checkoutDir)
+
+	doLast {
+		def upstream = readPropertiesFile(upstreamFile)
+		def checkout = checkoutDir.get().asFile
+		def repo = upstream.getProperty("repo")
+		def commit = upstream.getProperty("commit")
+
+		if (!new File(checkout, ".git").exists()) {
+			delete(checkout)
+			checkout.parentFile.mkdirs()
+			runCommand {
+				commandLine("git", "clone", "--no-checkout", repo, checkout.absolutePath)
+			}
+		}
+
+		runCommand {
+			workingDir(checkout)
+			commandLine("git", "fetch", "--depth", "1", "origin", commit)
+		}
+		runCommand {
+			workingDir(checkout)
+			commandLine("git", "checkout", "--force", "FETCH_HEAD")
+		}
+		runCommand {
+			workingDir(checkout)
+			commandLine("git", "clean", "-fdx")
+		}
+	}
+}
+
+tasks.register("applyMakeupGlobePatches", Copy) {
+	group = "shaderpacks"
+	description = "Applies Globe World shader patches to the pinned MakeUp source."
+	dependsOn("fetchMakeupUltraFast")
+
+	def upstreamDir = shaderpackBuildDir.map { it.dir("makeup-ultra-fast-upstream") }
+	def patchedDir = shaderpackBuildDir.map { it.dir("makeup-ultra-fast-globe-world") }
+	def patches = fileTree("shaderpacks/makeup-ultra-fast-globe-world/patches") {
+		include("*.patch")
+	}
+
+	inputs.dir(upstreamDir)
+	inputs.files(patches)
+	outputs.dir(patchedDir)
+
+	from(upstreamDir)
+	into(patchedDir)
+	exclude(".git/**")
+
+	doFirst {
+		delete(patchedDir)
+	}
+	doLast {
+		def patchFiles = patches.files.sort()
+		logger.lifecycle("Applying ${patchFiles.size()} MakeUp Globe patch file(s).")
+		patchFiles.each { patchFile ->
+			runCommand {
+				commandLine(
+						"git",
+						"apply",
+						"--whitespace=nowarn",
+						"--directory=${project.layout.projectDirectory.asFile.toPath().relativize(patchedDir.get().asFile.toPath())}",
+						patchFile.absolutePath
+				)
+			}
+		}
+	}
+}
+
+tasks.register("packageMakeupUltraFastGlobeWorldShaderpack", Zip) {
+	group = "shaderpacks"
+	description = "Packages MakeUp Ultra Fast with Globe World curvature patches applied."
+	dependsOn("applyMakeupGlobePatches")
+
+	archiveFileName = "makeup-ultra-fast-globe-world.zip"
+	destinationDirectory = shaderpackDistDir
+	from(shaderpackBuildDir.map { it.dir("makeup-ultra-fast-globe-world") }) {
+		exclude("**/.git/**")
+	}
+}
+
+tasks.register("shaderpacks") {
+	group = "shaderpacks"
+	description = "Packages all Globe World shader packs."
+	dependsOn("packageGlobeWorldCurvatureShaderpack", "packageMakeupUltraFastGlobeWorldShaderpack")
 }

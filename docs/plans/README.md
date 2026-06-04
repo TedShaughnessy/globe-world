@@ -11,7 +11,7 @@ and keep only historical investigation here if it is still useful.
    block, fluid, bucket, and boat interactions aligned with the client view.
 2. [MakeUp Ultra Fast Curvature Compatibility](makeup-ultra-fast-curvature-compatibility.md):
    plan for packaging a Globe-compatible MakeUp shader pack, exposing Globe
-   curvature values to Iris, and keeping the shader fork auditable.
+   curvature values to Iris, and keeping the shader patch stack auditable.
 
 ## Completed Plans
 

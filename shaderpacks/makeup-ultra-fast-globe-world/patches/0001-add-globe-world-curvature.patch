@@ -1,0 +1,357 @@
+diff --git a/shaders/lib/globe_world_curvature.glsl b/shaders/lib/globe_world_curvature.glsl
+new file mode 100644
+index 0000000..aa6c41d
+--- /dev/null
++++ b/shaders/lib/globe_world_curvature.glsl
+@@ -0,0 +1,56 @@
++const float GLOBE_WORLD_CURVATURE_RADIUS = 0.0 /*GLOBE_WORLD_CURVATURE_RADIUS_FROM_MOD*/;
++const float GLOBE_WORLD_CURVATURE_DROP_CLAMP = 256.0 /*GLOBE_WORLD_CURVATURE_DROP_CLAMP_FROM_MOD*/;
++const float GLOBE_WORLD_FOG_DISTANCE_SCALE = 1.0 /*GLOBE_WORLD_FOG_DISTANCE_SCALE_FROM_MOD*/;
++
++float globeWorld_curvatureRadius() {
++    return GLOBE_WORLD_CURVATURE_RADIUS;
++}
++
++float globeWorld_curvatureDropClamp() {
++    return GLOBE_WORLD_CURVATURE_DROP_CLAMP;
++}
++
++float globeWorld_fogDistanceScale() {
++    return GLOBE_WORLD_FOG_DISTANCE_SCALE;
++}
++
++vec3 globeWorld_applyCurvature(vec3 pos) {
++    float radius = globeWorld_curvatureRadius();
++    if (radius <= 0.0) {
++        return pos;
++    }
++
++    float distanceSqr = dot(pos.xz, pos.xz);
++    float drop = min(distanceSqr / (2.0 * radius), globeWorld_curvatureDropClamp());
++    pos.y -= drop;
++    return pos;
++}
++
++vec3 globeWorld_applyCloudCurvature(vec3 pos) {
++    float radius = globeWorld_curvatureRadius();
++    if (radius <= 0.0) {
++        return pos;
++    }
++
++    float cloudRadius = (radius + max(pos.y, 0.0));
++    float distanceSqr = dot(pos.xz, pos.xz);
++    float drop = min(distanceSqr / (2.0 * cloudRadius), globeWorld_curvatureDropClamp());
++    pos.y -= drop;
++    return pos;
++}
++
++vec3 globeWorld_fogPosition(vec3 pos) {
++    if (globeWorld_curvatureRadius() <= 0.0) {
++        return pos;
++    }
++
++    return vec3(pos.x * globeWorld_fogDistanceScale(), 0.0, pos.z * globeWorld_fogDistanceScale());
++}
++
++vec3 globeWorld_cloudFogPosition(vec3 pos) {
++    if (globeWorld_curvatureRadius() <= 0.0) {
++        return pos;
++    }
++
++    return vec3(pos.x, 0.0, pos.z);
++}
+diff --git a/shaders/common/basic_blocks_vertex.glsl b/shaders/common/basic_blocks_vertex.glsl
+index 795a785..b01b1e0 100644
+--- a/shaders/common/basic_blocks_vertex.glsl
++++ b/shaders/common/basic_blocks_vertex.glsl
+@@ -13,12 +13,10 @@
+ /* Uniforms */
+ 
+ uniform float rainStrength;
++uniform mat4 gbufferModelView;
++uniform mat4 gbufferModelViewInverse;
+ uniform mat4 gbufferProjectionInverse;
+ 
+-#if defined SHADOW_CASTING && !defined NETHER
+-    uniform mat4 gbufferModelViewInverse;
+-#endif
+-
+ /* Ins / Outs */
+ 
+ varying vec4 tintColor;
+@@ -29,6 +27,7 @@ varying vec3 basicLight;
+ 
+ #include "/lib/luma.glsl"
+ #include "/lib/basic_utils.glsl"
++#include "/lib/globe_world_curvature.glsl"
+ 
+ #if AA_TYPE > 0
+     #include "/src/taa_offset.glsl"
+diff --git a/shaders/common/clouds_blocks_vertex.glsl b/shaders/common/clouds_blocks_vertex.glsl
+index 60ae18f..e975e66 100644
+--- a/shaders/common/clouds_blocks_vertex.glsl
++++ b/shaders/common/clouds_blocks_vertex.glsl
+@@ -2,16 +2,14 @@
+ 
+ /* Uniforms */
+ 
++uniform mat4 gbufferModelView;
++uniform mat4 gbufferModelViewInverse;
+ uniform mat4 gbufferProjectionInverse;
+ 
+ #if V_CLOUDS == 0 || defined UNKNOWN_DIM
+     uniform float rainStrength;
+ #endif
+ 
+-#if defined SHADOW_CASTING && !defined NETHER
+-    uniform mat4 gbufferModelViewInverse;
+-#endif
+-
+ /* Ins / Outs */
+ 
+ #if V_CLOUDS == 0 || defined UNKNOWN_DIM
+@@ -29,6 +27,8 @@ uniform mat4 gbufferProjectionInverse;
+     #include "/lib/luma.glsl"
+ #endif
+ 
++#include "/lib/globe_world_curvature.glsl"
++
+ // MAIN FUNCTION ------------------
+ 
+ void main() {
+diff --git a/shaders/common/glint_blocks_vertex.glsl b/shaders/common/glint_blocks_vertex.glsl
+index 80606eb..1381e9c 100644
+--- a/shaders/common/glint_blocks_vertex.glsl
++++ b/shaders/common/glint_blocks_vertex.glsl
+@@ -3,6 +3,7 @@
+ /* Uniforms */
+ 
+ uniform sampler2D gaux3;
++uniform mat4 gbufferModelView;
+ uniform mat4 gbufferModelViewInverse;
+ uniform mat4 gbufferProjectionInverse;
+ 
+@@ -16,6 +17,8 @@ varying float exposure;
+     #include "/src/taa_offset.glsl"
+ #endif
+ 
++#include "/lib/globe_world_curvature.glsl"
++
+ // MAIN FUNCTION ------------------
+ 
+ void main() {
+diff --git a/shaders/common/line_blocks_vertex.glsl b/shaders/common/line_blocks_vertex.glsl
+index 0cc489d..3eee877 100644
+--- a/shaders/common/line_blocks_vertex.glsl
++++ b/shaders/common/line_blocks_vertex.glsl
+@@ -4,6 +4,8 @@
+ 
+ uniform float viewHeight;
+ uniform float viewWidth;
++uniform mat4 gbufferModelView;
++uniform mat4 gbufferModelViewInverse;
+ 
+ /* Ins / Outs */
+ 
+@@ -15,6 +17,7 @@ varying vec4 tintColor;
+     #include "/src/taa_offset.glsl"
+ #endif
+ 
++#include "/lib/globe_world_curvature.glsl"
+ #include "/lib/mu_ftransform.glsl"
+ 
+ // MAIN FUNCTION ------------------
+diff --git a/shaders/common/solid_blocks_vertex.glsl b/shaders/common/solid_blocks_vertex.glsl
+index f079486..a484637 100644
+--- a/shaders/common/solid_blocks_vertex.glsl
++++ b/shaders/common/solid_blocks_vertex.glsl
+@@ -20,6 +20,8 @@ uniform float dayNightMix;
+ uniform float far;
+ uniform float rainStrength;
+ uniform ivec2 eyeBrightnessSmooth;
++uniform mat4 gbufferModelView;
++uniform mat4 gbufferModelViewInverse;
+ uniform mat4 gbufferProjectionInverse;
+ 
+ #ifdef DISTANT_HORIZONS
+@@ -39,14 +41,6 @@ uniform mat4 gbufferProjectionInverse;
+     uniform sampler2D lightmap;
+ #endif
+ 
+-#if defined FOLIAGE_V || defined THE_END || defined NETHER
+-    uniform mat4 gbufferModelView;
+-#endif
+-
+-#if defined FOLIAGE_V || defined SHADOW_CASTING || (defined MATERIAL_GLOSS && !defined NETHER)
+-    uniform mat4 gbufferModelViewInverse;
+-#endif
+-
+ #if defined MATERIAL_GLOSS && !defined NETHER
+     uniform int worldTime;
+     uniform vec3 moonPosition;
+@@ -133,6 +127,7 @@ attribute vec4 mc_Entity;
+ #endif
+ 
+ #include "/lib/luma.glsl"
++#include "/lib/globe_world_curvature.glsl"
+ 
+ // MAIN FUNCTION ------------------
+ 
+diff --git a/shaders/common/spidereyes_blocks_vertex.glsl b/shaders/common/spidereyes_blocks_vertex.glsl
+index e796144..ff261db 100644
+--- a/shaders/common/spidereyes_blocks_vertex.glsl
++++ b/shaders/common/spidereyes_blocks_vertex.glsl
+@@ -2,12 +2,10 @@
+ 
+ /* Uniforms */
+ 
++uniform mat4 gbufferModelView;
++uniform mat4 gbufferModelViewInverse;
+ uniform mat4 gbufferProjectionInverse;
+ 
+-#if defined SHADOW_CASTING && !defined NETHER
+-    uniform mat4 gbufferModelViewInverse;
+-#endif
+-
+ /* Ins / Outs */
+ 
+ varying vec2 texcoord;
+@@ -18,10 +16,12 @@ varying vec2 texcoord;
+     #include "/src/taa_offset.glsl"
+ #endif
+ 
++#include "/lib/globe_world_curvature.glsl"
++
+ // MAIN FUNCTION ------------------
+ 
+ void main() {
+     texcoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
+ 
+     #include "/src/position_vertex.glsl"
+-}
+\ No newline at end of file
++}
+diff --git a/shaders/common/water_blocks_vertex.glsl b/shaders/common/water_blocks_vertex.glsl
+index 2bc58c7..f8c9801 100644
+--- a/shaders/common/water_blocks_vertex.glsl
++++ b/shaders/common/water_blocks_vertex.glsl
+@@ -107,6 +107,7 @@ attribute vec4 at_tangent;
+ /* Utility functions */
+ 
+ #include "/lib/luma.glsl"
++#include "/lib/globe_world_curvature.glsl"
+ 
+ // MAIN FUNCTION ------------------
+ 
+diff --git a/shaders/lib/mu_ftransform.glsl b/shaders/lib/mu_ftransform.glsl
+index a448909..b9105c4 100644
+--- a/shaders/lib/mu_ftransform.glsl
++++ b/shaders/lib/mu_ftransform.glsl
+@@ -2,9 +2,11 @@ vec4 muFtransform() {
+     float lineWidth = 2.0;
+     vec2 screenSize = vec2(viewWidth, viewHeight);
+     mat4 VIEW_SCALE = mat4(mat3(1.0 - 0.00390625));
+-    mat4 tempmat = gl_ProjectionMatrix * VIEW_SCALE * gl_ModelViewMatrix;
+-    vec4 linePosStart = tempmat * gl_Vertex;
+-    vec4 linePosEnd = tempmat * vec4(gl_Vertex.xyz + gl_Normal, 1.0);
++    vec3 lineStart = globeWorld_applyCurvature((gbufferModelViewInverse * gl_ModelViewMatrix * gl_Vertex).xyz);
++    vec3 lineEnd = globeWorld_applyCurvature((gbufferModelViewInverse * gl_ModelViewMatrix * vec4(gl_Vertex.xyz + gl_Normal, 1.0)).xyz);
++    mat4 tempmat = gl_ProjectionMatrix * VIEW_SCALE * gbufferModelView;
++    vec4 linePosStart = tempmat * vec4(lineStart, 1.0);
++    vec4 linePosEnd = tempmat * vec4(lineEnd, 1.0);
+     vec3 ndc1 = linePosStart.xyz / linePosStart.w;
+     vec3 ndc2 = linePosEnd.xyz / linePosEnd.w;
+     vec2 lineScreenDirection = normalize((ndc2.xy - ndc1.xy) * screenSize);
+@@ -15,4 +17,4 @@ vec4 muFtransform() {
+         return vec4((ndc1 + vec3(lineOffset, 0.0)) * linePosStart.w, linePosStart.w);
+     else
+         return vec4((ndc1 - vec3(lineOffset, 0.0)) * linePosStart.w, linePosStart.w);
+-}
+\ No newline at end of file
++}
+diff --git a/shaders/src/position_vertex.glsl b/shaders/src/position_vertex.glsl
+index 816c900..38e0297 100644
+--- a/shaders/src/position_vertex.glsl
++++ b/shaders/src/position_vertex.glsl
+@@ -1,4 +1,15 @@
+-gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
++vec4 viewPosition = gl_ModelViewMatrix * gl_Vertex;
++vec4 position = gbufferModelViewInverse * viewPosition;
++vec3 globeWorldFogPosition = position.xyz;
++
++#if defined GBUFFER_CLOUDS
++    vec3 globeWorldCurvedPosition = globeWorld_applyCloudCurvature(position.xyz);
++#else
++    vec3 globeWorldCurvedPosition = globeWorld_applyCurvature(position.xyz);
++#endif
++
++viewPosition = gbufferModelView * vec4(globeWorldCurvedPosition, 1.0);
++gl_Position = gl_ProjectionMatrix * viewPosition;
+ 
+ #ifdef FOLIAGE_V  // Lógica optimizada para follaje y bloques generales
+     
+@@ -14,9 +25,6 @@ gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+         mc_Entity.x == ENTITY_SMALLENTS_NW
+     );
+ 
+-    vec4 viewPosition = gl_ModelViewMatrix * gl_Vertex;
+-    vec4 position = gbufferModelViewInverse * viewPosition;
+-    
+     if (isFoliageEntity) {
+         isFoliage = 0.4;
+ 
+@@ -48,13 +56,6 @@ gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+ 
+ #else // Lógica para cuando no es un shader con follaje (p. ej. entidades)
+ 
+-    vec4 viewPosition = gl_ModelViewMatrix * gl_Vertex;
+-    #ifndef NO_SHADOWS
+-        #ifdef SHADOW_CASTING
+-            vec4 position = gbufferModelViewInverse * viewPosition;
+-        #endif
+-    #endif
+-    
+ #endif
+ 
+ #ifdef EMMISIVE_V
+@@ -66,16 +67,13 @@ gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+ #endif
+ 
+ #ifndef SHADER_BASIC
+-    vec4 homopos = gbufferProjectionInverse * vec4(gl_Position.xyz / gl_Position.w, 1.0);
+-    vec3 viewPos = homopos.xyz / homopos.w;
+-
+     #if defined GBUFFER_CLOUDS
+-        gl_FogFragCoord = length(viewPos.xz);
++        gl_FogFragCoord = length(globeWorld_cloudFogPosition(globeWorldFogPosition));
+     #else
+-        gl_FogFragCoord = length(viewPos.xyz);
++        gl_FogFragCoord = length(globeWorld_fogPosition(globeWorldFogPosition));
+     #endif
+ #endif
+ 
+ #if defined SHADOW_CASTING && SHADOW_LOCK > 0 && !defined NETHER && !defined GBUFFER_BASIC && !defined GBUFFER_CLOUDS && !defined GBUFFER_ARMOR_GLINT && !defined GBUFFER_SPIDEREYES
+     vWorldPos = position.xyz;
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/shaders/src/position_vertex_water.glsl b/shaders/src/position_vertex_water.glsl
+index 085f746..9775065 100644
+--- a/shaders/src/position_vertex_water.glsl
++++ b/shaders/src/position_vertex_water.glsl
+@@ -1,9 +1,12 @@
+ vec4 viewSpacePos4D = gl_ModelViewMatrix * gl_Vertex;
+-fragposition = viewSpacePos4D.xyz;
+ vec4 position = gbufferModelViewInverse * viewSpacePos4D;
++vec3 globeWorldFogPosition = globeWorld_fogPosition(position.xyz);
++position.xyz = globeWorld_applyCurvature(position.xyz);
++viewSpacePos4D = gbufferModelView * position;
++fragposition = viewSpacePos4D.xyz;
+ worldposition = position + vec4(cameraPosition.xyz, 0.0);
+-gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+-gl_FogFragCoord = length(viewSpacePos4D.xyz);
++gl_Position = gl_ProjectionMatrix * viewSpacePos4D;
++gl_FogFragCoord = length(globeWorldFogPosition);
+ 
+ 
+ #if AA_TYPE > 1
