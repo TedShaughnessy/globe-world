@@ -9,6 +9,9 @@ def shaderpackBuildDir = layout.buildDirectory.dir("shaderpacks")
 def shaderpackDistDir = layout.buildDirectory.dir("distributions/shaderpacks")
 def simpleShaderpackDir = layout.projectDirectory.dir("shaderpacks/globe-world-curvature")
 def makeupPatchDir = layout.projectDirectory.dir("shaderpacks/makeup-ultra-fast-globe-world")
+def devRunDir = layout.projectDirectory.dir("mod-fabric/run")
+def devModsDir = devRunDir.dir("mods")
+def devShaderpacksDir = devRunDir.dir("shaderpacks")
 
 def readPropertiesFile = { fileRef ->
 	def properties = new Properties()
@@ -138,4 +141,50 @@ tasks.register("shaderpacks") {
 	group = "shaderpacks"
 	description = "Packages all Globe World shader packs."
 	dependsOn("packageGlobeWorldCurvatureShaderpack", "packageMakeupUltraFastGlobeWorldShaderpack")
+}
+
+tasks.register("stageDevMod", Copy) {
+	group = "development"
+	description = "Copies the remapped Fabric mod jar into mod-fabric/run/mods for local testing."
+	dependsOn(":mod-fabric:remapJar")
+
+	from(project(":mod-fabric").tasks.named("remapJar").flatMap { it.archiveFile })
+	into(devModsDir)
+
+	doFirst {
+		delete(fileTree(dir: devModsDir.get().asFile, include: "globe-world-*.jar"))
+	}
+}
+
+tasks.register("stageDevShaderpacks", Copy) {
+	group = "development"
+	description = "Copies packaged shader packs into mod-fabric/run/shaderpacks for local testing."
+	dependsOn("shaderpacks")
+
+	from(shaderpackDistDir) {
+		include("*.zip")
+	}
+	into(devShaderpacksDir)
+
+	doFirst {
+		delete(fileTree(
+				dir: devShaderpacksDir.get().asFile,
+				include: [
+						"globe-world-curvature-*.zip",
+						"makeup-ultra-fast-globe-world-*.zip"
+				]
+		))
+	}
+}
+
+tasks.register("stageDevRunAssets") {
+	group = "development"
+	description = "Copies the built mod and shader packs into mod-fabric/run for local testing."
+	dependsOn("stageDevMod", "stageDevShaderpacks")
+}
+
+tasks.register("buildAll") {
+	group = "build"
+	description = "Builds the Fabric mod, packages shader packs, and stages them in mod-fabric/run."
+	dependsOn("build", "stageDevRunAssets")
 }

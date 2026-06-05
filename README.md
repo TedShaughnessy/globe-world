@@ -4,11 +4,13 @@ Fabric mod for Minecraft 26.1.2 that makes the world tile seamlessly — walk fa
 
 ```
 build:             ./gradlew build
+build all:         ./gradlew buildAll
 client:            ./gradlew runClient --debug > debug_log.txt 2>&1
 kill:              pkill -f runClient
 simple shaderpack: ./gradlew packageGlobeWorldCurvatureShaderpack
 makeup shaderpack: ./gradlew packageMakeupUltraFastGlobeWorldShaderpack
 all shaderpacks:   ./gradlew shaderpacks
+stage dev assets:  ./gradlew stageDevRunAssets
 ```
 
 ## Repository layout
@@ -31,6 +33,11 @@ Ultra Fast task fetches the pinned upstream commit listed in
 `shaderpacks/makeup-ultra-fast-globe-world/upstream.properties`, applies the
 local patches in `shaderpacks/makeup-ultra-fast-globe-world/patches/`, and then
 packages the patched shader pack.
+
+For local testing, `./gradlew stageDevRunAssets` copies the remapped Fabric mod
+jar into `mod-fabric/run/mods/` and packaged shader pack zips into
+`mod-fabric/run/shaderpacks/`. `./gradlew buildAll` runs the build and stages
+those dev assets in one command.
 
 Release artifact versions live in `gradle.properties`. Bump `mod_version`,
 `globe_world_curvature_shaderpack_version`, or
