@@ -1,14 +1,14 @@
 # Globe World Mod Compatibility
 
-This folder collects compatibility notes for mods, shader packs, and renderer
-paths that interact with Globe World's wrapped coordinate model.
+Short notes for mods, shader packs, and render paths that interact with Globe
+World's wrapping or terrain curvature.
 
-## Start Here
+## Notes
 
-1. [Iris Shader Packs](iris-shader-packs.md): shader-pack placeholder contract,
-   Iris bridge behavior, and known insertion points for compatible packs.
-2. [Distant Horizons](distant-horizons.md): current Fabric compatibility notes,
-   risks, and likely investigation paths.
+1. [Iris Shader Packs](iris-shader-packs.md): Sodium/Iris compatibility,
+   curvature caveats, and the shader-pack bridge pattern.
+2. [Distant Horizons](distant-horizons.md): expected support level and
+   recommended settings.
 
 When a compatibility investigation turns into implemented Globe World behavior,
 move the durable implementation details into

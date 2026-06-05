@@ -1,54 +1,20 @@
-# Globe World Iris Shader Pack Contract
+# Globe World + Sodium/Iris Shader Packs
 
-## Scope
+Sodium and Iris are compatible with Globe World's wrapping, but they can bypass
+Globe World's vanilla terrain curvature shader path. Terrain will render flat
+unless the active shader pack opts into Globe World's curvature bridge.
 
-This note documents how Iris shader packs can consume Globe World's existing
-curvature controls.
+Globe World provides two Iris examples:
 
-It applies to:
+- `shaderpacks/globe-world-curvature/`: a small compatibility shader pack that
+  only applies Globe World's curvature and fog behavior.
+- `shaderpacks/makeup-ultra-fast-globe-world/`: a patched MakeUp Ultra Fast
+  setup using the same bridge.
 
-- the minimal shader pack in `shaderpacks/globe-world-curvature/`
-- the pinned MakeUp Ultra Fast patch setup in
-  `shaderpacks/makeup-ultra-fast-globe-world/`
-- any other Iris shader pack that wants Globe curvature without adding its own
-  curvature slider
+## Bridge Pattern
 
-## Bridge Behavior
-
-Globe World keeps the existing mod UI and config as the source of truth. The
-Iris bridge does not add shader-pack options and does not require shader packs
-to read Java state directly.
-
-When Iris is present, `IrisProgramSourceMixin` inspects shader program source as
-Iris loads it. If the source contains Globe placeholder markers, the mixin asks
-`GlobeCurvatureShader` for the current values and replaces the placeholders
-with baked GLSL constants.
-
-Values currently exposed:
-
-- curvature radius in blocks
-- curvature drop clamp
-- fog distance scale
-
-The minimal Globe shader pack provides explicit terrain, block, water, cloud,
-line, entity, hand, textured fallback, armor-glint, glowing-eye, and sky program
-files. Textured entity and hand passes are included so mobs, players, held
-items, and omitted textured geometry do not fall back to a flat-color basic
-pass. Shared fragment helpers apply fog from the curved vertex path, the cloud
-fragment pass leaves vanilla cloud colors and alpha unchanged when present but
-falls back to Iris sky/fog tint when the supplied cloud color is black, and sky
-passes preserve translucent sun/moon textures while blending the basic sky
-horizon toward vanilla fog color instead of inheriting the curved world
-fallback.
-
-When Globe curvature settings or the active dimension change,
-`GlobeIrisShaderBridge` reflectively asks Iris to reload shaders so the baked
-constants are refreshed. If Iris is absent, this bridge is inactive.
-
-## Shader Pack Requirements
-
-Compatible shader packs should include these exact placeholder constants in a
-shared GLSL file:
+Globe World's UI and config remain the source of truth. Iris shader packs opt in
+by including these exact placeholders in GLSL source:
 
 ```glsl
 const float GLOBE_WORLD_CURVATURE_RADIUS = 0.0 /*GLOBE_WORLD_CURVATURE_RADIUS_FROM_MOD*/;
@@ -56,15 +22,13 @@ const float GLOBE_WORLD_CURVATURE_DROP_CLAMP = 256.0 /*GLOBE_WORLD_CURVATURE_DRO
 const float GLOBE_WORLD_FOG_DISTANCE_SCALE = 1.0 /*GLOBE_WORLD_FOG_DISTANCE_SCALE_FROM_MOD*/;
 ```
 
-The defaults are intentionally valid GLSL. If Globe World is absent or the Iris
-bridge does not run, radius remains `0.0` and the shader renders flat.
+When Iris loads a shader pack, `IrisProgramSourceMixin` replaces those markers
+with values from `GlobeCurvatureShader`. When the Globe World curvature UI
+changes, `GlobeIrisShaderBridge` asks Iris to reload shaders so the baked values
+refresh.
 
-The mixin currently replaces the exact default-plus-comment fragments above, so
-shader packs should copy them unchanged.
-
-## Curvature Math
-
-Use the same camera-relative shape as `GlobeCurvatureShader`:
+Use the constants in camera-relative or player-relative vertex positions before
+projection:
 
 ```glsl
 vec3 globeWorld_applyCurvature(vec3 pos) {
@@ -80,7 +44,7 @@ vec3 globeWorld_applyCurvature(vec3 pos) {
 }
 ```
 
-For fog, keep a separate uncurved horizontal position:
+Keep fog distance based on the uncurved horizontal range:
 
 ```glsl
 vec3 globeWorld_fogPosition(vec3 pos) {
@@ -96,36 +60,19 @@ vec3 globeWorld_fogPosition(vec3 pos) {
 }
 ```
 
-Clouds should use the same cloud-radius adjustment as the vanilla override:
+Cloud paths should use a radius adjusted by cloud height:
 
 ```glsl
 float cloudRadius = GLOBE_WORLD_CURVATURE_RADIUS + max(pos.y, 0.0);
 ```
 
-## Applying The Transform
-
-Apply curvature after the shader has a camera-relative or player-relative
-position and before projection.
-
-For MakeUp Ultra Fast, the first patched insertion points are:
-
-- `shaders/src/position_vertex.glsl`
-- `shaders/src/position_vertex_water.glsl`
-- `shaders/lib/mu_ftransform.glsl`
-
-Preserve MakeUp's existing lighting, material, post-processing, and option
-logic. The Globe patch should only change vertex position and any fog distance
-that needs to match the uncurved horizontal range.
-
 ## Limitations
 
-- The current bridge bakes constants at Iris shader load time rather than
-  uploading live uniforms every frame.
-- It depends on Iris program sources passing through
-  `net.irisshaders.iris.shaderpack.programs.ProgramSource`.
-- It does not yet provide debug overlay status for whether the active shader
-  pack consumed the placeholders.
-- Sodium without Iris remains separate; this bridge is for Iris shader packs.
+- The bridge bakes constants at Iris shader load time; it is not a live uniform
+  path.
+- Packs must copy the placeholder constants exactly.
+- The bridge only applies to Iris shader packs. Sodium without Iris does not
+  consume this GLSL contract.
 
 ## Key Files
 
