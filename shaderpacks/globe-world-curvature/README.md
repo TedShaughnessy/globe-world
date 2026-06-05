@@ -7,11 +7,12 @@ fog-position behavior as the mod's vanilla shader override. Terrain, block,
 water, cloud, line, entity, hand, textured fallback, and armor-glint passes
 reuse the same small helper shaders so the pack does not add lighting or
 material effects of its own. Shared fragment helpers apply the fog distance
-produced by the curved vertex path, the cloud fragment pass leaves vanilla
-cloud colors/alpha alone, glowing eye layers and unlit textured fallback passes
-render as textured cutouts, and sky programs are explicit pass-through shaders
-that preserve translucent sun, moon, and horizon colors instead of falling back
-to the curved world programs.
+produced by the curved vertex path, the cloud fragment pass preserves vanilla
+cloud colors/alpha when available and falls back to Iris sky/fog tint when the
+incoming cloud color is black, glowing eye layers and unlit textured fallback
+passes render as textured cutouts, and sky programs preserve translucent sun
+and moon textures while blending the basic sky horizon toward vanilla fog color
+so curved terrain does not expose a dark daytime lower sky disc.
 The Fabric mod's optional Iris bridge replaces the placeholder constants in
 `shaders/lib/globe_world_curvature.glsl` when Iris loads the shader pack, so
 Globe World's existing curvature controls remain the source of truth.

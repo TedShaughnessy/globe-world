@@ -62,10 +62,11 @@ explicit textured entity, hand, and textured fallback passes so mobs, players,
 held items, and omitted textured geometry keep their normal textures while using
 the same curvature transform as terrain, separate unlit glowing-eye and
 armor-glint passes for alpha-cutout/overlay layers, fog blending from the
-curved vertex distances, a pass-through cloud fragment program, and
-pass-through sky programs that preserve translucent sky textures and horizon
-colors instead of falling back to curved world passes. The generic shader-pack
-contract is documented in
+curved vertex distances, a cloud fragment program that preserves incoming
+vanilla cloud tint but falls back to Iris sky/fog tint if the supplied color is
+black, and sky programs that preserve translucent sun/moon textures while
+blending the basic sky horizon toward vanilla fog color instead of falling back
+to curved world passes. The generic shader-pack contract is documented in
 `docs/mod-compatibility/iris-shader-packs.md`.
 `Options.getEffectiveRenderDistance()` is capped after vanilla applies the
 server-advertised view-distance limit. Tiled dimensions first apply the
@@ -108,9 +109,9 @@ the boat's water occlusion patch aligned with the rendered boat and curved
 terrain/cloud presentation.
 Cloud vertices use the same shader curvature transform as terrain so vanilla's
 flat cloud layer bends with the world presentation. The minimal Iris pack does
-not own cloud distance or alpha fading; it leaves the cloud fragment color
-unchanged and relies on vanilla/Sodium cloud mesh generation for the client
-cloud range setting.
+not own cloud distance or alpha fading; it keeps the incoming cloud fragment
+color unless Iris/Sodium supplies a black tint, in which case the pack derives a
+simple fallback from the vanilla sky and horizon fog colors.
 For small tiles, cloud texture sampling scales the camera X/Z contribution so
 player movement produces stronger cloud parallax. The vanilla time drift and
 cloud height are unchanged.

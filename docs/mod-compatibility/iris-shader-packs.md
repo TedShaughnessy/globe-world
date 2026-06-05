@@ -35,9 +35,11 @@ line, entity, hand, textured fallback, armor-glint, glowing-eye, and sky program
 files. Textured entity and hand passes are included so mobs, players, held
 items, and omitted textured geometry do not fall back to a flat-color basic
 pass. Shared fragment helpers apply fog from the curved vertex path, the cloud
-fragment pass leaves vanilla cloud colors and alpha unchanged, and sky passes
-are explicit pass-through shaders that preserve translucent sky textures and
-horizon colors instead of inheriting the curved world fallback.
+fragment pass leaves vanilla cloud colors and alpha unchanged when present but
+falls back to Iris sky/fog tint when the supplied cloud color is black, and sky
+passes preserve translucent sun/moon textures while blending the basic sky
+horizon toward vanilla fog color instead of inheriting the curved world
+fallback.
 
 When Globe curvature settings or the active dimension change,
 `GlobeIrisShaderBridge` reflectively asks Iris to reload shaders so the baked
