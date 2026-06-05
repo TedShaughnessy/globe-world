@@ -2,216 +2,137 @@
 
 ## What
 
-Mobs and entities that belong to the finite world are stored in canonical X/Z.
-When a player views or tracks them, outbound packets place the entity in the
-nearest virtual copy for that viewer.
+Finite-world non-player entities are stored in canonical X/Z. Player-facing
+packets render each entity in the nearest visible alias for that viewer.
+
+Players may move through raw alias coordinates during normal play, but Globe
+World rebases them to canonical X/Z at lifecycle boundaries such as login,
+respawn, and bed wake-up.
 
 ## Why
 
-Without canonical storage, a mob spawned in an alias can become a duplicate
-entity outside the canonical tile. Without viewer-relative packet positions, an
-edge-near mob can appear far away or disappear for a player standing near the
-opposite edge.
+Without canonical storage, mobs, items, vehicles, projectiles, and XP orbs can
+duplicate outside the finite tile. Without viewer-relative packet positions, an
+edge-near entity can appear far away or disappear for a player standing near
+the opposite edge.
 
-## Implementation
+## Storage And Packets
 
-Finite-world non-player entities are canonicalized before being added to
-`ServerLevel`, after server entity ticks, and after same-dimension teleport
-positioning. This includes mobs, item entities, vehicles, projectiles, XP orbs,
-falling blocks, and other non-player entities in tiled dimensions. Mounted
-non-player stacks are shifted together when the root vehicle wraps, so
-passengers preserve their offsets from the vehicle. Player passengers stay in
-the visible virtual tile nearest their current server position when canonical
-vehicles position riders, which keeps player chunk streaming aligned with the
-client while the vehicle remains canonical. Entity add, teleport, and absolute
-position-sync packets are virtualized per viewer. Relative movement packets stay
-relative where possible.
+`EntityCanonicalizer` continuously canonicalizes finite-world non-player
+entities before add, after server ticks, and after same-dimension teleports.
+Mounted non-player stacks are shifted together when the root vehicle wraps so
+passengers preserve their offsets.
 
-Player-controlled vehicle movement is received from the client in the visible
-alias coordinate frame. Before vanilla validates a `ServerboundMoveVehiclePacket`,
-Globe World maps the packet position into the storage frame nearest vanilla's
-last accepted vehicle position. After vanilla accepts the move, the mounted
-stack is canonicalized and the vehicle movement anchors are refreshed.
+Player passengers stay in the visible virtual tile nearest their current server
+position when a canonical vehicle positions riders. Client-controlled vehicle
+movement arrives in the visible alias frame; `ServerGamePacketListenerImplMixin`
+maps it back near vanilla's last accepted vehicle position before validation,
+then canonicalizes the mounted stack after acceptance.
 
-Players may travel through virtual coordinates during normal play. On login,
-respawn, and bed wake-up, the server rebases the player to the canonical X/Z
-equivalent before sending vanilla's position packet to the client. This keeps
-long-running aliases from being persisted across those lifecycle boundaries
-without changing in-session movement.
+`EntityPacketUtil` virtualizes add, teleport, absolute sync, damage source,
+vehicle correction, and minecart interpolation positions per viewer. Relative
+movement, velocity, rotations, knockback vectors, and minecart step movement
+stay relative. When an entity crosses the viewer-facing tile threshold, the
+server sends an absolute sync and the client snaps tile-sized rebases instead
+of interpolating across the tile.
 
-Entity tracking uses wrapped X/Z distance and checks the virtual chunk nearest
-to the player. Natural spawning stores candidates in canonical chunks, wraps
-candidate positions, wraps player distance checks, counts mob caps by canonical
-chunk, and dedupes spawning chunks by canonical key. Chunk-generation mob spawns
-are cancelled for non-canonical chunks. In scrolling day/night mode, hostile
-spawn brightness checks use local sky darkening at the spawn position, phantom
-spawning uses local sky darkening at the player position, and undead burning
-uses local burn-time and brightness predicates at the mob position. Pillager
-patrol attempts also use local daylight at the selected spawn position instead
-of the dimension-wide bright-outside gate.
+## Tracking, Ticking, And Spawning
 
-Canonical non-player entities tick when their canonical chunk is entity-ticking
-or when any visible alias of that canonical chunk is entity-ticking. The tick
-still runs once on the canonical entity; alias chunks only satisfy vanilla's
-entity-ticking range gate. This prevents canonical mobs from becoming invisible
-stale entities when a player is simulating an alias chunk, including dead mobs
-that need `LivingEntity.tickDeath()` to finish removal.
-Mob despawn checks use wrapped player distance, so canonical hostile mobs near
-a virtual player alias are not instantly discarded by raw tile-offset distance.
+Entity tracking uses wrapped X/Z distance and treats the virtual chunk nearest
+the player as the tracked chunk. Alias chunks inside the player's tracking view
+are eligible even while vanilla still marks the chunk packet pending, and
+tracking refreshes immediately after chunk sends.
 
-For alias chunks, entity tracking treats chunks inside the player's tracking
-view as eligible even while vanilla still has the chunk packet marked pending.
-This avoids a slow one-by-one trickle of add-entity packets as alias chunks
-finish sending. After a chunk packet is sent, player entity tracking is also
-refreshed immediately. Each real entity still has one client entity id. The
-client can draw presentation-only visual aliases of that one entity at whole
-tile offsets when multiple terrain aliases are close enough to be visible.
-Non-player mounted stacks share the root vehicle's alias offsets so vehicles
-and passengers stay together in each visual copy. The client limits those
-aliases to a configurable number of tile rings around the camera while still
-respecting vanilla entity view distance. Alias-aware client picking tests those
-visual alias boxes but returns the same canonical entity id, so interaction and
-attack packets still target the real entity. When the nearest network alias
-changes, the server sends an absolute position sync to rebase the client entity.
-Rebase detection uses the same block-level tile offset as packet virtualization,
-not just the entity's chunk alias, so it changes at the same threshold as the
-viewer-facing position. Player-driven alias changes sync immediately.
-Entity-driven alias changes replace the next relative movement packet with an
-absolute position sync, avoiding a same-tick absolute-sync plus relative-move
-double application on the client. The client snaps tile-sized rebases instead
-of interpolating them, which prevents the real client entity from visually
-sliding across the tile during a wrap correction. When a non-player vehicle
-stack snaps, client passenger positioning also refreshes passenger old-position
-state so multiple riders do not interpolate from the previous tile alias.
+Canonical non-player entities tick once when their canonical chunk is
+entity-ticking or when any visible alias of that canonical chunk is
+entity-ticking. Alias chunks only satisfy the range gate; they do not create
+duplicate entity ticks. Despawn checks use wrapped player distance.
 
-Additional entity-adjacent packets with absolute positions are virtualized per
-viewer. Damage event source positions, vehicle correction positions, and
-minecart interpolation step positions are copied to the nearest visible alias.
-Relative movement, velocity, rotations, minecart step movement, and knockback
-vectors remain unchanged. Vehicle correction packets sent directly from
-`ServerGamePacketListenerImpl.handleMoveVehicle(...)` use the same
-`EntityPacketUtil` path as tracked-entity packets.
+Natural spawning stores candidates in canonical chunks, wraps candidate
+positions and player-distance checks, counts mob caps by canonical chunk, and
+dedupes spawning chunks by canonical key. Chunk-generation mob spawns are
+cancelled for non-canonical chunks.
 
-Player item pickup scans include the player's canonical pickup box as well as
-the raw box. This lets a player standing in an alias collect the same canonical
-item entity they see through virtualized packets.
+## AI, Interaction, And Pathing
 
-Entity, attack, and block interaction range checks use wrapped target boxes so
-players near a tile seam interact with the nearest visible copy instead of the
-canonical copy's raw distance. The block-range path also protects vanilla flows
-that revalidate block reach after an interaction begins, such as sign editing.
+`AiAliasUtil` maps targets, hitboxes, and query boxes into the acting mob's
+local tile frame. Targeting conditions, nearest-entity selection, brain sensors,
+target retention, line of sight, look controls, melee checks, ranged-goal
+distance checks, and move-toward-target goals use the nearest topological alias
+instead of raw coordinates.
 
-Mob sensing and targeting keep entity identity canonical while evaluating the
-nearest topological alias for AI decisions. `AiAliasUtil` maps target positions,
-hitboxes, and query boxes into the acting mob's local tile frame. Targeting
-conditions, nearest-entity selection, brain nearest-living memories, target goal
-continuation, look-at goals, move-towards-target goals, melee goals, and ranged
-attack goals use wrapped distance where vanilla would otherwise compare raw
-coordinates, including the crossbow goal variant. `Sensing.hasLineOfSight(...)`
-owns the alias line-of-sight fallback so vanilla's per-tick seen/unseen cache
-agrees with targets accepted through a tile seam.
+Entity-derived path requests target the nearest alias block position. Small
+tiles expand the request to nearby whole-tile target aliases so vanilla's
+multi-target path search can choose a usable route. The pathfinder and node
+evaluator themselves are still vanilla and not fully toroidal.
 
-Entity path targets remain ordinary vanilla paths. Entity-derived path requests
-in tiled dimensions use the nearest alias block position on ordinary tiles. When
-the tile is smaller than the mob's follow range, the request expands to a
-one-tile-radius set of target alias block positions around the nearest alias.
-Vanilla's multi-target path method then picks the best path it can find. This
-avoids preserving duplicate entities or server-side player canonicalization
-while letting mobs path toward the short seam-crossing copy of a real target,
-and gives small-tile worlds a chance to choose a nearby adjacent alias when the
-single nearest folded target is a poor raw-node path. Ground and flying
-navigation both override vanilla's base entity-path method, so Globe patches
-those overrides as well as the base navigation method; ground paths still run
-their vanilla surface-position adjustment before the multi-target search.
-When a non-player mob canonicalizes after crossing a tile edge, its current
-navigation state is marked for immediate recompute; melee goals clear their
-cached target coordinates on the next tick so vanilla does not sit on a stale
-path or wait for the normal path-recalculation cooldown. Mob look controls and
-melee hitbox checks also use the
-nearest alias, so edge-adjacent mobs face and attack the visible nearby copy
-instead of the raw far-away coordinate.
+Player pickup and interaction reach checks use wrapped target boxes, so players
+near a seam interact with the visible alias while packets still refer to the
+canonical entity or block. Curved client picking is documented in
+[Client](client.md).
 
-Entity storage diagnostics are available under `/globeworld debug`. Use
-`/globeworld debug entity <target>` to inspect one entity's raw/canonical
-position, canonicalization policy, root/passenger state, and current mob target
-alias/pathing distances when the selected entity is a targeting mob. Use
-`/globeworld debug entities` to count loaded entities in the current dimension
-that should be continuously canonicalized but are currently outside canonical
-X/Z.
+## Visual Aliases
 
-Mob pathfinding is still an MVP compromise because the underlying vanilla
-`PathFinder` and node evaluator are not fully toroidal. Small-tile entity path
-requests offer nearby alias targets, but the path search itself still works in
-one raw coordinate frame.
+The client can draw extra presentation-only copies of non-player, not-leashed
+entities at nearby whole-tile offsets. These copies share the same real client
+entity id and are culled by entity view distance, alias ring limit, frustum, and
+compiled-section visibility. Alias-aware picking returns the canonical entity.
+
+See [Client](client.md) for render toggles, snap-on-rebase behavior, and Iris
+curvature interaction.
+
+## Diagnostics
+
+`/globeworld debug entity <target>` reports an entity's raw/canonical position,
+canonicalization policy, root/passenger state, and mob target alias/pathing
+distances when available.
+
+`/globeworld debug entities` counts loaded entities that should be
+continuously canonicalized but currently sit outside canonical X/Z.
 
 ## Key Files
 
-- `mod-fabric/src/main/java/globe/world/util/EntityPacketUtil.java`
-- `mod-fabric/src/main/java/globe/world/util/EntityCanonicalizer.java`
-- `mod-fabric/src/main/java/globe/world/util/AiAliasUtil.java`
-- `mod-fabric/src/main/java/globe/world/util/MobNavigationAliasUtil.java`
-- `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
-- `mod-fabric/src/main/java/globe/world/util/GlobeEntityAliasing.java`
-- `mod-fabric/src/main/java/globe/world/util/GlobeCurvedRaycast.java`
-- `mod-fabric/src/main/java/globe/world/util/PlayerCanonicalizer.java`
-- `mod-fabric/src/main/java/globe/world/GlobeDebugCommands.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelEntityMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelEntityTickMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/EntityPassengerPositionMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/EntityTeleportCanonicalizationMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/PlayerItemPickupMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/PlayerListCanonicalPositionMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ServerPlayerCanonicalPositionMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ServerEntityMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapTrackedEntityMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapPlayerProviderMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/MobDespawnDistanceMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/SensingMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ServerEntityGetterMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/TargetGoalMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/PathNavigationMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/GroundPathNavigationMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/FlyingPathNavigationMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/MeleeAttackGoalMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/RangedAttackGoalMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/RangedBowAttackGoalMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/RangedCrossbowAttackGoalMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/LookAtPlayerGoalMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/MoveTowardsTargetGoalMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/LookControlMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/MobLookMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/MonsterLocalDaylightMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/PhantomSpawnerLocalDaylightMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/MobLocalDaylightMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/PatrolSpawnerLocalDaylightMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ChunkStatusTasksMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/NearestLivingEntitySensorMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/TargetingConditionsMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/PlayerInteractionRangeMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeVisualAliasUtil.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/LevelRendererMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/ClientPacketListenerMixin.java`
+- Core storage and packet virtualization:
+  `EntityCanonicalizer`, `EntityPacketUtil`, `PlayerCanonicalizer`,
+  `ServerLevelEntityMixin`, `ServerLevelEntityTickMixin`,
+  `EntityTeleportCanonicalizationMixin`, `EntityPassengerPositionMixin`,
+  `ServerEntityMixin`, `ChunkMapTrackedEntityMixin`,
+  `ServerGamePacketListenerImplMixin`.
+- Tracking, ticking, spawning, and despawn:
+  `ChunkMapPlayerProviderMixin`, `ChunkMapSpawningMixin`,
+  `NaturalSpawnerMixin`, `ChunkStatusTasksMixin`,
+  `MobDespawnDistanceMixin`.
+- AI and pathing:
+  `AiAliasUtil`, `MobNavigationAliasUtil`, `TargetingConditionsMixin`,
+  `ServerEntityGetterMixin`, `NearestLivingEntitySensorMixin`, `SensingMixin`,
+  `TargetGoalMixin`, `PathNavigationMixin`, `GroundPathNavigationMixin`,
+  `FlyingPathNavigationMixin`, `LookControlMixin`, `MobLookMixin`,
+  `MeleeAttackGoalMixin`, `RangedAttackGoalMixin`,
+  `RangedBowAttackGoalMixin`, `RangedCrossbowAttackGoalMixin`,
+  `LookAtPlayerGoalMixin`, `MoveTowardsTargetGoalMixin`.
+- Player interaction and presentation:
+  `PlayerInteractionRangeMixin`, `PlayerItemPickupMixin`,
+  `GlobeEntityAliasing`, `GlobeEntityAliasMode`, `GlobeVisualAliasUtil`,
+  `LevelRendererMixin`, `ClientPacketListenerMixin`,
+  `GlobeCurvedRaycast`.
+- Local day/night entity hooks:
+  `MonsterLocalDaylightMixin`, `PhantomSpawnerLocalDaylightMixin`,
+  `MobLocalDaylightMixin`, `PatrolSpawnerLocalDaylightMixin`.
+- Diagnostics:
+  `GlobeDebugCommands`, `GlobeEntityAliasDiagnostics`.
 
 ## Related Vanilla Mechanics
 
-- [Vanilla mobs and entities](../../vanilla-mechanics/mobs-and-entities.md)
-- [Vanilla chunk loading](../../vanilla-mechanics/chunk-loading.md)
+- [Vanilla mobs and entities](../vanilla-mechanics/mobs-and-entities.md)
+- [Vanilla chunk loading](../vanilla-mechanics/chunk-loading.md)
 
 ## Open Audits
 
-- Audit `Mob.checkDespawn` nearest-player selection in multiplayer alias
-  layouts; despawn distance itself is wrapped.
-- Manually validate canonical entity ticking from alias simulation chunks under
-  heavy death/despawn cases.
-- Full toroidal `PathFinder`/node-evaluator behavior remains deferred; current
-  mob path requests target the nearest alias but do not make every path search
-  neighbor relation wrap.
+- Stress-test canonical entity ticking from alias simulation chunks under heavy
+  death/despawn cases.
+- Full toroidal pathfinding remains deferred; current path requests target
+  useful aliases but vanilla node search does not wrap every neighbor relation.
 - Projectile physics across tile seams remain separate from ranged mob target
   selection and facing.
-- Visual entity aliases currently skip players and leashed entities; player
-  passenger/vehicle stacks still need a dedicated multiplayer audit.
-- Visual alias nameplates, shadows, and light sampling are first-pass behavior;
-  verify them in tiny tiles before broadening entity-type support.
+- Visual aliases currently skip players and leashed entities; player
+  passenger/vehicle stacks need dedicated multiplayer testing.

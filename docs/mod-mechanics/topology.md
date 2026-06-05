@@ -95,10 +95,10 @@ Overworld period supports it exactly.
 
 ## Related Vanilla Mechanics
 
-- [Vanilla chunk loading](../../vanilla-mechanics/chunk-loading.md)
-- [Vanilla block updates](../../vanilla-mechanics/block-updates.md)
-- [Vanilla mobs and entities](../../vanilla-mechanics/mobs-and-entities.md)
-- [Vanilla world generation](../../vanilla-mechanics/world-generation.md)
+- [Vanilla chunk loading](../vanilla-mechanics/chunk-loading.md)
+- [Vanilla block updates](../vanilla-mechanics/block-updates.md)
+- [Vanilla mobs and entities](../vanilla-mechanics/mobs-and-entities.md)
+- [Vanilla world generation](../vanilla-mechanics/world-generation.md)
 
 ## Open Audits
 

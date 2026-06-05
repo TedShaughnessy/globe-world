@@ -92,11 +92,11 @@ outside the canonical tile.
 
 ## Related Vanilla Mechanics
 
-- [Vanilla block updates](../../vanilla-mechanics/block-updates.md)
-- [Vanilla scheduled ticks](../../vanilla-mechanics/scheduled-ticks.md)
-- [Vanilla random ticks](../../vanilla-mechanics/random-ticks.md)
-- [Vanilla fluids](../../vanilla-mechanics/fluids.md)
-- [Vanilla block entities](../../vanilla-mechanics/block-entities.md)
+- [Vanilla block updates](../vanilla-mechanics/block-updates.md)
+- [Vanilla scheduled ticks](../vanilla-mechanics/scheduled-ticks.md)
+- [Vanilla random ticks](../vanilla-mechanics/random-ticks.md)
+- [Vanilla fluids](../vanilla-mechanics/fluids.md)
+- [Vanilla block entities](../vanilla-mechanics/block-entities.md)
 
 ## Open Audits
 

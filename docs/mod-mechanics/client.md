@@ -2,215 +2,124 @@
 
 ## What
 
-The client sees raw alias chunks as normal chunks. It does not own canonical
-world authority; the server sends ordinary-looking packets at the alias
-coordinates the player is tracking.
+The client renders aliases as ordinary Minecraft chunks and entities. Globe
+World keeps the client cache vanilla-shaped: each visible alias has its own raw
+client coordinate, while canonical ownership stays on the server.
 
-Client visuals can add presentation-only effects, such as terrain curvature,
-without changing canonical server state.
+Client-only presentation layers add curvature, local sky behavior, visual entity
+aliases, and diagnostics. Interaction packets still target canonical server
+state.
 
 ## Why
 
-Minecraft's client chunk cache, renderer, and networking are position-keyed. The
-least invasive way to render multiple aliases is to keep packets in vanilla
-shape and change their coordinates before the client receives them.
+Minecraft's client world, renderer, packet handlers, and chunk cache are keyed
+by raw position. Relabeling server packets lets multiple aliases coexist without
+teaching the client cache about canonical chunks.
 
-## Implementation
+## Packet And Cache Model
 
-Full chunk packets are sourced from canonical chunk data and relabeled to the
-alias chunk position. Block, section, block-entity, incremental light, and
-entity packets are copied or virtualized per viewer. World-event packets such as
-sounds, particles, level events, block events, block destruction progress, and
-explosion centers are also copied per viewer so their visible X/Z matches the
-nearest loaded alias. Biome resend packets are copied to loaded alias chunk
-positions. Entity-adjacent damage, vehicle, and minecart packets with absolute
-positions are copied to the receiving viewer's nearest alias. Direct sign-editor
-and look-at packets are also copied so the client opens or aims at the visible
-alias target; the client's sign text update packet is canonicalized on the way
-back to the server so alias sign edits save to the canonical `SignBlockEntity`.
-When the server decides whether the player is editing the front or back text, it
-uses the sign's nearest virtual alias so the opened side matches the visible
-side the player clicked.
-Locator-bar waypoint connections use wrapped distance, visibility,
-and azimuth direction; block/chunk waypoint packets carry alias positions while
-azimuth waypoints remain angle-based. Full chunk light data and later
-incremental light updates both arrive at the alias chunk coordinates the client
-has loaded.
+Full chunk packets are sourced from canonical chunks and relabeled to the alias
+chunk position before the client sees them. Later block, section, block-entity,
+biome, light, world-event, waypoint, sign-editor, look-at, map, and entity
+packets are copied or virtualized per viewer so their X/Z matches the visible
+alias.
 
-`ClientboundPlayerPositionPacket` is not broadly virtualized. Vanilla uses it as
-part of player teleport acknowledgement state, so Globe canonicalizes login,
-respawn, and bed wake-up before vanilla sends the packet, while normal
-in-session teleports remain in the player's current coordinate space.
+`ClientboundPlayerPositionPacket` is not broadly virtualized because vanilla
+uses it for teleport acknowledgement state. Globe World instead canonicalizes
+players at login, respawn, and bed wake-up while leaving normal in-session
+movement in the player's current coordinate frame.
 
-Spawn, lodestone, and recovery compass needles resolve their target block
-through the nearest virtual alias in tiled dimensions. They point across the
-shortest wrapped X/Z path to world spawn, the bound lodestone, or the last death
-location instead of always aiming at the raw stored `GlobalPos`.
+The retired client canonical chunk cache proposal is intentionally not part of
+the implementation. Alias warm-starting, cache dedupe, and client-side canonical
+ownership remain out of scope; the server packet stream is the authority.
 
-The curvature visual pass rewrites relevant world vertex shaders at resource
-load time. Overworld and Nether curvature are saved separately in
-`TilingSettings`, exposed through the world creation and pause/options UI, and
-can be disabled with `0%`. When Distant Horizons is loaded on Fabric, the
-Overworld curvature control shows a small note with the DH Earth curvature value
-that corresponds to Globe World's `100%` / `Realistic` curvature for the
-selected Overworld tile size.
-A minimal Iris shader-pack version of the same curvature helper lives in
-`shaderpacks/globe-world-curvature/`; when Iris is present, an optional
-ProgramSource mixin bakes Globe World's current curvature values into that
-pack's placeholders as Iris loads the shader sources. The minimal pack supplies
-explicit textured entity, hand, and textured fallback passes so mobs, players,
-held items, and omitted textured geometry keep their normal textures while using
-the same curvature transform as terrain, separate unlit glowing-eye and
-armor-glint passes for alpha-cutout/overlay layers, fog blending from the
-curved vertex distances, a cloud fragment program that preserves incoming
-vanilla cloud tint but falls back to Iris sky/fog tint if the supplied color is
-black, and sky programs that preserve translucent sun/moon textures while
-blending the basic sky horizon toward vanilla fog color instead of falling back
-to curved world passes. The generic shader-pack contract is documented in
-`docs/mod-compatibility/iris-shader-packs.md`.
-`Options.getEffectiveRenderDistance()` is capped after vanilla applies the
-server-advertised view-distance limit. Tiled dimensions first apply the
-curvature horizon cap, then small tiles below `32` chunks at `50%` or higher
-curvature also cap effective render distance to at most one tile width, with a
-minimum of `2` chunks. This changes only the client value used for rendering;
-the saved render-distance option is not rewritten.
-Dropped item entities render through vanilla's item shader, which is also used
-for GUI item atlases, so their item pose receives a client-only curvature
-translation instead of globally curving `item.vsh`.
-Block, entity, and item POV picking currently use the server/world curvature
-setting and follow the same visual curve by tracing short vanilla block-clip
-segments through the inverse rendered curve. The returned hit result still
-contains the real block or entity target, so interaction packets and server-side
-item validation continue to use normal world coordinates while targeting the
-visually selected block, entity, or fluid. A future client-advertised curvature
-option is tracked in `docs/plans/client-advertised-curvature-interactions.md`.
-Entity physics and collision boxes remain uncurved; the curved entity pick only
-aligns client targeting with the rendered entity.
-When tiling is enabled, non-player, not-leashed entities can receive extra
-client-only render states at neighboring whole-tile offsets. Non-player mounted
-stacks use the root vehicle's alias offsets for every entity in the stack, so a
-mob riding a boat appears with the boat in each visual copy. The aliases use the
-same real client entity and are culled by vanilla-style render distance, the
-configured camera tile-ring limit, the camera frustum, and compiled-section
-visibility. The default ring limit is `1`, meaning only the camera tile and the
-eight neighboring tile copies can receive visual aliases, and distance culling
-still applies inside that ring. `AUTO` mode skips alias enumeration when the
-tile is larger than the stack's effective render radius; `FORCE_DEBUG` keeps
-enumeration active for diagnostics, and `OFF` disables both alias rendering and
-alias picking. Alias picking tests shifted entity boxes and returns the
-canonical entity, so server interactions still use the one real entity id.
-Tile-sized entity position rebases from server packets are snapped on the client
-to avoid interpolation slides between aliases, including for non-player mounted
-stacks. Passenger old-position state is refreshed when a non-player vehicle
-stack snaps so multiple riders stay visually attached to the snapped vehicle.
-Vanilla line rendering is also curved so selected-block outlines follow the
-visually bent block geometry. The boat water-mask pass is curved too, keeping
-the boat's water occlusion patch aligned with the rendered boat and curved
-terrain/cloud presentation.
-Cloud vertices use the same shader curvature transform as terrain so vanilla's
-flat cloud layer bends with the world presentation. The minimal Iris pack does
-not own cloud distance or alpha fading; it keeps the incoming cloud fragment
-color unless Iris/Sodium supplies a black tint, in which case the pack derives a
-simple fallback from the vanilla sky and horizon fog colors.
-For small tiles, cloud texture sampling scales the camera X/Z contribution so
-player movement produces stronger cloud parallax. The vanilla time drift and
-cloud height are unchanged.
-The sky renderer applies a matching camera-relative horizon offset to the sky
-disc, lower dark disc, sunrise/sunset fan, sun, and moon. The offset is derived
-from the terrain curvature radius and the camera's height above the dimension
-horizon, so the sky horizon moves down as the curved terrain horizon falls
-away. Sun and moon quads are rendered on a larger effective sky sphere and
-scaled up with it, which keeps noon and midnight high while still letting
-sunrise, sunset, moonrise, and moonset track the lowered visual horizon. Stars
-keep their vanilla/local-time dome.
+## Curvature And Picking
 
-Local solar-time day/night is implemented for client visuals under
-`DayNightCycleMode.SCROLLING`. The world-creation and pause/options UI can
-select it and set a saved day-length multiplier. `CoordUtil` exposes shared
-longitude-based local solar time helpers, and the client replaces the Overworld
-visual day timeline with camera-position-aware environment attribute layers.
-Those layers are installed for Globe worlds and choose vanilla or local sampling
-from the current day-cycle mode, so pause/options mode changes take effect
-without reloading the save.
-Sky color, sun/moon/star angles, star brightness, sunrise/sunset color, and
-lightmap sky brightness use local canonical X while weather layers still run
-afterward. The day-length multiplier changes the underlying Overworld clock
-rate, so it affects both vanilla and scrolling day/night modes. The core server
-gameplay predicates for sleeping, monster spawning brightness, and undead
-burning also use local solar time. Other global time predicates are documented
-as scrolling day/night boundaries.
+`GlobeCurvatureShader` rewrites relevant vanilla world vertex shaders at
+resource load time. Overworld and Nether curvature are saved in
+`TilingSettings`, exposed through world creation and pause/options UI, and can
+be disabled with `0%`.
 
-Client diagnostics remain targeted at alias loading, tracking, tile borders,
-and settings state. The client has a dedicated Globe World debug overlay toggled
-with `F3+Y`; it draws separate wrapped/canonical and absolute/alias columns
-without adding Globe World lines to vanilla F3. The wrapped/canonical column
-shows local solar time plus the active day-cycle mode and day-length multiplier.
-Tile-border rendering remains available with `F3+Shift+Y`. Entity visual alias
-mode cycles with `F3+Ctrl+Y`, the alias ring limit cycles with
-`F3+Ctrl+Shift+Y`, and the debug overlay shows the current mode, ring limit,
-and per-frame alias submission, cull, and automatic-skip counts.
+Block, entity, and item POV picking follow the rendered curve through
+`GlobeCurvedRaycast`. Client targeting and server item validation use the same
+world/dimension curvature setting, so buckets, boats, fluids, signs, entities,
+and block interactions resolve to the visually selected target while vanilla
+reach, permissions, and final state checks remain authoritative. Entity physics
+and collision boxes are not curved; only picking and presentation are.
+
+Curvature also reaches selected-block outlines, item entities, boat water masks,
+clouds, and the sky horizon. The sky disc, sun, moon, sunrise/sunset fan, and
+lower dark disc receive a camera-relative horizon offset so the sky better
+matches curved terrain.
+
+## Shader Packs
+
+Sodium/Iris shader packs bypass vanilla shader rewriting, so Globe World ships
+an Iris bridge and two shader-pack assets:
+
+- `shaderpacks/globe-world-curvature/`: minimal reference pack that applies
+  Globe curvature and fog behavior.
+- `shaderpacks/makeup-ultra-fast-globe-world/`: pinned MakeUp Ultra Fast
+  upstream metadata plus a small Globe curvature patch stack.
+
+`IrisProgramSourceMixin` bakes Globe World's current curvature constants into
+shader sources containing the documented placeholders. `GlobeIrisShaderBridge`
+asks Iris to reload shaders when Globe curvature settings change. The detailed
+shader-pack contract lives in
+[Iris Shader Packs](../mod-compatibility/iris-shader-packs.md).
+
+## Visual Entity Aliases
+
+Non-player, not-leashed entities can render extra client-only copies at nearby
+whole-tile offsets. Non-player mounted stacks share the root vehicle's offsets
+so passengers and vehicles stay together in every visual copy.
+
+The aliases use the same real client entity id and are culled by vanilla entity
+view distance, the configured camera tile-ring limit, frustum checks, and
+compiled-section visibility. Alias-aware picking tests shifted entity boxes but
+returns the canonical entity, so interactions still target the real server
+entity. Tile-sized rebases from server packets snap instead of interpolating
+across the tile.
+
+## Local Sky And Diagnostics
+
+Scrolling day/night mode installs local environment-attribute layers for sky
+color, sun/moon/star angles, star brightness, sunrise/sunset color, and lightmap
+sky brightness. See [Scrolling Day/Night](scrolling-day-night.md) and
+[Local Solar Time](local-solar-time.md).
+
+Client diagnostics are intentionally targeted:
+
+- `F3+Y`: Globe debug overlay.
+- `F3+Shift+Y`: tile-border renderer.
+- `F3+Ctrl+Y`: cycle entity visual alias mode.
+- `F3+Ctrl+Shift+Y`: cycle visual alias ring limit.
 
 ## Key Files
 
-- `mod-fabric/src/main/java/globe/world/mixin/ClientboundLevelChunkWithLightMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ClientboundLightUpdatePacketAccessor.java`
-- `mod-fabric/src/main/java/globe/world/util/BlockPacketUtil.java`
-- `mod-fabric/src/main/java/globe/world/util/ChunkPacketUtil.java`
-- `mod-fabric/src/main/java/globe/world/util/WorldEventPacketUtil.java`
-- `mod-fabric/src/main/java/globe/world/util/EntityPacketUtil.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ClientboundPlayerLookAtPacketAccessor.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapBiomeResendMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ServerLevelWorldEventMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ServerPlayerInteractionPacketMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/LivingEntityWaypointMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/WaypointBlockConnectionMixin.java`
-- `mod-fabric/src/main/java/globe/world/mixin/WaypointChunkConnectionMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/CompassAngleStateMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeCurvatureShader.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/IrisProgramSourceMixin.java`
-- `mod-fabric/src/main/java/globe/world/util/GlobeCurvature.java`
-- `mod-fabric/src/main/java/globe/world/util/GlobeDistanceCaps.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/OptionsMixin.java`
-- `mod-fabric/src/main/java/globe/world/util/GlobeCurvedRaycast.java`
-- `mod-fabric/src/main/java/globe/world/util/GlobeEntityAliasing.java`
-- `mod-fabric/src/main/java/globe/world/util/GlobeEntityAliasMode.java`
-- `mod-fabric/src/main/java/globe/world/mixin/ItemMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeSkyHorizon.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeCurvatureSlider.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeWorldSettingsControls.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeWorldSettingsScreen.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeClientTilingSettings.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/CloudRendererMixin.java`
-- `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
-- `mod-fabric/src/main/java/globe/world/util/GlobeDayLength.java`
-- `mod-fabric/src/main/java/globe/world/config/DayNightCycleMode.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeScrollingSky.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/EnvironmentAttributeSystemBuilderMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeTileBorderRenderer.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeDebugHud.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeDebugState.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeEntityAliasDiagnostics.java`
-- `mod-fabric/src/client/java/globe/world/client/GlobeVisualAliasUtil.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/GuiMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/ItemEntityRendererMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/KeyboardHandlerMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/LevelRendererMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/ClientPacketListenerMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/ShaderManagerMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/LocalPlayerMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/SkyRendererMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/CreateWorldScreenMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/OptionsScreenMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/WorldOptionsScreenMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/SectionOcclusionGraphMixin.java`
-- `mod-fabric/src/client/java/globe/world/client/mixin/FrustumMixin.java`
-
-## Related Docs
-
-- [Client Canonical Chunk Cache](../plans/client-canonical-chunk-cache.md)
-- [Scrolling Day/Night](scrolling-day-night.md)
-- [Local Solar Time](local-solar-time.md)
+- Packet virtualization:
+  `BlockPacketUtil`, `ChunkPacketUtil`, `WorldEventPacketUtil`,
+  `EntityPacketUtil`, `WaypointPacketUtil`,
+  `ClientboundLevelChunkWithLightMixin`, `ChunkMapBiomeResendMixin`,
+  `PlayerListBroadcastMixin`, `ServerLevelWorldEventMixin`,
+  `ServerPlayerInteractionPacketMixin`.
+- Curvature and picking:
+  `GlobeCurvature`, `GlobeCurvatureShader`, `GlobeCurvedRaycast`,
+  `GlobeWorldSettingsControls`, `ShaderManagerMixin`, `LocalPlayerMixin`,
+  `ItemMixin`, `OptionsMixin`, `FrustumMixin`, `CloudRendererMixin`,
+  `SkyRendererMixin`, `ItemEntityRendererMixin`.
+- Iris and shader packs:
+  `GlobeIrisShaderBridge`, `IrisProgramSourceMixin`,
+  `globe-world.iris.mixins.json`, `shaderpacks/globe-world-curvature/`,
+  `shaderpacks/makeup-ultra-fast-globe-world/`.
+- Visual entity aliases:
+  `GlobeEntityAliasing`, `GlobeEntityAliasMode`, `GlobeVisualAliasUtil`,
+  `LevelRendererMixin`, `ClientPacketListenerMixin`,
+  `GlobeEntityAliasDiagnostics`.
+- Diagnostics and settings:
+  `GlobeDebugHud`, `GlobeDebugState`, `GlobeTileBorderRenderer`,
+  `KeyboardHandlerMixin`, `GlobeClientTilingSettings`,
+  `GlobeWorldSettingsScreen`.
 
 ## Related Vanilla Mechanics
 
@@ -221,8 +130,7 @@ and per-frame alias submission, cull, and automatic-skip counts.
 
 ## Open Audits
 
-- Client-side canonical chunk cache is still planned, not authoritative.
-- Curvature horizon alignment now has a first-pass sky offset and curved cloud
-  shader. It still needs in-game tuning across sea level, mountains, tiny
-  tiles, fog, and large render distances.
-- Scrolling day/night weather interaction still needs manual verification.
+- Curvature horizon and cloud alignment need in-game tuning across sea level,
+  mountains, tiny tiles, fog, and large render distances.
+- Scrolling day/night weather, lightning, night vision, and gamma interaction
+  still need manual verification.

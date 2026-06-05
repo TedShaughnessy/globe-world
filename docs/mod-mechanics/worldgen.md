@@ -82,16 +82,10 @@ their tiling context into surrounding generation work.
 - `mod-fabric/src/main/java/globe/world/mixin/StructurePlacementMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/StructureStartMixin.java`
 
-## Related Plans
-
-- [Seamless Wrapping Plan](../../plans/seamless-wrapping-plan.md)
-- [Terrain Periodicity Investigation](../../plans/terrain-periodicity-investigation.md)
-- [Worldgen Spillover Lifecycle Plan](../../plans/worldgen-spillover-lifecycle-plan.md)
-
 ## Related Vanilla Mechanics
 
-- [Vanilla world generation](../../vanilla-mechanics/world-generation.md)
-- [Vanilla structure edge generation](../../vanilla-mechanics/structure-edge-generation.md)
+- [Vanilla world generation](../vanilla-mechanics/world-generation.md)
+- [Vanilla structure edge generation](../vanilla-mechanics/structure-edge-generation.md)
 
 ## Open Audits
 

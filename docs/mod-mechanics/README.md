@@ -34,7 +34,7 @@ World period:
 5. [Worldgen](worldgen.md): periodic terrain modes, feature spillover,
    structure edge handling, and generation risks.
 6. [Client](client.md): client-facing packet/render behavior, curvature,
-   diagnostics, and planned client cache work.
+   shader-pack compatibility, diagnostics, and explicit client-cache boundary.
 7. [Maps](maps.md): filled-map pixel updates and player marker aliasing.
 8. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
    saved day-length multiplier, and gameplay across the canonical tile.
@@ -46,25 +46,25 @@ World period:
 | Area | Status | Mechanic file |
 | --- | --- | --- |
 | Coordinate helpers | Done | [topology.md](topology.md) |
-| Dimension-specific tiling | Implemented, needs validation | [topology.md](topology.md) |
+| Dimension-specific tiling | Implemented | [topology.md](topology.md) |
 | Chunk lookup and packet relabeling | Done | [chunks.md](chunks.md) |
 | Canonical chunk lifetime | Done | [chunks.md](chunks.md) |
 | Multiple rendered aliases | Done | [chunks.md](chunks.md) |
-| Block edits and block/light packets | Done, needs light seam validation | [blocks-and-ticks.md](blocks-and-ticks.md) |
+| Block edits and block/light packets | Done | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Position-bearing packet audit | Done for Minecraft 26.1.2 | [client.md](client.md) |
 | Block entities | Mostly done | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Random ticks | Done | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Scheduled ticks | Done for gameplay path | [blocks-and-ticks.md](blocks-and-ticks.md) |
-| Entity storage and packets | Implemented, vehicle manual validation pending | [entities.md](entities.md) |
+| Entity storage and packets | Implemented | [entities.md](entities.md) |
 | Player lifecycle canonicalization | Done for login, wake-up, and respawn | [entities.md](entities.md) |
 | Entity tracking and spawning | Done for main paths | [entities.md](entities.md) |
-| Entity visual aliases | Implemented for non-player, not-leashed entities, including non-player mounted stacks; needs manual validation | [entities.md](entities.md) |
-| Mob despawn, sensing, pathfinding | Needs audit | [entities.md](entities.md) |
-| Periodic terrain/noise | In progress | [worldgen.md](worldgen.md) |
-| Structures and feature edge generation | Needs validation | [worldgen.md](worldgen.md) |
+| Entity visual aliases | Implemented for non-player, not-leashed entities, including non-player mounted stacks | [entities.md](entities.md) |
+| Mob despawn, sensing, pathfinding | Implemented with bounded pathfinding limitations | [entities.md](entities.md) |
+| Periodic terrain/noise | Implemented | [worldgen.md](worldgen.md) |
+| Structures and feature edge generation | Implemented with open audit boundaries | [worldgen.md](worldgen.md) |
 | Client chunk/world rendering | Implemented for server-relabeled aliases | [client.md](client.md) |
 | Filled maps | Implemented for player marker aliasing | [maps.md](maps.md) |
-| Curvature visuals | Implemented | [client.md](client.md) |
+| Curvature visuals and shader packs | Implemented | [client.md](client.md) |
 | Local solar time helper | Implemented | [local-solar-time.md](local-solar-time.md) |
 | Day-length multiplier | Implemented | [scrolling-day-night.md](scrolling-day-night.md) |
 | Scrolling day/night mode | Implemented | [scrolling-day-night.md](scrolling-day-night.md) |
@@ -74,15 +74,13 @@ World period:
 
 ## Current High-Risk Audits
 
-1. Mob despawn: audit nearest-player selection in multiplayer alias layouts;
-   despawn distance itself is wrapped.
-2. Entity ticking: manually stress-test canonical mobs when only an alias is in
+1. Entity ticking: manually stress-test canonical mobs when only an alias is in
    entity-ticking range, especially death and despawn cleanup.
-3. Cross-edge neighbor updates: redstone, pistons, observers, doors, and similar
+2. Cross-edge neighbor updates: redstone, pistons, observers, doors, and similar
    blocks need focused testing over tile boundaries.
-4. Structures and feature origins: alias starts are transient worldgen data and
+3. Structures and feature origins: alias starts are transient worldgen data and
    structure query/persistence paths still need audit.
-5. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
+4. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
    tiles need the right balance between seamlessness and vanilla-looking noise.
-6. Scrolling day/night weather interaction: manually verify weather, lightning,
+5. Scrolling day/night weather interaction: manually verify weather, lightning,
    night vision, and gamma with local sky/lightmap visuals.
