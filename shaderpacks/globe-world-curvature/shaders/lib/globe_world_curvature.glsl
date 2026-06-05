@@ -46,11 +46,3 @@ vec3 globeWorld_fogPosition(vec3 pos) {
 
     return vec3(pos.x * globeWorld_fogDistanceScale(), 0.0, pos.z * globeWorld_fogDistanceScale());
 }
-
-vec3 globeWorld_cloudFogPosition(vec3 pos) {
-    if (globeWorld_curvatureRadius() <= 0.0) {
-        return pos;
-    }
-
-    return vec3(pos.x, 0.0, pos.z);
-}

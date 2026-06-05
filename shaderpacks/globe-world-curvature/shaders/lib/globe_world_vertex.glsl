@@ -16,7 +16,6 @@ void main() {
     vec4 playerPos = gbufferModelViewInverse * viewPos;
 
 #ifdef GLOBE_WORLD_CLOUDS
-    vec3 fogPos = globeWorld_cloudFogPosition(playerPos.xyz);
     vec3 curvedPos = globeWorld_applyCloudCurvature(playerPos.xyz);
 #else
     vec3 fogPos = globeWorld_fogPosition(playerPos.xyz);
@@ -25,5 +24,8 @@ void main() {
 
     vec4 curvedViewPos = gbufferModelView * vec4(curvedPos, 1.0);
     gl_Position = gl_ProjectionMatrix * curvedViewPos;
+
+#ifndef GLOBE_WORLD_CLOUDS
     gl_FogFragCoord = length(fogPos);
+#endif
 }

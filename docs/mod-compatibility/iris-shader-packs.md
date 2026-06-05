@@ -30,6 +30,14 @@ Values currently exposed:
 - curvature drop clamp
 - fog distance scale
 
+The minimal Globe shader pack provides explicit terrain, block, water, cloud,
+line, entity, glowing-eye, and sky program files. Textured entity passes are
+included so mobs do not fall back to a flat-color basic pass, shared fragment
+helpers apply fog from the curved vertex path, the cloud fragment pass leaves
+vanilla cloud colors and alpha unchanged, and sky passes are explicit
+pass-through shaders that preserve translucent sky textures and horizon colors
+instead of inheriting the curved world fallback.
+
 When Globe curvature settings or the active dimension change,
 `GlobeIrisShaderBridge` reflectively asks Iris to reload shaders so the baked
 constants are refreshed. If Iris is absent, this bridge is inactive.

@@ -57,8 +57,14 @@ selected Overworld tile size.
 A minimal Iris shader-pack version of the same curvature helper lives in
 `shaderpacks/globe-world-curvature/`; when Iris is present, an optional
 ProgramSource mixin bakes Globe World's current curvature values into that
-pack's placeholders as Iris loads the shader sources. The generic shader-pack
-contract is documented in `docs/mod-compatibility/iris-shader-packs.md`.
+pack's placeholders as Iris loads the shader sources. The minimal pack supplies
+explicit textured entity passes so mobs keep their normal textures while using
+the same curvature transform as terrain, separate unlit glowing-eye passes for
+alpha-cutout eye layers, fog blending from the curved vertex distances, a
+pass-through cloud fragment program, and pass-through sky programs that
+preserve translucent sky textures and horizon colors instead of falling back to
+curved world passes. The generic shader-pack contract is documented in
+`docs/mod-compatibility/iris-shader-packs.md`.
 `Options.getEffectiveRenderDistance()` is capped after vanilla applies the
 server-advertised view-distance limit. Tiled dimensions first apply the
 curvature horizon cap, then small tiles below `32` chunks at `50%` or higher
@@ -99,9 +105,10 @@ visually bent block geometry. The boat water-mask pass is curved too, keeping
 the boat's water occlusion patch aligned with the rendered boat and curved
 terrain/cloud presentation.
 Cloud vertices use the same shader curvature transform as terrain so vanilla's
-flat cloud layer bends with the world presentation. Their alpha fade keeps a
-separate unscaled horizontal fog distance, which preserves the vanilla fade-out
-at the circular cloud mesh edge even when tiny-tile terrain fog is compressed.
+flat cloud layer bends with the world presentation. The minimal Iris pack does
+not own cloud distance or alpha fading; it leaves the cloud fragment color
+unchanged and relies on vanilla/Sodium cloud mesh generation for the client
+cloud range setting.
 For small tiles, cloud texture sampling scales the camera X/Z contribution so
 player movement produces stronger cloud parallax. The vanilla time drift and
 cloud height are unchanged.

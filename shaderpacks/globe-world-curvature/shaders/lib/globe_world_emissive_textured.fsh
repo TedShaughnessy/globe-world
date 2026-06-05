@@ -1,9 +1,7 @@
 uniform sampler2D gtexture;
-uniform sampler2D lightmap;
 
 varying vec4 globeWorld_color;
 varying vec2 globeWorld_texcoord;
-varying vec2 globeWorld_lmcoord;
 
 #include "/lib/globe_world_fog.glsl"
 
@@ -13,6 +11,5 @@ void main() {
         discard;
     }
 
-    vec3 light = texture2D(lightmap, globeWorld_lmcoord).rgb;
-    gl_FragData[0] = globeWorld_applyWorldFog(vec4(albedo.rgb * light, albedo.a));
+    gl_FragData[0] = globeWorld_applyWorldFog(albedo);
 }

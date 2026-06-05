@@ -14,7 +14,7 @@ public class IrisProgramSourceMixin {
             ordinal = 1,
             require = 0
     )
-    private String globeWorld$transformVertexSource(String source) {
+    private static String globeWorld$transformVertexSource(String source) {
         return GlobeCurvatureShader.transformIrisShaderPackSource(source);
     }
 
@@ -25,7 +25,7 @@ public class IrisProgramSourceMixin {
             ordinal = 2,
             require = 0
     )
-    private String globeWorld$transformGeometrySource(String source) {
+    private static String globeWorld$transformGeometrySource(String source) {
         return GlobeCurvatureShader.transformIrisShaderPackSource(source);
     }
 
@@ -36,7 +36,7 @@ public class IrisProgramSourceMixin {
             ordinal = 3,
             require = 0
     )
-    private String globeWorld$transformTessControlSource(String source) {
+    private static String globeWorld$transformTessControlSource(String source) {
         return GlobeCurvatureShader.transformIrisShaderPackSource(source);
     }
 
@@ -47,7 +47,7 @@ public class IrisProgramSourceMixin {
             ordinal = 4,
             require = 0
     )
-    private String globeWorld$transformTessEvalSource(String source) {
+    private static String globeWorld$transformTessEvalSource(String source) {
         return GlobeCurvatureShader.transformIrisShaderPackSource(source);
     }
 
@@ -58,7 +58,7 @@ public class IrisProgramSourceMixin {
             ordinal = 5,
             require = 0
     )
-    private String globeWorld$transformFragmentSource(String source) {
+    private static String globeWorld$transformFragmentSource(String source) {
         return GlobeCurvatureShader.transformIrisShaderPackSource(source);
     }
 }
