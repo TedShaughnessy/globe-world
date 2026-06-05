@@ -322,12 +322,13 @@ from upstream MakeUp changes.
 Current package outputs:
 
 ```text
-build/distributions/shaderpacks/globe-world-curvature.zip
-build/distributions/shaderpacks/makeup-ultra-fast-globe-world.zip
+build/distributions/shaderpacks/globe-world-curvature-mcMINECRAFT_VERSION-VERSION.zip
+build/distributions/shaderpacks/makeup-ultra-fast-globe-world-mcMINECRAFT_VERSION-VERSION.zip
 ```
 
 Future versioned releases should tag each artifact independently:
 
+- target Minecraft version.
 - Globe World Fabric mod version.
 - minimal Globe curvature shader-pack version.
 - MakeUp Ultra Fast Globe World shader-pack version.

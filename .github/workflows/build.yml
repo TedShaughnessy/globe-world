@@ -33,10 +33,33 @@ jobs:
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v6
 
+      - name: detect java version
+        id: java
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          java_version="$(
+            awk -F= '
+              $1 == "java_version" {
+                value = $0
+                sub(/^[^=]*=/, "", value)
+                gsub(/\r$/, "", value)
+                print value
+                exit
+              }
+            ' gradle.properties
+          )"
+          if [[ -z "$java_version" ]]; then
+            echo "::error::Missing java_version in gradle.properties"
+            exit 1
+          fi
+          echo "version=$java_version" >> "$GITHUB_OUTPUT"
+
       - name: setup jdk
         uses: actions/setup-java@v5
         with:
-          java-version: '25'
+          java-version: ${{ steps.java.outputs.version }}
           distribution: 'microsoft'
 
       - name: detect artifact versions
@@ -102,7 +125,7 @@ jobs:
 
             current="$(current_property "$property_name")"
             previous="$(previous_property "$property_name")"
-            if [[ "$EVENT_NAME" == "push" && "$current" != "$previous" ]]; then
+            if [[ "$EVENT_NAME" == "push" && ( "$current" != "$previous" || "$minecraft_changed" == "true" ) ]]; then
               changed=true
             fi
 
@@ -111,10 +134,18 @@ jobs:
               echo "${output_name}_changed=$changed"
             } >> "$GITHUB_OUTPUT"
 
-            echo "${property_name}: ${previous:-<none>} -> ${current} (artifact: ${changed})"
+            echo "${property_name}: ${previous:-<none>} -> ${current} (minecraft target changed: ${minecraft_changed}, artifact: ${changed})"
           }
 
+          current_minecraft_version="$(current_property minecraft_version)"
+          previous_minecraft_version="$(previous_property minecraft_version)"
+          minecraft_changed=false
+          if [[ "$EVENT_NAME" == "push" && "$current_minecraft_version" != "$previous_minecraft_version" ]]; then
+            minecraft_changed=true
+          fi
+
           echo "Comparing versions against ${base_ref:-<none>}."
+          echo "minecraft_version=$current_minecraft_version" >> "$GITHUB_OUTPUT"
           emit_artifact_version mod mod_version
           emit_artifact_version globe_world_curvature_shaderpack globe_world_curvature_shaderpack_version
           emit_artifact_version makeup_ultra_fast_globe_world_shaderpack makeup_ultra_fast_globe_world_shaderpack_version
@@ -141,26 +172,26 @@ jobs:
         if: github.event_name == 'push' && steps.versions.outputs.mod_changed == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: globe-world-mod-${{ steps.versions.outputs.mod_version }}
+          name: globe-world-mod-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.mod_version }}
           path: |
-            mod-fabric/build/libs/globe-world-${{ steps.versions.outputs.mod_version }}.jar
-            mod-fabric/build/libs/globe-world-${{ steps.versions.outputs.mod_version }}-sources.jar
+            mod-fabric/build/libs/globe-world-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.mod_version }}.jar
+            mod-fabric/build/libs/globe-world-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.mod_version }}-sources.jar
           if-no-files-found: error
 
       - name: upload Globe World curvature shaderpack artifact
         if: github.event_name == 'push' && steps.versions.outputs.globe_world_curvature_shaderpack_changed == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: globe-world-curvature-shaderpack-${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}
-          path: build/distributions/shaderpacks/globe-world-curvature-${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}.zip
+          name: globe-world-curvature-shaderpack-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}
+          path: build/distributions/shaderpacks/globe-world-curvature-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}.zip
           if-no-files-found: error
 
       - name: upload MakeUp Ultra Fast Globe World shaderpack artifact
         if: github.event_name == 'push' && steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_changed == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: makeup-ultra-fast-globe-world-shaderpack-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}
-          path: build/distributions/shaderpacks/makeup-ultra-fast-globe-world-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}.zip
+          name: makeup-ultra-fast-globe-world-shaderpack-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}
+          path: build/distributions/shaderpacks/makeup-ultra-fast-globe-world-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}.zip
           if-no-files-found: error
 
       - name: publish mod release
@@ -168,15 +199,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.versions.outputs.mod_version }}
+          MINECRAFT_VERSION: ${{ steps.versions.outputs.minecraft_version }}
         run: |
           set -euo pipefail
 
           gh release create "mod-v${VERSION}" \
-            "mod-fabric/build/libs/globe-world-${VERSION}.jar" \
-            "mod-fabric/build/libs/globe-world-${VERSION}-sources.jar" \
+            "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${VERSION}.jar" \
+            "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${VERSION}-sources.jar" \
             --target "$GITHUB_SHA" \
             --title "Globe World Mod v${VERSION}" \
-            --notes "Fabric mod build for Globe World v${VERSION}." \
+            --notes "Fabric mod build for Globe World v${VERSION}, targeting Minecraft ${MINECRAFT_VERSION}." \
             --prerelease
 
       - name: publish Globe World curvature shaderpack release
@@ -184,14 +216,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}
+          MINECRAFT_VERSION: ${{ steps.versions.outputs.minecraft_version }}
         run: |
           set -euo pipefail
 
           gh release create "globe-world-curvature-shaderpack-v${VERSION}" \
-            "build/distributions/shaderpacks/globe-world-curvature-${VERSION}.zip" \
+            "build/distributions/shaderpacks/globe-world-curvature-mc${MINECRAFT_VERSION}-${VERSION}.zip" \
             --target "$GITHUB_SHA" \
             --title "Globe World Curvature Shader Pack v${VERSION}" \
-            --notes "Minimal Iris shader pack for Globe World curvature v${VERSION}." \
+            --notes "Minimal Iris shader pack for Globe World curvature v${VERSION}, targeting Minecraft ${MINECRAFT_VERSION}." \
             --prerelease
 
       - name: publish MakeUp Ultra Fast Globe World shaderpack release
@@ -199,12 +232,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}
+          MINECRAFT_VERSION: ${{ steps.versions.outputs.minecraft_version }}
         run: |
           set -euo pipefail
 
           gh release create "makeup-ultra-fast-globe-world-shaderpack-v${VERSION}" \
-            "build/distributions/shaderpacks/makeup-ultra-fast-globe-world-${VERSION}.zip" \
+            "build/distributions/shaderpacks/makeup-ultra-fast-globe-world-mc${MINECRAFT_VERSION}-${VERSION}.zip" \
             --target "$GITHUB_SHA" \
             --title "MakeUp Ultra Fast Globe World Shader Pack v${VERSION}" \
-            --notes "MakeUp Ultra Fast shader pack patched for Globe World curvature v${VERSION}." \
+            --notes "MakeUp Ultra Fast shader pack patched for Globe World curvature v${VERSION}, targeting Minecraft ${MINECRAFT_VERSION}." \
             --prerelease
