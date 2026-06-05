@@ -12,6 +12,7 @@ def makeupPatchDir = layout.projectDirectory.dir("shaderpacks/makeup-ultra-fast-
 def devRunDir = layout.projectDirectory.dir("mod-fabric/run")
 def devModsDir = devRunDir.dir("mods")
 def devShaderpacksDir = devRunDir.dir("shaderpacks")
+def projectDirectoryPath = layout.projectDirectory.asFile.toPath()
 
 def readPropertiesFile = { fileRef ->
 	def properties = new Properties()
@@ -117,7 +118,7 @@ tasks.register("applyMakeupGlobePatches", Copy) {
 						"git",
 						"apply",
 						"--whitespace=nowarn",
-						"--directory=${project.layout.projectDirectory.asFile.toPath().relativize(patchedDir.get().asFile.toPath())}",
+						"--directory=${projectDirectoryPath.relativize(patchedDir.get().asFile.toPath())}",
 						patchFile.absolutePath
 				)
 			}
@@ -146,13 +147,13 @@ tasks.register("shaderpacks") {
 tasks.register("stageDevMod", Copy) {
 	group = "development"
 	description = "Copies the remapped Fabric mod jar into mod-fabric/run/mods for local testing."
-	dependsOn(":mod-fabric:remapJar")
+	dependsOn(":mod-fabric:build")
 
-	from(project(":mod-fabric").tasks.named("remapJar").flatMap { it.archiveFile })
+	from(project(":mod-fabric").layout.buildDirectory.file("libs/globe-world-${project.mod_version}.jar"))
 	into(devModsDir)
 
 	doFirst {
-		delete(fileTree(dir: devModsDir.get().asFile, include: "globe-world-*.jar"))
+		delete(fileTree(dir: devModsDir.asFile, include: "globe-world-*.jar"))
 	}
 }
 
@@ -168,7 +169,7 @@ tasks.register("stageDevShaderpacks", Copy) {
 
 	doFirst {
 		delete(fileTree(
-				dir: devShaderpacksDir.get().asFile,
+				dir: devShaderpacksDir.asFile,
 				include: [
 						"globe-world-curvature-*.zip",
 						"makeup-ultra-fast-globe-world-*.zip"
