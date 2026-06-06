@@ -31,6 +31,7 @@
 		"DualNoiseProviderMixin",
 		"EntityPassengerPositionMixin",
 		"EntityTeleportCanonicalizationMixin",
+		"EnderEyeItemMixin",
 		"EnvironmentAttributeSystemBuilderGameplayMixin",
 		"FlyingPathNavigationMixin",
 		"GroundPathNavigationMixin",

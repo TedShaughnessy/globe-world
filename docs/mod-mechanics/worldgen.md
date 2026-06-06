@@ -59,6 +59,35 @@ whole-tile chunk-box shift. Alias starts are treated as transient worldgen data.
 Alias biome decoration and reference generation are skipped without leaking
 their tiling context into surrounding generation work.
 
+End portal progression uses canonical stronghold ownership instead of alias
+structure lookup. In the Overworld, `EndPortalAvailability` inspects vanilla
+stronghold concentric-ring positions and treats the world as having a durable
+stronghold only when a raw ring candidate is already inside the canonical tile.
+Wrapped alias candidates are reported for diagnostics but do not count as owned
+world state. When tiling is enabled and no canonical stronghold candidate exists
+or structure generation is disabled, `EnderEyeItemMixin` replaces a thrown Eye of
+Ender with a fallback path: `EndPortalFallback` chooses and persists one
+canonical position centered on the throwing player, repairs a 5x5 End portal
+frame with a deterministic random subset of eyes already inserted, then spawns a
+normal Eye of Ender. The eye entity and its flight target stay in canonical
+server coordinates so entity storage canonicalization cannot desynchronize the
+projectile from its target; entity packets still render the eye through the
+nearest visual alias for the throwing player. The fallback path preserves
+vanilla item use, stat, sound, and advancement side effects.
+Once a fallback portal has been assigned, later Overworld Eye of Ender throws use
+that saved portal target before falling back to vanilla stronghold lookup, so
+players keep receiving directions to the portal they can actually complete.
+The frame block writes remain canonical, and the player completes the portal by
+filling the remaining eyes through vanilla `EnderEyeItem.useOn(...)` behavior.
+Repair passes preserve eyes inserted by players and do not remove an already
+formed End portal interior.
+
+`/globeworld debug end_portal` reports the active policy, stronghold ring
+candidate counts, wrapped alias counts, saved fallback frame position, saved eye
+mask, and last validation summary. `/globeworld debug end_portal validate`
+also checks canonical candidate starts and warns that validation may load or
+generate `STRUCTURE_STARTS` chunks.
+
 ## Key Files
 
 - `mod-fabric/src/main/java/globe/world/util/TerrainMode.java`
@@ -66,6 +95,9 @@ their tiling context into surrounding generation work.
 - `mod-fabric/src/main/java/globe/world/util/PeriodicPositionalRandomFactory.java`
 - `mod-fabric/src/main/java/globe/world/util/WorldGenSpillover.java`
 - `mod-fabric/src/main/java/globe/world/util/StructurePlacementShifts.java`
+- `mod-fabric/src/main/java/globe/world/util/EndPortalAvailability.java`
+- `mod-fabric/src/main/java/globe/world/util/EndPortalProgressionState.java`
+- `mod-fabric/src/main/java/globe/world/util/EndPortalFallback.java`
 - `mod-fabric/src/main/java/globe/world/mixin/DensityFunctionsNoiseMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/DensityFunctionsShiftMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/DensityFunctionsShiftAMixin.java`
@@ -81,6 +113,7 @@ their tiling context into surrounding generation work.
 - `mod-fabric/src/main/java/globe/world/mixin/StructureGenerationContextMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/StructurePlacementMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/StructureStartMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/EnderEyeItemMixin.java`
 
 ## Related Vanilla Mechanics
 

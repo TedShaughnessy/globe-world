@@ -1,7 +1,10 @@
 package globe.world;
 
+import globe.world.config.GlobeConfig;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
+import globe.world.util.EndPortalAvailability;
+import globe.world.util.EndPortalProgressionState;
 import globe.world.util.EntityCanonicalizer;
 import globe.world.util.AiAliasUtil;
 import globe.world.util.GlobeDistanceCaps;
@@ -39,7 +42,11 @@ public final class GlobeDebugCommands {
                                                         context.getSource(),
                                                         EntityArgument.getEntity(context, "target")))))
                                 .then(Commands.literal("entities")
-                                        .executes(context -> printEntitySummary(context.getSource()))))));
+                                        .executes(context -> printEntitySummary(context.getSource())))
+                                .then(Commands.literal("end_portal")
+                                        .executes(context -> printEndPortal(context.getSource(), false))
+                                        .then(Commands.literal("validate")
+                                                .executes(context -> printEndPortal(context.getSource(), true)))))));
     }
 
     private static int printPos(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
@@ -188,6 +195,56 @@ public final class GlobeDebugCommands {
         return nonCanonical;
     }
 
+    private static int printEndPortal(CommandSourceStack source, boolean validate) {
+        ServerLevel currentLevel = source.getLevel();
+        ServerLevel overworld = source.getServer().overworld();
+        EndPortalAvailability.Report report = EndPortalAvailability.debugReport(overworld, validate);
+        EndPortalProgressionState state = EndPortalProgressionState.get(overworld);
+        state.recordClassification(report, GlobeConfig.settingsVersion());
+        if (validate) {
+            state.setLastValidationSummary(report.validationSummary());
+        }
+
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Globe World End portal: current_dimension=%s evaluating=%s validate=%s",
+                currentLevel.dimension().identifier(),
+                overworld.dimension().identifier(),
+                yesNo(validate))), false);
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Tile=%d chunks / %d blocks enabled=%s generateStructures=%s",
+                report.tileSizeChunks(),
+                report.tileSizeBlocks(),
+                yesNo(report.tilingEnabled()),
+                yesNo(report.generateStructures()))), false);
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Policy=%s reason=%s",
+                report.status().name(),
+                report.reason())), false);
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Stronghold placements=%d raw_ring_candidates=%d canonical_owned=%d wrapped_aliases=%d",
+                report.strongholdPlacementCount(),
+                report.rawCandidateCount(),
+                report.canonicalCandidateCount(),
+                report.distinctWrappedAliasCount())), false);
+        BlockPos fallback = state.fallbackPortalPos();
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Fallback frame=%s eyes=%d mask=0x%03x saved_policy=%s saved_reason=%s saved_tile=%d settings_version=%d",
+                fallback == null ? "none" : formatBlock(fallback),
+                state.fallbackEyeMask() < 0 ? 0 : Integer.bitCount(state.fallbackEyeMask()),
+                state.fallbackEyeMask() < 0 ? 0 : state.fallbackEyeMask(),
+                emptyAsNone(state.lastClassification()),
+                emptyAsNone(state.lastReason()),
+                state.tileSizeChunks(),
+                state.settingsVersion())), false);
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Validation=%s",
+                validate ? report.validationSummary() : emptyAsNone(state.lastValidationSummary()))), false);
+        if (validate) {
+            source.sendSuccess(() -> Component.literal("Validation may load or generate STRUCTURE_STARTS chunks."), false);
+        }
+        return report.status().ordinal();
+    }
+
     private static boolean isCanonical(Entity entity) {
         return entity.getX() == CoordUtil.wrapBlock(entity.level(), entity.getX())
                 && entity.getZ() == CoordUtil.wrapBlock(entity.level(), entity.getZ());
@@ -206,6 +263,10 @@ public final class GlobeDebugCommands {
 
     private static String yesNo(boolean value) {
         return value ? "yes" : "no";
+    }
+
+    private static String emptyAsNone(String value) {
+        return value == null || value.isEmpty() ? "none" : value;
     }
 
     private static String tileSummary(DimensionTiling tiling) {
