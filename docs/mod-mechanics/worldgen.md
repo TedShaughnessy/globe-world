@@ -82,11 +82,11 @@ filling the remaining eyes through vanilla `EnderEyeItem.useOn(...)` behavior.
 Repair passes preserve eyes inserted by players and do not remove an already
 formed End portal interior.
 
-`/globeworld debug end_portal` reports the active policy, stronghold ring
-candidate counts, wrapped alias counts, saved fallback frame position, saved eye
-mask, and last validation summary. `/globeworld debug end_portal validate`
-also checks canonical candidate starts and warns that validation may load or
-generate `STRUCTURE_STARTS` chunks.
+`/globeworld end_portal` reports the active policy, stronghold ring candidate
+counts, wrapped alias counts, saved fallback frame position, saved eye mask, and
+last validation summary. `/globeworld end_portal validate` also checks
+canonical candidate starts and warns that validation may load or generate
+`STRUCTURE_STARTS` chunks.
 
 ## Key Files
 

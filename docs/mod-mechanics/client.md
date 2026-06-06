@@ -38,7 +38,9 @@ ownership remain out of scope; the server packet stream is the authority.
 `GlobeCurvatureShader` rewrites relevant vanilla world vertex shaders at
 resource load time. Overworld and Nether curvature are saved in
 `TilingSettings`, exposed through world creation and pause/options UI, and can
-be disabled with `0%`.
+be disabled with `0%`. `/globeworld config set curvature <0-100>` and
+`/globeworld config set nether_curvature <0-100>` update the saved curvature
+settings at runtime.
 
 Block, entity, and item POV picking follow the rendered curve through
 `GlobeCurvedRaycast`. Client targeting and server item validation use the same

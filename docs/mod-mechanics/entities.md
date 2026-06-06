@@ -83,12 +83,12 @@ curvature interaction.
 
 ## Diagnostics
 
-`/globeworld debug entity <target>` reports an entity's raw/canonical position,
+`/globeworld entity <target>` reports an entity's raw/canonical position,
 canonicalization policy, root/passenger state, and mob target alias/pathing
 distances when available.
 
-`/globeworld debug entities` counts loaded entities that should be
-continuously canonicalized but currently sit outside canonical X/Z.
+`/globeworld entities` counts loaded entities that should be continuously
+canonicalized but currently sit outside canonical X/Z.
 
 ## Key Files
 

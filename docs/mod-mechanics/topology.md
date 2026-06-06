@@ -91,7 +91,22 @@ Overworld period supports it exactly.
   vanilla's dimension scale, then wrap the target dimension before portal
   search/creation. This keeps different aliases of the same source portal from
   creating separate scaled target portals.
-- `/globeworld debug pos` reports the current dimension's effective tiling.
+- `/globeworld pos` reports the current dimension's effective tiling, current
+  alias, canonical position, longitude offset, and local solar day tick.
+- `/globeworld border_distance` reports distance from the executing player's
+  canonical position to each tile border.
+- `/globeworld teleport_canon` teleports the executing player to the canonical
+  X/Z equivalent of their current visual alias.
+- `/globeworld teleport_border [inset]` teleports the executing player near the
+  nearest canonical tile border for seam testing.
+- `/globeworld teleport_alias <tileX> <tileZ>` teleports the executing player to
+  a chosen whole-tile visual alias of their current canonical position.
+- `/globeworld config` reports saved tiling settings.
+
+Tile size, Overworld tiling mode, Nether tiling mode, and derived Nether scale
+are treated as permanent world-topology settings. They are visible through
+`/globeworld config`, but intentionally are not mutable through runtime
+commands.
 
 ## Related Vanilla Mechanics
 
