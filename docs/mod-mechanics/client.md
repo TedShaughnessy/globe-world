@@ -92,13 +92,22 @@ shader-pack contract lives in
 Non-player, not-leashed entities can render extra client-only copies at nearby
 whole-tile offsets. Non-player mounted stacks share the root vehicle's offsets
 so passengers and vehicles stay together in every visual copy.
+Standalone remote players can also render one ring of client-only copies around
+the camera for small tile worlds. The local camera player and mounted player
+stacks are skipped.
 
 The aliases use the same real client entity id and are culled by vanilla entity
-view distance, the configured camera tile-ring limit, frustum checks, and
-compiled-section visibility. Alias-aware picking tests shifted entity boxes but
-returns the canonical entity, so interactions still target the real server
-entity. Tile-sized rebases from server packets snap instead of interpolating
-across the tile.
+view distance, the configured camera tile-ring limit for non-player entities,
+the one-ring player limit, frustum checks, and compiled-section visibility.
+Alias-aware picking tests shifted entity boxes but returns the canonical entity,
+so interactions still target the real server entity. Tile-sized rebases from
+server packets snap instead of interpolating across the tile, including
+standalone remote-player rebases.
+
+Locator-bar player waypoints use the receiver-nearest alias. Block and chunk
+waypoint connections resend when the receiving player moves into a different
+nearest visual tile; azimuth waypoint connections compute their angle through
+the shortest wrapped path.
 
 ## Local Sky And Diagnostics
 

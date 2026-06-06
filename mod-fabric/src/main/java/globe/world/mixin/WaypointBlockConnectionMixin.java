@@ -14,7 +14,10 @@ import net.minecraft.world.waypoints.Waypoint;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.UUID;
 
@@ -28,6 +31,16 @@ public class WaypointBlockConnectionMixin {
     @Final
     private LivingEntity source;
 
+    @Shadow
+    @Final
+    private Waypoint.Icon icon;
+
+    @Shadow
+    private BlockPos lastPosition;
+
+    @Unique
+    private BlockPos globeWorld$lastVirtualBlockPos;
+
     @WrapOperation(
             method = "connect",
             at = @At(
@@ -40,7 +53,9 @@ public class WaypointBlockConnectionMixin {
             Waypoint.Icon icon,
             Vec3i position,
             Operation<ClientboundTrackedWaypointPacket> original) {
-        return original.call(identifier, icon, virtualBlockPos(position));
+        BlockPos virtualPos = virtualBlockPos(position);
+        this.globeWorld$lastVirtualBlockPos = virtualPos;
+        return original.call(identifier, icon, virtualPos);
     }
 
     @WrapOperation(
@@ -55,12 +70,33 @@ public class WaypointBlockConnectionMixin {
             Waypoint.Icon icon,
             Vec3i position,
             Operation<ClientboundTrackedWaypointPacket> original) {
-        return original.call(identifier, icon, virtualBlockPos(position));
+        BlockPos virtualPos = virtualBlockPos(position);
+        this.globeWorld$lastVirtualBlockPos = virtualPos;
+        return original.call(identifier, icon, virtualPos);
     }
 
     private BlockPos virtualBlockPos(Vec3i position) {
         BlockPos pos = new BlockPos(position.getX(), position.getY(), position.getZ());
         return WorldEventPacketUtil.virtualizeBlockPos(this.receiver.level(), pos, this.receiver);
+    }
+
+    @Inject(method = "update", at = @At("TAIL"))
+    private void updateWhenReceiverNearestAliasChanges(CallbackInfo ci) {
+        if (!DimensionTiling.forLevel(this.source.level()).enabled()) {
+            return;
+        }
+
+        BlockPos virtualPos = virtualBlockPos(this.lastPosition);
+        if (virtualPos.equals(this.globeWorld$lastVirtualBlockPos)) {
+            return;
+        }
+
+        this.receiver.connection.send(ClientboundTrackedWaypointPacket.updateWaypointPosition(
+                this.source.getUUID(),
+                this.icon,
+                virtualPos
+        ));
+        this.globeWorld$lastVirtualBlockPos = virtualPos;
     }
 
     @WrapOperation(

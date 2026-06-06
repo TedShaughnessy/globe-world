@@ -12,7 +12,10 @@ import net.minecraft.world.waypoints.Waypoint;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.UUID;
 
@@ -26,6 +29,16 @@ public class WaypointChunkConnectionMixin {
     @Final
     private LivingEntity source;
 
+    @Shadow
+    @Final
+    private Waypoint.Icon icon;
+
+    @Shadow
+    private ChunkPos lastPosition;
+
+    @Unique
+    private ChunkPos globeWorld$lastVirtualChunk;
+
     @WrapOperation(
             method = "connect",
             at = @At(
@@ -38,7 +51,9 @@ public class WaypointChunkConnectionMixin {
             Waypoint.Icon icon,
             ChunkPos chunk,
             Operation<ClientboundTrackedWaypointPacket> original) {
-        return original.call(identifier, icon, virtualChunk(chunk));
+        ChunkPos virtualChunk = virtualChunk(chunk);
+        this.globeWorld$lastVirtualChunk = virtualChunk;
+        return original.call(identifier, icon, virtualChunk);
     }
 
     @WrapOperation(
@@ -53,11 +68,32 @@ public class WaypointChunkConnectionMixin {
             Waypoint.Icon icon,
             ChunkPos chunk,
             Operation<ClientboundTrackedWaypointPacket> original) {
-        return original.call(identifier, icon, virtualChunk(chunk));
+        ChunkPos virtualChunk = virtualChunk(chunk);
+        this.globeWorld$lastVirtualChunk = virtualChunk;
+        return original.call(identifier, icon, virtualChunk);
     }
 
     private ChunkPos virtualChunk(ChunkPos chunk) {
         return WaypointPacketUtil.virtualChunk(chunk, this.receiver);
+    }
+
+    @Inject(method = "update", at = @At("TAIL"))
+    private void updateWhenReceiverNearestAliasChanges(CallbackInfo ci) {
+        if (!DimensionTiling.forLevel(this.source.level()).enabled()) {
+            return;
+        }
+
+        ChunkPos virtualChunk = virtualChunk(this.lastPosition);
+        if (virtualChunk.equals(this.globeWorld$lastVirtualChunk)) {
+            return;
+        }
+
+        this.receiver.connection.send(ClientboundTrackedWaypointPacket.updateWaypointChunk(
+                this.source.getUUID(),
+                this.icon,
+                virtualChunk
+        ));
+        this.globeWorld$lastVirtualChunk = virtualChunk;
     }
 
     @WrapOperation(

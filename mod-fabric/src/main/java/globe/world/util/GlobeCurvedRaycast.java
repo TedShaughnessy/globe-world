@@ -134,7 +134,7 @@ public final class GlobeCurvedRaycast {
                 nearestDistance = canonical.distance();
             }
 
-            for (GlobeEntityAliasing.AliasOffset offset : GlobeEntityAliasing.visualOffsets(entity, from)) {
+            for (GlobeEntityAliasing.AliasOffset offset : GlobeEntityAliasing.visualOffsets(entity, cameraEntity, from)) {
                 AABB aliasBox = offset.box().inflate(entity.getPickRadius());
                 if (!aliasBox.intersects(searchArea.inflate(1.0D))) {
                     continue;

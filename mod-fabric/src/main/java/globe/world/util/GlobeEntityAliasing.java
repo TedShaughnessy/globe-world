@@ -70,6 +70,20 @@ public final class GlobeEntityAliasing {
         return !(entity instanceof Leashable leashable) || leashable.getLeashHolder() == null;
     }
 
+    public static boolean canVisualAlias(Entity entity, Entity cameraEntity) {
+        if (entity instanceof Player) {
+            return canVisualAliasPlayer(entity, cameraEntity);
+        }
+        return canAlias(entity);
+    }
+
+    private static boolean canVisualAliasPlayer(Entity entity, Entity cameraEntity) {
+        if (cameraEntity == null || entity == cameraEntity) {
+            return false;
+        }
+        return entity.getRootVehicle() == entity && !entity.isVehicle();
+    }
+
     public static boolean hasPlayerInStack(Entity entity) {
         Entity root = entity.getRootVehicle();
         if (root instanceof Player) {
@@ -112,7 +126,33 @@ public final class GlobeEntityAliasing {
         if (!canAlias(entity)) {
             return List.of();
         }
+        return visualOffsets(entity, cameraPos, renderRadius, applyAutoGate, maxAliasRings);
+    }
 
+    public static List<AliasOffset> visualOffsets(Entity entity, Entity cameraEntity, Vec3 cameraPos) {
+        double renderRadius = visualAliasRenderRadius(entity);
+        return visualOffsets(entity, cameraEntity, cameraPos, renderRadius, true);
+    }
+
+    public static List<AliasOffset> visualOffsets(
+            Entity entity,
+            Entity cameraEntity,
+            Vec3 cameraPos,
+            double renderRadius,
+            boolean applyAutoGate) {
+        if (!canVisualAlias(entity, cameraEntity)) {
+            return List.of();
+        }
+        int ringLimit = entity instanceof Player ? 1 : maxAliasRings;
+        return visualOffsets(entity, cameraPos, renderRadius, applyAutoGate, ringLimit);
+    }
+
+    private static List<AliasOffset> visualOffsets(
+            Entity entity,
+            Vec3 cameraPos,
+            double renderRadius,
+            boolean applyAutoGate,
+            int ringLimit) {
         Level level = entity.level();
         DimensionTiling tiling = DimensionTiling.forLevel(level);
         if (mode == GlobeEntityAliasMode.OFF || !tiling.enabled()) {
@@ -136,15 +176,15 @@ public final class GlobeEntityAliasing {
         int maxOffsetX = maxOffset;
         int minOffsetZ = -maxOffset;
         int maxOffsetZ = maxOffset;
-        if (maxAliasRings != Integer.MAX_VALUE) {
+        if (ringLimit != Integer.MAX_VALUE) {
             int cameraTileX = tileAliasBlock(tiling, cameraPos.x);
             int cameraTileZ = tileAliasBlock(tiling, cameraPos.z);
             int entityTileX = tileAliasBlock(tiling, (sourceBox.minX + sourceBox.maxX) * 0.5D);
             int entityTileZ = tileAliasBlock(tiling, (sourceBox.minZ + sourceBox.maxZ) * 0.5D);
-            minOffsetX = Math.max(minOffsetX, cameraTileX - maxAliasRings - entityTileX);
-            maxOffsetX = Math.min(maxOffsetX, cameraTileX + maxAliasRings - entityTileX);
-            minOffsetZ = Math.max(minOffsetZ, cameraTileZ - maxAliasRings - entityTileZ);
-            maxOffsetZ = Math.min(maxOffsetZ, cameraTileZ + maxAliasRings - entityTileZ);
+            minOffsetX = Math.max(minOffsetX, cameraTileX - ringLimit - entityTileX);
+            maxOffsetX = Math.min(maxOffsetX, cameraTileX + ringLimit - entityTileX);
+            minOffsetZ = Math.max(minOffsetZ, cameraTileZ - ringLimit - entityTileZ);
+            maxOffsetZ = Math.min(maxOffsetZ, cameraTileZ + ringLimit - entityTileZ);
         }
 
         double renderRadiusSqr = renderRadius * renderRadius;
@@ -158,7 +198,7 @@ public final class GlobeEntityAliasing {
                 double dx = tileX * (double) tileWidth;
                 double dz = tileZ * (double) tileWidth;
                 AABB sourceAliasBox = sourceBox.move(dx, 0.0D, dz);
-                if (isWithinCameraTileRings(tiling, cameraPos, sourceAliasBox) && distanceToBoxSqr(cameraPos, sourceAliasBox) <= renderRadiusSqr) {
+                if (isWithinCameraTileRings(tiling, cameraPos, sourceAliasBox, ringLimit) && distanceToBoxSqr(cameraPos, sourceAliasBox) <= renderRadiusSqr) {
                     offsets.add(new AliasOffset(tileX, tileZ, dx, dz, entityBox.move(dx, 0.0D, dz)));
                 }
             }
@@ -214,8 +254,8 @@ public final class GlobeEntityAliasing {
         return 0.0D;
     }
 
-    private static boolean isWithinCameraTileRings(DimensionTiling tiling, Vec3 cameraPos, AABB aliasBox) {
-        if (maxAliasRings == Integer.MAX_VALUE) {
+    private static boolean isWithinCameraTileRings(DimensionTiling tiling, Vec3 cameraPos, AABB aliasBox, int ringLimit) {
+        if (ringLimit == Integer.MAX_VALUE) {
             return true;
         }
 
@@ -223,8 +263,8 @@ public final class GlobeEntityAliasing {
         int cameraTileZ = tileAliasBlock(tiling, cameraPos.z);
         int aliasTileX = tileAliasBlock(tiling, (aliasBox.minX + aliasBox.maxX) * 0.5D);
         int aliasTileZ = tileAliasBlock(tiling, (aliasBox.minZ + aliasBox.maxZ) * 0.5D);
-        return Math.abs(aliasTileX - cameraTileX) <= maxAliasRings
-                && Math.abs(aliasTileZ - cameraTileZ) <= maxAliasRings;
+        return Math.abs(aliasTileX - cameraTileX) <= ringLimit
+                && Math.abs(aliasTileZ - cameraTileZ) <= ringLimit;
     }
 
     private static int tileAliasBlock(DimensionTiling tiling, double coordinate) {

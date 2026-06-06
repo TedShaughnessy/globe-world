@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.InterpolationHandler;
 import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.Relative;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -57,7 +58,13 @@ public class ClientPacketListenerMixin {
 
     private boolean shouldSnapRebase(Entity entity, Vec3 position) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (entity == minecraft.player || GlobeEntityAliasing.hasPlayerInStack(entity)) {
+        if (entity == minecraft.player) {
+            return false;
+        }
+        if (entity instanceof Player && (entity.getRootVehicle() != entity || entity.isVehicle())) {
+            return false;
+        }
+        if (!(entity instanceof Player) && GlobeEntityAliasing.hasPlayerInStack(entity)) {
             return false;
         }
         return GlobeEntityAliasing.isWholeTileRebase(entity.level(), entity.position(), position);

@@ -34,7 +34,8 @@ vehicle correction, and minecart interpolation positions per viewer. Relative
 movement, velocity, rotations, knockback vectors, and minecart step movement
 stay relative. When an entity crosses the viewer-facing tile threshold, the
 server sends an absolute sync and the client snaps tile-sized rebases instead
-of interpolating across the tile.
+of interpolating across the tile. Standalone remote players use the same snap
+path for visual rebases; the local player and mounted player stacks are skipped.
 
 ## Tracking, Ticking, And Spawning
 
@@ -74,9 +75,11 @@ canonical entity or block. Curved client picking is documented in
 ## Visual Aliases
 
 The client can draw extra presentation-only copies of non-player, not-leashed
-entities at nearby whole-tile offsets. These copies share the same real client
-entity id and are culled by entity view distance, alias ring limit, frustum, and
-compiled-section visibility. Alias-aware picking returns the canonical entity.
+entities at nearby whole-tile offsets. Standalone remote players also draw
+presentation-only copies in the one-tile ring around the camera for small tile
+worlds. These copies share the same real client entity id and are culled by
+entity view distance, alias ring limit, frustum, and compiled-section
+visibility. Alias-aware picking returns the canonical entity.
 
 See [Client](client.md) for render toggles, snap-on-rebase behavior, and Iris
 curvature interaction.
@@ -114,7 +117,9 @@ canonicalized but currently sit outside canonical X/Z.
   `PlayerInteractionRangeMixin`, `PlayerItemPickupMixin`,
   `GlobeEntityAliasing`, `GlobeEntityAliasMode`, `GlobeVisualAliasUtil`,
   `LevelRendererMixin`, `ClientPacketListenerMixin`,
-  `GlobeCurvedRaycast`.
+  `GlobeCurvedRaycast`, `WaypointPacketUtil`,
+  `WaypointChunkConnectionMixin`, `WaypointBlockConnectionMixin`,
+  `WaypointAzimuthConnectionMixin`.
 - Local day/night entity hooks:
   `MonsterLocalDaylightMixin`, `PhantomSpawnerLocalDaylightMixin`,
   `MobLocalDaylightMixin`, `PatrolSpawnerLocalDaylightMixin`.
@@ -134,5 +139,5 @@ canonicalized but currently sit outside canonical X/Z.
   useful aliases but vanilla node search does not wrap every neighbor relation.
 - Projectile physics across tile seams remain separate from ranged mob target
   selection and facing.
-- Visual aliases currently skip players and leashed entities; player
-  passenger/vehicle stacks need dedicated multiplayer testing.
+- Visual aliases currently skip leashed entities and mounted player stacks;
+  player passenger/vehicle stacks need dedicated multiplayer testing.

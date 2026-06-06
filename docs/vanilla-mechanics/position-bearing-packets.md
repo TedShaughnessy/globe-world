@@ -52,7 +52,7 @@ movement, velocity, or client-local UI data rather than world coordinates.
 | `ClientboundPlayerLookAtPacket` | explicit/fallback X/Y/Z and optional entity target | `ServerPlayer.lookAt(...)`; `ClientPacketListener.handleLookAt(...)` | Covered while preserving entity-target metadata. |
 | `ClientboundPlayerPositionPacket` | local player `PositionMoveRotation` | `ServerGamePacketListenerImpl.teleport(...)`; `ClientPacketListener.handleMovePlayer(...)` | Intentionally not globally virtualized. This packet moves the receiving player and participates in teleport ack state. Existing Globe lifecycle hooks canonicalize login, respawn, and wake-up before vanilla sends it. |
 | `ClientboundSetDefaultSpawnPositionPacket` | `LevelData.RespawnData` with world spawn position | `PlayerList.sendLevelInfo(...)`, respawn path; `ClientPacketListener.handleSetSpawn(...)` | Intentionally canonical unless testing proves a visible client-side navigation leak. |
-| `ClientboundTrackedWaypointPacket` | waypoint position `Vec3i`, `ChunkPos`, azimuth, or empty id | `WaypointTransmitter` connection classes; `ClientPacketListener.handleWaypoint(...)` | Block/chunk positions are covered; azimuth angles use wrapped direction; empty waypoints are unchanged. |
+| `ClientboundTrackedWaypointPacket` | waypoint position `Vec3i`, `ChunkPos`, azimuth, or empty id | `WaypointTransmitter` connection classes; `ClientPacketListener.handleWaypoint(...)` | Block/chunk positions are covered and resent when the receiver's nearest alias changes; azimuth angles use wrapped direction; empty waypoints are unchanged. |
 | `ClientboundMapItemDataPacket` | map-local decoration bytes and color patch | `MapItemSavedData.getUpdatePacket(...)`; `ClientPacketListener.handleMapItemData(...)` | Covered upstream before packet construction for tracked player icons. |
 | `ClientboundSetChunkCacheCenterPacket` | chunk X/Z view center | `ChunkMap.applyChunkTrackingView(...)`; `ClientPacketListener.handleSetChunkCacheCenter(...)` | Player-view state, not canonical chunk data. Leave unchanged. |
 | `ClientboundBlockChangedAckPacket` | sequence ack | `ServerGamePacketListenerImpl` block prediction ack paths | No world position. |
@@ -126,6 +126,8 @@ Waypoints have three relevant forms:
 The locator-bar connection choice is distance-sensitive. For tiled dimensions,
 connection range, "really far" classification, and chunk visibility need wrapped
 logic before the packet is built. Once a block or chunk connection exists, the
-packet position should be sent in the receiver's nearest visible alias. Azimuth
-packets still carry an angle, but the angle should be computed through the
-shortest wrapped path.
+packet position should be sent in the receiver's nearest visible alias. Because
+the receiver can cross an alias threshold while the source remains in the same
+raw block or chunk, existing block/chunk connections also need to resend when
+the receiver-nearest alias changes. Azimuth packets still carry an angle, but
+the angle should be computed through the shortest wrapped path.

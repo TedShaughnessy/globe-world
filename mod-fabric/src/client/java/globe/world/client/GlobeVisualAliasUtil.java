@@ -17,6 +17,7 @@ public final class GlobeVisualAliasUtil {
 
     public static List<GlobeEntityAliasing.AliasOffset> renderOffsets(
             Entity entity,
+            Entity cameraEntity,
             Vec3 cameraPos,
             Frustum frustum,
             Predicate<BlockPos> compiledSectionVisible) {
@@ -26,7 +27,13 @@ public final class GlobeVisualAliasUtil {
             return List.of();
         }
 
-        List<GlobeEntityAliasing.AliasOffset> candidates = GlobeEntityAliasing.visualOffsets(entity, cameraPos, renderRadius, true);
+        List<GlobeEntityAliasing.AliasOffset> candidates = GlobeEntityAliasing.visualOffsets(
+                entity,
+                cameraEntity,
+                cameraPos,
+                renderRadius,
+                true
+        );
         if (candidates.isEmpty()) {
             return candidates;
         }

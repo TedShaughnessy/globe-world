@@ -58,7 +58,7 @@ World period:
 | Entity storage and packets | Implemented | [entities.md](entities.md) |
 | Player lifecycle canonicalization | Done for login, wake-up, and respawn | [entities.md](entities.md) |
 | Entity tracking and spawning | Done for main paths | [entities.md](entities.md) |
-| Entity visual aliases | Implemented for non-player, not-leashed entities, including non-player mounted stacks | [entities.md](entities.md) |
+| Entity visual aliases | Implemented for non-player, not-leashed entities and standalone remote players | [entities.md](entities.md) |
 | Mob despawn, sensing, pathfinding | Implemented with bounded pathfinding limitations | [entities.md](entities.md) |
 | Periodic terrain/noise | Implemented | [worldgen.md](worldgen.md) |
 | Structures and feature edge generation | Implemented with open audit boundaries | [worldgen.md](worldgen.md) |

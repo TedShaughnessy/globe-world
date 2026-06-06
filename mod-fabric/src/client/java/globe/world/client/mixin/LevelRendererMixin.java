@@ -56,7 +56,7 @@ public abstract class LevelRendererMixin {
 
         Profiler.get().push("globeEntityAliases");
         for (Entity entity : this.level.entitiesForRendering()) {
-            if (!GlobeEntityAliasing.canAlias(entity)) {
+            if (!GlobeEntityAliasing.canVisualAlias(entity, camera.entity())) {
                 continue;
             }
             if (entity == camera.entity() && (!camera.isDetached() || !(camera.entity() instanceof LivingEntity livingEntity) || !livingEntity.isSleeping())) {
@@ -65,6 +65,7 @@ public abstract class LevelRendererMixin {
 
             List<GlobeEntityAliasing.AliasOffset> offsets = GlobeVisualAliasUtil.renderOffsets(
                     entity,
+                    camera.entity(),
                     cameraPos,
                     frustum,
                     this::isSectionCompiledAndVisible
