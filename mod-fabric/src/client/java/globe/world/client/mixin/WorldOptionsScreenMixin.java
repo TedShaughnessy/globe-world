@@ -2,6 +2,7 @@ package globe.world.client.mixin;
 
 import globe.world.client.GlobeWorldSettingsScreen;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.gui.layouts.LayoutElement;
 import net.minecraft.client.gui.screens.Screen;
@@ -13,6 +14,10 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(WorldOptionsScreen.class)
 public class WorldOptionsScreenMixin {
+    private static final Component GLOBE_WORLD_SETTINGS_TOOLTIP = Component.literal(
+            "Open Globe World wrapping, curvature, Nether, and day/night settings."
+    );
+
     @Redirect(
             method = "init",
             at = @At(
@@ -26,7 +31,9 @@ public class WorldOptionsScreenMixin {
         helper.addChild(Button.builder(
                 Component.literal("Globe World"),
                 button -> net.minecraft.client.Minecraft.getInstance().setScreen(new GlobeWorldSettingsScreen((Screen) (Object) this))
-        ).build());
+        )
+                .tooltip(Tooltip.create(GLOBE_WORLD_SETTINGS_TOOLTIP))
+                .build());
         return addedRestrictionsButton;
     }
 }

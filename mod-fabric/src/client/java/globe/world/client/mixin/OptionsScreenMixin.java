@@ -2,6 +2,7 @@ package globe.world.client.mixin;
 
 import globe.world.client.GlobeWorldSettingsScreen;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.network.chat.Component;
@@ -14,6 +15,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(OptionsScreen.class)
 public abstract class OptionsScreenMixin extends Screen {
+    private static final Component GLOBE_WORLD_SETTINGS_TOOLTIP = Component.literal(
+            "Open Globe World wrapping, curvature, Nether, and day/night settings."
+    );
+
     @Shadow
     @Final
     private boolean inWorld;
@@ -33,6 +38,7 @@ public abstract class OptionsScreenMixin extends Screen {
                         button -> this.minecraft.setScreen(new GlobeWorldSettingsScreen((Screen) (Object) this))
                 )
                 .bounds(this.width - 112, 8, 104, 20)
+                .tooltip(Tooltip.create(GLOBE_WORLD_SETTINGS_TOOLTIP))
                 .build());
     }
 }

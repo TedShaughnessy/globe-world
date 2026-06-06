@@ -13,6 +13,7 @@ import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.components.StringWidget;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.layouts.Layout;
 import net.minecraft.client.gui.layouts.LayoutElement;
 import net.minecraft.client.gui.layouts.LinearLayout;
@@ -36,9 +37,16 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final int ROW_SPACING = 4;
     private static final int SECTION_SPACING = 12;
     private static final int INFO_WIDTH = CONTROL_WIDTH;
+    private static final int ITALY_TILE_SIZE_CHUNKS = 65_536;
     private static final String DISTANT_HORIZONS_MOD_ID = "distanthorizons";
+    private static final String CURVATURE_TOOLTIP = "Curves the terrain. Comfortable is a gentler curve; "
+            + "Realistic uses the full globe curve for the tile.";
+    private static final String DAY_LENGTH_TOOLTIP = "Scales the length of the Minecraft day night cycle";
+    private static final String DAY_CYCLE_TOOLTIP = "Scrolling adds time zones so one side of the planet will be dark while the other is light, This will work along the east to west axis, light will be consistent north to south";
     private static final boolean DISTANT_HORIZONS_LOADED = FabricLoader.getInstance().isModLoaded(DISTANT_HORIZONS_MOD_ID);
     private static final double DISTANT_HORIZONS_EARTH_RADIUS_BLOCKS = 6_371_000.0D;
+    private static final long DISTANT_HORIZONS_MIN_CURVATURE_RATIO = 50L;
+    private static final long DISTANT_HORIZONS_MAX_CURVATURE_RATIO = 5_000L;
     private static final List<Integer> CURVATURE_PRESETS = List.of(
             TilingSettings.CURVATURE_DISABLED_PERCENT,
             TilingSettings.CURVATURE_COMFORTABLE_PERCENT,
@@ -161,7 +169,7 @@ public class GlobeWorldSettingsControls implements Layout {
         }
 
         simpleTileSlider = new TilePresetSlider(0, 0, CONTROL_WIDTH, 20, currentTilePreset(), preset ->
-                setSettings(settingsGetter.get().withTileSize(preset.chunks())));
+                setSimpleTilePreset(preset));
         addRow(simpleTileSlider, () -> createWorld && createMode == CreateMode.SIMPLE, SECTION_SPACING);
 
         customTileField = new EditBox(minecraft.font, 110, 20, Component.literal("Overworld Tile Size"));
@@ -176,14 +184,15 @@ public class GlobeWorldSettingsControls implements Layout {
             } catch (NumberFormatException ignored) {
             }
         });
+        StringWidget customTileLabel = new StringWidget(
+                CONTROL_WIDTH - customTileField.getWidth() - ROW_SPACING,
+                customTileField.getHeight(),
+                Component.literal("Overworld Tile Size (chunks)"),
+                minecraft.font
+        );
         addRow(
                 new LabeledInputRow(
-                        new StringWidget(
-                                CONTROL_WIDTH - customTileField.getWidth() - ROW_SPACING,
-                                customTileField.getHeight(),
-                                Component.literal("Overworld Tile Size (chunks)"),
-                                minecraft.font
-                        ),
+                        customTileLabel,
                         customTileField,
                         CONTROL_WIDTH
                 ),
@@ -197,6 +206,7 @@ public class GlobeWorldSettingsControls implements Layout {
         overworldCurvatureButton = curvatureButton(
                 "Overworld Curvature",
                 settingsGetter.get().curvaturePercent(),
+                CURVATURE_TOOLTIP,
                 percent -> setSettings(settingsGetter.get().withCurvaturePercent(percent))
         );
         addRow(overworldCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && settingsGetter.get().enabled());
@@ -210,10 +220,14 @@ public class GlobeWorldSettingsControls implements Layout {
                 settingsGetter.get().curvaturePercent(),
                 percent -> setSettings(settingsGetter.get().withCurvaturePercent(percent))
         );
+        overworldCurvatureSlider.setTooltip(tooltip(CURVATURE_TOOLTIP));
         addRow(overworldCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && settingsGetter.get().enabled());
 
         overworldDistantHorizonsAdvice = infoText(Component.empty());
-        addRow(overworldDistantHorizonsAdvice, () -> DISTANT_HORIZONS_LOADED && settingsGetter.get().enabled());
+        addRow(
+                overworldDistantHorizonsAdvice,
+                () -> DISTANT_HORIZONS_LOADED && distantHorizonsAdviceSupported(settingsGetter.get())
+        );
 
         netherModeButton = CycleButton.<NetherGlobeMode>builder(mode -> Component.literal(mode.displayName), netherGlobeMode())
                 .withValues(() -> !settingsGetter.get().supportsNetherOneEighthOverworldSize(), ALL_NETHER_MODES, NETHER_MODES_WITHOUT_ONE_EIGHTH)
@@ -226,6 +240,7 @@ public class GlobeWorldSettingsControls implements Layout {
         netherCurvatureButton = curvatureButton(
                 "Nether Curvature",
                 settingsGetter.get().netherCurvaturePercent(),
+                CURVATURE_TOOLTIP,
                 percent -> setSettings(settingsGetter.get().withNetherCurvaturePercent(percent))
         );
         addRow(netherCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && settingsGetter.get().enabled());
@@ -239,6 +254,7 @@ public class GlobeWorldSettingsControls implements Layout {
                 settingsGetter.get().netherCurvaturePercent(),
                 percent -> setSettings(settingsGetter.get().withNetherCurvaturePercent(percent))
         );
+        netherCurvatureSlider.setTooltip(tooltip(CURVATURE_TOOLTIP));
         addRow(netherCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && settingsGetter.get().enabled());
 
         dayLengthSlider = new DayLengthMultiplierSlider(
@@ -249,9 +265,11 @@ public class GlobeWorldSettingsControls implements Layout {
                 settingsGetter.get().dayLengthMultiplier(),
                 multiplier -> setSettings(settingsGetter.get().withDayLengthMultiplier(multiplier))
         );
+        dayLengthSlider.setTooltip(tooltip(DAY_LENGTH_TOOLTIP));
 
         dayNightCycleButton = CycleButton.<DayNightCycleMode>builder(mode -> Component.literal(mode.displayName()), settingsGetter.get().dayNightCycleMode())
                 .withValues(DayNightCycleMode.values())
+                .withTooltip(mode -> tooltip(DAY_CYCLE_TOOLTIP))
                 .create(0, 0, DAY_NIGHT_MODE_WIDTH, 20, Component.literal("Day Cycle"),
                         (button, mode) -> setSettings(settingsGetter.get().withDayNightCycleMode(mode)));
 
@@ -261,10 +279,19 @@ public class GlobeWorldSettingsControls implements Layout {
         addSectionRow(dayNightRow, () -> settingsGetter.get().enabled());
     }
 
-    private CycleButton<Integer> curvatureButton(String label, int initialPercent, Consumer<Integer> onChanged) {
+    private CycleButton<Integer> curvatureButton(
+            String label,
+            int initialPercent,
+            String tooltipText,
+            Consumer<Integer> onChanged) {
         return CycleButton.<Integer>builder(GlobeWorldSettingsControls::curvatureLabel, initialPercent)
                 .withValues(CURVATURE_PRESETS)
+                .withTooltip(percent -> tooltip(tooltipText))
                 .create(0, 0, CONTROL_WIDTH, 20, Component.literal(label), (button, percent) -> onChanged.accept(percent));
+    }
+
+    private static Tooltip tooltip(String text) {
+        return Tooltip.create(Component.literal(text));
     }
 
     private static Component curvatureLabel(int percent) {
@@ -293,6 +320,21 @@ public class GlobeWorldSettingsControls implements Layout {
                     .withNetherMode(TilingMode.SQUARE)
                     .withNetherOneEighthOverworldSize(true);
         };
+    }
+
+    private TilingSettings simpleSettingsForTileSize(int tileSize) {
+        TilingSettings settings = settingsForMode(CreateMode.SIMPLE).withTileSize(tileSize);
+        if (tileSize > ITALY_TILE_SIZE_CHUNKS) {
+            settings = settings.withCurvaturePercent(TilingSettings.CURVATURE_DISABLED_PERCENT);
+        }
+        return settings;
+    }
+
+    private void setSimpleTilePreset(TilePreset preset) {
+        if (settingsGetter.get().tileSize() == preset.chunks()) {
+            return;
+        }
+        setSettings(simpleSettingsForTileSize(preset.chunks()));
     }
 
     private void refresh() {
@@ -364,6 +406,16 @@ public class GlobeWorldSettingsControls implements Layout {
     private Component distantHorizonsAdvice(TilingSettings settings) {
         long ratio = distantHorizonsCurveRatio(settings.tileSize());
         return Component.literal("Set Distant Horizons Earth curvature to %s for realism.".formatted(number(ratio)));
+    }
+
+    private static boolean distantHorizonsAdviceSupported(TilingSettings settings) {
+        if (!settings.enabled()) {
+            return false;
+        }
+
+        long ratio = distantHorizonsCurveRatio(settings.tileSize());
+        return ratio >= DISTANT_HORIZONS_MIN_CURVATURE_RATIO
+                && ratio <= DISTANT_HORIZONS_MAX_CURVATURE_RATIO;
     }
 
     private static long distantHorizonsCurveRatio(int tileSizeChunks) {

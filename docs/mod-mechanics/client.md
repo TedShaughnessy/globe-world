@@ -54,6 +54,18 @@ clouds, and the sky horizon. The sky disc, sun, moon, sunrise/sunset fan, and
 lower dark disc receive a camera-relative horizon offset so the sky better
 matches curved terrain.
 
+## Settings UI
+
+`GlobeWorldSettingsControls` backs both the create-world Globe World tab and the
+in-world options screen. Its interactive controls include hover tooltips for
+Overworld and Nether curvature, day-length multiplier, and day/night behavior.
+In simple create-world mode, changing the tile-size preset resets the dependent
+settings below it to simple defaults. Presets larger than the Italy-size tile
+also default Overworld curvature to off because the curve is no longer visually
+useful at that scale. When Distant Horizons is loaded, its Earth-curvature
+advice is shown only for tile sizes whose recommended DH curvature ratio is
+within the supported `50..5000` range.
+
 ## Shader Packs
 
 Sodium/Iris shader packs bypass vanilla shader rewriting, so Globe World ships
