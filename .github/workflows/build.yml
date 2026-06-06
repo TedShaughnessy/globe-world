@@ -9,6 +9,10 @@ on:
         description: Publish a GitHub Release for the Fabric mod
         type: boolean
         default: false
+      publish_mod_sources:
+        description: Attach the Fabric mod sources jar to the GitHub Release
+        type: boolean
+        default: false
       publish_globe_world_curvature_shaderpack_release:
         description: Publish a GitHub Release for the minimal Globe World curvature shader pack
         type: boolean
@@ -203,9 +207,17 @@ jobs:
         run: |
           set -euo pipefail
 
+          release_assets=(
+            "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${VERSION}.jar"
+          )
+          if [[ "${{ inputs.publish_mod_sources }}" == "true" ]]; then
+            release_assets+=(
+              "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${VERSION}-sources.jar"
+            )
+          fi
+
           gh release create "mod-v${VERSION}" \
-            "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${VERSION}.jar" \
-            "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${VERSION}-sources.jar" \
+            "${release_assets[@]}" \
             --target "$GITHUB_SHA" \
             --title "Globe World Mod v${VERSION}" \
             --notes "Fabric mod build for Globe World v${VERSION}, targeting Minecraft ${MINECRAFT_VERSION}." \
