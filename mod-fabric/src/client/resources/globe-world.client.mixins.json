@@ -13,6 +13,7 @@
 		"FrustumMixin",
 		"GuiMixin",
 		"ItemEntityRendererMixin",
+		"ItemInHandLayerMixin",
 		"KeyboardHandlerMixin",
 		"LevelRendererMixin",
 		"LocalPlayerMixin",
@@ -22,6 +23,8 @@
 		"SectionOcclusionGraphStorageMixin",
 		"ShaderManagerMixin",
 		"SkyRendererMixin",
+		"TheEndPortalRendererMixin",
+		"ThrownItemRendererMixin",
 		"WorldOptionsScreenMixin",
 		"WorldCreationContextMixin",
 		"WorldOpenFlowsMixin"
