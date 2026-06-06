@@ -64,6 +64,7 @@ World period:
 | Structures and feature edge generation | Implemented with open audit boundaries | [worldgen.md](worldgen.md) |
 | Small-world End portal fallback | Implemented | [worldgen.md](worldgen.md) |
 | Client chunk/world rendering | Implemented for server-relabeled aliases | [client.md](client.md) |
+| Multiplayer settings sync | Implemented for join-time and runtime changes | [client.md](client.md) |
 | Filled maps | Implemented for player marker aliasing | [maps.md](maps.md) |
 | Curvature visuals and shader packs | Implemented | [client.md](client.md) |
 | Local solar time helper | Implemented | [local-solar-time.md](local-solar-time.md) |

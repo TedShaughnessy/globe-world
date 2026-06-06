@@ -24,6 +24,15 @@ biome, light, world-event, waypoint, sign-editor, look-at, map, and entity
 packets are copied or virtualized per viewer so their X/Z matches the visible
 alias.
 
+Server-authoritative `TilingSettings` are synchronized to modded clients during
+the Fabric configuration phase before play starts. The client applies those
+settings before first chunks, entity packets, and rendering decisions, then
+acknowledges the configuration task so the join can continue. Runtime server
+setting changes from commands or an integrated LAN host are sent again during
+the play phase. If a world has wrapping enabled and a joining client cannot
+receive the settings payload, the server disconnects that client with a Globe
+World client-required message.
+
 `ClientboundPlayerPositionPacket` is not broadly virtualized because vanilla
 uses it for teleport acknowledgement state. Globe World instead canonicalizes
 players at login, respawn, and bed wake-up while leaving normal in-session
@@ -61,6 +70,8 @@ camera-relative horizon offset so the sky better matches curved terrain.
 in-world options screen. Its interactive controls include hover tooltips for
 custom topology methods, Overworld and Nether curvature, day-length multiplier,
 and day/night behavior.
+In remote multiplayer, the in-world screen shows the synced server settings as
+read-only; local clients cannot silently edit only their own `GlobeConfig`.
 In simple create-world mode, changing the tile-size preset resets the dependent
 settings below it to simple defaults. Presets larger than the Italy-size tile
 also default Overworld curvature to off because the curve is no longer visually
@@ -131,6 +142,11 @@ Client diagnostics are intentionally targeted:
   `ClientboundLevelChunkWithLightMixin`, `ChunkMapBiomeResendMixin`,
   `PlayerListBroadcastMixin`, `ServerLevelWorldEventMixin`,
   `ServerPlayerInteractionPacketMixin`.
+- Settings sync:
+  `GlobeWorldNetworking`, `GlobeWorldSettingsPayload`,
+  `GlobeWorldSettingsAckPayload`, `GlobeClientNetworking`,
+  `GlobeClientTilingSettings`, `GlobeWorldSettingsScreen`,
+  `GlobeWorldSettingsControls`.
 - Curvature and picking:
   `GlobeCurvature`, `GlobeCurvatureShader`, `GlobeCurvedRaycast`,
   `GlobeWorldSettingsControls`, `ShaderManagerMixin`, `LocalPlayerMixin`,
@@ -147,8 +163,7 @@ Client diagnostics are intentionally targeted:
   `GlobeEntityAliasDiagnostics`.
 - Diagnostics and settings:
   `GlobeClientDebugCommands`, `GlobeDebugHud`, `GlobeDebugState`,
-  `GlobeTileBorderRenderer`, `KeyboardHandlerMixin`, `GlobeClientTilingSettings`,
-  `GlobeWorldSettingsScreen`.
+  `GlobeTileBorderRenderer`, `KeyboardHandlerMixin`.
 
 ## Related Vanilla Mechanics
 

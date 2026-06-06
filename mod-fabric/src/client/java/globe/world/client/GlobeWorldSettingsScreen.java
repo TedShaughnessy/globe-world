@@ -30,7 +30,8 @@ public class GlobeWorldSettingsScreen extends Screen {
         this.layout.addToHeader(new StringWidget(TITLE, this.font), LayoutSettings::alignHorizontallyCenter);
         GlobeWorldSettingsControls controls = GlobeWorldSettingsControls.pauseMenu(
                 GlobeConfig::tilingSettings,
-                GlobeClientTilingSettings::setFromPauseMenu
+                GlobeClientTilingSettings::setFromPauseMenu,
+                GlobeClientTilingSettings.canEditFromPauseMenu()
         );
         FrameLayout paddedControls = new FrameLayout();
         paddedControls.addChild(controls, settings -> settings.paddingVertical(CONTENT_VERTICAL_PADDING));

@@ -19,6 +19,7 @@ import globe.world.util.EndPortalProgressionState;
 import globe.world.util.EntityCanonicalizer;
 import globe.world.util.GlobeDayLength;
 import globe.world.util.GlobeDistanceCaps;
+import globe.world.network.GlobeWorldNetworking;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -485,10 +486,11 @@ public final class GlobeDebugCommands {
         source.getServer().getWorldGenSettings().setDirty();
         GlobeConfig.setTilingSettings(newSettings);
         GlobeDayLength.applyToServer(source.getServer(), newSettings);
+        GlobeWorldNetworking.broadcastSettings(source.getServer(), newSettings);
         source.sendSuccess(() -> Component.literal(message + " and saved it to this world."), true);
         printConfig(source);
         source.sendSuccess(() -> Component.literal(
-                "Note: existing terrain is not regenerated; multiplayer clients may need matching client settings for client-only visuals."),
+                "Note: existing terrain is not regenerated; connected Globe World clients were synced."),
                 false);
         return 1;
     }

@@ -42,6 +42,7 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final String CURVATURE_TOOLTIP = "Curves the terrain. Comfortable is a gentler curve; "
             + "Realistic uses the full globe curve for the tile.";
     private static final String DAY_LENGTH_TOOLTIP = "Scales the length of the Minecraft day night cycle";
+    private static final String MULTIPLAYER_READ_ONLY_TEXT = "Globe World settings are controlled by the server.";
     private static final boolean DISTANT_HORIZONS_LOADED = FabricLoader.getInstance().isModLoaded(DISTANT_HORIZONS_MOD_ID);
     private static final double DISTANT_HORIZONS_EARTH_RADIUS_BLOCKS = 6_371_000.0D;
     private static final long DISTANT_HORIZONS_MIN_CURVATURE_RATIO = 50L;
@@ -104,6 +105,7 @@ public class GlobeWorldSettingsControls implements Layout {
     );
 
     private final boolean createWorld;
+    private final boolean editable;
     private final Supplier<TilingSettings> settingsGetter;
     private final Consumer<TilingSettings> settingsSetter;
     private final List<Row> rows = new ArrayList<>();
@@ -132,12 +134,15 @@ public class GlobeWorldSettingsControls implements Layout {
     private GlobeCurvatureSlider netherCurvatureSlider;
     private CycleButton<DayNightCycleMode> dayNightCycleButton;
     private DayLengthMultiplierSlider dayLengthSlider;
+    private MultiLineTextWidget multiplayerReadOnlyInfo;
 
     private GlobeWorldSettingsControls(
             boolean createWorld,
+            boolean editable,
             Supplier<TilingSettings> settingsGetter,
             Consumer<TilingSettings> settingsSetter) {
         this.createWorld = createWorld;
+        this.editable = editable;
         this.settingsGetter = settingsGetter;
         this.settingsSetter = settingsSetter;
         this.createMode = createWorld ? CreateMode.fromSettings(settingsGetter.get()) : CreateMode.CUSTOM;
@@ -148,13 +153,20 @@ public class GlobeWorldSettingsControls implements Layout {
     public static GlobeWorldSettingsControls createWorld(
             Supplier<TilingSettings> settingsGetter,
             Consumer<TilingSettings> settingsSetter) {
-        return new GlobeWorldSettingsControls(true, settingsGetter, settingsSetter);
+        return new GlobeWorldSettingsControls(true, true, settingsGetter, settingsSetter);
     }
 
     public static GlobeWorldSettingsControls pauseMenu(
             Supplier<TilingSettings> settingsGetter,
             Consumer<TilingSettings> settingsSetter) {
-        return new GlobeWorldSettingsControls(false, settingsGetter, settingsSetter);
+        return pauseMenu(settingsGetter, settingsSetter, true);
+    }
+
+    public static GlobeWorldSettingsControls pauseMenu(
+            Supplier<TilingSettings> settingsGetter,
+            Consumer<TilingSettings> settingsSetter,
+            boolean editable) {
+        return new GlobeWorldSettingsControls(false, editable, settingsGetter, settingsSetter);
     }
 
     public void setLayoutChangedCallback(Runnable layoutChangedCallback) {
@@ -164,6 +176,9 @@ public class GlobeWorldSettingsControls implements Layout {
 
     private void build() {
         Minecraft minecraft = Minecraft.getInstance();
+
+        multiplayerReadOnlyInfo = infoText(Component.literal(MULTIPLAYER_READ_ONLY_TEXT));
+        addRow(multiplayerReadOnlyInfo, () -> !createWorld && !editable);
 
         if (createWorld) {
             createModeButton = CycleButton.<CreateMode>builder(mode -> Component.literal(mode.displayName), createMode)
@@ -181,6 +196,7 @@ public class GlobeWorldSettingsControls implements Layout {
 
         customTileField = new EditBox(minecraft.font, 110, 20, Component.literal("Overworld Tile Size"));
         customTileField.setMaxLength(7);
+        customTileField.setEditable(editable);
         customTileField.setResponder(text -> {
             if (updatingText) {
                 return;
@@ -432,8 +448,35 @@ public class GlobeWorldSettingsControls implements Layout {
         dayLengthSlider.setMultiplier(settings.dayLengthMultiplier());
         dayLengthSlider.active = settings.enabled();
 
+        applyEditability();
         arrange();
         layoutChangedCallback.run();
+    }
+
+    private void applyEditability() {
+        if (editable) {
+            return;
+        }
+
+        if (createModeButton != null) {
+            createModeButton.active = false;
+        }
+        if (simpleTileSlider != null) {
+            simpleTileSlider.active = false;
+        }
+        if (customTileField != null) {
+            customTileField.setEditable(false);
+            customTileField.active = false;
+        }
+        overworldTopologyButton.active = false;
+        overworldCurvatureButton.active = false;
+        overworldCurvatureSlider.active = false;
+        netherModeButton.active = false;
+        netherTopologyButton.active = false;
+        netherCurvatureButton.active = false;
+        netherCurvatureSlider.active = false;
+        dayNightCycleButton.active = false;
+        dayLengthSlider.active = false;
     }
 
     private Component overworldInfo(TilingSettings settings) {

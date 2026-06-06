@@ -16,3 +16,5 @@ None.
 - Client canonical chunk cache: not pursued. Globe World keeps the client cache
   vanilla-shaped and relies on server-side canonical chunk ownership plus
   relabeled packets for alias rendering.
+- Multiplayer settings sync: implemented and folded into
+  [Client](../mod-mechanics/client.md).

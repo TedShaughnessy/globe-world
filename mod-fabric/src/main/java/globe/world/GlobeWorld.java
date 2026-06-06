@@ -1,5 +1,6 @@
 package globe.world;
 
+import globe.world.network.GlobeWorldNetworking;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -27,6 +28,7 @@ public class GlobeWorld implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		GlobeWorldNetworking.registerCommon();
 		GlobeDebugCommands.register();
 	}
 }
