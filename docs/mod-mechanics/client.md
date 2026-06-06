@@ -92,10 +92,10 @@ sky brightness. See [Scrolling Day/Night](scrolling-day-night.md) and
 
 Client diagnostics are intentionally targeted:
 
-- `F3+Y`: Globe debug overlay.
-- `F3+Shift+Y`: tile-border renderer.
-- `F3+Ctrl+Y`: cycle entity visual alias mode.
-- `F3+Ctrl+Shift+Y`: cycle visual alias ring limit.
+- `F3+Y`: Globe debug overlay and tile-border renderer.
+- `/globeworld client entity_aliases`: show local entity visual alias settings.
+- `/globeworld client entity_aliases mode`: cycle local entity visual alias mode.
+- `/globeworld client entity_aliases rings`: cycle local entity visual alias ring limit.
 
 ## Key Files
 
@@ -119,8 +119,8 @@ Client diagnostics are intentionally targeted:
   `LevelRendererMixin`, `ClientPacketListenerMixin`,
   `GlobeEntityAliasDiagnostics`.
 - Diagnostics and settings:
-  `GlobeDebugHud`, `GlobeDebugState`, `GlobeTileBorderRenderer`,
-  `KeyboardHandlerMixin`, `GlobeClientTilingSettings`,
+  `GlobeClientDebugCommands`, `GlobeDebugHud`, `GlobeDebugState`,
+  `GlobeTileBorderRenderer`, `KeyboardHandlerMixin`, `GlobeClientTilingSettings`,
   `GlobeWorldSettingsScreen`.
 
 ## Related Vanilla Mechanics

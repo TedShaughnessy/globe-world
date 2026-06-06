@@ -6,5 +6,6 @@ public class GlobeWorldClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		GlobeCurvatureShader.initialize();
+		GlobeClientDebugCommands.register();
 	}
 }

@@ -92,15 +92,12 @@ If a world is too small for a stronghold to spawn, throwing an Eye of Ender will
   presentation mode.
 - `/globeworld config set day_length <0.5-10>`: changes day length. Values up to
   `0.75` become `0.5`; larger values are rounded to whole multipliers.
-
-Tile size and Overworld/Nether tiling mode are permanent world-topology
-settings, so they are not exposed as runtime commands.
-
-The old `/globeworld debug ...` forms still work as aliases.
-
+- `/globeworld client entity_aliases`: shows local entity visual alias settings.
+- `/globeworld client entity_aliases mode`: cycles local entity visual alias rendering.
+- `/globeworld client entity_aliases rings`: cycles the local entity visual alias ring limit.
 
 ### Debug visuals
--
+- `F3+Y`: toggles the Globe World debug overlay and tile-border renderer.
 
 
 ## Downloads

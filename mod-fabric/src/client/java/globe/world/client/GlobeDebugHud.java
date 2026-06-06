@@ -4,6 +4,7 @@ import globe.world.config.GlobeConfig;
 import globe.world.config.TilingSettings;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
+import globe.world.util.GlobeEntityAliasing;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -84,7 +85,7 @@ public final class GlobeDebugHud {
         leftLines.add("Nether tile width: " + tileSummary(netherTiling));
         leftLines.add(String.format(Locale.ROOT, "Entity aliases: %s, rings %s (%d shown, %d culled, %d auto-skipped)",
                 GlobeEntityAliasDiagnostics.mode().displayName(),
-                GlobeDebugState.entityAliasRingLimitDisplayName(),
+                GlobeEntityAliasing.maxAliasRingsDisplayName(),
                 GlobeEntityAliasDiagnostics.submittedThisFrame(),
                 GlobeEntityAliasDiagnostics.culledThisFrame(),
                 GlobeEntityAliasDiagnostics.autoSkippedThisFrame()));

@@ -52,9 +52,7 @@ public final class GlobeDebugCommands {
     public static void register() {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(addCommonCommands(Commands.literal("globeworld")
-                        .executes(context -> printPos(context.getSource())))
-                        .then(addCommonCommands(Commands.literal("debug")
-                                .executes(context -> printPos(context.getSource()))))));
+                        .executes(context -> printPos(context.getSource())))));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> addCommonCommands(
@@ -71,17 +69,17 @@ public final class GlobeDebugCommands {
                 .then(Commands.literal("entities")
                         .executes(context -> printEntitySummary(context.getSource())))
                 .then(Commands.literal("teleport_canon")
-                        .requires(source -> source.hasPermission(2))
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(context -> teleportPlayerToCanonicalPosition(context.getSource())))
                 .then(Commands.literal("teleport_border")
-                        .requires(source -> source.hasPermission(2))
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(context -> teleportPlayerToNearestBorder(context.getSource(), 1))
                         .then(Commands.argument("inset", IntegerArgumentType.integer(0))
                                 .executes(context -> teleportPlayerToNearestBorder(
                                         context.getSource(),
                                         IntegerArgumentType.getInteger(context, "inset")))))
                 .then(Commands.literal("teleport_alias")
-                        .requires(source -> source.hasPermission(2))
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.argument("tileX", IntegerArgumentType.integer())
                                 .then(Commands.argument("tileZ", IntegerArgumentType.integer())
                                         .executes(context -> teleportPlayerToAlias(
@@ -101,7 +99,7 @@ public final class GlobeDebugCommands {
                 .then(Commands.literal("show")
                         .executes(context -> printConfig(context.getSource())))
                 .then(Commands.literal("set")
-                        .requires(source -> source.hasPermission(2))
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.literal("curvature")
                                 .then(Commands.argument("percent", IntegerArgumentType.integer(0, 100))
                                         .executes(context -> updateSettings(
