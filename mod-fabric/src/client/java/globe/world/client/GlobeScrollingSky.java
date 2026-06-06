@@ -40,6 +40,18 @@ public final class GlobeScrollingSky {
             .addKeyframe(13670, -16777216)
             .addKeyframe(22330, -16777216)
     );
+    private static final KeyframeTrackSampler<Integer> FOG_COLOR_MULTIPLIER = colorSampler(keyframes -> keyframes
+            .addKeyframe(133, -1)
+            .addKeyframe(11867, -1)
+            .addKeyframe(13670, ARGB.colorFromFloat(1.0F, 0.06F, 0.06F, 0.09F))
+            .addKeyframe(22330, ARGB.colorFromFloat(1.0F, 0.06F, 0.06F, 0.09F))
+    );
+    private static final KeyframeTrackSampler<Integer> CLOUD_COLOR_MULTIPLIER = colorSampler(keyframes -> keyframes
+            .addKeyframe(133, -1)
+            .addKeyframe(11867, -1)
+            .addKeyframe(13670, ARGB.colorFromFloat(1.0F, 0.1F, 0.1F, 0.15F))
+            .addKeyframe(22330, ARGB.colorFromFloat(1.0F, 0.1F, 0.1F, 0.15F))
+    );
     private static final KeyframeTrackSampler<Integer> SKY_LIGHT_COLOR_MULTIPLIER = colorSampler(keyframes -> keyframes
             .addKeyframe(730, -1)
             .addKeyframe(11270, -1)
@@ -141,13 +153,15 @@ public final class GlobeScrollingSky {
             return true;
         }
         if (attribute == EnvironmentAttributes.SKY_COLOR) {
-            addVanillaTimelineLayer(builder, timeline, EnvironmentAttributes.SKY_COLOR, clockManager);
-            builder.addPositionalLayer(
-                    EnvironmentAttributes.SKY_COLOR,
-                    (baseValue, pos, biomeInterpolator) -> localTimelineActive()
-                            ? ARGB.multiply(baseValue, sample(SKY_COLOR_MULTIPLIER, timeline, clockManager, pos.x))
-                            : baseValue
-            );
+            addColorMultiplier(builder, EnvironmentAttributes.SKY_COLOR, timeline, clockManager, SKY_COLOR_MULTIPLIER);
+            return true;
+        }
+        if (attribute == EnvironmentAttributes.FOG_COLOR) {
+            addColorMultiplier(builder, EnvironmentAttributes.FOG_COLOR, timeline, clockManager, FOG_COLOR_MULTIPLIER);
+            return true;
+        }
+        if (attribute == EnvironmentAttributes.CLOUD_COLOR) {
+            addColorMultiplier(builder, EnvironmentAttributes.CLOUD_COLOR, timeline, clockManager, CLOUD_COLOR_MULTIPLIER);
             return true;
         }
         if (attribute == EnvironmentAttributes.SKY_LIGHT_FACTOR) {
@@ -204,6 +218,20 @@ public final class GlobeScrollingSky {
         addVanillaTimelineLayer(builder, timeline, attribute, clockManager);
         builder.addPositionalLayer(attribute, (baseValue, pos, biomeInterpolator) ->
                 localTimelineActive() ? sample(sampler, timeline, clockManager, pos.x) : baseValue);
+    }
+
+    private static void addColorMultiplier(
+            EnvironmentAttributeSystem.Builder builder,
+            EnvironmentAttribute<Integer> attribute,
+            Holder<Timeline> timeline,
+            ClockManager clockManager,
+            KeyframeTrackSampler<Integer> sampler
+    ) {
+        addVanillaTimelineLayer(builder, timeline, attribute, clockManager);
+        builder.addPositionalLayer(attribute, (baseValue, pos, biomeInterpolator) ->
+                localTimelineActive()
+                        ? ARGB.multiply(baseValue, sample(sampler, timeline, clockManager, pos.x))
+                        : baseValue);
     }
 
     private static <T> void addVanillaTimelineLayer(

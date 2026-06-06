@@ -122,10 +122,10 @@ the shortest wrapped path.
 
 ## Local Sky And Diagnostics
 
-Scrolling day/night mode installs local environment-attribute layers for sky
-color, sun/moon/star angles, star brightness, sunrise/sunset color, and lightmap
-sky brightness. See [Scrolling Day/Night](scrolling-day-night.md) and
-[Local Solar Time](local-solar-time.md).
+Scrolling day/night mode installs local environment-attribute layers for sky,
+fog, and cloud color, sun/moon/star angles, star brightness, sunrise/sunset
+color, and lightmap sky brightness. See
+[Scrolling Day/Night](scrolling-day-night.md) and [Local Solar Time](local-solar-time.md).
 
 Client diagnostics are intentionally targeted:
 

@@ -75,11 +75,14 @@ Locally sampled visual attributes include:
 - Star brightness.
 - Sunrise/sunset color.
 - Sky color.
+- Fog color.
+- Cloud color.
 - Sky light factor.
 - Sky light color.
 
-Weather and lightning layers run after the local visual layer, so they can still
-modify the locally computed sky. Weather interaction is not yet manually tested.
+Weather layers run after the local visual layer, so they can still modify the
+locally computed sky, fog, clouds, and lightmap. Lightning flash layers run
+after those weather layers on the client.
 
 Curvature has separate client presentation hooks. `GlobeCurvatureShader` bends
 terrain and cloud vertices downward in relevant world vertex shaders.
