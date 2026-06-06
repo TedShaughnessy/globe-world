@@ -42,7 +42,6 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final String CURVATURE_TOOLTIP = "Curves the terrain. Comfortable is a gentler curve; "
             + "Realistic uses the full globe curve for the tile.";
     private static final String DAY_LENGTH_TOOLTIP = "Scales the length of the Minecraft day night cycle";
-    private static final String DAY_CYCLE_TOOLTIP = "Scrolling adds time zones so one side of the planet will be dark while the other is light, This will work along the east to west axis, light will be consistent north to south";
     private static final boolean DISTANT_HORIZONS_LOADED = FabricLoader.getInstance().isModLoaded(DISTANT_HORIZONS_MOD_ID);
     private static final double DISTANT_HORIZONS_EARTH_RADIUS_BLOCKS = 6_371_000.0D;
     private static final long DISTANT_HORIZONS_MIN_CURVATURE_RATIO = 50L;
@@ -64,6 +63,12 @@ public class GlobeWorldSettingsControls implements Layout {
             8.0D,
             9.0D,
             TilingSettings.DAY_LENGTH_MAX_MULTIPLIER
+    );
+    private static final List<TerrainMode> TERRAIN_MODE_OPTIONS = List.of(
+            TerrainMode.AUTO,
+            TerrainMode.COMPACT_TORUS,
+            TerrainMode.EDGE_BLEND,
+            TerrainMode.PERIODIC_LATTICE
     );
     private static final List<NetherGlobeMode> ALL_NETHER_MODES = List.of(
             NetherGlobeMode.DISABLED,
@@ -115,11 +120,13 @@ public class GlobeWorldSettingsControls implements Layout {
     private CycleButton<CreateMode> createModeButton;
     private TilePresetSlider simpleTileSlider;
     private EditBox customTileField;
+    private CycleButton<TerrainMode> overworldTopologyButton;
     private MultiLineTextWidget overworldInfo;
     private CycleButton<Integer> overworldCurvatureButton;
     private GlobeCurvatureSlider overworldCurvatureSlider;
     private MultiLineTextWidget overworldDistantHorizonsAdvice;
     private CycleButton<NetherGlobeMode> netherModeButton;
+    private CycleButton<TerrainMode> netherTopologyButton;
     private MultiLineTextWidget netherInfo;
     private CycleButton<Integer> netherCurvatureButton;
     private GlobeCurvatureSlider netherCurvatureSlider;
@@ -200,6 +207,19 @@ public class GlobeWorldSettingsControls implements Layout {
                 SECTION_SPACING
         );
 
+        overworldTopologyButton = CycleButton.<TerrainMode>builder(
+                        mode -> topologyLabel(mode, TerrainMode.forOverworldTileSize(settingsGetter.get().tileSize())),
+                        settingsGetter.get().terrainMode()
+                )
+                .withValues(TERRAIN_MODE_OPTIONS)
+                .withTooltip(mode -> tooltip(mode.tooltip()))
+                .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Overworld Topology"),
+                        (button, mode) -> setSettings(settingsGetter.get().withTerrainMode(mode)));
+        addRow(
+                overworldTopologyButton,
+                () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled()
+        );
+
         overworldInfo = infoText(Component.empty());
         addRow(overworldInfo, () -> !createWorld || settingsGetter.get().enabled() && createMode == CreateMode.CUSTOM);
 
@@ -233,6 +253,19 @@ public class GlobeWorldSettingsControls implements Layout {
                 .withValues(() -> !settingsGetter.get().supportsNetherOneEighthOverworldSize(), ALL_NETHER_MODES, NETHER_MODES_WITHOUT_ONE_EIGHTH)
                 .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Nether Globe"), (button, mode) -> setSettings(mode.apply(settingsGetter.get())));
         addSectionRow(netherModeButton, () -> createWorld && settingsGetter.get().enabled());
+
+        netherTopologyButton = CycleButton.<TerrainMode>builder(
+                        mode -> topologyLabel(mode, TerrainMode.forNetherTileSize(settingsGetter.get().netherTileSize())),
+                        settingsGetter.get().netherTerrainMode()
+                )
+                .withValues(TERRAIN_MODE_OPTIONS)
+                .withTooltip(mode -> tooltip(mode.tooltip()))
+                .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Nether Topology"),
+                        (button, mode) -> setSettings(settingsGetter.get().withNetherTerrainMode(mode)));
+        addRow(
+                netherTopologyButton,
+                () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().netherEnabled()
+        );
 
         netherInfo = infoText(Component.empty());
         addRow(netherInfo, () -> !createWorld || settingsGetter.get().enabled() && createMode == CreateMode.CUSTOM, createWorld ? ROW_SPACING : SECTION_SPACING);
@@ -269,7 +302,7 @@ public class GlobeWorldSettingsControls implements Layout {
 
         dayNightCycleButton = CycleButton.<DayNightCycleMode>builder(mode -> Component.literal(mode.displayName()), settingsGetter.get().dayNightCycleMode())
                 .withValues(DayNightCycleMode.values())
-                .withTooltip(mode -> tooltip(DAY_CYCLE_TOOLTIP))
+                .withTooltip(mode -> tooltip(dayCycleTooltip(mode)))
                 .create(0, 0, DAY_NIGHT_MODE_WIDTH, 20, Component.literal("Day Cycle"),
                         (button, mode) -> setSettings(settingsGetter.get().withDayNightCycleMode(mode)));
 
@@ -286,12 +319,19 @@ public class GlobeWorldSettingsControls implements Layout {
             Consumer<Integer> onChanged) {
         return CycleButton.<Integer>builder(GlobeWorldSettingsControls::curvatureLabel, initialPercent)
                 .withValues(CURVATURE_PRESETS)
-                .withTooltip(percent -> tooltip(tooltipText))
+                .withTooltip(percent -> tooltip(curvatureTooltip(percent, tooltipText)))
                 .create(0, 0, CONTROL_WIDTH, 20, Component.literal(label), (button, percent) -> onChanged.accept(percent));
     }
 
     private static Tooltip tooltip(String text) {
         return Tooltip.create(Component.literal(text));
+    }
+
+    private static Component topologyLabel(TerrainMode mode, TerrainMode autoMode) {
+        if (mode == TerrainMode.AUTO) {
+            return Component.literal("Auto (%s)".formatted(autoMode.displayName()));
+        }
+        return Component.literal(mode.displayName());
     }
 
     private static Component curvatureLabel(int percent) {
@@ -300,6 +340,22 @@ public class GlobeWorldSettingsControls implements Layout {
             case TilingSettings.CURVATURE_COMFORTABLE_PERCENT -> Component.literal("Comfortable");
             case TilingSettings.CURVATURE_REALISTIC_PERCENT -> Component.literal("Realistic");
             default -> Component.literal(percent + "%");
+        };
+    }
+
+    private static String curvatureTooltip(int percent, String fallback) {
+        return switch (TilingSettings.sanitizeCurvaturePercent(percent)) {
+            case TilingSettings.CURVATURE_DISABLED_PERCENT -> "Off keeps terrain visually flat.";
+            case TilingSettings.CURVATURE_COMFORTABLE_PERCENT -> "Comfortable adds a gentler curve so the world feels round without hiding too much terrain.";
+            case TilingSettings.CURVATURE_REALISTIC_PERCENT -> "Realistic uses the full globe curve for the selected tile size.";
+            default -> fallback;
+        };
+    }
+
+    private static String dayCycleTooltip(DayNightCycleMode mode) {
+        return switch (mode) {
+            case VANILLA -> "Vanilla keeps the same time of day everywhere.";
+            case SCROLLING -> "Scrolling adds time zones along east-west travel; north-south stays consistent.";
         };
     }
 
@@ -358,12 +414,14 @@ public class GlobeWorldSettingsControls implements Layout {
             customTileField.setValue(Integer.toString(settings.tileSize()));
             updatingText = false;
         }
+        overworldTopologyButton.setValue(settings.terrainMode());
         overworldInfo.setMessage(overworldInfo(settings));
         overworldCurvatureButton.setValue(settings.curvaturePercent());
         overworldCurvatureSlider.setPercent(settings.curvaturePercent());
         overworldCurvatureSlider.active = settings.enabled();
         overworldDistantHorizonsAdvice.setMessage(distantHorizonsAdvice(settings));
         netherModeButton.setValue(netherGlobeMode());
+        netherTopologyButton.setValue(settings.netherTerrainMode());
         netherInfo.setMessage(netherInfo(settings));
         netherCurvatureButton.setValue(settings.netherCurvaturePercent());
         netherCurvatureButton.active = settings.netherEnabled();
@@ -383,7 +441,7 @@ public class GlobeWorldSettingsControls implements Layout {
             return Component.literal("Overworld tile: Disabled");
         }
         return Component.literal("Overworld tile: ")
-                .append(tileSummary(settings.tileSize(), TerrainMode.forOverworldTileSize(settings.tileSize())));
+                .append(tileSummary(settings.tileSize(), effectiveOverworldTerrainMode(settings)));
     }
 
     private Component netherInfo(TilingSettings settings) {
@@ -391,7 +449,19 @@ public class GlobeWorldSettingsControls implements Layout {
             return Component.literal("Nether tile: Disabled");
         }
         return Component.literal("Nether tile: ")
-                .append(tileSummary(settings.netherTileSize(), TerrainMode.forNetherTileSize(settings.netherTileSize())));
+                .append(tileSummary(settings.netherTileSize(), effectiveNetherTerrainMode(settings)));
+    }
+
+    private static TerrainMode effectiveOverworldTerrainMode(TilingSettings settings) {
+        return effectiveTerrainMode(settings.terrainMode(), TerrainMode.forOverworldTileSize(settings.tileSize()));
+    }
+
+    private static TerrainMode effectiveNetherTerrainMode(TilingSettings settings) {
+        return effectiveTerrainMode(settings.netherTerrainMode(), TerrainMode.forNetherTileSize(settings.netherTileSize()));
+    }
+
+    private static TerrainMode effectiveTerrainMode(TerrainMode mode, TerrainMode autoMode) {
+        return mode == TerrainMode.AUTO ? autoMode : mode;
     }
 
     private Component tileSummary(int chunks, TerrainMode terrainMode) {
@@ -631,6 +701,9 @@ public class GlobeWorldSettingsControls implements Layout {
         private static CreateMode fromSettings(TilingSettings settings) {
             if (!settings.enabled()) {
                 return DISABLED;
+            }
+            if (settings.terrainMode() != TerrainMode.AUTO || settings.netherTerrainMode() != TerrainMode.AUTO) {
+                return CUSTOM;
             }
             return TILE_PRESETS.stream().anyMatch(preset -> preset.chunks() == settings.tileSize()) ? SIMPLE : CUSTOM;
         }

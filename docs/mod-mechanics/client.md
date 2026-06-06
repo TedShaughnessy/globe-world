@@ -58,13 +58,17 @@ matches curved terrain.
 
 `GlobeWorldSettingsControls` backs both the create-world Globe World tab and the
 in-world options screen. Its interactive controls include hover tooltips for
-Overworld and Nether curvature, day-length multiplier, and day/night behavior.
+custom topology methods, Overworld and Nether curvature, day-length multiplier,
+and day/night behavior.
 In simple create-world mode, changing the tile-size preset resets the dependent
 settings below it to simple defaults. Presets larger than the Italy-size tile
 also default Overworld curvature to off because the curve is no longer visually
 useful at that scale. When Distant Horizons is loaded, its Earth-curvature
 advice is shown only for tile sizes whose recommended DH curvature ratio is
 within the supported `50..5000` range.
+In custom create-world mode, explicit Overworld and Nether topology methods are
+available next to the corresponding size controls; changing the tile size or
+derived Nether size resets those topology methods back to `Auto`.
 
 ## Shader Packs
 

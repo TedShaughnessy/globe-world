@@ -16,7 +16,7 @@ public record DimensionTiling(boolean enabled, int tileSizeChunks, TerrainMode t
         tileSizeChunks = Math.max(1, tileSizeChunks);
         if (!enabled) {
             terrainMode = TerrainMode.DISABLED;
-        } else if (terrainMode == null || terrainMode == TerrainMode.DISABLED) {
+        } else if (terrainMode == null || terrainMode == TerrainMode.AUTO || terrainMode == TerrainMode.DISABLED) {
             terrainMode = TerrainMode.forOverworldTileSize(tileSizeChunks);
         }
     }
@@ -29,15 +29,32 @@ public record DimensionTiling(boolean enabled, int tileSizeChunks, TerrainMode t
         TilingSettings settings = GlobeConfig.tilingSettings();
         if (Level.OVERWORLD.equals(dimension)) {
             return settings.enabled()
-                    ? new DimensionTiling(true, settings.tileSize(), TerrainMode.forOverworldTileSize(settings.tileSize()))
+                    ? new DimensionTiling(
+                            true,
+                            settings.tileSize(),
+                            resolveTerrainMode(settings.terrainMode(), TerrainMode.forOverworldTileSize(settings.tileSize()))
+                    )
                     : DISABLED;
         }
         if (Level.NETHER.equals(dimension)) {
             return settings.netherEnabled()
-                    ? new DimensionTiling(true, settings.netherTileSize(), TerrainMode.forNetherTileSize(settings.netherTileSize()))
+                    ? new DimensionTiling(
+                            true,
+                            settings.netherTileSize(),
+                            resolveTerrainMode(
+                                    settings.netherTerrainMode(),
+                                    TerrainMode.forNetherTileSize(settings.netherTileSize())
+                            )
+                    )
                     : DISABLED;
         }
         return DISABLED;
+    }
+
+    private static TerrainMode resolveTerrainMode(TerrainMode configured, TerrainMode fallback) {
+        return configured == null || configured == TerrainMode.AUTO || configured == TerrainMode.DISABLED
+                ? fallback
+                : configured;
     }
 
     public static DimensionTiling forLevel(Level level) {

@@ -9,7 +9,11 @@ the configured tile.
 Tiling is also dimension-specific:
 
 - The Overworld uses `mode` and `tile_size`.
+- The Overworld terrain method uses `terrain_mode`, with `auto` deriving the
+  method from `tile_size`.
 - The Nether uses `nether_mode` and the effective Nether tile size.
+- The Nether terrain method uses `nether_terrain_mode`, with `auto` deriving
+  the method from the effective Nether tile size.
 - The End never tiles.
 
 ## Why
@@ -103,10 +107,10 @@ Overworld period supports it exactly.
   a chosen whole-tile visual alias of their current canonical position.
 - `/globeworld config` reports saved tiling settings.
 
-Tile size, Overworld tiling mode, Nether tiling mode, and derived Nether scale
-are treated as permanent world-topology settings. They are visible through
-`/globeworld config`, but intentionally are not mutable through runtime
-commands.
+Tile size, Overworld tiling mode, Overworld terrain method, Nether tiling mode,
+Nether terrain method, and derived Nether scale are treated as permanent
+world-topology settings. They are visible through `/globeworld config`, but
+intentionally are not mutable through runtime commands.
 
 ## Related Vanilla Mechanics
 

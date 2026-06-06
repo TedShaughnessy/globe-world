@@ -16,7 +16,9 @@ and worldgen side effects must write canonical state exactly once.
 
 ## Terrain Modes
 
-`TerrainMode` selects a generation strategy from tile size:
+`TerrainMode` selects a generation strategy. `AUTO` derives the method from
+tile size; custom world creation can also save an explicit method per wrapped
+dimension:
 
 - `COMPACT_TORUS`: tiny/stylized tiles.
 - `EDGE_BLEND`: arbitrary medium/large sizes where preserving vanilla scale in
@@ -24,8 +26,9 @@ and worldgen side effects must write canonical state exactly once.
 - `PERIODIC_LATTICE`: clean sizes where true periodic lattice noise can close
   the tile.
 
-The current policy uses compact torus for small tiles, periodic lattice for
-clean large multiples, and edge blend for awkward medium/large sizes.
+The automatic policy uses compact torus for small tiles, periodic lattice for
+clean large multiples, and edge blend for awkward medium/large sizes. Changing
+tile size resets saved explicit terrain methods back to `AUTO`.
 
 ## Implementation
 

@@ -448,18 +448,20 @@ public final class GlobeDebugCommands {
                 "Globe World config version=%d",
                 GlobeConfig.settingsVersion())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "Overworld: mode=%s tile=%d chunks/%d blocks terrain=%s curvature=%d%%",
+                "Overworld: mode=%s tile=%d chunks/%d blocks terrain=%s configured=%s curvature=%d%%",
                 settings.mode().getSerializedName(),
                 settings.tileSize(),
                 settings.tileSize() * 16,
                 overworldTiling.terrainMode().displayName(),
+                settings.terrainMode().getSerializedName(),
                 settings.curvaturePercent())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "Nether: mode=%s tile=%d chunks/%d blocks terrain=%s curvature=%d%% one_eighth requested/effective=%s/%s",
+                "Nether: mode=%s tile=%d chunks/%d blocks terrain=%s configured=%s curvature=%d%% one_eighth requested/effective=%s/%s",
                 settings.netherMode().getSerializedName(),
                 settings.netherTileSize(),
                 settings.netherTileSize() * 16,
                 netherTiling.terrainMode().displayName(),
+                settings.netherTerrainMode().getSerializedName(),
                 settings.netherCurvaturePercent(),
                 yesNo(settings.netherOneEighthOverworldSize()),
                 yesNo(settings.effectiveNetherOneEighthOverworldSize()))), false);

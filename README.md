@@ -10,6 +10,7 @@ Globe World is a Fabric mod for **Minecraft 26.1.2**
 
 This mod adds a finite world that seamlessly tiles giving the illusion of a globe world. there is no teleport at the border, it continues uninterupted and world generation tiles seamlessly as well so there is no clear border. structures will generate across the border and mobs will track you across the border. The world can have curvature applied to mimic the real curvature a globe of that size would have
 
+This mod will likely not have ongoing support
 
 ## Features:
 - A finite tile size from 2 chunks wide to as large as you want
