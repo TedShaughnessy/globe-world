@@ -2,6 +2,9 @@ package globe.world.mixin;
 
 import globe.world.util.EndPortalAvailability;
 import globe.world.util.EndPortalFallback;
+import globe.world.util.EnderEyeSignals;
+import globe.world.util.ForcedProgressionStructures;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -13,6 +16,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -35,9 +39,29 @@ public abstract class EnderEyeItemMixin extends Item {
         if (isLookingAtEndPortalFrame(level, player)) {
             return;
         }
-        if (!EndPortalFallback.hasUsableSavedPortal(serverLevel)
-                && EndPortalAvailability.classify(serverLevel).status()
-                != EndPortalAvailability.Status.FALLBACK_PORTAL_REQUIRED) {
+        EndPortalAvailability.Report report = EndPortalAvailability.classify(serverLevel);
+        if (report.status() == EndPortalAvailability.Status.VANILLA_STRONGHOLD_PRESENT) {
+            return;
+        }
+        if (report.status() == EndPortalAvailability.Status.FORCED_STRONGHOLD_AVAILABLE) {
+            BlockPos forcedTarget = ForcedProgressionStructures.validatedForcedOverworldStrongholdTarget(serverLevel)
+                    .orElse(null);
+            if (forcedTarget != null) {
+                cir.setReturnValue(EnderEyeSignals.launch(
+                        serverLevel,
+                        player,
+                        hand,
+                        (Item) (Object) this,
+                        forcedTarget,
+                        Vec3.atLowerCornerOf(forcedTarget)
+                ));
+                return;
+            }
+            cir.setReturnValue(EndPortalFallback.useEye(serverLevel, player, hand, (Item) (Object) this));
+            return;
+        }
+        if (report.status() != EndPortalAvailability.Status.FALLBACK_PORTAL_REQUIRED
+                && !EndPortalFallback.hasUsableSavedPortal(serverLevel)) {
             return;
         }
 

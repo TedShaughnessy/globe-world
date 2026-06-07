@@ -113,6 +113,35 @@ Implementation files:
 - `mod-fabric/src/client/java/globe/world/client/GlobeWorldSettingsControls.java`
 - `mod-fabric/src/client/java/globe/world/client/GlobeWorldCreateState.java`
 - `mod-fabric/src/client/java/globe/world/client/GlobeWorldTab.java`
+- `mod-fabric/src/main/java/globe/world/util/ForcedProgressionStructures.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkStatusTasksMixin.java`
+
+## Implemented So Far
+
+- Overworld strongholds are wired into `STRUCTURE_STARTS`.
+- Vanilla runs first. Globe World forces a stronghold only when the saved
+  stronghold setting is enabled, Overworld tiling is enabled, vanilla structure
+  generation is enabled, and no raw vanilla stronghold ring candidate is already
+  inside the canonical tile.
+- The forced stronghold start is deterministic from world seed and tile size,
+  biased toward a canonical edge band, and saved through the normal structure
+  manager path so reference generation and later lookups see durable canonical
+  world state.
+- Tiles of 32 chunks or smaller force only the vanilla portal room piece as the
+  stronghold start, preventing full stronghold graphs from sprawling repeatedly
+  across tiny wrapped tiles. The one-piece fallback is shifted inward when
+  needed so the portal room itself fits inside the canonical block tile instead
+  of relying on cross-boundary spillover for the critical room. Larger forced
+  strongholds still use the vanilla stronghold layout.
+- Eye of Ender targeting prefers vanilla canonical strongholds, then a
+  validated forced stronghold target, then the emergency fallback portal. A
+  previously saved fallback portal does not mask a later-valid stronghold path.
+
+Still planned:
+
+- Shared diagnostics for forced progression structures.
+- Nether fortress and bastion forced starts.
+- Deterministic progression kits for forced starts.
 
 ## Availability Checks
 
@@ -170,7 +199,8 @@ Policy:
   X or Z side.
 - Pick the side and offset deterministically.
 - Keep enough inset to avoid trivially clipping the portal room out of the tile
-  on medium tiles, while allowing edge crossing on tiny tiles.
+  on medium tiles. For the tiny portal-room-only fallback, favor reliable
+  canonical placement of the room over edge-crossing stress.
 - If the tile is too small for the inset, fall back to the best deterministic
   canonical chunk and report the degraded placement in diagnostics.
 
@@ -310,18 +340,18 @@ rather than general loot enrichment.
 
 ## Stronghold And End Portal Interaction
 
-Forced strongholds should become the preferred End progression path when
-enabled and valid.
+Forced strongholds are the preferred End progression path when enabled and
+valid.
 
 Rules:
 
-- If a canonical vanilla or forced stronghold is present, Eye of Ender should
-  target it through normal or minimally wrapped structure lookup.
+- If a canonical vanilla or forced stronghold is present, Eye of Ender targets
+  it through normal or minimally wrapped structure lookup.
 - If forced stronghold generation is enabled but no valid start can be created,
   use the existing `EndPortalFallback` behavior.
 - If forced stronghold generation is disabled and no canonical vanilla
   stronghold exists, use the existing `EndPortalFallback` behavior.
-- `/globeworld end_portal` should report whether End progression is provided by
+- `/globeworld end_portal` reports whether End progression is provided by
   vanilla stronghold, forced stronghold, or fallback portal.
 
 ## Diagnostics And Commands
@@ -366,8 +396,8 @@ user, like the existing End portal validation command.
    forced Nether starts.
 
 5. Overworld forced stronghold:
-   Implement stronghold forcing after the generic system works, then connect it
-   to Eye of Ender targeting and the existing fallback portal policy.
+   Done for the first pass: stronghold forcing is wired to worldgen and Eye of
+   Ender targeting, with the fallback portal kept as the emergency path.
 
 6. Documentation:
    Move durable behavior into `docs/mod-mechanics/worldgen.md` once implemented

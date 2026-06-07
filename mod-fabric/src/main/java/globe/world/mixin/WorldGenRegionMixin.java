@@ -5,10 +5,13 @@ import globe.world.util.DimensionTiling;
 import globe.world.util.WorldGenSpillover;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.GenerationChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
+import net.minecraft.util.StaticCache2D;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStep;
@@ -25,6 +28,10 @@ public class WorldGenRegionMixin {
     @Shadow
     @Final
     private ChunkAccess center;
+
+    @Shadow
+    @Final
+    private StaticCache2D<GenerationChunkHolder> cache;
 
     @Shadow
     @Final
@@ -54,7 +61,11 @@ public class WorldGenRegionMixin {
         int virtualX = virtualCacheChunkX(chunkX);
         int virtualZ = virtualCacheChunkZ(chunkZ);
         if (virtualX != chunkX || virtualZ != chunkZ) {
-            cir.setReturnValue(((WorldGenRegion) (Object) this).getChunk(virtualX, virtualZ, targetStatus, loadOrGenerate));
+            if (this.cache.contains(virtualX, virtualZ)) {
+                cir.setReturnValue(((WorldGenRegion) (Object) this).getChunk(virtualX, virtualZ, targetStatus, loadOrGenerate));
+            } else if (!loadOrGenerate) {
+                cir.setReturnValue(null);
+            }
         }
     }
 
@@ -63,7 +74,7 @@ public class WorldGenRegionMixin {
         int virtualX = virtualCacheChunkX(chunkX);
         int virtualZ = virtualCacheChunkZ(chunkZ);
         if (virtualX != chunkX || virtualZ != chunkZ) {
-            cir.setReturnValue(((WorldGenRegion) (Object) this).hasChunk(virtualX, virtualZ));
+            cir.setReturnValue(this.cache.contains(virtualX, virtualZ) && ((WorldGenRegion) (Object) this).hasChunk(virtualX, virtualZ));
         }
     }
 
@@ -75,6 +86,14 @@ public class WorldGenRegionMixin {
     @ModifyVariable(method = "getBlockEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetBlockEntityPos(BlockPos pos) {
         return CoordUtil.wrapBlockPos(this.level, pos);
+    }
+
+    @Inject(method = "getBlockEntity", at = @At("HEAD"), cancellable = true)
+    private void skipUnavailableCanonicalBlockEntity(BlockPos pos, CallbackInfoReturnable<BlockEntity> cir) {
+        BlockPos wrapped = CoordUtil.wrapBlockPos(this.level, pos);
+        if (!physicalCacheContains(wrapped)) {
+            cir.setReturnValue(null);
+        }
     }
 
     @Inject(method = "ensureCanWrite", at = @At("HEAD"), cancellable = true)
@@ -135,6 +154,12 @@ public class WorldGenRegionMixin {
                 return;
             }
 
+            if (!physicalCacheContains(wrapped)) {
+                WorldGenSpillover.enqueue(this.level, wrapped, null, blockState, updateFlags);
+                cir.setReturnValue(true);
+                return;
+            }
+
             BlockState expectedState = region.getBlockState(wrapped);
             boolean placed = region.setBlock(wrapped, blockState, updateFlags, updateLimit);
             if (placed) {
@@ -147,6 +172,12 @@ public class WorldGenRegionMixin {
     @ModifyVariable(method = "setBlock", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenSetBlockPos(BlockPos pos) {
         return CoordUtil.wrapBlockPos(this.level, pos);
+    }
+
+    private boolean physicalCacheContains(BlockPos pos) {
+        int chunkX = SectionPos.blockToSectionCoord(pos.getX());
+        int chunkZ = SectionPos.blockToSectionCoord(pos.getZ());
+        return this.cache.contains(virtualCacheChunkX(chunkX), virtualCacheChunkZ(chunkZ));
     }
 
     @ModifyVariable(method = "markPosForPostprocessing", at = @At("HEAD"), argsOnly = true, ordinal = 0)

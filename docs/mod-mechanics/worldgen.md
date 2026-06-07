@@ -34,11 +34,18 @@ tile size resets saved explicit terrain methods back to `AUTO`.
 
 `TilingSettings` saves three world-generation policy toggles:
 `force_missing_stronghold`, `force_missing_nether_fortress`, and
-`force_missing_bastion`. These currently configure intent only; the forced
-structure generation path is still planned and is not wired to worldgen yet.
-The settings default on for matching dimensions whose effective tile size is at
-most 256 chunks and off for larger tiles. Existing worlds decode missing fields
-with those tile-size-derived defaults.
+`force_missing_bastion`. The stronghold toggle is wired for the Overworld: when
+tiling and vanilla structure generation are enabled, Globe World lets vanilla
+run first and then adds exactly one deterministic canonical stronghold start if
+vanilla has no raw stronghold ring candidate inside the canonical tile. Tiny
+tiles up to 32 chunks use a saved stronghold start containing only the vanilla
+portal room piece, avoiding a full stronghold graph that would sprawl across the
+tile many times. Larger forced strongholds use the vanilla stronghold layout.
+The Nether fortress and bastion toggles currently configure intent only; their
+forced generation paths are still planned. The settings default on for matching
+dimensions whose effective tile size is at most 256 chunks and off for larger
+tiles. Existing worlds decode missing fields with those tile-size-derived
+defaults.
 
 ## Implementation
 
@@ -62,9 +69,13 @@ during biome decoration, post-processing, and before chunk packet serialization,
 but replay a queued write only if the destination still matches the observed
 state. This prevents stale leaf, grass, or other decoration writes from
 overwriting trunks and other blocks placed by the destination chunk after the
-spillover write was queued. Level close and server stop discard any remaining
-queues and warn if writes were abandoned; spillover queues are runtime
-bookkeeping and are not saved world data.
+spillover write was queued. When an external worldgen provider such as Distant
+Horizons does not expose the opposite-edge chunk in the active
+`WorldGenRegion` cache, Globe World queues the wrapped write without directly
+touching the missing chunk; those writes replay later without an observed-state
+guard because the destination state could not be sampled safely. Level close and
+server stop discard any remaining queues and warn if writes were abandoned;
+spillover queues are runtime bookkeeping and are not saved world data.
 
 Structure edge handling stores virtual source keys during reference generation,
 resolves them during biome decoration, and places vanilla starts with a
@@ -72,24 +83,45 @@ whole-tile chunk-box shift. Alias starts are treated as transient worldgen data.
 Alias biome decoration and reference generation are skipped without leaking
 their tiling context into surrounding generation work.
 
+Forced missing Overworld strongholds are created during `STRUCTURE_STARTS`,
+immediately after vanilla `ChunkGenerator.createStructures(...)` finishes for a
+canonical chunk. `ForcedProgressionStructures` resolves the vanilla stronghold
+holder, inspects concentric-ring placements for canonical raw candidates, and
+only acts when none exist. The forced chunk is deterministic from the world seed
+and tile size, biased into a canonical edge band, and saved through
+`StructureManager.setStartForStructure(...)` so later reference generation,
+biome decoration, and structure lookups treat it as ordinary canonical world
+state. On tiles of 32 chunks or smaller, the forced start is a single vanilla
+`StrongholdPieces.PortalRoom`; Globe World shifts that piece inward when needed
+so the portal room's bounding box fits inside the canonical block tile instead
+of depending on seam spillover for the critical progression room. On larger
+small tiles it is generated through vanilla `Structure.generate(...)`.
+
 End portal progression uses canonical stronghold ownership instead of alias
 structure lookup. In the Overworld, `EndPortalAvailability` inspects vanilla
-stronghold concentric-ring positions and treats the world as having a durable
-stronghold only when a raw ring candidate is already inside the canonical tile.
-Wrapped alias candidates are reported for diagnostics but do not count as owned
-world state. When tiling is enabled and no canonical stronghold candidate exists
-or structure generation is disabled, `EnderEyeItemMixin` replaces a thrown Eye of
-Ender with a fallback path: `EndPortalFallback` chooses and persists one
-canonical position centered on the throwing player, repairs a 5x5 End portal
-frame with a deterministic random subset of eyes already inserted, then spawns a
-normal Eye of Ender. The eye entity and its flight target stay in canonical
-server coordinates so entity storage canonicalization cannot desynchronize the
-projectile from its target; entity packets still render the eye through the
-nearest visual alias for the throwing player. The fallback path preserves
-vanilla item use, stat, sound, and advancement side effects.
+stronghold concentric-ring positions and treats a raw ring candidate inside the
+canonical tile as the preferred durable stronghold. Wrapped alias candidates are
+reported for diagnostics but do not count as owned world state. When no
+canonical vanilla candidate exists and `force_missing_stronghold` can provide a
+valid forced start, `EnderEyeItemMixin` intercepts thrown Eyes of Ender and
+signals the deterministic forced stronghold target instead of using the fallback
+portal. That forced target is validated by generating the forced chunk to
+`STRUCTURE_STARTS`; if validation fails, the emergency fallback remains
+available.
+
+When tiling is enabled and neither vanilla nor forced stronghold progression is
+available, or when structure generation is disabled, `EnderEyeItemMixin`
+replaces a thrown Eye of Ender with a fallback path: `EndPortalFallback` chooses
+and persists one canonical position centered on the throwing player, repairs a
+5x5 End portal frame with a deterministic random subset of eyes already
+inserted, then spawns a normal Eye of Ender. The eye entity and its flight
+target stay in canonical server coordinates so entity storage canonicalization
+cannot desynchronize the projectile from its target; entity packets still render
+the eye through the nearest visual alias for the throwing player. The fallback
+path preserves vanilla item use, stat, sound, and advancement side effects.
 Once a fallback portal has been assigned, later Overworld Eye of Ender throws use
-that saved portal target before falling back to vanilla stronghold lookup, so
-players keep receiving directions to the portal they can actually complete.
+it only while vanilla or forced stronghold progression is still unavailable, so
+a saved emergency portal does not mask a later-valid stronghold path.
 The frame block writes remain canonical, and the player completes the portal by
 filling the remaining eyes through vanilla `EnderEyeItem.useOn(...)` behavior.
 Repair passes preserve eyes inserted by players and do not remove an already
@@ -108,6 +140,7 @@ canonical candidate starts and warns that validation may load or generate
 - `mod-fabric/src/main/java/globe/world/util/PeriodicPositionalRandomFactory.java`
 - `mod-fabric/src/main/java/globe/world/util/WorldGenSpillover.java`
 - `mod-fabric/src/main/java/globe/world/util/StructurePlacementShifts.java`
+- `mod-fabric/src/main/java/globe/world/util/ForcedProgressionStructures.java`
 - `mod-fabric/src/main/java/globe/world/util/EndPortalAvailability.java`
 - `mod-fabric/src/main/java/globe/world/util/EndPortalProgressionState.java`
 - `mod-fabric/src/main/java/globe/world/util/EndPortalFallback.java`

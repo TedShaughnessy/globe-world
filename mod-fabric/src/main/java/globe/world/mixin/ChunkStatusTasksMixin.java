@@ -3,6 +3,7 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.util.DimensionTiling;
+import globe.world.util.ForcedProgressionStructures;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.GenerationChunkHolder;
@@ -49,7 +50,19 @@ public class ChunkStatusTasksMixin {
             ChunkAccess chunk) {
         runWithDimensionTiling(
                 context.level(),
-                () -> original.call(generator, registryAccess, state, structureManager, centerChunk, structureTemplateManager, levelKey)
+                () -> {
+                    original.call(generator, registryAccess, state, structureManager, centerChunk, structureTemplateManager, levelKey);
+                    ForcedProgressionStructures.maybeForceOverworldStronghold(
+                            context.level(),
+                            registryAccess,
+                            state,
+                            structureManager,
+                            centerChunk,
+                            generator,
+                            structureTemplateManager,
+                            levelKey
+                    );
+                }
         );
     }
 

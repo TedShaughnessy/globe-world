@@ -422,6 +422,12 @@ public final class GlobeDebugCommands {
                 report.rawCandidateCount(),
                 report.canonicalCandidateCount(),
                 report.distinctWrappedAliasCount())), false);
+        BlockPos forcedTarget = report.forcedStrongholdTarget();
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Forced stronghold target=%s validated=%d valid=%d",
+                forcedTarget == null ? "none" : formatBlock(forcedTarget),
+                report.validatedForcedStartCount(),
+                report.validForcedStartCount())), false);
         BlockPos fallback = state.fallbackPortalPos();
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Fallback frame=%s eyes=%d mask=0x%03x saved_policy=%s saved_reason=%s saved_tile=%d settings_version=%d",

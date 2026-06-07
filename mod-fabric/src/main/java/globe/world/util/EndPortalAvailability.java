@@ -1,5 +1,6 @@
 package globe.world.util;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.Registry;
@@ -58,6 +59,8 @@ public final class EndPortalAvailability {
         int canonicalCandidateCount = 0;
         int validatedStartCount = 0;
         int validStartCount = 0;
+        int validatedForcedStartCount = 0;
+        int validForcedStartCount = 0;
         Set<ChunkPos> wrappedAliases = new HashSet<>();
         Set<ChunkPos> canonicalCandidates = new HashSet<>();
 
@@ -100,10 +103,28 @@ public final class EndPortalAvailability {
             }
         }
 
-        Status status = canonicalCandidateCount > 0
-                ? Status.VANILLA_STRONGHOLD_PRESENT
-                : Status.FALLBACK_PORTAL_REQUIRED;
-        String reason = canonicalCandidateCount > 0 ? "canonical_ring_candidate" : "no_canonical_ring_candidate";
+        BlockPos forcedStrongholdTarget = canonicalCandidateCount == 0
+                ? ForcedProgressionStructures.forcedOverworldStrongholdTarget(level).orElse(null)
+                : null;
+        if (validateStarts && forcedStrongholdTarget != null) {
+            validatedForcedStartCount++;
+            if (ForcedProgressionStructures.validatedForcedOverworldStrongholdTarget(level).isPresent()) {
+                validForcedStartCount++;
+            }
+        }
+
+        Status status;
+        String reason;
+        if (canonicalCandidateCount > 0) {
+            status = Status.VANILLA_STRONGHOLD_PRESENT;
+            reason = "canonical_ring_candidate";
+        } else if (forcedStrongholdTarget != null && (!validateStarts || validForcedStartCount > 0)) {
+            status = Status.FORCED_STRONGHOLD_AVAILABLE;
+            reason = validateStarts ? "forced_stronghold_start_valid" : "forced_stronghold_configured";
+        } else {
+            status = Status.FALLBACK_PORTAL_REQUIRED;
+            reason = forcedStrongholdTarget == null ? "no_canonical_ring_candidate" : "forced_stronghold_start_invalid";
+        }
         return new Report(
                 status,
                 reason,
@@ -116,9 +137,12 @@ public final class EndPortalAvailability {
                 rawCandidateCount,
                 canonicalCandidateCount,
                 wrappedAliases.size(),
+                forcedStrongholdTarget,
                 validateStarts,
                 validatedStartCount,
-                validStartCount
+                validStartCount,
+                validatedForcedStartCount,
+                validForcedStartCount
         );
     }
 
@@ -133,6 +157,7 @@ public final class EndPortalAvailability {
     public enum Status {
         DISABLED,
         VANILLA_STRONGHOLD_PRESENT,
+        FORCED_STRONGHOLD_AVAILABLE,
         FALLBACK_PORTAL_REQUIRED
     }
 
@@ -148,9 +173,12 @@ public final class EndPortalAvailability {
             int rawCandidateCount,
             int canonicalCandidateCount,
             int distinctWrappedAliasCount,
+            BlockPos forcedStrongholdTarget,
             boolean validatedStarts,
             int validatedStartCount,
-            int validStartCount
+            int validStartCount,
+            int validatedForcedStartCount,
+            int validForcedStartCount
     ) {
         private static Report disabled(ServerLevel level, DimensionTiling tiling, String reason) {
             return new Report(
@@ -165,7 +193,10 @@ public final class EndPortalAvailability {
                     0,
                     0,
                     0,
+                    null,
                     false,
+                    0,
+                    0,
                     0,
                     0
             );
@@ -188,7 +219,10 @@ public final class EndPortalAvailability {
                     0,
                     0,
                     0,
+                    null,
                     false,
+                    0,
+                    0,
                     0,
                     0
             );
@@ -198,7 +232,8 @@ public final class EndPortalAvailability {
             if (!validatedStarts) {
                 return "not_run";
             }
-            return validStartCount + "/" + validatedStartCount + " canonical starts valid";
+            return validStartCount + "/" + validatedStartCount + " canonical starts valid, "
+                    + validForcedStartCount + "/" + validatedForcedStartCount + " forced starts valid";
         }
     }
 }

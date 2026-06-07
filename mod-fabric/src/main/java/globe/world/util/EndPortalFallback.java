@@ -2,28 +2,20 @@ package globe.world.util;
 
 import globe.world.GlobeWorld;
 import globe.world.config.GlobeConfig;
-import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.stats.Stats;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.EyeOfEnder;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EndPortalFrameBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.Vec3;
 
 public final class EndPortalFallback {
@@ -38,46 +30,14 @@ public final class EndPortalFallback {
     }
 
     public static InteractionResult useEye(ServerLevel level, Player player, InteractionHand hand, Item eyeItem) {
-        player.startUsingItem(hand);
-
-        ItemStack stack = player.getItemInHand(hand);
         EndPortalProgressionState state = getOrCreatePortal(level, player);
         BlockPos portalPos = state.fallbackPortalPos();
         boolean changed = buildOrRepairPortal(level, portalPos, state.fallbackEyeMask());
 
-        EyeOfEnder eye = new EyeOfEnder(
-                level,
-                CoordUtil.wrapBlock(level, player.getX()),
-                player.getY(0.5),
-                CoordUtil.wrapBlock(level, player.getZ())
-        );
-        eye.setItem(stack);
-        eye.signalTo(signalTarget(level, portalPos));
-        level.gameEvent(GameEvent.PROJECTILE_SHOOT, eye.position(), GameEvent.Context.of(player));
-        level.addFreshEntity(eye);
-
-        if (player instanceof ServerPlayer serverPlayer) {
-            CriteriaTriggers.USED_ENDER_EYE.trigger(serverPlayer, portalPos);
-        }
-
-        float pitch = Mth.lerp(level.getRandom().nextFloat(), 0.33F, 0.5F);
-        level.playSound(
-                null,
-                player.getX(),
-                player.getY(),
-                player.getZ(),
-                SoundEvents.ENDER_EYE_LAUNCH,
-                SoundSource.NEUTRAL,
-                1.0F,
-                pitch
-        );
-        stack.consume(1, player);
-        player.awardStat(Stats.ITEM_USED.get(eyeItem));
-
         if (changed) {
             level.globalLevelEvent(PORTAL_EVENT, portalPos, 0);
         }
-        return InteractionResult.SUCCESS_SERVER;
+        return EnderEyeSignals.launch(level, player, hand, eyeItem, portalPos, signalTarget(level, portalPos));
     }
 
     public static boolean hasUsableSavedPortal(ServerLevel level) {

@@ -107,7 +107,7 @@ public final class WorldGenSpillover {
 
             for (Write write : queue.writes()) {
                 BlockState currentState = chunk.getBlockState(write.pos());
-                if (currentState.equals(write.expectedState())) {
+                if (write.expectedState() == null || currentState.equals(write.expectedState())) {
                     chunk.setBlockState(write.pos(), write.state(), write.flags());
                 } else if (GlobeWorld.LOGGER.isDebugEnabled()) {
                     GlobeWorld.LOGGER.debug(
