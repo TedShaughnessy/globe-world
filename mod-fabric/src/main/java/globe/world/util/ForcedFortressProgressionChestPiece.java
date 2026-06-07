@@ -50,39 +50,12 @@ public final class ForcedFortressProgressionChestPiece extends StructurePiece {
             BoundingBox box,
             ChunkPos chunkPos,
             BlockPos pivot) {
-        generateBox(
-                level,
-                box,
-                0,
-                0,
-                0,
-                WIDTH - 1,
-                0,
-                DEPTH - 1,
-                Blocks.NETHER_BRICKS.defaultBlockState(),
-                Blocks.NETHER_BRICKS.defaultBlockState(),
-                false
-        );
-        generateBox(
-                level,
-                box,
-                0,
-                1,
-                0,
-                WIDTH - 1,
-                HEIGHT - 1,
-                DEPTH - 1,
-                Blocks.AIR.defaultBlockState(),
-                Blocks.AIR.defaultBlockState(),
-                false
-        );
-
         BlockPos chestPos = getWorldPos(1, 1, 1);
         if (!box.isInside(chestPos)) {
             return;
         }
 
-        Direction facing = getOrientation() != null ? getOrientation().getOpposite() : Direction.SOUTH;
+        Direction facing = getOrientation() != null ? getOrientation() : Direction.NORTH;
         BlockState chestState = Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, facing);
         level.setBlock(chestPos, chestState, 2);
         if (level.getBlockEntity(chestPos) instanceof ChestBlockEntity chest) {

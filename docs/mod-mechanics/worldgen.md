@@ -30,32 +30,45 @@ The automatic policy uses compact torus for small tiles, periodic lattice for
 clean large multiples, and edge blend for awkward medium/large sizes. Changing
 tile size resets saved explicit terrain methods back to `AUTO`.
 
-## Progression Structure Settings
+## Forced Progression Structures
 
 `TilingSettings` saves two world-generation policy toggles:
 `force_missing_stronghold` and `force_missing_nether_fortress`. The stronghold
-toggle is wired for the Overworld: when tiling and vanilla structure generation
-are enabled, Globe World lets vanilla run first and then adds exactly one
-canonical stronghold start at chunk 0,0 if vanilla has no raw stronghold ring
-candidate inside the canonical tile. Tiny tiles up to 32 chunks use a saved
-stronghold start containing only the vanilla portal room piece, avoiding a full
-stronghold graph that would sprawl across the tile many times. Larger forced
-strongholds use the vanilla stronghold layout.
+toggle is wired for the Overworld, and the fortress toggle is wired for the
+Nether. The settings mean "force one if missing", not "always create one":
+vanilla structure generation runs first, and Globe World only creates a forced
+canonical start when vanilla has no raw candidate of that type inside the
+canonical tile. Forced starts are durable canonical world state saved during
+`STRUCTURE_STARTS`; aliases remain views of that state rather than separate
+structure owners. Runtime logic also respects vanilla `generateStructures`, so
+worlds with structure generation disabled do not get forced progression starts.
+
+For strongholds, Globe World adds exactly one canonical stronghold start at
+chunk 0,0 when tiling and vanilla structures are enabled and no raw stronghold
+ring candidate exists inside the canonical Overworld tile. Tiny tiles up to 32
+chunks use a saved stronghold start containing only the vanilla portal room
+piece, avoiding a full stronghold graph that would sprawl across the tile many
+times. Larger forced strongholds use the vanilla stronghold layout.
 
 The Nether fortress toggle uses the same structure-start phase for the Nether:
-vanilla runs first, then Globe World adds one deterministic canonical fortress
-start when no raw random-spread fortress candidate exists inside the canonical
-Nether tile. Tiny Nether tiles up to 32 chunks use fitted essential fortress
-pieces that stay inside the tile: a `CastleStalkRoom` for wither skeleton spawn
-space plus nether wart and soul sand, a connected `MonsterThrone` for a blaze
-spawner, explicit wart-bed patch pieces, and a small canonical upgrade chest
-containing one netherite upgrade smithing template. Larger forced Nether
+vanilla runs first, then Globe World selects the nearest raw random-spread
+fortress candidate inside the canonical Nether tile and ensures that selected
+start contains the progression-critical fortress affordances: a `CastleStalkRoom`
+for nether wart and soul sand, a `MonsterThrone` for a blaze spawner, and a
+small canonical upgrade chest containing one netherite upgrade smithing
+template. If vanilla's generated start lacks the stalk room or throne, Globe
+World appends fitted supplemental fortress pieces to the same saved start rather
+than forcing a duplicate fortress. If no raw random-spread fortress candidate
+exists inside the canonical Nether tile, Globe World adds one deterministic
+canonical fortress start instead. Tiny Nether tiles up to 32 chunks use fitted
+essential fortress pieces that stay inside the tile. Larger forced Nether
 fortresses use vanilla structure generation so existing seam spillover and
-shifted-reference handling can let pieces cross tile borders, then append the
-same upgrade chest to the forced start. The settings default on for matching
-dimensions whose effective tile size is at most 256 chunks and off for larger
-tiles. Existing worlds decode missing fields with those tile-size-derived
-defaults.
+shifted-reference handling can let pieces cross tile borders, then supplement
+the forced start if needed. The upgrade chest prefers the space behind a
+`CastleStalkRoom` staircase and falls back to the start chunk if no stalk room is
+present. The settings default on for matching dimensions whose effective tile
+size is at most 256 chunks and off for larger tiles. Existing worlds decode
+missing fields with those tile-size-derived defaults.
 
 ## Implementation
 
@@ -117,23 +130,30 @@ so the portal room's bounding box fits inside the canonical block tile instead
 of depending on seam spillover for the critical progression room. On larger
 small tiles it is generated through vanilla `Structure.generate(...)`.
 
-Forced missing Nether fortresses are also created during `STRUCTURE_STARTS`,
+Nether fortress progression is also handled during `STRUCTURE_STARTS`,
 immediately after vanilla structure creation for canonical Nether chunks.
-`ForcedProgressionStructures` resolves the vanilla fortress holder, inspects
-random-spread placements by grid cell for canonical raw candidates, and only
-acts when none exist. The forced chunk is deterministic from the world seed,
-effective Nether tile size, and a fortress salt. Tiles of 32 chunks or smaller
-choose an interior forced chunk and save fitted minimal starts so the essential
-pieces do not depend on crossing a tile border. The tiny layout creates the
-stalk room and blaze throne at vanilla forward-connection coordinates, then
-fits them as a group so the throne stays connected instead of being moved into
-the room. It also includes explicit wart-bed patch pieces that guarantee soul
-sand and nether wart in the stalk room. Larger tiles choose an
-edge-biased chunk and call vanilla `Structure.generate(...)`, preserving the
+`ForcedProgressionStructures` resolves the vanilla fortress holder and inspects
+random-spread placements by grid cell for canonical raw candidates. If one or
+more canonical candidates exist, it selects the candidate nearest canonical
+chunk 0,0 and uses that start as the canonical fortress owner. Nether fortress
+piece generation does not guarantee a stalk room or monster throne, so Globe
+World inspects the selected start after vanilla generation and appends
+supplemental fitted fortress pieces when either the wart room or blaze throne is
+missing. If no canonical candidate exists, the forced chunk is deterministic from
+the world seed, effective Nether tile size, and a fortress salt. Tiles of 32
+chunks or smaller choose an interior forced chunk and save fitted minimal starts
+so the essential pieces do not depend on crossing a tile border. The tiny layout
+creates the stalk room and blaze throne at vanilla forward-connection
+coordinates, then fits them as a group so the throne stays connected instead of
+being moved into the room. It also includes explicit wart-bed patch pieces that
+guarantee soul sand and nether wart in the stalk room. Larger forced tiles choose
+an edge-biased chunk and call vanilla `Structure.generate(...)`, preserving the
 normal structure layout and allowing border crossing through the existing
-toroidal structure placement and spillover paths. Both paths include a small
-forced fortress progression chest piece with a netherite upgrade smithing
-template, so Globe World does not need a separate forced bastion fallback.
+toroidal structure placement and spillover paths; if that generated layout lacks
+critical fortress pieces, it receives the same supplemental pieces. The upgrade
+chest is placed behind a `CastleStalkRoom` staircase when that piece is available,
+with a fallback at the start chunk if no stalk room can host it, so Globe World
+does not need a separate forced bastion fallback.
 
 End portal progression uses canonical stronghold ownership instead of alias
 structure lookup. In the Overworld, `EndPortalAvailability` inspects vanilla
@@ -176,9 +196,15 @@ canonical candidate starts and warns that validation may load or generate
 - `mod-fabric/src/main/java/globe/world/util/TerrainMode.java`
 - `mod-fabric/src/main/java/globe/world/util/PeriodicNoiseUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/PeriodicPositionalRandomFactory.java`
+- `mod-fabric/src/main/java/globe/world/config/TilingSettings.java`
+- `mod-fabric/src/main/java/globe/world/config/GlobeConfig.java`
+- `mod-fabric/src/client/java/globe/world/client/GlobeWorldSettingsControls.java`
 - `mod-fabric/src/main/java/globe/world/util/WorldGenSpillover.java`
 - `mod-fabric/src/main/java/globe/world/util/StructurePlacementShifts.java`
 - `mod-fabric/src/main/java/globe/world/util/ForcedProgressionStructures.java`
+- `mod-fabric/src/main/java/globe/world/util/ForcedProgressionStructurePieces.java`
+- `mod-fabric/src/main/java/globe/world/util/ForcedFortressProgressionChestPiece.java`
+- `mod-fabric/src/main/java/globe/world/util/ForcedFortressWartPatchPiece.java`
 - `mod-fabric/src/main/java/globe/world/util/EndPortalAvailability.java`
 - `mod-fabric/src/main/java/globe/world/util/EndPortalProgressionState.java`
 - `mod-fabric/src/main/java/globe/world/util/EndPortalFallback.java`
@@ -197,6 +223,7 @@ canonical candidate starts and warns that validation may load or generate
 - `mod-fabric/src/main/java/globe/world/mixin/StructureGenerationContextMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/StructurePlacementMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/StructureStartMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkStatusTasksMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/EnderEyeItemMixin.java`
 
 ## Related Vanilla Mechanics

@@ -62,6 +62,7 @@ World period:
 | Mob despawn, sensing, pathfinding | Implemented with bounded pathfinding limitations | [entities.md](entities.md) |
 | Periodic terrain/noise | Implemented | [worldgen.md](worldgen.md) |
 | Structures and feature edge generation | Implemented with open audit boundaries | [worldgen.md](worldgen.md) |
+| Forced progression structures | Implemented | [worldgen.md](worldgen.md) |
 | Small-world End portal fallback | Implemented | [worldgen.md](worldgen.md) |
 | Client chunk/world rendering | Implemented for server-relabeled aliases | [client.md](client.md) |
 | Multiplayer settings sync | Implemented for join-time and runtime changes | [client.md](client.md) |
