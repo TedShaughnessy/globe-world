@@ -88,4 +88,16 @@ public class GlobeConfig {
     public static double dayLengthMultiplier() {
         return settings.dayLengthMultiplier();
     }
+
+    public static boolean forceMissingStronghold() {
+        return settings.forceMissingStronghold();
+    }
+
+    public static boolean forceMissingNetherFortress() {
+        return settings.forceMissingNetherFortress();
+    }
+
+    public static boolean forceMissingBastion() {
+        return settings.forceMissingBastion();
+    }
 }

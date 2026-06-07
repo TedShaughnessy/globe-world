@@ -9,6 +9,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
@@ -42,6 +43,10 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final String CURVATURE_TOOLTIP = "Curves the terrain. Comfortable is a gentler curve; "
             + "Realistic uses the full globe curve for the tile.";
     private static final String DAY_LENGTH_TOOLTIP = "Scales the length of the Minecraft day night cycle";
+    private static final String FORCE_MISSING_STRONGHOLD_TOOLTIP = "Adds a canonical stronghold if the wrapped Overworld has no canonical stronghold. "
+            + "if no stronghold exists throwing an Eye of Ender will create a portal where you stand";
+    private static final String FORCE_MISSING_FORTRESS_TOOLTIP = "Adds a canonical fortress if the wrapped Nether has no canonical fortress.";
+    private static final String FORCE_MISSING_BASTION_TOOLTIP = "Adds a canonical bastion if the wrapped Nether has no canonical bastion.";
     private static final String MULTIPLAYER_READ_ONLY_TEXT = "Globe World settings are controlled by the server.";
     private static final boolean DISTANT_HORIZONS_LOADED = FabricLoader.getInstance().isModLoaded(DISTANT_HORIZONS_MOD_ID);
     private static final double DISTANT_HORIZONS_EARTH_RADIUS_BLOCKS = 6_371_000.0D;
@@ -116,6 +121,7 @@ public class GlobeWorldSettingsControls implements Layout {
     private int height;
     private CreateMode createMode;
     private boolean updatingText;
+    private boolean updatingCheckboxes;
     private Runnable layoutChangedCallback = () -> {
     };
 
@@ -132,6 +138,10 @@ public class GlobeWorldSettingsControls implements Layout {
     private MultiLineTextWidget netherInfo;
     private CycleButton<Integer> netherCurvatureButton;
     private GlobeCurvatureSlider netherCurvatureSlider;
+    private StringWidget progressionStructuresLabel;
+    private Checkbox forceMissingStrongholdCheckbox;
+    private Checkbox forceMissingNetherFortressCheckbox;
+    private Checkbox forceMissingBastionCheckbox;
     private CycleButton<DayNightCycleMode> dayNightCycleButton;
     private DayLengthMultiplierSlider dayLengthSlider;
     private MultiLineTextWidget multiplayerReadOnlyInfo;
@@ -306,6 +316,38 @@ public class GlobeWorldSettingsControls implements Layout {
         netherCurvatureSlider.setTooltip(tooltip(CURVATURE_TOOLTIP));
         addRow(netherCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && settingsGetter.get().enabled());
 
+        progressionStructuresLabel = new StringWidget(
+                CONTROL_WIDTH,
+                20,
+                Component.literal("Progression Structures"),
+                minecraft.font
+        );
+        addSectionRow(progressionStructuresLabel, () -> progressionStructuresVisible(settingsGetter.get()));
+
+        forceMissingStrongholdCheckbox = progressionCheckbox(
+                "Force Missing Stronghold",
+                FORCE_MISSING_STRONGHOLD_TOOLTIP,
+                settingsGetter.get().forceMissingStronghold(),
+                selected -> setSettings(settingsGetter.get().withForceMissingStronghold(selected))
+        );
+        addRow(forceMissingStrongholdCheckbox, () -> settingsGetter.get().enabled());
+
+        forceMissingNetherFortressCheckbox = progressionCheckbox(
+                "Force Missing Fortress",
+                FORCE_MISSING_FORTRESS_TOOLTIP,
+                settingsGetter.get().forceMissingNetherFortress(),
+                selected -> setSettings(settingsGetter.get().withForceMissingNetherFortress(selected))
+        );
+        addRow(forceMissingNetherFortressCheckbox, () -> settingsGetter.get().netherEnabled());
+
+        forceMissingBastionCheckbox = progressionCheckbox(
+                "Force Missing Bastion",
+                FORCE_MISSING_BASTION_TOOLTIP,
+                settingsGetter.get().forceMissingBastion(),
+                selected -> setSettings(settingsGetter.get().withForceMissingBastion(selected))
+        );
+        addRow(forceMissingBastionCheckbox, () -> settingsGetter.get().netherEnabled());
+
         dayLengthSlider = new DayLengthMultiplierSlider(
                 0,
                 0,
@@ -326,6 +368,24 @@ public class GlobeWorldSettingsControls implements Layout {
         dayNightRow.addChild(dayLengthSlider);
         dayNightRow.addChild(dayNightCycleButton);
         addSectionRow(dayNightRow, () -> settingsGetter.get().enabled());
+    }
+
+    private Checkbox progressionCheckbox(
+            String label,
+            String tooltipText,
+            boolean selected,
+            Consumer<Boolean> onChanged) {
+        Checkbox checkbox = Checkbox.builder(Component.literal(label), Minecraft.getInstance().font)
+                .selected(selected)
+                .maxWidth(CONTROL_WIDTH)
+                .onValueChange((button, value) -> {
+                    if (!updatingCheckboxes) {
+                        onChanged.accept(value);
+                    }
+                })
+                .build();
+        checkbox.setTooltip(tooltip(tooltipText));
+        return checkbox;
     }
 
     private CycleButton<Integer> curvatureButton(
@@ -443,6 +503,12 @@ public class GlobeWorldSettingsControls implements Layout {
         netherCurvatureButton.active = settings.netherEnabled();
         netherCurvatureSlider.setPercent(settings.netherCurvaturePercent());
         netherCurvatureSlider.active = settings.netherEnabled();
+        syncCheckbox(forceMissingStrongholdCheckbox, settings.forceMissingStronghold());
+        syncCheckbox(forceMissingNetherFortressCheckbox, settings.forceMissingNetherFortress());
+        syncCheckbox(forceMissingBastionCheckbox, settings.forceMissingBastion());
+        forceMissingStrongholdCheckbox.active = createWorld && editable && settings.enabled();
+        forceMissingNetherFortressCheckbox.active = createWorld && editable && settings.netherEnabled();
+        forceMissingBastionCheckbox.active = createWorld && editable && settings.netherEnabled();
         dayNightCycleButton.setValue(settings.dayNightCycleMode());
         dayNightCycleButton.active = settings.enabled();
         dayLengthSlider.setMultiplier(settings.dayLengthMultiplier());
@@ -475,8 +541,27 @@ public class GlobeWorldSettingsControls implements Layout {
         netherTopologyButton.active = false;
         netherCurvatureButton.active = false;
         netherCurvatureSlider.active = false;
+        forceMissingStrongholdCheckbox.active = false;
+        forceMissingNetherFortressCheckbox.active = false;
+        forceMissingBastionCheckbox.active = false;
         dayNightCycleButton.active = false;
         dayLengthSlider.active = false;
+    }
+
+    private void syncCheckbox(Checkbox checkbox, boolean selected) {
+        if (checkbox.selected() == selected) {
+            return;
+        }
+        updatingCheckboxes = true;
+        try {
+            checkbox.onPress(null);
+        } finally {
+            updatingCheckboxes = false;
+        }
+    }
+
+    private boolean progressionStructuresVisible(TilingSettings settings) {
+        return settings.enabled() || settings.netherEnabled();
     }
 
     private Component overworldInfo(TilingSettings settings) {

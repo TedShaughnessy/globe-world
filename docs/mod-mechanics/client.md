@@ -69,9 +69,12 @@ camera-relative horizon offset so the sky better matches curved terrain.
 `GlobeWorldSettingsControls` backs both the create-world Globe World tab and the
 in-world options screen. Its interactive controls include hover tooltips for
 custom topology methods, Overworld and Nether curvature, day-length multiplier,
-and day/night behavior.
+day/night behavior, and forced progression-structure toggles.
 In remote multiplayer, the in-world screen shows the synced server settings as
 read-only; local clients cannot silently edit only their own `GlobeConfig`.
+The forced progression-structure toggles are editable only during world
+creation because they describe world-generation policy. They remain visible but
+disabled in the in-world options screen.
 In simple create-world mode, changing the tile-size preset resets the dependent
 settings below it to simple defaults. Presets larger than the Italy-size tile
 also default Overworld curvature to off because the curve is no longer visually
@@ -80,7 +83,9 @@ advice is shown only for tile sizes whose recommended DH curvature ratio is
 within the supported `50..5000` range.
 In custom create-world mode, explicit Overworld and Nether topology methods are
 available next to the corresponding size controls; changing the tile size or
-derived Nether size resets those topology methods back to `Auto`.
+derived Nether size resets those topology methods back to `Auto`. Tile sizes up
+to 256 chunks default forced progression structures on for the matching
+dimension; larger effective tile sizes default them off.
 
 ## Shader Packs
 

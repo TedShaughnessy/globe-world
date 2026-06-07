@@ -30,6 +30,16 @@ The automatic policy uses compact torus for small tiles, periodic lattice for
 clean large multiples, and edge blend for awkward medium/large sizes. Changing
 tile size resets saved explicit terrain methods back to `AUTO`.
 
+## Progression Structure Settings
+
+`TilingSettings` saves three world-generation policy toggles:
+`force_missing_stronghold`, `force_missing_nether_fortress`, and
+`force_missing_bastion`. These currently configure intent only; the forced
+structure generation path is still planned and is not wired to worldgen yet.
+The settings default on for matching dimensions whose effective tile size is at
+most 256 chunks and off for larger tiles. Existing worlds decode missing fields
+with those tile-size-derived defaults.
+
 ## Implementation
 
 Terrain and biome hooks route many X/Z-dependent samples through periodic noise

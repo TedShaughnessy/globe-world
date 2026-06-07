@@ -4,6 +4,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import globe.world.util.TerrainMode;
 
+import java.util.Optional;
+
 public record TilingSettings(
         TilingMode mode,
         int tileSize,
@@ -14,7 +16,10 @@ public record TilingSettings(
         TerrainMode netherTerrainMode,
         boolean netherOneEighthOverworldSize,
         DayNightCycleMode dayNightCycleMode,
-        double dayLengthMultiplier
+        double dayLengthMultiplier,
+        boolean forceMissingStronghold,
+        boolean forceMissingNetherFortress,
+        boolean forceMissingBastion
 ) {
     public static final int CURVATURE_DISABLED_PERCENT = 0;
     public static final int CURVATURE_COMFORTABLE_PERCENT = 50;
@@ -23,6 +28,7 @@ public record TilingSettings(
     public static final double DAY_LENGTH_DEFAULT_MULTIPLIER = 1.0D;
     public static final double DAY_LENGTH_HALF_MULTIPLIER = 0.5D;
     public static final double DAY_LENGTH_MAX_MULTIPLIER = 10.0D;
+    public static final int FORCED_STRUCTURE_SMALL_TILE_MAX_CHUNKS = 256;
     public static final TilingSettings DISABLED = new TilingSettings(
             TilingMode.DISABLED,
             GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS,
@@ -33,7 +39,10 @@ public record TilingSettings(
             TerrainMode.AUTO,
             true,
             DayNightCycleMode.VANILLA,
-            DAY_LENGTH_DEFAULT_MULTIPLIER
+            DAY_LENGTH_DEFAULT_MULTIPLIER,
+            false,
+            false,
+            false
     );
     public static final TilingSettings DEFAULT = new TilingSettings(
             TilingMode.DISABLED,
@@ -45,7 +54,10 @@ public record TilingSettings(
             TerrainMode.AUTO,
             true,
             DayNightCycleMode.VANILLA,
-            DAY_LENGTH_DEFAULT_MULTIPLIER
+            DAY_LENGTH_DEFAULT_MULTIPLIER,
+            false,
+            false,
+            false
     );
     public static final Codec<TilingSettings> CODEC =
             RecordCodecBuilder.create(instance ->
@@ -69,8 +81,14 @@ public record TilingSettings(
                             DayNightCycleMode.CODEC.optionalFieldOf("day_night_cycle", DayNightCycleMode.VANILLA)
                                     .forGetter(TilingSettings::dayNightCycleMode),
                             Codec.DOUBLE.optionalFieldOf("day_length_multiplier", DAY_LENGTH_DEFAULT_MULTIPLIER)
-                                    .forGetter(TilingSettings::dayLengthMultiplier)
-                    ).apply(instance, TilingSettings::new)
+                                    .forGetter(TilingSettings::dayLengthMultiplier),
+                            Codec.BOOL.optionalFieldOf("force_missing_stronghold")
+                                    .forGetter(settings -> Optional.of(settings.forceMissingStronghold())),
+                            Codec.BOOL.optionalFieldOf("force_missing_nether_fortress")
+                                    .forGetter(settings -> Optional.of(settings.forceMissingNetherFortress())),
+                            Codec.BOOL.optionalFieldOf("force_missing_bastion")
+                                    .forGetter(settings -> Optional.of(settings.forceMissingBastion()))
+                    ).apply(instance, TilingSettings::create)
             );
 
     public static TilingSettings square(int tileSize) {
@@ -84,7 +102,10 @@ public record TilingSettings(
                 TerrainMode.AUTO,
                 true,
                 DayNightCycleMode.VANILLA,
-                DAY_LENGTH_DEFAULT_MULTIPLIER
+                DAY_LENGTH_DEFAULT_MULTIPLIER,
+                defaultForceMissingStronghold(TilingMode.SQUARE, tileSize),
+                false,
+                false
         ).sanitized();
     }
 
@@ -121,11 +142,19 @@ public record TilingSettings(
                 netherTerrainMode,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode,
-                dayLengthMultiplier
+                dayLengthMultiplier,
+                defaultForceMissingStronghold(newMode, tileSize),
+                forceMissingNetherFortress,
+                forceMissingBastion
         ).sanitized();
     }
 
     public TilingSettings withTileSize(int newTileSize) {
+        boolean newNetherOneEighthOverworldSize = sanitizeNetherOneEighthOverworldSize(
+                newTileSize,
+                netherOneEighthOverworldSize
+        );
+        int newNetherTileSize = netherTileSize(newTileSize, newNetherOneEighthOverworldSize);
         return new TilingSettings(
                 mode,
                 newTileSize,
@@ -134,9 +163,12 @@ public record TilingSettings(
                 netherCurvaturePercent,
                 netherMode,
                 TerrainMode.AUTO,
-                netherOneEighthOverworldSize,
+                newNetherOneEighthOverworldSize,
                 dayNightCycleMode,
-                dayLengthMultiplier
+                dayLengthMultiplier,
+                defaultForceMissingStronghold(mode, newTileSize),
+                defaultForceMissingNetherStructure(netherMode, newNetherTileSize),
+                defaultForceMissingNetherStructure(netherMode, newNetherTileSize)
         ).sanitized();
     }
 
@@ -151,7 +183,10 @@ public record TilingSettings(
                 netherTerrainMode,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode,
-                dayLengthMultiplier
+                dayLengthMultiplier,
+                forceMissingStronghold,
+                forceMissingNetherFortress,
+                forceMissingBastion
         ).sanitized();
     }
 
@@ -166,7 +201,10 @@ public record TilingSettings(
                 netherTerrainMode,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode,
-                dayLengthMultiplier
+                dayLengthMultiplier,
+                forceMissingStronghold,
+                forceMissingNetherFortress,
+                forceMissingBastion
         ).sanitized();
     }
 
@@ -181,11 +219,19 @@ public record TilingSettings(
                 netherTerrainMode,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode,
-                dayLengthMultiplier
+                dayLengthMultiplier,
+                forceMissingStronghold,
+                forceMissingNetherFortress,
+                forceMissingBastion
         ).sanitized();
     }
 
     public TilingSettings withNetherMode(TilingMode newNetherMode) {
+        int effectiveNetherTileSize = netherTileSize(tileSize, netherOneEighthOverworldSize);
+        boolean defaultForceMissingNetherStructure = defaultForceMissingNetherStructure(
+                newNetherMode,
+                effectiveNetherTileSize
+        );
         return new TilingSettings(
                 mode,
                 tileSize,
@@ -196,7 +242,10 @@ public record TilingSettings(
                 TerrainMode.AUTO,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode,
-                dayLengthMultiplier
+                dayLengthMultiplier,
+                forceMissingStronghold,
+                defaultForceMissingNetherStructure,
+                defaultForceMissingNetherStructure
         ).sanitized();
     }
 
@@ -211,11 +260,22 @@ public record TilingSettings(
                 newNetherTerrainMode,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode,
-                dayLengthMultiplier
+                dayLengthMultiplier,
+                forceMissingStronghold,
+                forceMissingNetherFortress,
+                forceMissingBastion
         ).sanitized();
     }
 
     public TilingSettings withNetherOneEighthOverworldSize(boolean newNetherOneEighthOverworldSize) {
+        boolean sanitizedNetherOneEighth = sanitizeNetherOneEighthOverworldSize(
+                tileSize,
+                newNetherOneEighthOverworldSize
+        );
+        boolean defaultForceMissingNetherStructure = defaultForceMissingNetherStructure(
+                netherMode,
+                netherTileSize(tileSize, sanitizedNetherOneEighth)
+        );
         return new TilingSettings(
                 mode,
                 tileSize,
@@ -224,9 +284,12 @@ public record TilingSettings(
                 netherCurvaturePercent,
                 netherMode,
                 TerrainMode.AUTO,
-                newNetherOneEighthOverworldSize,
+                sanitizedNetherOneEighth,
                 dayNightCycleMode,
-                dayLengthMultiplier
+                dayLengthMultiplier,
+                forceMissingStronghold,
+                defaultForceMissingNetherStructure,
+                defaultForceMissingNetherStructure
         ).sanitized();
     }
 
@@ -241,7 +304,10 @@ public record TilingSettings(
                 netherTerrainMode,
                 netherOneEighthOverworldSize,
                 newDayNightCycleMode,
-                dayLengthMultiplier
+                dayLengthMultiplier,
+                forceMissingStronghold,
+                forceMissingNetherFortress,
+                forceMissingBastion
         ).sanitized();
     }
 
@@ -256,23 +322,124 @@ public record TilingSettings(
                 netherTerrainMode,
                 netherOneEighthOverworldSize,
                 dayNightCycleMode,
-                newDayLengthMultiplier
+                newDayLengthMultiplier,
+                forceMissingStronghold,
+                forceMissingNetherFortress,
+                forceMissingBastion
+        ).sanitized();
+    }
+
+    public TilingSettings withForceMissingStronghold(boolean newForceMissingStronghold) {
+        return new TilingSettings(
+                mode,
+                tileSize,
+                terrainMode,
+                curvaturePercent,
+                netherCurvaturePercent,
+                netherMode,
+                netherTerrainMode,
+                netherOneEighthOverworldSize,
+                dayNightCycleMode,
+                dayLengthMultiplier,
+                newForceMissingStronghold,
+                forceMissingNetherFortress,
+                forceMissingBastion
+        ).sanitized();
+    }
+
+    public TilingSettings withForceMissingNetherFortress(boolean newForceMissingNetherFortress) {
+        return new TilingSettings(
+                mode,
+                tileSize,
+                terrainMode,
+                curvaturePercent,
+                netherCurvaturePercent,
+                netherMode,
+                netherTerrainMode,
+                netherOneEighthOverworldSize,
+                dayNightCycleMode,
+                dayLengthMultiplier,
+                forceMissingStronghold,
+                newForceMissingNetherFortress,
+                forceMissingBastion
+        ).sanitized();
+    }
+
+    public TilingSettings withForceMissingBastion(boolean newForceMissingBastion) {
+        return new TilingSettings(
+                mode,
+                tileSize,
+                terrainMode,
+                curvaturePercent,
+                netherCurvaturePercent,
+                netherMode,
+                netherTerrainMode,
+                netherOneEighthOverworldSize,
+                dayNightCycleMode,
+                dayLengthMultiplier,
+                forceMissingStronghold,
+                forceMissingNetherFortress,
+                newForceMissingBastion
         ).sanitized();
     }
 
     public TilingSettings sanitized() {
+        int sanitizedTileSize = Math.max(1, tileSize);
+        boolean sanitizedNetherOneEighth = sanitizeNetherOneEighthOverworldSize(
+                sanitizedTileSize,
+                netherOneEighthOverworldSize
+        );
         return new TilingSettings(
                 mode != null ? mode : TilingMode.DISABLED,
-                Math.max(1, tileSize),
+                sanitizedTileSize,
                 sanitizeTerrainMode(mode, terrainMode),
                 sanitizeCurvaturePercent(curvaturePercent),
                 sanitizeCurvaturePercent(netherCurvaturePercent),
                 netherMode != null ? netherMode : TilingMode.DISABLED,
                 sanitizeTerrainMode(netherMode, netherTerrainMode),
-                netherOneEighthOverworldSize && Math.max(1, tileSize) >= 16 && Math.max(1, tileSize) % 8 == 0,
+                sanitizedNetherOneEighth,
                 dayNightCycleMode != null ? dayNightCycleMode : DayNightCycleMode.VANILLA,
-                sanitizeDayLengthMultiplier(dayLengthMultiplier)
+                sanitizeDayLengthMultiplier(dayLengthMultiplier),
+                forceMissingStronghold,
+                forceMissingNetherFortress,
+                forceMissingBastion
         );
+    }
+
+    private static TilingSettings create(
+            TilingMode mode,
+            int tileSize,
+            TerrainMode terrainMode,
+            int curvaturePercent,
+            int netherCurvaturePercent,
+            TilingMode netherMode,
+            TerrainMode netherTerrainMode,
+            boolean netherOneEighthOverworldSize,
+            DayNightCycleMode dayNightCycleMode,
+            double dayLengthMultiplier,
+            Optional<Boolean> forceMissingStronghold,
+            Optional<Boolean> forceMissingNetherFortress,
+            Optional<Boolean> forceMissingBastion) {
+        boolean sanitizedNetherOneEighth = sanitizeNetherOneEighthOverworldSize(
+                tileSize,
+                netherOneEighthOverworldSize
+        );
+        int effectiveNetherTileSize = netherTileSize(tileSize, sanitizedNetherOneEighth);
+        return new TilingSettings(
+                mode,
+                tileSize,
+                terrainMode,
+                curvaturePercent,
+                netherCurvaturePercent,
+                netherMode,
+                netherTerrainMode,
+                sanitizedNetherOneEighth,
+                dayNightCycleMode,
+                dayLengthMultiplier,
+                forceMissingStronghold.orElseGet(() -> defaultForceMissingStronghold(mode, tileSize)),
+                forceMissingNetherFortress.orElseGet(() -> defaultForceMissingNetherStructure(netherMode, effectiveNetherTileSize)),
+                forceMissingBastion.orElseGet(() -> defaultForceMissingNetherStructure(netherMode, effectiveNetherTileSize))
+        ).sanitized();
     }
 
     private static TerrainMode sanitizeTerrainMode(TilingMode tilingMode, TerrainMode terrainMode) {
@@ -298,5 +465,29 @@ public record TilingSettings(
             return DAY_LENGTH_HALF_MULTIPLIER;
         }
         return Math.clamp(Math.rint(multiplier), DAY_LENGTH_DEFAULT_MULTIPLIER, DAY_LENGTH_MAX_MULTIPLIER);
+    }
+
+    private static boolean sanitizeNetherOneEighthOverworldSize(int tileSize, boolean netherOneEighthOverworldSize) {
+        int sanitizedTileSize = Math.max(1, tileSize);
+        return netherOneEighthOverworldSize && sanitizedTileSize >= 16 && sanitizedTileSize % 8 == 0;
+    }
+
+    private static int netherTileSize(int tileSize, boolean netherOneEighthOverworldSize) {
+        int sanitizedTileSize = Math.max(1, tileSize);
+        return netherOneEighthOverworldSize
+                ? Math.max(1, sanitizedTileSize / 8)
+                : sanitizedTileSize;
+    }
+
+    private static boolean defaultForceMissingStronghold(TilingMode mode, int tileSize) {
+        return mode == TilingMode.SQUARE && isSmallProgressionTile(tileSize);
+    }
+
+    private static boolean defaultForceMissingNetherStructure(TilingMode mode, int tileSize) {
+        return mode == TilingMode.SQUARE && isSmallProgressionTile(tileSize);
+    }
+
+    private static boolean isSmallProgressionTile(int tileSize) {
+        return Math.max(1, tileSize) <= FORCED_STRUCTURE_SMALL_TILE_MAX_CHUNKS;
     }
 }
