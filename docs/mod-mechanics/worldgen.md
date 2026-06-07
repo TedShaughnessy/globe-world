@@ -32,20 +32,29 @@ tile size resets saved explicit terrain methods back to `AUTO`.
 
 ## Progression Structure Settings
 
-`TilingSettings` saves three world-generation policy toggles:
-`force_missing_stronghold`, `force_missing_nether_fortress`, and
-`force_missing_bastion`. The stronghold toggle is wired for the Overworld: when
-tiling and vanilla structure generation are enabled, Globe World lets vanilla
-run first and then adds exactly one deterministic canonical stronghold start if
-vanilla has no raw stronghold ring candidate inside the canonical tile. Tiny
-tiles up to 32 chunks use a saved stronghold start containing only the vanilla
-portal room piece, avoiding a full stronghold graph that would sprawl across the
-tile many times. Larger forced strongholds use the vanilla stronghold layout.
-The Nether fortress and bastion toggles currently configure intent only; their
-forced generation paths are still planned. The settings default on for matching
-dimensions whose effective tile size is at most 256 chunks and off for larger
-tiles. Existing worlds decode missing fields with those tile-size-derived
-defaults.
+`TilingSettings` saves two world-generation policy toggles:
+`force_missing_stronghold` and `force_missing_nether_fortress`. The stronghold
+toggle is wired for the Overworld: when tiling and vanilla structure generation
+are enabled, Globe World lets vanilla run first and then adds exactly one
+deterministic canonical stronghold start if vanilla has no raw stronghold ring
+candidate inside the canonical tile. Tiny tiles up to 32 chunks use a saved
+stronghold start containing only the vanilla portal room piece, avoiding a full
+stronghold graph that would sprawl across the tile many times. Larger forced
+strongholds use the vanilla stronghold layout.
+
+The Nether fortress toggle uses the same structure-start phase for the Nether:
+vanilla runs first, then Globe World adds one deterministic canonical fortress
+start when no raw random-spread fortress candidate exists inside the canonical
+Nether tile. Tiny Nether tiles up to 32 chunks use fitted essential fortress
+pieces that stay inside the tile: a `CastleStalkRoom` for wither skeleton spawn
+space plus nether wart and soul sand, a `MonsterThrone` for a blaze spawner, and
+a small canonical upgrade chest containing one netherite upgrade smithing
+template. Larger forced Nether fortresses use vanilla structure generation so
+existing seam spillover and shifted-reference handling can let pieces cross tile
+borders, then append the same upgrade chest to the forced start. The settings
+default on for matching dimensions whose effective tile size is at most 256
+chunks and off for larger tiles. Existing worlds decode missing fields with
+those tile-size-derived defaults.
 
 ## Implementation
 
@@ -96,6 +105,20 @@ state. On tiles of 32 chunks or smaller, the forced start is a single vanilla
 so the portal room's bounding box fits inside the canonical block tile instead
 of depending on seam spillover for the critical progression room. On larger
 small tiles it is generated through vanilla `Structure.generate(...)`.
+
+Forced missing Nether fortresses are also created during `STRUCTURE_STARTS`,
+immediately after vanilla structure creation for canonical Nether chunks.
+`ForcedProgressionStructures` resolves the vanilla fortress holder, inspects
+random-spread placements by grid cell for canonical raw candidates, and only
+acts when none exist. The forced chunk is deterministic from the world seed,
+effective Nether tile size, and a fortress salt. Tiles of 32 chunks or smaller
+choose an interior forced chunk and save fitted minimal starts so the essential
+pieces do not depend on crossing a tile border. Larger tiles choose an
+edge-biased chunk and call vanilla `Structure.generate(...)`, preserving the
+normal structure layout and allowing border crossing through the existing
+toroidal structure placement and spillover paths. Both paths include a small
+forced fortress progression chest piece with a netherite upgrade smithing
+template, so Globe World does not need a separate forced bastion fallback.
 
 End portal progression uses canonical stronghold ownership instead of alias
 structure lookup. In the Overworld, `EndPortalAvailability` inspects vanilla

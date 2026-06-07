@@ -477,10 +477,9 @@ public final class GlobeDebugCommands {
                 settings.dayNightCycleMode().getSerializedName(),
                 settings.dayLengthMultiplier())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "Forced progression structures: stronghold=%s nether_fortress=%s bastion=%s",
+                "Forced progression structures: stronghold=%s nether_fortress=%s",
                 yesNo(settings.forceMissingStronghold()),
-                yesNo(settings.forceMissingNetherFortress()),
-                yesNo(settings.forceMissingBastion()))), false);
+                yesNo(settings.forceMissingNetherFortress()))), false);
         return 1;
     }
 

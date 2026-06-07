@@ -1,6 +1,7 @@
 package globe.world;
 
 import globe.world.network.GlobeWorldNetworking;
+import globe.world.util.ForcedProgressionStructurePieces;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -28,6 +29,7 @@ public class GlobeWorld implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		ForcedProgressionStructurePieces.register();
 		GlobeWorldNetworking.registerCommon();
 		GlobeDebugCommands.register();
 	}

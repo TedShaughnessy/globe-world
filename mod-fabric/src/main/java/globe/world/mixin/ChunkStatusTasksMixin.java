@@ -62,6 +62,16 @@ public class ChunkStatusTasksMixin {
                             structureTemplateManager,
                             levelKey
                     );
+                    ForcedProgressionStructures.maybeForceNetherProgressionStructures(
+                            context.level(),
+                            registryAccess,
+                            state,
+                            structureManager,
+                            centerChunk,
+                            generator,
+                            structureTemplateManager,
+                            levelKey
+                    );
                 }
         );
     }

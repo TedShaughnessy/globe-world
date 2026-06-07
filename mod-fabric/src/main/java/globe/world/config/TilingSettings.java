@@ -18,8 +18,7 @@ public record TilingSettings(
         DayNightCycleMode dayNightCycleMode,
         double dayLengthMultiplier,
         boolean forceMissingStronghold,
-        boolean forceMissingNetherFortress,
-        boolean forceMissingBastion
+        boolean forceMissingNetherFortress
 ) {
     public static final int CURVATURE_DISABLED_PERCENT = 0;
     public static final int CURVATURE_COMFORTABLE_PERCENT = 50;
@@ -41,7 +40,6 @@ public record TilingSettings(
             DayNightCycleMode.VANILLA,
             DAY_LENGTH_DEFAULT_MULTIPLIER,
             false,
-            false,
             false
     );
     public static final TilingSettings DEFAULT = new TilingSettings(
@@ -55,7 +53,6 @@ public record TilingSettings(
             true,
             DayNightCycleMode.VANILLA,
             DAY_LENGTH_DEFAULT_MULTIPLIER,
-            false,
             false,
             false
     );
@@ -85,9 +82,7 @@ public record TilingSettings(
                             Codec.BOOL.optionalFieldOf("force_missing_stronghold")
                                     .forGetter(settings -> Optional.of(settings.forceMissingStronghold())),
                             Codec.BOOL.optionalFieldOf("force_missing_nether_fortress")
-                                    .forGetter(settings -> Optional.of(settings.forceMissingNetherFortress())),
-                            Codec.BOOL.optionalFieldOf("force_missing_bastion")
-                                    .forGetter(settings -> Optional.of(settings.forceMissingBastion()))
+                                    .forGetter(settings -> Optional.of(settings.forceMissingNetherFortress()))
                     ).apply(instance, TilingSettings::create)
             );
 
@@ -104,7 +99,6 @@ public record TilingSettings(
                 DayNightCycleMode.VANILLA,
                 DAY_LENGTH_DEFAULT_MULTIPLIER,
                 defaultForceMissingStronghold(TilingMode.SQUARE, tileSize),
-                false,
                 false
         ).sanitized();
     }
@@ -144,8 +138,7 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 defaultForceMissingStronghold(newMode, tileSize),
-                forceMissingNetherFortress,
-                forceMissingBastion
+                forceMissingNetherFortress
         ).sanitized();
     }
 
@@ -167,7 +160,6 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 defaultForceMissingStronghold(mode, newTileSize),
-                defaultForceMissingNetherStructure(netherMode, newNetherTileSize),
                 defaultForceMissingNetherStructure(netherMode, newNetherTileSize)
         ).sanitized();
     }
@@ -185,8 +177,7 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 forceMissingStronghold,
-                forceMissingNetherFortress,
-                forceMissingBastion
+                forceMissingNetherFortress
         ).sanitized();
     }
 
@@ -203,8 +194,7 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 forceMissingStronghold,
-                forceMissingNetherFortress,
-                forceMissingBastion
+                forceMissingNetherFortress
         ).sanitized();
     }
 
@@ -221,8 +211,7 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 forceMissingStronghold,
-                forceMissingNetherFortress,
-                forceMissingBastion
+                forceMissingNetherFortress
         ).sanitized();
     }
 
@@ -244,7 +233,6 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 forceMissingStronghold,
-                defaultForceMissingNetherStructure,
                 defaultForceMissingNetherStructure
         ).sanitized();
     }
@@ -262,8 +250,7 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 forceMissingStronghold,
-                forceMissingNetherFortress,
-                forceMissingBastion
+                forceMissingNetherFortress
         ).sanitized();
     }
 
@@ -288,7 +275,6 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 forceMissingStronghold,
-                defaultForceMissingNetherStructure,
                 defaultForceMissingNetherStructure
         ).sanitized();
     }
@@ -306,8 +292,7 @@ public record TilingSettings(
                 newDayNightCycleMode,
                 dayLengthMultiplier,
                 forceMissingStronghold,
-                forceMissingNetherFortress,
-                forceMissingBastion
+                forceMissingNetherFortress
         ).sanitized();
     }
 
@@ -324,8 +309,7 @@ public record TilingSettings(
                 dayNightCycleMode,
                 newDayLengthMultiplier,
                 forceMissingStronghold,
-                forceMissingNetherFortress,
-                forceMissingBastion
+                forceMissingNetherFortress
         ).sanitized();
     }
 
@@ -342,8 +326,7 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 newForceMissingStronghold,
-                forceMissingNetherFortress,
-                forceMissingBastion
+                forceMissingNetherFortress
         ).sanitized();
     }
 
@@ -360,26 +343,7 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 forceMissingStronghold,
-                newForceMissingNetherFortress,
-                forceMissingBastion
-        ).sanitized();
-    }
-
-    public TilingSettings withForceMissingBastion(boolean newForceMissingBastion) {
-        return new TilingSettings(
-                mode,
-                tileSize,
-                terrainMode,
-                curvaturePercent,
-                netherCurvaturePercent,
-                netherMode,
-                netherTerrainMode,
-                netherOneEighthOverworldSize,
-                dayNightCycleMode,
-                dayLengthMultiplier,
-                forceMissingStronghold,
-                forceMissingNetherFortress,
-                newForceMissingBastion
+                newForceMissingNetherFortress
         ).sanitized();
     }
 
@@ -401,8 +365,7 @@ public record TilingSettings(
                 dayNightCycleMode != null ? dayNightCycleMode : DayNightCycleMode.VANILLA,
                 sanitizeDayLengthMultiplier(dayLengthMultiplier),
                 forceMissingStronghold,
-                forceMissingNetherFortress,
-                forceMissingBastion
+                forceMissingNetherFortress
         );
     }
 
@@ -418,8 +381,7 @@ public record TilingSettings(
             DayNightCycleMode dayNightCycleMode,
             double dayLengthMultiplier,
             Optional<Boolean> forceMissingStronghold,
-            Optional<Boolean> forceMissingNetherFortress,
-            Optional<Boolean> forceMissingBastion) {
+            Optional<Boolean> forceMissingNetherFortress) {
         boolean sanitizedNetherOneEighth = sanitizeNetherOneEighthOverworldSize(
                 tileSize,
                 netherOneEighthOverworldSize
@@ -437,8 +399,7 @@ public record TilingSettings(
                 dayNightCycleMode,
                 dayLengthMultiplier,
                 forceMissingStronghold.orElseGet(() -> defaultForceMissingStronghold(mode, tileSize)),
-                forceMissingNetherFortress.orElseGet(() -> defaultForceMissingNetherStructure(netherMode, effectiveNetherTileSize)),
-                forceMissingBastion.orElseGet(() -> defaultForceMissingNetherStructure(netherMode, effectiveNetherTileSize))
+                forceMissingNetherFortress.orElseGet(() -> defaultForceMissingNetherStructure(netherMode, effectiveNetherTileSize))
         ).sanitized();
     }
 

@@ -46,7 +46,6 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final String FORCE_MISSING_STRONGHOLD_TOOLTIP = "Adds a canonical stronghold if the wrapped Overworld has no canonical stronghold. "
             + "if no stronghold exists throwing an Eye of Ender will create a portal where you stand";
     private static final String FORCE_MISSING_FORTRESS_TOOLTIP = "Adds a canonical fortress if the wrapped Nether has no canonical fortress.";
-    private static final String FORCE_MISSING_BASTION_TOOLTIP = "Adds a canonical bastion if the wrapped Nether has no canonical bastion.";
     private static final String MULTIPLAYER_READ_ONLY_TEXT = "Globe World settings are controlled by the server.";
     private static final boolean DISTANT_HORIZONS_LOADED = FabricLoader.getInstance().isModLoaded(DISTANT_HORIZONS_MOD_ID);
     private static final double DISTANT_HORIZONS_EARTH_RADIUS_BLOCKS = 6_371_000.0D;
@@ -141,7 +140,6 @@ public class GlobeWorldSettingsControls implements Layout {
     private StringWidget progressionStructuresLabel;
     private Checkbox forceMissingStrongholdCheckbox;
     private Checkbox forceMissingNetherFortressCheckbox;
-    private Checkbox forceMissingBastionCheckbox;
     private CycleButton<DayNightCycleMode> dayNightCycleButton;
     private DayLengthMultiplierSlider dayLengthSlider;
     private MultiLineTextWidget multiplayerReadOnlyInfo;
@@ -340,14 +338,6 @@ public class GlobeWorldSettingsControls implements Layout {
         );
         addRow(forceMissingNetherFortressCheckbox, () -> settingsGetter.get().netherEnabled());
 
-        forceMissingBastionCheckbox = progressionCheckbox(
-                "Force Missing Bastion",
-                FORCE_MISSING_BASTION_TOOLTIP,
-                settingsGetter.get().forceMissingBastion(),
-                selected -> setSettings(settingsGetter.get().withForceMissingBastion(selected))
-        );
-        addRow(forceMissingBastionCheckbox, () -> settingsGetter.get().netherEnabled());
-
         dayLengthSlider = new DayLengthMultiplierSlider(
                 0,
                 0,
@@ -505,10 +495,8 @@ public class GlobeWorldSettingsControls implements Layout {
         netherCurvatureSlider.active = settings.netherEnabled();
         syncCheckbox(forceMissingStrongholdCheckbox, settings.forceMissingStronghold());
         syncCheckbox(forceMissingNetherFortressCheckbox, settings.forceMissingNetherFortress());
-        syncCheckbox(forceMissingBastionCheckbox, settings.forceMissingBastion());
         forceMissingStrongholdCheckbox.active = createWorld && editable && settings.enabled();
         forceMissingNetherFortressCheckbox.active = createWorld && editable && settings.netherEnabled();
-        forceMissingBastionCheckbox.active = createWorld && editable && settings.netherEnabled();
         dayNightCycleButton.setValue(settings.dayNightCycleMode());
         dayNightCycleButton.active = settings.enabled();
         dayLengthSlider.setMultiplier(settings.dayLengthMultiplier());
@@ -543,7 +531,6 @@ public class GlobeWorldSettingsControls implements Layout {
         netherCurvatureSlider.active = false;
         forceMissingStrongholdCheckbox.active = false;
         forceMissingNetherFortressCheckbox.active = false;
-        forceMissingBastionCheckbox.active = false;
         dayNightCycleButton.active = false;
         dayLengthSlider.active = false;
     }

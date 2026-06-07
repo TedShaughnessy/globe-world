@@ -96,8 +96,4 @@ public class GlobeConfig {
     public static boolean forceMissingNetherFortress() {
         return settings.forceMissingNetherFortress();
     }
-
-    public static boolean forceMissingBastion() {
-        return settings.forceMissingBastion();
-    }
 }

@@ -10,7 +10,7 @@ point for current behavior and modded code anchors.
 ## Active Plans
 
 - [Forced progression structures](forced-progression-structures.md): guarantee
-  stronghold, fortress, and bastion progression in small wrapped tiles without
+  stronghold and fortress progression in small wrapped tiles without
   duplicating structures when vanilla already provides them.
 
 ## Retired Ideas
