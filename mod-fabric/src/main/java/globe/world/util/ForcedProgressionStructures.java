@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Optional;
 
 public final class ForcedProgressionStructures {
-    private static final long FORCED_STRONGHOLD_SALT = 0x2F1D_5A7C_3E91_4B68L;
     private static final long FORCED_PORTAL_ROOM_SALT = 0x73B8_1C40_D5E2_A916L;
     private static final long FORCED_NETHER_FORTRESS_SALT = 0x6C39_EA82_4B15_D7F0L;
     private static final long FORCED_TINY_FORTRESS_SALT = 0x165E_9DF3_02B4_C8A1L;
@@ -75,7 +74,7 @@ public final class ForcedProgressionStructures {
             return;
         }
 
-        ChunkPos forcedChunk = forcedStrongholdChunk(state.getLevelSeed(), tiling);
+        ChunkPos forcedChunk = forcedStrongholdChunk(tiling);
         if (!centerChunk.getPos().equals(forcedChunk)) {
             return;
         }
@@ -211,7 +210,7 @@ public final class ForcedProgressionStructures {
         if (stronghold == null || hasCanonicalVanillaStrongholdCandidate(state, stronghold, tiling)) {
             return Optional.empty();
         }
-        return Optional.of(forcedStrongholdChunk(state.getLevelSeed(), tiling));
+        return Optional.of(forcedStrongholdChunk(tiling));
     }
 
     private static void maybeForceNetherFortress(
@@ -400,60 +399,91 @@ public final class ForcedProgressionStructures {
             DimensionTiling tiling) {
         int preferredDirection = (int) Math.floorMod(mix(seed ^ FORCED_TINY_FORTRESS_SALT), 4);
         for (int offset = 0; offset < 4; offset++) {
-            StructurePiecesBuilder builder = new StructurePiecesBuilder();
             Direction direction = Direction.from2DDataValue((preferredDirection + offset) & 3);
-            int y = fortressPieceY(generator, centerChunk);
-            NetherFortressPieces.CastleStalkRoom stalkRoom = fittedFortressStalkRoom(
-                    builder,
-                    forcedChunk,
-                    y,
-                    direction,
-                    tiling
-            );
-            if (stalkRoom == null) {
-                continue;
+            for (int throneYOffset : new int[]{11, 3}) {
+                StructureStart start = tinyFortressStart(
+                        structure,
+                        forcedChunk,
+                        references,
+                        generator,
+                        centerChunk,
+                        tiling,
+                        direction,
+                        throneYOffset
+                );
+                if (start.isValid()) {
+                    return start;
+                }
             }
-            builder.addPiece(stalkRoom);
-
-            NetherFortressPieces.MonsterThrone throne = fittedFortressThrone(
-                    builder,
-                    offsetFortressChunkAnchor(forcedChunk, direction, 14),
-                    y,
-                    direction,
-                    tiling
-            );
-            if (throne == null) {
-                continue;
-            }
-            builder.addPiece(throne);
-
-            ForcedFortressProgressionChestPiece chest = fittedUpgradeChestPiece(
-                    forcedChunk,
-                    y,
-                    direction,
-                    tiling,
-                    List.of(stalkRoom, throne)
-            );
-            if (chest == null) {
-                continue;
-            }
-
-            return new StructureStart(
-                    structure,
-                    forcedChunk,
-                    references,
-                    new PiecesContainer(List.of(stalkRoom, throne, chest))
-            );
         }
         return StructureStart.INVALID_START;
     }
 
-    private static NetherFortressPieces.CastleStalkRoom fittedFortressStalkRoom(
+    private static StructureStart tinyFortressStart(
+            Structure structure,
+            ChunkPos forcedChunk,
+            int references,
+            ChunkGenerator generator,
+            ChunkAccess centerChunk,
+            DimensionTiling tiling,
+            Direction direction,
+            int throneYOffset) {
+        StructurePiecesBuilder builder = new StructurePiecesBuilder();
+        int y = fortressPieceY(generator, centerChunk);
+        NetherFortressPieces.CastleStalkRoom stalkRoom = fortressStalkRoom(
+                builder,
+                forcedChunk,
+                y,
+                direction
+        );
+        if (stalkRoom == null) {
+            return StructureStart.INVALID_START;
+        }
+        builder.addPiece(stalkRoom);
+
+        NetherFortressPieces.MonsterThrone throne = fortressThrone(
+                builder,
+                fortressForwardAnchor(stalkRoom.getBoundingBox(), direction, 5, throneYOffset),
+                direction
+        );
+        if (throne == null) {
+            return StructureStart.INVALID_START;
+        }
+        builder.addPiece(throne);
+
+        List<StructurePiece> pieces = new ArrayList<>();
+        pieces.add(stalkRoom);
+        pieces.add(throne);
+        if (!fitGroupInsideTile(pieces, tiling) || stalkRoom.getBoundingBox().intersects(throne.getBoundingBox())) {
+            return StructureStart.INVALID_START;
+        }
+
+        pieces.addAll(fortressWartPatches(stalkRoom));
+        ForcedFortressProgressionChestPiece chest = fittedUpgradeChestPiece(
+                forcedChunk,
+                y,
+                direction,
+                tiling,
+                pieces
+        );
+        if (chest == null) {
+            return StructureStart.INVALID_START;
+        }
+        pieces.add(chest);
+
+        return new StructureStart(
+                structure,
+                forcedChunk,
+                references,
+                new PiecesContainer(pieces)
+        );
+    }
+
+    private static NetherFortressPieces.CastleStalkRoom fortressStalkRoom(
             StructurePiecesBuilder builder,
             ChunkPos forcedChunk,
             int y,
-            Direction direction,
-            DimensionTiling tiling) {
+            Direction direction) {
         NetherFortressPieces.CastleStalkRoom stalkRoom = NetherFortressPieces.CastleStalkRoom.createPiece(
                 builder,
                 forcedChunk.getBlockX(8),
@@ -466,22 +496,17 @@ public final class ForcedProgressionStructures {
             return null;
         }
 
-        if (!fitInsideTile(stalkRoom.getBoundingBox(), stalkRoom, tiling)) {
-            return null;
-        }
         return stalkRoom;
     }
 
-    private static NetherFortressPieces.MonsterThrone fittedFortressThrone(
+    private static NetherFortressPieces.MonsterThrone fortressThrone(
             StructurePiecesBuilder builder,
             BlockPos anchor,
-            int y,
-            Direction direction,
-            DimensionTiling tiling) {
+            Direction direction) {
         NetherFortressPieces.MonsterThrone throne = NetherFortressPieces.MonsterThrone.createPiece(
                 builder,
                 anchor.getX(),
-                y,
+                anchor.getY(),
                 anchor.getZ(),
                 1,
                 direction
@@ -490,9 +515,6 @@ public final class ForcedProgressionStructures {
             return null;
         }
 
-        if (!fitInsideTile(throne.getBoundingBox(), throne, tiling)) {
-            return null;
-        }
         return throne;
     }
 
@@ -611,19 +633,85 @@ public final class ForcedProgressionStructures {
         return false;
     }
 
-    private static BlockPos offsetFortressChunkAnchor(ChunkPos forcedChunk, Direction direction, int distance) {
-        return new BlockPos(
-                forcedChunk.getBlockX(8) + direction.getStepX() * distance,
-                0,
-                forcedChunk.getBlockZ(8) + direction.getStepZ() * distance
-        );
-    }
-
     private static int fortressPieceY(ChunkGenerator generator, ChunkAccess centerChunk) {
         int low = centerChunk.getMinY() + 16;
         int high = Math.max(low, centerChunk.getMaxY() - 16);
         int preferred = generator != null ? generator.getSeaLevel() : 64;
         return Math.clamp(preferred, low, high);
+    }
+
+    private static BlockPos fortressForwardAnchor(BoundingBox box, Direction direction, int xOff, int yOff) {
+        return switch (direction) {
+            case NORTH -> new BlockPos(box.minX() + xOff, box.minY() + yOff, box.minZ() - 1);
+            case SOUTH -> new BlockPos(box.minX() + xOff, box.minY() + yOff, box.maxZ() + 1);
+            case WEST -> new BlockPos(box.minX() - 1, box.minY() + yOff, box.minZ() + xOff);
+            case EAST -> new BlockPos(box.maxX() + 1, box.minY() + yOff, box.minZ() + xOff);
+            default -> new BlockPos(box.minX() + xOff, box.minY() + yOff, box.maxZ() + 1);
+        };
+    }
+
+    private static List<ForcedFortressWartPatchPiece> fortressWartPatches(
+            NetherFortressPieces.CastleStalkRoom stalkRoom) {
+        return List.of(
+                new ForcedFortressWartPatchPiece(wartPatchBox(stalkRoom, 3, 4, 4, 8, 4)),
+                new ForcedFortressWartPatchPiece(wartPatchBox(stalkRoom, 8, 4, 9, 8, 4))
+        );
+    }
+
+    private static BoundingBox wartPatchBox(
+            StructurePiece piece,
+            int minLocalX,
+            int minLocalZ,
+            int maxLocalX,
+            int maxLocalZ,
+            int soulSandLocalY) {
+        BoundingBox box = piece.getBoundingBox();
+        Direction direction = piece.getOrientation();
+        int minX = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int minZ = Integer.MAX_VALUE;
+        int maxZ = Integer.MIN_VALUE;
+        for (int localX = minLocalX; localX <= maxLocalX; localX++) {
+            for (int localZ = minLocalZ; localZ <= maxLocalZ; localZ++) {
+                int x = structureWorldX(box, direction, localX, localZ);
+                int z = structureWorldZ(box, direction, localX, localZ);
+                minX = Math.min(minX, x);
+                maxX = Math.max(maxX, x);
+                minZ = Math.min(minZ, z);
+                maxZ = Math.max(maxZ, z);
+            }
+        }
+        int y = box.minY() + soulSandLocalY;
+        return new BoundingBox(minX, y, minZ, maxX, y + 1, maxZ);
+    }
+
+    private static int structureWorldX(BoundingBox box, Direction direction, int x, int z) {
+        return switch (direction) {
+            case WEST -> box.maxX() - z;
+            case EAST -> box.minX() + z;
+            default -> box.minX() + x;
+        };
+    }
+
+    private static int structureWorldZ(BoundingBox box, Direction direction, int x, int z) {
+        return switch (direction) {
+            case NORTH -> box.maxZ() - z;
+            case WEST, EAST -> box.minZ() + x;
+            default -> box.minZ() + z;
+        };
+    }
+
+    private static boolean fitGroupInsideTile(List<StructurePiece> pieces, DimensionTiling tiling) {
+        BoundingBox box = StructurePiece.createBoundingBox(pieces.stream());
+        int dx = fitDelta(box.minX(), box.maxX(), tiling);
+        int dz = fitDelta(box.minZ(), box.maxZ(), tiling);
+        if (dx != 0 || dz != 0) {
+            for (StructurePiece piece : pieces) {
+                piece.move(dx, 0, dz);
+            }
+            box = box.moved(dx, 0, dz);
+        }
+        return isInsideTile(box, tiling);
     }
 
     private static boolean fitInsideTile(BoundingBox box, StructurePiece piece, DimensionTiling tiling) {
@@ -716,34 +804,8 @@ public final class ForcedProgressionStructures {
         return false;
     }
 
-    private static ChunkPos forcedStrongholdChunk(long seed, DimensionTiling tiling) {
-        int tileSize = tiling.tileSizeChunks();
-        int min = -tileSize / 2;
-        int max = min + tileSize - 1;
-        long mixed = mix(seed ^ FORCED_STRONGHOLD_SALT ^ tileSize);
-        int side = (int) Math.floorMod(mixed, 4);
-        int inset = forcedStrongholdInset(tileSize);
-        int low = Math.min(max, min + inset);
-        int high = Math.max(low, max - inset);
-        int along = low + (int) Math.floorMod(mix(mixed), high - low + 1);
-        int edge = switch (side) {
-            case 0 -> low;
-            case 1 -> high;
-            default -> along;
-        };
-        int other = switch (side) {
-            case 2 -> low;
-            case 3 -> high;
-            default -> along;
-        };
-        return new ChunkPos(CoordUtil.wrapChunk(tiling, edge), CoordUtil.wrapChunk(tiling, other));
-    }
-
-    private static int forcedStrongholdInset(int tileSize) {
-        if (tileSize <= 8) {
-            return 0;
-        }
-        return Math.clamp(tileSize / 8, 1, 16);
+    private static ChunkPos forcedStrongholdChunk(DimensionTiling tiling) {
+        return new ChunkPos(CoordUtil.wrapChunk(tiling, 0), CoordUtil.wrapChunk(tiling, 0));
     }
 
     private static ChunkPos forcedNetherStructureChunk(long seed, DimensionTiling tiling, long salt) {

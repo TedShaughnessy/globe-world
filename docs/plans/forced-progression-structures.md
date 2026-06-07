@@ -60,10 +60,9 @@ Current UI/default behavior:
   stronghold setting is enabled, Overworld tiling is enabled, vanilla structure
   generation is enabled, and no raw vanilla stronghold ring candidate is already
   inside the canonical tile.
-- The forced stronghold start is deterministic from world seed and tile size,
-  biased toward a canonical edge band, and saved through the normal structure
-  manager path so reference generation and later lookups see durable canonical
-  world state.
+- The forced stronghold start is saved at canonical chunk 0,0 through the normal
+  structure manager path so reference generation and later lookups see durable
+  canonical world state.
 - Tiles of 32 chunks or smaller force only the vanilla portal room piece as the
   stronghold start. The one-piece fallback is shifted inward when needed so the
   portal room itself fits inside the canonical block tile.
@@ -75,10 +74,12 @@ Current UI/default behavior:
   generation is enabled, and no raw random-spread fortress candidate is already
   inside the canonical Nether tile.
 - Forced Nether fortresses are deterministic from world seed and effective
-  Nether tile size. Tiles of 32 chunks or smaller choose an interior chunk and
-  save fitted essential pieces. Larger tiles use edge-biased chunks and vanilla
-  fortress generation so starts may cross tile borders through the existing
-  toroidal worldgen paths.
+  Nether tile size. Tiles of 32 chunks or smaller choose an interior chunk,
+  place the stalk room and blaze throne at vanilla forward-connection
+  coordinates, fit them as a group, and add explicit wart-patch pieces for
+  guaranteed soul sand and nether wart. Larger tiles use edge-biased chunks and
+  vanilla fortress generation so starts may cross tile borders through the
+  existing toroidal worldgen paths.
 
 ## Remaining Work
 

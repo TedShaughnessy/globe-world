@@ -10,6 +10,9 @@ import globe.world.util.WorldGenSpillover;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
@@ -17,7 +20,9 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -108,6 +113,9 @@ public class ChunkGeneratorMixin {
                     virtualSource.z() - start.getChunkPos().z()
             );
         }
+        if (starts.isEmpty() && isProgressionStructure(level, structure)) {
+            addStartsFromNearbyIntersections(level, structureManager, sectionPos, structure, starts);
+        }
         return starts;
     }
 
@@ -131,7 +139,15 @@ public class ChunkGeneratorMixin {
 
                 for (StructureStart start : sourceChunk.getAllStarts().values()) {
                     BoundingBox shiftedBounds = start.getBoundingBox().moved(shiftX, 0, shiftZ);
-                    if (start.isValid() && shiftedBounds.intersects(targetBlockX, targetBlockZ, targetBlockX + 15, targetBlockZ + 15)) {
+                    if (start.isValid()
+                            && intersectsChunkOrPiece(
+                                    start,
+                                    shiftedBounds,
+                                    shiftX,
+                                    shiftZ,
+                                    targetBlockX,
+                                    targetBlockZ
+                            )) {
                         structureManager.addReferenceForStructure(
                                 sectionPos,
                                 start.getStructure(),
@@ -142,5 +158,78 @@ public class ChunkGeneratorMixin {
                 }
             }
         }
+    }
+
+    private static void addStartsFromNearbyIntersections(
+            WorldGenLevel level,
+            StructureManager structureManager,
+            SectionPos sectionPos,
+            Structure structure,
+            List<StructureStart> starts) {
+        int targetX = sectionPos.x();
+        int targetZ = sectionPos.z();
+        ChunkPos targetPos = new ChunkPos(targetX, targetZ);
+        int targetBlockX = targetPos.getMinBlockX();
+        int targetBlockZ = targetPos.getMinBlockZ();
+
+        for (int sourceX = targetX - ChunkStatus.MAX_STRUCTURE_DISTANCE; sourceX <= targetX + ChunkStatus.MAX_STRUCTURE_DISTANCE; sourceX++) {
+            for (int sourceZ = targetZ - ChunkStatus.MAX_STRUCTURE_DISTANCE; sourceZ <= targetZ + ChunkStatus.MAX_STRUCTURE_DISTANCE; sourceZ++) {
+                ChunkAccess sourceChunk = level.getChunk(sourceX, sourceZ, ChunkStatus.STRUCTURE_STARTS);
+                StructureStart start = structureManager.getStartForStructure(SectionPos.bottomOf(sourceChunk), structure, sourceChunk);
+                if (start == null || !start.isValid()) {
+                    continue;
+                }
+
+                int shiftX = (sourceX - sourceChunk.getPos().x()) * 16;
+                int shiftZ = (sourceZ - sourceChunk.getPos().z()) * 16;
+                BoundingBox shiftedBounds = start.getBoundingBox().moved(shiftX, 0, shiftZ);
+                if (!intersectsChunkOrPiece(start, shiftedBounds, shiftX, shiftZ, targetBlockX, targetBlockZ)) {
+                    continue;
+                }
+
+                starts.add(start);
+                StructurePlacementShifts.enqueue(
+                        start,
+                        sourceX - start.getChunkPos().x(),
+                        sourceZ - start.getChunkPos().z()
+                );
+            }
+        }
+    }
+
+    private static boolean intersectsChunkOrPiece(
+            StructureStart start,
+            BoundingBox shiftedBounds,
+            int shiftX,
+            int shiftZ,
+            int targetBlockX,
+            int targetBlockZ) {
+        int targetMaxX = targetBlockX + 15;
+        int targetMaxZ = targetBlockZ + 15;
+        if (shiftedBounds.intersects(targetBlockX, targetBlockZ, targetMaxX, targetMaxZ)) {
+            return true;
+        }
+
+        for (StructurePiece piece : start.getPieces()) {
+            BoundingBox shiftedPiece = piece.getBoundingBox().moved(shiftX, 0, shiftZ);
+            if (shiftedPiece.intersects(targetBlockX, targetBlockZ, targetMaxX, targetMaxZ)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isProgressionStructure(WorldGenLevel level, Structure structure) {
+        Registry<Structure> structures = level.registryAccess().lookup(Registries.STRUCTURE).orElse(null);
+        if (structures == null) {
+            return false;
+        }
+        return structures.getResourceKey(structure)
+                .filter(key -> isProgressionStructureKey(key))
+                .isPresent();
+    }
+
+    private static boolean isProgressionStructureKey(ResourceKey<Structure> key) {
+        return BuiltinStructures.STRONGHOLD.equals(key) || BuiltinStructures.FORTRESS.equals(key);
     }
 }

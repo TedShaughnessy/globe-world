@@ -36,7 +36,7 @@ tile size resets saved explicit terrain methods back to `AUTO`.
 `force_missing_stronghold` and `force_missing_nether_fortress`. The stronghold
 toggle is wired for the Overworld: when tiling and vanilla structure generation
 are enabled, Globe World lets vanilla run first and then adds exactly one
-deterministic canonical stronghold start if vanilla has no raw stronghold ring
+canonical stronghold start at chunk 0,0 if vanilla has no raw stronghold ring
 candidate inside the canonical tile. Tiny tiles up to 32 chunks use a saved
 stronghold start containing only the vanilla portal room piece, avoiding a full
 stronghold graph that would sprawl across the tile many times. Larger forced
@@ -47,14 +47,15 @@ vanilla runs first, then Globe World adds one deterministic canonical fortress
 start when no raw random-spread fortress candidate exists inside the canonical
 Nether tile. Tiny Nether tiles up to 32 chunks use fitted essential fortress
 pieces that stay inside the tile: a `CastleStalkRoom` for wither skeleton spawn
-space plus nether wart and soul sand, a `MonsterThrone` for a blaze spawner, and
-a small canonical upgrade chest containing one netherite upgrade smithing
-template. Larger forced Nether fortresses use vanilla structure generation so
-existing seam spillover and shifted-reference handling can let pieces cross tile
-borders, then append the same upgrade chest to the forced start. The settings
-default on for matching dimensions whose effective tile size is at most 256
-chunks and off for larger tiles. Existing worlds decode missing fields with
-those tile-size-derived defaults.
+space plus nether wart and soul sand, a connected `MonsterThrone` for a blaze
+spawner, explicit wart-bed patch pieces, and a small canonical upgrade chest
+containing one netherite upgrade smithing template. Larger forced Nether
+fortresses use vanilla structure generation so existing seam spillover and
+shifted-reference handling can let pieces cross tile borders, then append the
+same upgrade chest to the forced start. The settings default on for matching
+dimensions whose effective tile size is at most 256 chunks and off for larger
+tiles. Existing worlds decode missing fields with those tile-size-derived
+defaults.
 
 ## Implementation
 
@@ -90,17 +91,27 @@ Structure edge handling stores virtual source keys during reference generation,
 resolves them during biome decoration, and places vanilla starts with a
 whole-tile chunk-box shift. Alias starts are treated as transient worldgen data.
 Alias biome decoration and reference generation are skipped without leaking
-their tiling context into surrounding generation work.
+their tiling context into surrounding generation work. Reference generation
+checks both the shifted start bounding box and individual shifted piece boxes
+before saving a source key. This matters for forced composite starts such as the
+tiny Nether fortress: vanilla structure pieces clip themselves to the target
+chunk box, so every ordinary chunk overlapped by a forced piece needs a
+reference even when the structure does not cross a tile boundary. During biome
+decoration, fortress and stronghold placement also has a bounded fallback for an
+empty reference set: it scans the same nearby source-start radius and queues the
+same placement shift without making alias chunks durable owners. This catches
+already-missing progression references that would otherwise leave a hard chunk
+cutoff.
 
 Forced missing Overworld strongholds are created during `STRUCTURE_STARTS`,
 immediately after vanilla `ChunkGenerator.createStructures(...)` finishes for a
 canonical chunk. `ForcedProgressionStructures` resolves the vanilla stronghold
 holder, inspects concentric-ring placements for canonical raw candidates, and
-only acts when none exist. The forced chunk is deterministic from the world seed
-and tile size, biased into a canonical edge band, and saved through
-`StructureManager.setStartForStructure(...)` so later reference generation,
-biome decoration, and structure lookups treat it as ordinary canonical world
-state. On tiles of 32 chunks or smaller, the forced start is a single vanilla
+only acts when none exist. The forced chunk is canonical chunk 0,0 and is saved
+through `StructureManager.setStartForStructure(...)` so later reference
+generation, biome decoration, and structure lookups treat it as ordinary
+canonical world state. On tiles of 32 chunks or smaller, the forced start is a
+single vanilla
 `StrongholdPieces.PortalRoom`; Globe World shifts that piece inward when needed
 so the portal room's bounding box fits inside the canonical block tile instead
 of depending on seam spillover for the critical progression room. On larger
@@ -113,7 +124,11 @@ random-spread placements by grid cell for canonical raw candidates, and only
 acts when none exist. The forced chunk is deterministic from the world seed,
 effective Nether tile size, and a fortress salt. Tiles of 32 chunks or smaller
 choose an interior forced chunk and save fitted minimal starts so the essential
-pieces do not depend on crossing a tile border. Larger tiles choose an
+pieces do not depend on crossing a tile border. The tiny layout creates the
+stalk room and blaze throne at vanilla forward-connection coordinates, then
+fits them as a group so the throne stays connected instead of being moved into
+the room. It also includes explicit wart-bed patch pieces that guarantee soul
+sand and nether wart in the stalk room. Larger tiles choose an
 edge-biased chunk and call vanilla `Structure.generate(...)`, preserving the
 normal structure layout and allowing border crossing through the existing
 toroidal structure placement and spillover paths. Both paths include a small

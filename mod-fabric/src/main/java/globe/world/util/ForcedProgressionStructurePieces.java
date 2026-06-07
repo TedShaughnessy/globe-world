@@ -12,6 +12,11 @@ public final class ForcedProgressionStructurePieces {
             Identifier.fromNamespaceAndPath(GlobeWorld.MOD_ID, "fortress_progression_chest"),
             (StructurePieceType.ContextlessType) ForcedFortressProgressionChestPiece::new
     );
+    public static final StructurePieceType FORTRESS_WART_PATCH = Registry.register(
+            BuiltInRegistries.STRUCTURE_PIECE,
+            Identifier.fromNamespaceAndPath(GlobeWorld.MOD_ID, "fortress_wart_patch"),
+            (StructurePieceType.ContextlessType) ForcedFortressWartPatchPiece::new
+    );
 
     private ForcedProgressionStructurePieces() {
     }

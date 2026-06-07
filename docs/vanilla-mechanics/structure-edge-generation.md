@@ -170,7 +170,7 @@ The vanilla path mixes three coordinate frames:
 
 The implemented fix carries frame 2 through the pipeline.
 
-`ChunkGeneratorMixin.addToroidalStructureReferences(...)` detects a shifted intersection and stores the virtual source key. `ChunkGeneratorMixin.startsForToroidalStructure(...)` resolves that key and queues the resulting shift. `StructureStartMixin` consumes the shift and calls vanilla placement with the target chunk box moved into the same coordinate frame as the referenced start.
+`ChunkGeneratorMixin.addToroidalStructureReferences(...)` detects a shifted intersection and stores the virtual source key. The intersection check includes both the adjusted start bounding box and the shifted bounding boxes of individual pieces, because vanilla structure pieces only write the part that lies inside the current target chunk. Missing references therefore show up as hard chunk-boundary cutoffs even when no tile seam is involved. `ChunkGeneratorMixin.startsForToroidalStructure(...)` resolves saved keys and queues the resulting shift. For progression structures, an empty saved reference set gets a bounded placement-time scan of the same nearby source-start radius, so already-missing forced fortress or stronghold references can still reach vanilla placement. `StructureStartMixin` consumes the shift and calls vanilla placement with the target chunk box moved into the same coordinate frame as the referenced start.
 
 The remaining risks are cases where:
 
