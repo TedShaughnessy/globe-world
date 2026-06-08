@@ -19,6 +19,7 @@ Common sources jar:
 - `net/minecraft/world/entity/ai/sensing/NearestLivingEntitySensor.java`
 - `net/minecraft/world/entity/ai/goal/target/TargetGoal.java`
 - `net/minecraft/world/entity/ai/goal/MeleeAttackGoal.java`
+- `net/minecraft/world/entity/ai/goal/SwellGoal.java`
 - `net/minecraft/world/entity/ai/goal/RangedAttackGoal.java`
 - `net/minecraft/world/entity/ai/goal/RangedBowAttackGoal.java`
 - `net/minecraft/world/entity/ai/goal/RangedCrossbowAttackGoal.java`
@@ -26,6 +27,7 @@ Common sources jar:
 - `net/minecraft/world/entity/ai/goal/MoveTowardsTargetGoal.java`
 - `net/minecraft/world/entity/ai/control/LookControl.java`
 - `net/minecraft/world/entity/ai/navigation/PathNavigation.java`
+- `net/minecraft/world/entity/monster/Creeper.java`
 - `net/minecraft/world/level/NaturalSpawner.java`
 - `net/minecraft/world/level/LocalMobCapCalculator.java`
 - `net/minecraft/world/level/entity/PersistentEntitySectionManager.java`
@@ -108,6 +110,9 @@ has already been accepted as a candidate:
   `RangedCrossbowAttackGoal` mix raw distance, line-of-sight cache checks, look
   control, and
   `PathNavigation.moveTo(target, ...)`.
+- `SwellGoal` is separate from `MeleeAttackGoal`: it starts creeper swelling
+  with raw `creeper.distanceToSqr(target) < 9.0`, then keeps or cancels swelling
+  with raw 7-block distance and cached line-of-sight checks.
 - `PathNavigation.createPath(Entity, int)` converts the entity to
   `target.blockPosition()` before the pathfinder searches raw nodes. Ground and
   flying navigation override that entity method and do the same conversion in

@@ -9,7 +9,20 @@ point for current behavior and modded code anchors.
 
 ## Active Plans
 
-No active plans are currently tracked here.
+- [Ranged mob alias combat audit](ranged-mob-alias-combat.md): investigate
+  ranged and special mob attack readiness, launch, line-of-sight, and projectile
+  collision gaps around tiled entity aliases.
+- [Chest lid alias sync](chest-lid-alias-sync.md): fan out chest/container block
+  events to loaded aliases and make container opener rechecks alias-aware.
+- [Nether size and portal scale options](nether-portal-scale.md): replace the
+  fixed one-eighth Nether option with separate Nether tile-size and portal-ratio
+  settings, including same-size fast travel and reverse ratios.
+- [Fishing rod alias visibility](fishing-rod-alias-visibility.md): make
+  bobber lifetime, fishing-line rendering, approach particles, and pullback
+  behavior coherent in canonical and alias tiles.
+- [Wandering trader alias spawning audit](wandering-trader-alias-spawning.md):
+  confirm whether rare vanilla trader spawning has an alias-coordinate failure
+  before adding fixes.
 
 ## Retired Ideas
 
