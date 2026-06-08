@@ -128,6 +128,14 @@ waypoint connections resend when the receiving player moves into a different
 nearest visual tile; azimuth waypoint connections compute their angle through
 the shortest wrapped path.
 
+Fishing-line rendering is adjusted after vanilla extracts
+`FishingHookRenderState`. `FishingHookRendererMixin` keeps the rendered hook in
+the packet/visual-alias position, then moves the owner hand endpoint to the
+nearest X/Z alias relative to that hook so the line does not stretch across a
+whole tile. Fishing approach and bite particles are expected to use the existing
+particle packet virtualization path; they remain a focused manual validation
+case.
+
 ## Local Sky And Diagnostics
 
 Scrolling day/night mode installs local environment-attribute layers for sky,
@@ -169,6 +177,7 @@ Client diagnostics are intentionally targeted:
 - Visual entity aliases:
   `GlobeEntityAliasing`, `GlobeEntityAliasMode`, `GlobeVisualAliasUtil`,
   `LevelRendererMixin`, `ClientPacketListenerMixin`,
+  `FishingHookRendererMixin`,
   `GlobeEntityAliasDiagnostics`.
 - Diagnostics and settings:
   `GlobeClientDebugCommands`, `GlobeDebugHud`, `GlobeDebugState`,

@@ -10,6 +10,7 @@
 		"CreateWorldScreenMixin",
 		"DebugRendererMixin",
 		"EnvironmentAttributeSystemBuilderMixin",
+		"FishingHookRendererMixin",
 		"FoxHeldItemLayerMixin",
 		"FrustumMixin",
 		"GuiMixin",

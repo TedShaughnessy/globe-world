@@ -33,6 +33,7 @@
 		"EntityTeleportCanonicalizationMixin",
 		"EnderEyeItemMixin",
 		"EnvironmentAttributeSystemBuilderGameplayMixin",
+		"FishingHookMixin",
 		"FlyingPathNavigationMixin",
 		"GroundPathNavigationMixin",
 		"ImprovedNoiseAccessor",

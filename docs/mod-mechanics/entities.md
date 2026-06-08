@@ -72,6 +72,14 @@ near a seam interact with the visible alias while packets still refer to the
 canonical entity or block. Curved client picking is documented in
 [Client](client.md).
 
+Fishing bobbers remain canonical non-player entities, but owner-relative
+fishing logic uses wrapped X/Z math. `FishingHookMixin` keeps vanilla's held-rod
+and permission checks while replacing the owner distance gate with wrapped
+distance, so an alias-frame player does not immediately discard a canonical
+bobber. Retrieval pullback for caught loot and hooked entities also uses the
+shortest wrapped X/Z delta toward the owner while preserving vanilla Y motion,
+loot tables, durability, and open-water behavior.
+
 ## Visual Aliases
 
 The client can draw extra presentation-only copies of non-player, not-leashed
@@ -115,6 +123,7 @@ canonicalized but currently sit outside canonical X/Z.
   `LookAtPlayerGoalMixin`, `MoveTowardsTargetGoalMixin`.
 - Player interaction and presentation:
   `PlayerInteractionRangeMixin`, `PlayerItemPickupMixin`,
+  `FishingHookMixin`,
   `GlobeEntityAliasing`, `GlobeEntityAliasMode`, `GlobeVisualAliasUtil`,
   `LevelRendererMixin`, `ClientPacketListenerMixin`,
   `GlobeCurvedRaycast`, `WaypointPacketUtil`,
@@ -137,7 +146,7 @@ canonicalized but currently sit outside canonical X/Z.
   death/despawn cases.
 - Full toroidal pathfinding remains deferred; current path requests target
   useful aliases but vanilla node search does not wrap every neighbor relation.
-- Projectile physics across tile seams remain separate from ranged mob target
-  selection and facing.
+- General projectile physics across tile seams remains separate from ranged mob
+  target selection, facing, and the fishing-specific owner/pullback fixes.
 - Visual aliases currently skip leashed entities and mounted player stacks;
   player passenger/vehicle stacks need dedicated multiplayer testing.
