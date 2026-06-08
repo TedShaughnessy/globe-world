@@ -156,12 +156,16 @@ float globeWorld_fogDistanceScale() {
     return %s;
 }
 
+bool globeWorld_shouldApplyCurvature() {
+    return globeWorld_curvatureRadius() > 0.0 && abs(ProjMat[3][3]) < 0.5;
+}
+
 vec3 globeWorld_applyCurvature(vec3 pos) {
-    float radius = globeWorld_curvatureRadius();
-    if (radius <= 0.0) {
+    if (!globeWorld_shouldApplyCurvature()) {
         return pos;
     }
 
+    float radius = globeWorld_curvatureRadius();
     float distanceSqr = dot(pos.xz, pos.xz);
     float drop = min(distanceSqr / (2.0 * radius), globeWorld_curvatureDropClamp());
     pos.y -= drop;
@@ -169,11 +173,11 @@ vec3 globeWorld_applyCurvature(vec3 pos) {
 }
 
 vec3 globeWorld_applyCloudCurvature(vec3 pos) {
-    float radius = globeWorld_curvatureRadius();
-    if (radius <= 0.0) {
+    if (!globeWorld_shouldApplyCurvature()) {
         return pos;
     }
 
+    float radius = globeWorld_curvatureRadius();
     float cloudRadius = (radius + max(pos.y, 0.0));
     float distanceSqr = dot(pos.xz, pos.xz);
     float drop = min(distanceSqr / (2.0 * cloudRadius), globeWorld_curvatureDropClamp());
@@ -182,7 +186,7 @@ vec3 globeWorld_applyCloudCurvature(vec3 pos) {
 }
 
 vec3 globeWorld_fogPosition(vec3 pos) {
-    if (globeWorld_curvatureRadius() <= 0.0) {
+    if (!globeWorld_shouldApplyCurvature()) {
         return pos;
     }
 
@@ -190,7 +194,7 @@ vec3 globeWorld_fogPosition(vec3 pos) {
 }
 
 vec3 globeWorld_cloudFogPosition(vec3 pos) {
-    if (globeWorld_curvatureRadius() <= 0.0) {
+    if (!globeWorld_shouldApplyCurvature()) {
         return pos;
     }
 

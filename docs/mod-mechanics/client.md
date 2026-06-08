@@ -58,11 +58,14 @@ and block interactions resolve to the visually selected target while vanilla
 reach, permissions, and final state checks remain authoritative. Entity physics
 and collision boxes are not curved; only picking and presentation are.
 
-Curvature also reaches selected-block outlines, item entities, third-person
-held items such as skeleton bows, thrown item projectiles such as Eyes of Ender,
-End portal block-entity surfaces, boat water masks, clouds, and the sky horizon.
+Curvature also reaches selected-block outlines, block-breaking progress
+overlays, item entities, third-person held items such as skeleton bows,
+fox mouth-held items, thrown item projectiles such as Eyes of Ender, End portal
+block-entity surfaces, boat water masks, clouds, and the sky horizon.
 The sky disc, sun, moon, sunrise/sunset fan, and lower dark disc receive a
 camera-relative horizon offset so the sky better matches curved terrain.
+The shader helpers intentionally skip orthographic projections, keeping GUI
+previews such as inventory players and special item models flat.
 
 ## Settings UI
 
@@ -157,7 +160,8 @@ Client diagnostics are intentionally targeted:
   `GlobeWorldSettingsControls`, `ShaderManagerMixin`, `LocalPlayerMixin`,
   `ItemMixin`, `OptionsMixin`, `FrustumMixin`, `CloudRendererMixin`,
   `SkyRendererMixin`, `ItemEntityRendererMixin`, `ItemInHandLayerMixin`,
-  `ThrownItemRendererMixin`, `TheEndPortalRendererMixin`.
+  `FoxHeldItemLayerMixin`, `ThrownItemRendererMixin`,
+  `TheEndPortalRendererMixin`.
 - Iris and shader packs:
   `GlobeIrisShaderBridge`, `IrisProgramSourceMixin`,
   `globe-world.iris.mixins.json`, `shaderpacks/globe-world-curvature/`,

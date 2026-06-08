@@ -92,7 +92,8 @@ the sky horizon better matches the curved terrain horizon. Sun and moon render
 on a larger effective sky sphere, preserving their apparent size while reducing
 the offset's midday and midnight angular distortion. Stars stay on the vanilla
 dome. Cloud curvature uses a larger radius than terrain so clouds fall away
-more gently.
+more gently. Orthographic GUI projections are exempt from shader curvature, so
+inventory entity previews and special item models stay flat.
 
 The vanilla directional sunrise/sunset fan is still rendered. This means dusk
 color can vary by whether the player faces the sun or moon; that behavior is

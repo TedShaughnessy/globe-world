@@ -10,6 +10,7 @@
 		"CreateWorldScreenMixin",
 		"DebugRendererMixin",
 		"EnvironmentAttributeSystemBuilderMixin",
+		"FoxHeldItemLayerMixin",
 		"FrustumMixin",
 		"GuiMixin",
 		"ItemEntityRendererMixin",
