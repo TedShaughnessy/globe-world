@@ -1,5 +1,7 @@
 package globe.world.util;
 
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -88,12 +90,9 @@ public final class AiAliasUtil {
             return new Vec3(targetX, targetY, targetZ);
         }
 
-        double canonicalX = CoordUtil.wrapBlock(tiling, targetX);
-        double canonicalZ = CoordUtil.wrapBlock(tiling, targetZ);
-        return new Vec3(
-                CoordUtil.virtualBlock(tiling, canonicalX, actorX),
-                targetY,
-                CoordUtil.virtualBlock(tiling, canonicalZ, actorZ));
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        Vec3 canonical = new Vec3(topology.canonicalBlockX(targetX), targetY, topology.canonicalBlockX(targetZ));
+        return topology.virtualBlockForViewer(canonical, new Vec3(actorX, actorY, actorZ));
     }
 
     public static BlockPos nearestAliasBlockPos(Entity actor, Entity target) {

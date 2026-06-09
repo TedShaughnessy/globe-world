@@ -44,6 +44,13 @@ The coordinate helper layer answers four questions:
 supports raw helpers, level-aware helpers, dimension-aware helpers, and helpers
 that use the current worldgen/scoped tiling context.
 
+`TopologyContext` is the named v2 boundary for this math. It wraps a dimension
+and its effective `DimensionTiling`, then exposes frame-named helpers such as
+`canonicalBlock`, `canonicalChunk`, `virtualBlockForViewer`,
+`virtualChunkForViewer`, and `wrappedDistanceSqr`. New subsystem boundaries
+should prefer `TopologyContext` names even while `CoordUtil` remains the
+underlying source of the arithmetic.
+
 Canonicalization is used before state access. Virtualization is used when
 building viewer-facing positions, especially packets and tracking decisions.
 
@@ -76,6 +83,8 @@ eight Nether blocks map to one Overworld block.
 
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/DimensionTiling.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologyContexts.java`
 - `mod-fabric/src/main/java/globe/world/config/TilingSettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeConfig.java`
 - `mod-fabric/src/main/java/globe/world/mixin/WorldGenSettingsMixin.java`
@@ -117,6 +126,13 @@ Tile size, Overworld tiling mode, Overworld terrain method, Nether tiling mode,
 Nether tile size, Nether terrain method, and Nether portal scale are treated as
 permanent world-topology settings. They are visible through `/globeworld
 config`, but intentionally are not mutable through runtime commands.
+
+The v2 settings split exists as a compatibility layer around the current saved
+`TilingSettings` schema. `GlobeSettings` groups durable topology, presentation,
+gameplay, and diagnostics records; `GlobeConfig` keeps the legacy convenience
+methods while `DimensionTiling` reads topology through `TopologySettings`.
+Runtime commands still mutate only presentation/gameplay fields such as
+curvature, day/night mode, and day-length multiplier.
 
 ## Related Vanilla Mechanics
 

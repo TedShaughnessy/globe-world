@@ -26,6 +26,14 @@ aliasLineOfSight
 Vanilla hooks still need adapters, but those adapters should consume one shared
 target model.
 
+## Current Status
+
+The first shared target facade is implemented as `ActorLocalTargetView` and
+`ActorLocalTargets`, documented in
+[Entities](../../mod-mechanics/entities.md). It packages existing
+`AiAliasUtil` behavior and is used by `/globeworld entity`,
+`ServerEntityGetterMixin`, and `LookAtPlayerGoalMixin`.
+
 ## Requirements
 
 - Entity identity remains canonical and vanilla-compatible.
@@ -39,12 +47,13 @@ target model.
 
 ## Implementation Sketch
 
-Add a topology-aware entity query service:
+Partially implemented: `ActorLocalTargets` provides `actorLocalView`-style
+behavior, target position/eye/box helpers, wrapped distances, line of sight, and
+path target helpers. Remaining broader query APIs are still future work:
 
 - `nearestTarget(actor, candidates)`
 - `targetsInActorRange(actor, rawBox, predicate)`
-- `actorLocalView(actor, target)`
-- `pathTargets(actor, target)`
+- broader `EntityGetter` replacement where appropriate
 
 Then gradually migrate AI mixins to call the service rather than doing
 per-class wrapping math.

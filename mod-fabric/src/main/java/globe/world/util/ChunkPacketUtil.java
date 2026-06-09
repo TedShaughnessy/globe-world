@@ -1,6 +1,7 @@
 package globe.world.util;
 
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundChunksBiomesPacket;
 import net.minecraft.server.level.ServerPlayer;
@@ -77,11 +78,8 @@ public final class ChunkPacketUtil {
     }
 
     private static void logBiomeResend(ServerPlayer viewer, int sourceCount, int aliasCount, int fallbackCount) {
-        if (!GlobeWorld.LOGGER.isDebugEnabled()) {
-            return;
-        }
-
-        GlobeWorld.LOGGER.debug(
+        GlobeDiagnostics.debug(
+                DiagnosticsChannel.PACKETS,
                 "GW_BIOME_ALIAS_FANOUT player={} source_chunks={} alias_chunks={} fallbacks={}",
                 viewer.getScoreboardName(),
                 sourceCount,

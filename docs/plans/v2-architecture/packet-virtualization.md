@@ -13,6 +13,13 @@ Keep the vanilla-shaped client cache. Continue sending aliases as ordinary raw
 client coordinates. Improve the internal packet model by making packet
 virtualization policy explicit and auditable.
 
+## Current Status
+
+The policy table is implemented as `PacketVirtualizationPolicies` plus
+[Packet Policies](../../mod-mechanics/packet-policies.md). It is an audit
+registry, not a dispatcher rewrite; existing handwritten packet utilities still
+preserve packet-specific semantics.
+
 ## Packet Policy Categories
 
 - Chunk owner packets: full chunk, forget chunk, light, biome payloads.
@@ -35,9 +42,9 @@ virtualization policy explicit and auditable.
 
 ## Implementation Sketch
 
-Create a packet policy registry or table in docs and code. The code can still
-dispatch with `instanceof`, but it should be organized around policy categories
-instead of scattered call-site reasoning.
+Implemented: a packet policy registry/table exists in docs and code. The code
+still dispatches with `instanceof`; future cleanup can organize more call sites
+around policy categories when behavior is already being touched.
 
 For packets with private fields, keep accessor mixins narrow and named after
 the packet policy they support.

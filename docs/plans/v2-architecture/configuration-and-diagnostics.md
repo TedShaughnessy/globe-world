@@ -23,6 +23,19 @@ Separate settings by responsibility:
 - Runtime gameplay tuning: day-length multiplier if it remains mutable.
 - Diagnostics: command-gated or config-gated debug channels.
 
+## Current Status
+
+Diagnostics channels are implemented as session-only command-gated debug
+channels. The durable behavior is documented in
+[Client diagnostics](../../mod-mechanics/client.md#local-sky-and-diagnostics).
+
+The settings split is partially implemented as records/codecs and a
+`GlobeSettings` compatibility view around the current saved/wire
+`TilingSettings` shape. The durable behavior is documented in
+[Topology](../../mod-mechanics/topology.md) and
+[Client](../../mod-mechanics/client.md#packet-and-cache-model). Making
+`GlobeSettings` the actual saved/network schema remains future work.
+
 ## Requirements
 
 - World-topology settings must be saved with the world and treated as fixed
@@ -36,13 +49,14 @@ Separate settings by responsibility:
 
 ## Implementation Sketch
 
-Create explicit config groups:
+Implemented config groups:
 
 ```text
 TopologySettings
 PresentationSettings
 GameplaySettings
 DiagnosticsSettings
+GlobeSettings
 ```
 
 Commands and UI should expose only the settings that make sense in that

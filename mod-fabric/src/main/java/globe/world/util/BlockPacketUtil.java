@@ -1,6 +1,7 @@
 package globe.world.util;
 
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
 import globe.world.mixin.ClientboundBlockEntityDataPacketAccessor;
 import globe.world.mixin.ClientboundLightUpdatePacketAccessor;
 import globe.world.mixin.ClientboundSectionBlocksUpdatePacketAccessor;
@@ -287,12 +288,12 @@ public class BlockPacketUtil {
             int canonicalChunkZ,
             ChunkPos virtualChunk) {
         if (!DimensionTiling.forLevel(viewer.level()).enabled()
-                || !GlobeWorld.LOGGER.isDebugEnabled()
                 || (virtualChunk.x() == packet.getX() && virtualChunk.z() == packet.getZ())) {
             return;
         }
 
-        GlobeWorld.LOGGER.debug(
+        GlobeDiagnostics.debug(
+                DiagnosticsChannel.PACKETS,
                 "GW_LIGHT_ALIAS_FANOUT fallback player={} original={} canonical={} virtual={}",
                 viewer.getScoreboardName(),
                 new ChunkPos(packet.getX(), packet.getZ()),

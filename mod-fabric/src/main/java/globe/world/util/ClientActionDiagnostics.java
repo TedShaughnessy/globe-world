@@ -1,6 +1,7 @@
 package globe.world.util;
 
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -59,7 +60,8 @@ public final class ClientActionDiagnostics {
         boolean canonicalBlockTicking = level.shouldTickBlocksAt(canonicalChunk.pack());
         boolean canonicalLoaded = level.getChunkSource().getChunkNow(canonicalChunk.x(), canonicalChunk.z()) != null;
 
-        GlobeWorld.LOGGER.warn(
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.BLOCK_MUTATION,
                 "GW_CLIENT_BLOCK_ACTION_REJECTED action={} reason=canonical_chunk_not_block_ticking player={} dimension={} rawPos={} rawChunk={} canonicalPos={} canonicalChunk={} playerChunk={} rawBlockTicking={} canonicalBlockTicking={} canonicalLoaded={}",
                 action,
                 player.getScoreboardName(),

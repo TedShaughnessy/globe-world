@@ -33,12 +33,14 @@ World period:
    packets, tracking, spawning, despawning, sensing, and pathfinding risks.
 5. [Worldgen](worldgen.md): periodic terrain modes, feature spillover,
    structure edge handling, and generation risks.
-6. [Client](client.md): client-facing packet/render behavior, curvature,
+6. [Packet Policies](packet-policies.md): auditable packet virtualization
+   policy table for Minecraft 26.1.2.
+7. [Client](client.md): client-facing packet/render behavior, curvature,
    shader-pack compatibility, diagnostics, and explicit client-cache boundary.
-7. [Maps](maps.md): filled-map pixel updates and player marker aliasing.
-8. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
+8. [Maps](maps.md): filled-map pixel updates and player marker aliasing.
+9. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
    saved day-length multiplier, and gameplay across the canonical tile.
-9. [Local Solar Time](local-solar-time.md): shared longitude-based local time
+10. [Local Solar Time](local-solar-time.md): shared longitude-based local time
    math for scrolling day/night rendering and gameplay hooks.
 
 ## Status By Area
@@ -51,7 +53,7 @@ World period:
 | Canonical chunk lifetime | Done | [chunks.md](chunks.md) |
 | Multiple rendered aliases | Done | [chunks.md](chunks.md) |
 | Block edits and block/light packets | Done | [blocks-and-ticks.md](blocks-and-ticks.md) |
-| Position-bearing packet audit | Done for Minecraft 26.1.2 | [client.md](client.md) |
+| Position-bearing packet audit | Done for Minecraft 26.1.2 | [packet-policies.md](packet-policies.md) |
 | Block entities | Mostly done | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Random ticks | Done | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Scheduled ticks | Done for gameplay path | [blocks-and-ticks.md](blocks-and-ticks.md) |

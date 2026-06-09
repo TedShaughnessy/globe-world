@@ -57,11 +57,14 @@ cancelled for non-canonical chunks.
 ## AI, Interaction, And Pathing
 
 `AiAliasUtil` maps targets, hitboxes, and query boxes into the acting mob's
-local tile frame. Targeting conditions, nearest-entity selection, brain sensors,
-target retention, line of sight, look controls, melee checks, ranged-goal
-distance checks, and move-toward-target goals use the nearest topological alias
-instead of raw coordinates. Alias line of sight must be proven by a wrapped
-ray; wrapped horizontal distance alone is not treated as visibility.
+local tile frame. `ActorLocalTargets` packages the same calculations into an
+`ActorLocalTargetView` containing the canonical position, actor-local position,
+actor-local hitbox, wrapped distances, same-level status, and aliasing status.
+Targeting conditions, nearest-entity selection, brain sensors, target retention,
+line of sight, look controls, melee checks, ranged-goal distance checks, and
+move-toward-target goals use the nearest topological alias instead of raw
+coordinates. Alias line of sight must be proven by a wrapped ray; wrapped
+horizontal distance alone is not treated as visibility.
 
 Ranged mob launch math uses the same target-alias convention before calculating
 projectile X/Z vectors. Skeletons, illusioners, drowned, snow golems, llamas,
@@ -128,8 +131,8 @@ curvature interaction.
 ## Diagnostics
 
 `/globeworld entity <target>` reports an entity's raw/canonical position,
-canonicalization policy, root/passenger state, and mob target alias/pathing
-distances when available.
+canonicalization policy, root/passenger state, and the `ActorLocalTargetView`
+for mob target alias/pathing distances when available.
 
 `/globeworld entities` counts loaded entities that should be continuously
 canonicalized but currently sit outside canonical X/Z.
@@ -147,7 +150,8 @@ canonicalized but currently sit outside canonical X/Z.
   `NaturalSpawnerMixin`, `ChunkStatusTasksMixin`,
   `MobDespawnDistanceMixin`.
 - AI and pathing:
-  `AiAliasUtil`, `MobNavigationAliasUtil`, `TargetingConditionsMixin`,
+  `AiAliasUtil`, `ActorLocalTargetView`, `ActorLocalTargets`,
+  `MobNavigationAliasUtil`, `TargetingConditionsMixin`,
   `ServerEntityGetterMixin`, `NearestLivingEntitySensorMixin`, `SensingMixin`,
   `TargetGoalMixin`, `PathNavigationMixin`, `GroundPathNavigationMixin`,
   `FlyingPathNavigationMixin`, `LookControlMixin`, `MobLookMixin`,

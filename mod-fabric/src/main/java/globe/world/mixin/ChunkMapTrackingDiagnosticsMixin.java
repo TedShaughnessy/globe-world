@@ -1,6 +1,7 @@
 package globe.world.mixin;
 
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ChunkTrackingView;
 import net.minecraft.server.level.ServerLevel;
@@ -32,7 +33,8 @@ public class ChunkMapTrackingDiagnosticsMixin {
         int[] left = new int[1];
         ChunkTrackingView.difference(previous, next, ignored -> entered[0]++, ignored -> left[0]++);
 
-        GlobeWorld.LOGGER.warn(
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.CHUNKS,
                 "GW_TRACKING_VIEW player={} dimension={} playerChunk={} from={} to={} enter={} leave={}",
                 player.getScoreboardName(),
                 this.level.dimension().identifier(),

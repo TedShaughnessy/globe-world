@@ -10,18 +10,36 @@ public class GlobeConfig {
     public static final int DEFAULT_TILE_SIZE_CHUNKS = 1024;
 
     private static volatile TilingSettings settings = TilingSettings.DEFAULT;
+    private static volatile GlobeSettings globeSettings = GlobeSettings.DEFAULT;
     private static volatile int settingsVersion = 0;
 
     public static void setTilingSettings(TilingSettings newSettings) {
         TilingSettings sanitized = newSettings.sanitized();
         if (!sanitized.equals(settings)) {
             settings = sanitized;
+            globeSettings = GlobeSettings.from(sanitized);
             settingsVersion++;
         }
     }
 
     public static TilingSettings tilingSettings() {
         return settings;
+    }
+
+    public static GlobeSettings globeSettings() {
+        return globeSettings;
+    }
+
+    public static TopologySettings topologySettings() {
+        return globeSettings.topology();
+    }
+
+    public static PresentationSettings presentationSettings() {
+        return globeSettings.presentation();
+    }
+
+    public static GameplaySettings gameplaySettings() {
+        return globeSettings.gameplay();
     }
 
     public static boolean enabled() {

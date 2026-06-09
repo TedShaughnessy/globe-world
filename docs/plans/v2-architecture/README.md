@@ -39,6 +39,32 @@ instead of growing a second generation of isolated fixes.
    fixed topology, runtime presentation, and debug controls.
 8. [Migration Strategy](migration-strategy.md): build v2 in layers without
    risking the completed v1 feature set.
+9. [Viability Audit](viability-audit.md): compare the v2 direction with the
+   feature-complete v1 code and call out extraction opportunities, risks, and
+   concrete implementation anchors.
+10. [Low-Risk Implementation Plan](low-risk-implementation-plan.md): concrete
+    status for the implemented low-risk primitives and the remaining settings
+    split follow-up.
+
+## Implemented Low-Risk Primitives
+
+The first low-risk v2 pass has been implemented and folded into
+[Globe World Mod Mechanics](../../mod-mechanics/README.md):
+
+- `TopologyContext` and `TopologyContexts`: see
+  [Topology](../../mod-mechanics/topology.md).
+- Packet policy registry/table: see
+  [Packet Policies](../../mod-mechanics/packet-policies.md).
+- Diagnostics channels and `/globeworld debug`: see
+  [Client diagnostics](../../mod-mechanics/client.md#local-sky-and-diagnostics).
+- `ActorLocalTargetView` and `ActorLocalTargets`: see
+  [Entities](../../mod-mechanics/entities.md).
+- Split settings records as a compatibility layer: see
+  [Topology](../../mod-mechanics/topology.md) and
+  [Client](../../mod-mechanics/client.md#packet-and-cache-model).
+
+Remaining architecture work should build from those mechanics docs rather than
+the original low-risk checklist.
 
 ## Non-Goals
 
@@ -51,5 +77,5 @@ instead of growing a second generation of isolated fixes.
 ## Completion Shape
 
 V2 is ready to begin when v1's feature set is stable enough that remaining work
-is mostly polish, compatibility, or bug fixing. The first v2 milestone should
-be an internal topology API and tests, not visible gameplay changes.
+is mostly polish, mod-interop work, or bug fixing. The first v2 milestone
+should be an internal topology API and tests, not visible gameplay changes.

@@ -33,6 +33,13 @@ canonical target -> actor-local alias
 wire position -> canonical authoritative target
 ```
 
+## Current Status
+
+The first lightweight implementation is `TopologyContext`, documented in
+[Topology](../../mod-mechanics/topology.md). It keeps vanilla position/value
+types but names conversion boundaries such as `canonicalBlock`,
+`canonicalChunk`, `virtualBlockForViewer`, and `wrappedDistanceSqr`.
+
 ## Requirements
 
 - Every conversion needs a dimension-aware `TopologyContext`.

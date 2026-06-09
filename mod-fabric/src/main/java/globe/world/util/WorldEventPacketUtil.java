@@ -1,5 +1,7 @@
 package globe.world.util;
 
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.Packet;
@@ -64,14 +66,9 @@ public final class WorldEventPacketUtil {
     }
 
     public static Vec3 virtualizePos(ServerLevel level, Vec3 pos, ServerPlayer viewer) {
-        double canonicalX = CoordUtil.wrapBlock(level, pos.x());
-        double canonicalZ = CoordUtil.wrapBlock(level, pos.z());
-        double virtualX = CoordUtil.virtualBlock(level, canonicalX, viewer.getX());
-        double virtualZ = CoordUtil.virtualBlock(level, canonicalZ, viewer.getZ());
-        if (virtualX == pos.x() && virtualZ == pos.z()) {
-            return pos;
-        }
-        return new Vec3(virtualX, pos.y(), virtualZ);
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        Vec3 canonical = new Vec3(topology.canonicalBlockX(pos.x()), pos.y(), topology.canonicalBlockX(pos.z()));
+        return topology.virtualBlockForViewer(canonical, viewer.position());
     }
 
     public static BlockPos virtualizeBlockPos(ServerLevel level, BlockPos pos, ServerPlayer viewer) {

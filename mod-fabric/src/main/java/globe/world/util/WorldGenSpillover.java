@@ -1,6 +1,7 @@
 package globe.world.util;
 
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
@@ -95,22 +96,22 @@ public final class WorldGenSpillover {
             }
 
             warnIfStale(level, key, queue);
-            if (GlobeWorld.LOGGER.isDebugEnabled()) {
-                GlobeWorld.LOGGER.debug(
-                        "GW_WORLDGEN_SPILLOVER apply dimension={} canonical={} writes={} ageTicks={}",
-                        dimensionName(key.dimension()),
-                        format(chunkPos),
-                        queue.writeCount(),
-                        ageTicks(level, queue)
-                );
-            }
+            GlobeDiagnostics.debug(
+                    DiagnosticsChannel.WORLDGEN,
+                    "GW_WORLDGEN_SPILLOVER apply dimension={} canonical={} writes={} ageTicks={}",
+                    dimensionName(key.dimension()),
+                    format(chunkPos),
+                    queue.writeCount(),
+                    ageTicks(level, queue)
+            );
 
             for (Write write : queue.writes()) {
                 BlockState currentState = chunk.getBlockState(write.pos());
                 if (write.expectedState() == null || currentState.equals(write.expectedState())) {
                     chunk.setBlockState(write.pos(), write.state(), write.flags());
-                } else if (GlobeWorld.LOGGER.isDebugEnabled()) {
-                    GlobeWorld.LOGGER.debug(
+                } else {
+                    GlobeDiagnostics.debug(
+                            DiagnosticsChannel.WORLDGEN,
                             "GW_WORLDGEN_SPILLOVER skip dimension={} canonical={} pos={} expected={} actual={} queued={}",
                             dimensionName(key.dimension()),
                             format(chunkPos),
@@ -185,7 +186,8 @@ public final class WorldGenSpillover {
             }
 
             queue.markWarned(gameTime);
-            GlobeWorld.LOGGER.warn(
+            GlobeDiagnostics.warn(
+                    DiagnosticsChannel.WORLDGEN,
                     "GW_WORLDGEN_SPILLOVER stale dimension={} canonical={} writes={} ageTicks={}",
                     dimensionName(key.dimension()),
                     format(ChunkPos.unpack(key.canonicalChunk())),
@@ -203,7 +205,8 @@ public final class WorldGenSpillover {
                 return;
             }
 
-            GlobeWorld.LOGGER.warn(
+            GlobeDiagnostics.warn(
+                    DiagnosticsChannel.WORLDGEN,
                     "GW_WORLDGEN_SPILLOVER cleanup scope={} discardedWrites={} discardedChunks={} dimension={}",
                     scope,
                     discardedWrites,

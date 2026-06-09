@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.server.level.ServerEntityGetter;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
@@ -36,7 +36,7 @@ public interface ServerEntityGetterMixin {
             double sourceY,
             double sourceZ,
             AABB bb) {
-        return source == null ? original.call(candidate, x, y, z) : AiAliasUtil.distanceToSqr(source, candidate);
+        return source == null ? original.call(candidate, x, y, z) : ActorLocalTargets.distanceToSqr(source, candidate);
     }
 
     @WrapOperation(
@@ -58,6 +58,6 @@ public interface ServerEntityGetterMixin {
             double sourceX,
             double sourceY,
             double sourceZ) {
-        return source == null ? original.call(candidate, x, y, z) : AiAliasUtil.distanceToSqr(source, candidate);
+        return source == null ? original.call(candidate, x, y, z) : ActorLocalTargets.distanceToSqr(source, candidate);
     }
 }

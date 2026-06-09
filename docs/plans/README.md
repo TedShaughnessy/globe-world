@@ -9,7 +9,9 @@ point for current behavior and modded code anchors.
 
 ## Active Plans
 
-None.
+- [Finish v2 settings split](v2-architecture/low-risk-implementation-plan.md#finish-clean-settings-split):
+  make `GlobeSettings` the saved/network settings model after the low-risk
+  compatibility layer.
 
 ## Future Architecture
 
@@ -17,3 +19,10 @@ None.
   keeping the same canonical-world concept while giving coordinate frames,
   topology access, packets, entities, raycasts, worldgen, configuration, and
   migration their own stronger boundaries.
+
+## Implemented From Plans
+
+- The first v2 low-risk pass is implemented and folded into
+  [Globe World Mod Mechanics](../mod-mechanics/README.md): topology context,
+  packet policies, diagnostics channels, actor-local target views, and the
+  split settings compatibility layer.

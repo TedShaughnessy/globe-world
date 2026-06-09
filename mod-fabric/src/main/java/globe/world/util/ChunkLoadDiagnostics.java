@@ -1,6 +1,7 @@
 package globe.world.util;
 
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
@@ -30,7 +31,8 @@ public final class ChunkLoadDiagnostics {
         int total = TOTAL_BLOCKED_ALIAS_SENDS.incrementAndGet();
 
         if (shouldLogBlockedAttempt(attempts)) {
-            GlobeWorld.LOGGER.warn(
+            GlobeDiagnostics.warn(
+                    DiagnosticsChannel.CHUNKS,
                     "GW_CHUNK_ALIAS_SEND blocked attempts={} totalBlocked={} activeBlocked={} player={} dimension={} alias={} canonical={}",
                     attempts,
                     total,
@@ -51,7 +53,8 @@ public final class ChunkLoadDiagnostics {
         }
 
         int active = ACTIVE_BLOCKED_ALIASES.decrementAndGet();
-        GlobeWorld.LOGGER.warn(
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.CHUNKS,
                 "GW_CHUNK_ALIAS_SEND recovered attempts={} activeBlocked={} player={} dimension={} alias={} canonical={}",
                 counter.get(),
                 active,
@@ -64,29 +67,27 @@ public final class ChunkLoadDiagnostics {
 
     public static void canonicalTicketAcquired(ServerLevel level, ChunkPos canonicalPos, int radius, int refs) {
         int count = TICKET_ACQUIRES.incrementAndGet();
-        if (GlobeWorld.LOGGER.isDebugEnabled()) {
-            GlobeWorld.LOGGER.debug(
-                    "GW_CANONICAL_TICKET acquire count={} dimension={} canonical={} radius={} refs={}",
-                    count,
-                    dimensionName(level),
-                    format(canonicalPos),
-                    radius,
-                    refs
-            );
-        }
+        GlobeDiagnostics.debug(
+                DiagnosticsChannel.CHUNKS,
+                "GW_CANONICAL_TICKET acquire count={} dimension={} canonical={} radius={} refs={}",
+                count,
+                dimensionName(level),
+                format(canonicalPos),
+                radius,
+                refs
+        );
     }
 
     public static void canonicalTicketReleased(ServerLevel level, ChunkPos canonicalPos, int radius) {
         int count = TICKET_RELEASES.incrementAndGet();
-        if (GlobeWorld.LOGGER.isDebugEnabled()) {
-            GlobeWorld.LOGGER.debug(
-                    "GW_CANONICAL_TICKET release count={} dimension={} canonical={} radius={}",
-                    count,
-                    dimensionName(level),
-                    format(canonicalPos),
-                    radius
-            );
-        }
+        GlobeDiagnostics.debug(
+                DiagnosticsChannel.CHUNKS,
+                "GW_CANONICAL_TICKET release count={} dimension={} canonical={} radius={}",
+                count,
+                dimensionName(level),
+                format(canonicalPos),
+                radius
+        );
     }
 
     public static void senderState(
@@ -109,7 +110,8 @@ public final class ChunkLoadDiagnostics {
         }
         LAST_SENDER_LOG_TICK.put(key, gameTime);
 
-        GlobeWorld.LOGGER.warn(
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.CHUNKS,
                 "GW_CHUNK_SENDER player={} dimension={} playerChunk={} pending={} unacked={}/{} desiredPerTick={} quota={}",
                 player.getScoreboardName(),
                 dimensionName(level),

@@ -22,10 +22,13 @@ Full chunk packets are sourced from canonical chunks and relabeled to the alias
 chunk position before the client sees them. Later block, section, block-entity,
 biome, light, world-event, waypoint, sign-editor, look-at, map, and entity
 packets are copied or virtualized per viewer so their X/Z matches the visible
-alias.
+alias. The Minecraft 26.1.2 audit table lives in
+[Packet Policies](packet-policies.md).
 
-Server-authoritative `TilingSettings` are synchronized to modded clients during
-the Fabric configuration phase before play starts. The client applies those
+Server-authoritative settings are synchronized to modded clients during the
+Fabric configuration phase before play starts. The current wire payload still
+uses the compatibility `TilingSettings` shape while the server-side code also
+maintains the split `GlobeSettings` view. The client applies those
 settings before first chunks, entity packets, and rendering decisions, then
 acknowledges the configuration task so the join can continue. Runtime server
 setting changes from commands or an integrated LAN host are sent again during
@@ -165,6 +168,11 @@ Client diagnostics are intentionally targeted:
 
 - `F3+Y`: Globe debug overlay and tile-border renderer, including current
   Overworld/Nether tile widths and Nether portal ratio.
+- `/globeworld debug list`: show server diagnostic channels and whether each
+  channel is enabled for this session.
+- `/globeworld debug enable <channel>` and `/globeworld debug disable <channel>`:
+  turn one server diagnostic channel on or off.
+- `/globeworld debug clear`: turn all server diagnostic channels off.
 - `/globeworld client entity_aliases`: show local entity visual alias settings.
 - `/globeworld client entity_aliases mode`: cycle local entity visual alias mode.
 - `/globeworld client entity_aliases rings`: cycle local entity visual alias ring limit.
@@ -174,6 +182,7 @@ Client diagnostics are intentionally targeted:
 - Packet virtualization:
   `BlockPacketUtil`, `ChunkPacketUtil`, `WorldEventPacketUtil`,
   `EntityPacketUtil`, `WaypointPacketUtil`,
+  `PacketVirtualizationPolicies`,
   `ClientboundLevelChunkWithLightMixin`, `ChunkMapBiomeResendMixin`,
   `PlayerListBroadcastMixin`, `ServerLevelWorldEventMixin`,
   `ServerPlayerInteractionPacketMixin`.
@@ -199,6 +208,7 @@ Client diagnostics are intentionally targeted:
   `FishingHookRendererMixin`,
   `GlobeEntityAliasDiagnostics`.
 - Diagnostics and settings:
+  `DiagnosticsChannel`, `GlobeDiagnostics`,
   `GlobeClientDebugCommands`, `GlobeDebugHud`, `GlobeDebugState`,
   `GlobeTileBorderRenderer`, `KeyboardHandlerMixin`.
 

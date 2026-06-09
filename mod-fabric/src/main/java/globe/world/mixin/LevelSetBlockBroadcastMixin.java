@@ -2,7 +2,8 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
 import globe.world.util.CoordUtil;
 import java.util.ArrayDeque;
 import net.minecraft.core.BlockPos;
@@ -161,14 +162,17 @@ public abstract class LevelSetBlockBroadcastMixin {
         }
         if (globeWorld$blockMutationLogCount >= 200) {
             if (globeWorld$blockMutationLogCount == 200) {
-                GlobeWorld.LOGGER.warn("GW_BLOCK_MUTATION logging limit reached; suppressing further grass/dirt mutation logs");
+                GlobeDiagnostics.warn(
+                        DiagnosticsChannel.BLOCK_MUTATION,
+                        "GW_BLOCK_MUTATION logging limit reached; suppressing further grass/dirt mutation logs");
                 globeWorld$blockMutationLogCount++;
             }
             return;
         }
         globeWorld$blockMutationLogCount++;
 
-        GlobeWorld.LOGGER.warn(
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.BLOCK_MUTATION,
                 "GW_BLOCK_MUTATION original={} canonical={} mutation={} chunk={} old={} new={} flags={} caller={}",
                 frame.originalPos,
                 frame.canonicalPos,
