@@ -83,6 +83,7 @@ public final class GlobeDebugHud {
         leftLines.add("Distance to next wrap seam in Z: " + seamDistance(currentTiling, cameraEntity.getZ()));
         leftLines.add("Overworld tile width: " + tileSummary(overworldTiling));
         leftLines.add("Nether tile width: " + tileSummary(netherTiling));
+        leftLines.add("Nether portal ratio: " + portalScaleSummary());
         leftLines.add(String.format(Locale.ROOT, "Entity aliases: %s, rings %s (%d shown, %d culled, %d auto-skipped)",
                 GlobeEntityAliasDiagnostics.mode().displayName(),
                 GlobeEntityAliasing.maxAliasRingsDisplayName(),
@@ -174,6 +175,17 @@ public final class GlobeDebugHud {
     private static String dayCycleSummary() {
         TilingSettings settings = GlobeConfig.tilingSettings().sanitized();
         return settings.dayNightCycleMode().displayName() + " x" + formatMultiplier(settings.dayLengthMultiplier());
+    }
+
+    private static String portalScaleSummary() {
+        TilingSettings settings = GlobeConfig.tilingSettings().sanitized();
+        return String.format(
+                Locale.ROOT,
+                "%s (%d/%d)",
+                settings.netherPortalScaleLabel(),
+                settings.netherPortalScaleNumerator(),
+                settings.netherPortalScaleDenominator()
+        );
     }
 
     private static String formatMultiplier(double multiplier) {

@@ -78,17 +78,35 @@ read-only; local clients cannot silently edit only their own `GlobeConfig`.
 The forced progression-structure toggles are editable only during world
 creation because they describe world-generation policy. They remain visible but
 disabled in the in-world options screen.
-In simple create-world mode, changing the tile-size preset resets the dependent
-settings below it to simple defaults. Presets larger than the Italy-size tile
-also default Overworld curvature to off because the curve is no longer visually
-useful at that scale. When Distant Horizons is loaded, its Earth-curvature
-advice is shown only for tile sizes whose recommended DH curvature ratio is
-within the supported `50..5000` range.
+In simple create-world mode, changing the Overworld tile-size preset resets the
+dependent settings below it to simple defaults, including a valid default Nether
+tile size. Simple presets start at 8 chunks / 128 m so both Overworld and Nether
+simple choices stay above the smallest realistically playable world size.
+Presets larger than the Italy-size tile also default Overworld curvature to off
+because the curve is no longer visually useful at that scale. When Distant
+Horizons is loaded, its
+Earth-curvature advice is shown only for tile sizes whose recommended DH
+curvature ratio is within the supported `50..5000` range. Simple mode disables
+scrolling day cycle below a 7,000-block Overworld tile and resets that setting
+to Vanilla, because that tile is small enough for a running player to keep pace
+with the sun.
+The create-world Nether controls split tile size from portal travel ratio.
+In simple mode, Nether size can be disabled or chosen from relative presets such
+as `1/8 size`, `Same size`, and `4x size`. The portal ratio is implied by the
+selected Nether size: a `1/8 size` Nether uses vanilla-style `1:8` travel,
+`Same size` uses `1:1`, and larger-than-Overworld Nether sizes use reverse
+ratios. In custom mode,
+Nether size is entered as a direct chunk count and portal ratio is a separate
+preset slider from reverse `1:32` through `1:32`. A custom-mode `Tile Nether`
+toggle disables the Nether inputs when Nether wrapping is off. Changing the custom
+Overworld tile size refreshes the default Nether tile size; changing the portal
+ratio does not alter Nether tile size or terrain mode.
 In custom create-world mode, explicit Overworld and Nether topology methods are
-available next to the corresponding size controls; changing the tile size or
-derived Nether size resets those topology methods back to `Auto`. Tile sizes up
-to 256 chunks default forced progression structures on for the matching
-dimension; larger effective tile sizes default them off.
+available next to the corresponding size controls; changing the Overworld tile
+size resets only the Overworld topology method, while changing the Nether tile
+size resets the Nether topology method back to `Auto`. Tile sizes up to 256
+chunks default forced progression structures on for the matching dimension;
+larger effective tile sizes default them off.
 
 ## Shader Packs
 
@@ -145,7 +163,8 @@ color, and lightmap sky brightness. See
 
 Client diagnostics are intentionally targeted:
 
-- `F3+Y`: Globe debug overlay and tile-border renderer.
+- `F3+Y`: Globe debug overlay and tile-border renderer, including current
+  Overworld/Nether tile widths and Nether portal ratio.
 - `/globeworld client entity_aliases`: show local entity visual alias settings.
 - `/globeworld client entity_aliases mode`: cycle local entity visual alias mode.
 - `/globeworld client entity_aliases rings`: cycle local entity visual alias ring limit.

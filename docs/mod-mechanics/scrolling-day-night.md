@@ -31,6 +31,10 @@ The saved setting is `TilingSettings.dayNightCycleMode()`:
 The setting is serialized as `day_night_cycle`; legacy saved `"realistic"`
 values decode as `SCROLLING`. The world-creation UI and pause/options Globe
 World settings page expose the setting as `Day/Night Cycle`.
+In simple world-creation mode, scrolling day cycle is disabled and reset to
+`VANILLA` when the Overworld tile is below 7,000 blocks wide. At that scale a
+running player can approximately keep pace with the sun, so the simple preset UI
+keeps local-solar-time behavior off.
 
 Day length is saved separately as `TilingSettings.dayLengthMultiplier()` and
 serialized as `day_length_multiplier`. The UI exposes a discrete `Day Length`

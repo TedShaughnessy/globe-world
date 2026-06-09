@@ -11,9 +11,11 @@ Tiling is also dimension-specific:
 - The Overworld uses `mode` and `tile_size`.
 - The Overworld terrain method uses `terrain_mode`, with `auto` deriving the
   method from `tile_size`.
-- The Nether uses `nether_mode` and the effective Nether tile size.
+- The Nether uses `nether_mode` and `nether_tile_size`.
 - The Nether terrain method uses `nether_terrain_mode`, with `auto` deriving
-  the method from the effective Nether tile size.
+  the method from `nether_tile_size`.
+- Nether portals use `nether_portal_scale_numerator` and
+  `nether_portal_scale_denominator` for Overworld/Nether coordinate scaling.
 - The End never tiles.
 
 ## Why
@@ -23,10 +25,11 @@ chunk lookup, entity tracking, block packets, and worldgen each invent their own
 wrapping math, edge behavior will drift and aliases will either desync or
 duplicate state.
 
-Vanilla dimensions also do not share one coordinate scale. Nether portals have
-an 8:1 relation with the Overworld, while the End should remain vanilla. Keeping
-tiling policy dimension-aware avoids applying Overworld topology to dimensions
-where it does not fit.
+Vanilla dimensions also do not share one coordinate scale. Nether portals
+normally have an 8:1 relation with the Overworld, while Globe World can save a
+different Overworld/Nether portal ratio and the End should remain vanilla.
+Keeping tiling policy dimension-aware avoids applying Overworld topology to
+dimensions where it does not fit.
 
 ## Coordinate Helpers
 
@@ -53,21 +56,21 @@ Worldgen paths that do not receive a `ServerLevel` use a scoped
 after nested worldgen calls, cancellations, or exceptions, so Nether generation
 does not accidentally inherit the Overworld fallback.
 
-`nether_one_eighth_overworld_size` is effective only when the Overworld tile size
-is at least `16` chunks and cleanly divisible by 8. This keeps the derived
-Nether tile at or above the smallest supported Overworld preset.
+`nether_tile_size` is saved directly and is independent from the Overworld tile
+size. This permits a smaller Nether tile, same-size Nether tile, larger Nether
+tile, or no Nether tiling when `nether_mode` is disabled.
 
-Examples:
+Nether portal scale is also independent from tile size. The saved numerator and
+denominator describe Nether-to-Overworld coordinate scaling:
 
-- Overworld `1024` chunks and one-eighth enabled -> Nether `128` chunks.
-- Overworld `8` chunks and one-eighth requested -> the request is cleared and
-  Nether uses `8` chunks.
-- Overworld `1025` chunks and one-eighth requested -> the request is cleared
-  and Nether uses `1025` chunks.
-- Nether disabled -> no Nether wrapping.
+```text
+overworldCoordinate = netherCoordinate * numerator / denominator
+```
 
-This keeps vanilla's 8:1 portal scale coherent only when the configured
-Overworld period supports it exactly.
+Allowed portal ratios are `1/32`, `1/16`, `1/8`, `1/4`, `1/2`, `1/1`, `2/1`,
+`4/1`, `8/1`, `16/1`, and `32/1`. The default is `8/1`, matching vanilla-style
+fast Overworld travel through the Nether. Reverse ratios such as `1/8` make
+eight Nether blocks map to one Overworld block.
 
 ## Key Files
 
@@ -92,13 +95,16 @@ Overworld period supports it exactly.
 - Scheduled tick containers are tagged with their `ServerLevel` dimension when
   exposed by `ServerLevel`.
 - Nether portal approximate exits canonicalize the source X/Z before applying
-  vanilla's dimension scale, then wrap the target dimension before portal
-  search/creation. This keeps different aliases of the same source portal from
+  Globe World's configured Overworld/Nether portal scale, then wrap the target
+  dimension before portal search/creation. Other dimension pairs keep vanilla's
+  dimension scale. This keeps different aliases of the same source portal from
   creating separate scaled target portals.
 - `/globeworld pos` reports the current dimension's effective tiling, current
   alias, canonical position, longitude offset, and local solar day tick.
 - `/globeworld border_distance` reports distance from the executing player's
   canonical position to each tile border.
+- `/globeworld portal_scale` reports the saved Nether portal ratio and the
+  exact Nether-to-Overworld and Overworld-to-Nether multipliers.
 - `/globeworld teleport_canon` teleports the executing player to the canonical
   X/Z equivalent of their current visual alias.
 - `/globeworld teleport_border [inset]` teleports the executing player near the
@@ -108,9 +114,9 @@ Overworld period supports it exactly.
 - `/globeworld config` reports saved tiling settings.
 
 Tile size, Overworld tiling mode, Overworld terrain method, Nether tiling mode,
-Nether terrain method, and derived Nether scale are treated as permanent
-world-topology settings. They are visible through `/globeworld config`, but
-intentionally are not mutable through runtime commands.
+Nether tile size, Nether terrain method, and Nether portal scale are treated as
+permanent world-topology settings. They are visible through `/globeworld
+config`, but intentionally are not mutable through runtime commands.
 
 ## Related Vanilla Mechanics
 

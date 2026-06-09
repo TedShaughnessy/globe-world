@@ -2,6 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import globe.world.config.GlobeConfig;
 import globe.world.util.CoordUtil;
 import globe.world.util.PortalDiagnostics;
 import net.minecraft.core.BlockPos;
@@ -12,7 +13,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.border.WorldBorder;
-import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.portal.TeleportTransition;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -66,9 +66,9 @@ public class NetherPortalBlockMixin {
             return original.call(worldBorder, x, y, z);
         }
 
-        double teleportationScale = DimensionType.getTeleportationScale(currentLevel.dimensionType(), newLevel.dimensionType());
-        double sourceX = CoordUtil.wrapBlock(currentLevel, x / teleportationScale);
-        double sourceZ = CoordUtil.wrapBlock(currentLevel, z / teleportationScale);
+        double teleportationScale = GlobeConfig.netherPortalTeleportationScale(currentLevel, newLevel);
+        double sourceX = CoordUtil.wrapBlock(currentLevel, entity.getX());
+        double sourceZ = CoordUtil.wrapBlock(currentLevel, entity.getZ());
         BlockPos approximateExit = original.call(worldBorder, sourceX * teleportationScale, y, sourceZ * teleportationScale);
         return CoordUtil.wrapBlockPos(newLevel, approximateExit);
     }

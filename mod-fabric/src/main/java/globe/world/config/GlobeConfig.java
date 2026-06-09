@@ -2,7 +2,9 @@ package globe.world.config;
 
 import globe.world.util.DimensionTiling;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.dimension.DimensionType;
 
 public class GlobeConfig {
     public static final int DEFAULT_TILE_SIZE_CHUNKS = 1024;
@@ -73,12 +75,26 @@ public class GlobeConfig {
         return settings.netherTileSize();
     }
 
-    public static boolean netherOneEighthOverworldSize() {
-        return settings.netherOneEighthOverworldSize();
+    public static int netherPortalScaleNumerator() {
+        return settings.netherPortalScaleNumerator();
     }
 
-    public static boolean effectiveNetherOneEighthOverworldSize() {
-        return settings.effectiveNetherOneEighthOverworldSize();
+    public static int netherPortalScaleDenominator() {
+        return settings.netherPortalScaleDenominator();
+    }
+
+    public static String netherPortalScaleLabel() {
+        return settings.netherPortalScaleLabel();
+    }
+
+    public static double netherPortalTeleportationScale(ServerLevel from, ServerLevel to) {
+        if (Level.OVERWORLD.equals(from.dimension()) && Level.NETHER.equals(to.dimension())) {
+            return (double) settings.netherPortalScaleDenominator() / (double) settings.netherPortalScaleNumerator();
+        }
+        if (Level.NETHER.equals(from.dimension()) && Level.OVERWORLD.equals(to.dimension())) {
+            return (double) settings.netherPortalScaleNumerator() / (double) settings.netherPortalScaleDenominator();
+        }
+        return DimensionType.getTeleportationScale(from.dimensionType(), to.dimensionType());
     }
 
     public static DayNightCycleMode dayNightCycleMode() {

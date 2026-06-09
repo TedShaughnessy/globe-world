@@ -9,15 +9,7 @@ point for current behavior and modded code anchors.
 
 ## Active Plans
 
-- [Ranged mob alias combat audit](ranged-mob-alias-combat.md): investigate
-  ranged and special mob attack readiness, launch, line-of-sight, and projectile
-  collision gaps around tiled entity aliases.
-- [Nether size and portal scale options](nether-portal-scale.md): replace the
-  fixed one-eighth Nether option with separate Nether tile-size and portal-ratio
-  settings, including same-size fast travel and reverse ratios.
-- [Wandering trader alias spawning audit](wandering-trader-alias-spawning.md):
-  confirm whether rare vanilla trader spawning has an alias-coordinate failure
-  before adding fixes.
+None.
 
 ## Future Architecture
 
@@ -25,11 +17,3 @@ point for current behavior and modded code anchors.
   keeping the same canonical-world concept while giving coordinate frames,
   topology access, packets, entities, raycasts, worldgen, configuration, and
   migration their own stronger boundaries.
-
-## Retired Ideas
-
-- [Chest lid alias sync](chest-lid-alias-sync.md): implemented by loaded-alias
-  block-event fanout and alias-aware container opener rechecks.
-- Client canonical chunk cache: not pursued. Globe World keeps the client cache
-  vanilla-shaped and relies on server-side canonical chunk ownership plus
-  relabeled packets for alias rendering.

@@ -38,6 +38,8 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final int ROW_SPACING = 4;
     private static final int SECTION_SPACING = 12;
     private static final int INFO_WIDTH = CONTROL_WIDTH;
+    private static final int SIMPLE_MIN_TILE_SIZE_CHUNKS = 8;
+    private static final int SIMPLE_SCROLLING_DAY_MIN_TILE_BLOCKS = 7_000;
     private static final int ITALY_TILE_SIZE_CHUNKS = 65_536;
     private static final String DISTANT_HORIZONS_MOD_ID = "distanthorizons";
     private static final String CURVATURE_TOOLTIP = "Curves the terrain. Comfortable is a gentler curve; "
@@ -75,18 +77,30 @@ public class GlobeWorldSettingsControls implements Layout {
             TerrainMode.EDGE_BLEND,
             TerrainMode.PERIODIC_LATTICE
     );
-    private static final List<NetherGlobeMode> ALL_NETHER_MODES = List.of(
-            NetherGlobeMode.DISABLED,
-            NetherGlobeMode.SAME_SIZE,
-            NetherGlobeMode.ONE_EIGHTH
+    private static final List<NetherSizePreset> ALL_NETHER_SIZE_PRESETS = List.of(
+            NetherSizePreset.DISABLED,
+            NetherSizePreset.ONE_EIGHTH,
+            NetherSizePreset.ONE_FOURTH,
+            NetherSizePreset.ONE_HALF,
+            NetherSizePreset.SAME_SIZE,
+            NetherSizePreset.DOUBLE,
+            NetherSizePreset.QUADRUPLE,
+            NetherSizePreset.CUSTOM
     );
-    private static final List<NetherGlobeMode> NETHER_MODES_WITHOUT_ONE_EIGHTH = List.of(
-            NetherGlobeMode.DISABLED,
-            NetherGlobeMode.SAME_SIZE
+    private static final List<PortalRatioPreset> PORTAL_RATIO_PRESETS = List.of(
+            PortalRatioPreset.REVERSE_THIRTY_TWO,
+            PortalRatioPreset.REVERSE_SIXTEEN,
+            PortalRatioPreset.REVERSE_EIGHT,
+            PortalRatioPreset.REVERSE_FOUR,
+            PortalRatioPreset.REVERSE_TWO,
+            PortalRatioPreset.ONE_TO_ONE,
+            PortalRatioPreset.FORWARD_TWO,
+            PortalRatioPreset.FORWARD_FOUR,
+            PortalRatioPreset.FORWARD_EIGHT,
+            PortalRatioPreset.FORWARD_SIXTEEN,
+            PortalRatioPreset.FORWARD_THIRTY_TWO
     );
     private static final List<TilePreset> TILE_PRESETS = List.of(
-            new TilePreset(2, "32 m"),
-            new TilePreset(4, "64 m"),
             new TilePreset(8, "128 m"),
             new TilePreset(16, "256 m"),
             new TilePreset(32, "512 m"),
@@ -107,6 +121,9 @@ public class GlobeWorldSettingsControls implements Layout {
             new TilePreset(1048576, "16,777 km"),
             new TilePreset(2097152, "33,554 km (The Earth)")
     );
+    private static final List<TilePreset> SIMPLE_TILE_PRESETS = TILE_PRESETS.stream()
+            .filter(preset -> preset.chunks() >= SIMPLE_MIN_TILE_SIZE_CHUNKS)
+            .toList();
 
     private final boolean createWorld;
     private final boolean editable;
@@ -132,7 +149,10 @@ public class GlobeWorldSettingsControls implements Layout {
     private CycleButton<Integer> overworldCurvatureButton;
     private GlobeCurvatureSlider overworldCurvatureSlider;
     private MultiLineTextWidget overworldDistantHorizonsAdvice;
-    private CycleButton<NetherGlobeMode> netherModeButton;
+    private CycleButton<NetherSizePreset> netherSizeButton;
+    private Checkbox tileNetherCheckbox;
+    private EditBox customNetherTileField;
+    private PortalRatioSlider portalRatioSlider;
     private CycleButton<TerrainMode> netherTopologyButton;
     private MultiLineTextWidget netherInfo;
     private CycleButton<Integer> netherCurvatureButton;
@@ -211,7 +231,9 @@ public class GlobeWorldSettingsControls implements Layout {
             }
             try {
                 int tileSize = Math.max(1, Integer.parseInt(text));
-                setSettings(settingsGetter.get().withTileSize(tileSize));
+                setSettings(settingsGetter.get()
+                        .withTileSize(tileSize)
+                        .withNetherTileSize(simpleDefaultNetherTileSize(tileSize)));
             } catch (NumberFormatException ignored) {
             }
         });
@@ -273,10 +295,73 @@ public class GlobeWorldSettingsControls implements Layout {
                 () -> DISTANT_HORIZONS_LOADED && distantHorizonsAdviceSupported(settingsGetter.get())
         );
 
-        netherModeButton = CycleButton.<NetherGlobeMode>builder(mode -> Component.literal(mode.displayName), netherGlobeMode())
-                .withValues(() -> !settingsGetter.get().supportsNetherOneEighthOverworldSize(), ALL_NETHER_MODES, NETHER_MODES_WITHOUT_ONE_EIGHTH)
-                .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Nether Globe"), (button, mode) -> setSettings(mode.apply(settingsGetter.get())));
-        addSectionRow(netherModeButton, () -> createWorld && settingsGetter.get().enabled());
+        netherSizeButton = CycleButton.<NetherSizePreset>builder(
+                        preset -> Component.literal(preset.displayName),
+                        this::netherSizePreset
+                )
+                .withValues(new CycleButton.ValueListSupplier<NetherSizePreset>() {
+                    @Override
+                    public List<NetherSizePreset> getSelectedList() {
+                        return validNetherSizePresets(settingsGetter.get());
+                    }
+
+                    @Override
+                    public List<NetherSizePreset> getDefaultList() {
+                        return ALL_NETHER_SIZE_PRESETS;
+                    }
+                })
+                .withTooltip(preset -> tooltip(netherSizeTooltip(preset)))
+                .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Nether Size"),
+                        (button, preset) -> setSettings(applyNetherSizePreset(settingsGetter.get(), preset)));
+        addSectionRow(netherSizeButton, () -> createWorld && createMode == CreateMode.SIMPLE && settingsGetter.get().enabled());
+
+        tileNetherCheckbox = progressionCheckbox(
+                "Tile Nether",
+                "Enables Nether wrapping and the custom Nether controls.",
+                settingsGetter.get().netherEnabled(),
+                selected -> setSettings(settingsGetter.get().withNetherMode(selected ? TilingMode.SQUARE : TilingMode.DISABLED))
+        );
+        addSectionRow(tileNetherCheckbox, () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled());
+
+        customNetherTileField = new EditBox(minecraft.font, 110, 20, Component.literal("Nether Tile Size"));
+        customNetherTileField.setMaxLength(7);
+        customNetherTileField.setEditable(editable);
+        customNetherTileField.setResponder(text -> {
+            if (updatingText) {
+                return;
+            }
+            try {
+                int tileSize = Math.max(1, Integer.parseInt(text));
+                setSettings(settingsGetter.get()
+                        .withNetherMode(TilingMode.SQUARE)
+                        .withNetherTileSize(tileSize));
+            } catch (NumberFormatException ignored) {
+            }
+        });
+        StringWidget customNetherTileLabel = new StringWidget(
+                CONTROL_WIDTH - customNetherTileField.getWidth() - ROW_SPACING,
+                customNetherTileField.getHeight(),
+                Component.literal("Nether Tile Size (chunks)"),
+                minecraft.font
+        );
+        addRow(
+                new LabeledInputRow(
+                        customNetherTileLabel,
+                        customNetherTileField,
+                        CONTROL_WIDTH
+                ),
+                () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled()
+        );
+
+        portalRatioSlider = new PortalRatioSlider(
+                0,
+                0,
+                CONTROL_WIDTH,
+                20,
+                portalRatioPreset(),
+                preset -> setSettings(settingsGetter.get().withNetherPortalScale(preset.numerator, preset.denominator))
+        );
+        addRow(portalRatioSlider, () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled());
 
         netherTopologyButton = CycleButton.<TerrainMode>builder(
                         mode -> topologyLabel(mode, TerrainMode.forNetherTileSize(settingsGetter.get().netherTileSize())),
@@ -425,6 +510,31 @@ public class GlobeWorldSettingsControls implements Layout {
         };
     }
 
+    private static String scrollingDayCycleDisabledTooltip() {
+        return "Scrolling day cycle is disabled in simple mode below %s blocks because a running player can keep pace with the sun."
+                .formatted(number(SIMPLE_SCROLLING_DAY_MIN_TILE_BLOCKS));
+    }
+
+    private String netherSizeTooltip(NetherSizePreset preset) {
+        if (preset == NetherSizePreset.DISABLED) {
+            return "Disables Nether wrapping.";
+        }
+        if (createMode == CreateMode.SIMPLE) {
+            return "Simple mode changes both the Nether tile size and the portal travel distance.";
+        }
+        return "Changes the Nether tile size. Portal travel distance is controlled separately.";
+    }
+
+    private static String portalRatioTooltip(PortalRatioPreset preset) {
+        if (preset.numerator == 1 && preset.denominator == 1) {
+            return "One Nether block maps to one Overworld block.";
+        }
+        if (preset.denominator == 1) {
+            return "One Nether block maps to %d Overworld blocks.".formatted(preset.numerator);
+        }
+        return "%d Nether blocks map to one Overworld block.".formatted(preset.denominator);
+    }
+
     private MultiLineTextWidget infoText(Component text) {
         return new MultiLineTextWidget(text, Minecraft.getInstance().font).setMaxWidth(INFO_WIDTH).setMaxRows(3);
     }
@@ -440,12 +550,22 @@ public class GlobeWorldSettingsControls implements Layout {
             case SIMPLE, CUSTOM -> TilingSettings.DEFAULT
                     .withMode(TilingMode.SQUARE)
                     .withNetherMode(TilingMode.SQUARE)
-                    .withNetherOneEighthOverworldSize(true);
+                    .withNetherTileSize(simpleDefaultNetherTileSize(TilingSettings.DEFAULT.tileSize()))
+                    .withNetherPortalScale(
+                            TilingSettings.DEFAULT_NETHER_PORTAL_SCALE_NUMERATOR,
+                            TilingSettings.DEFAULT_NETHER_PORTAL_SCALE_DENOMINATOR
+                    );
         };
     }
 
     private TilingSettings simpleSettingsForTileSize(int tileSize) {
-        TilingSettings settings = settingsForMode(CreateMode.SIMPLE).withTileSize(tileSize);
+        TilingSettings settings = settingsForMode(CreateMode.SIMPLE)
+                .withTileSize(tileSize)
+                .withNetherTileSize(simpleDefaultNetherTileSize(tileSize));
+        settings = withPortalScaleMatchingTileRatio(settings);
+        if (!simpleScrollingDayCycleSupported(settings)) {
+            settings = settings.withDayNightCycleMode(DayNightCycleMode.VANILLA);
+        }
         if (tileSize > ITALY_TILE_SIZE_CHUNKS) {
             settings = settings.withCurvaturePercent(TilingSettings.CURVATURE_DISABLED_PERCENT);
         }
@@ -461,6 +581,12 @@ public class GlobeWorldSettingsControls implements Layout {
 
     private void refresh() {
         TilingSettings settings = settingsGetter.get().sanitized();
+        if (createWorld
+                && createMode == CreateMode.SIMPLE
+                && !simpleScrollingDayCycleSupported(settings)
+                && settings.dayNightCycleMode() == DayNightCycleMode.SCROLLING) {
+            settings = settings.withDayNightCycleMode(DayNightCycleMode.VANILLA);
+        }
         if (!settings.equals(settingsGetter.get())) {
             settingsSetter.accept(settings);
         }
@@ -486,7 +612,17 @@ public class GlobeWorldSettingsControls implements Layout {
         overworldCurvatureSlider.setPercent(settings.curvaturePercent());
         overworldCurvatureSlider.active = settings.enabled();
         overworldDistantHorizonsAdvice.setMessage(distantHorizonsAdvice(settings));
-        netherModeButton.setValue(netherGlobeMode());
+        netherSizeButton.setValue(netherSizePreset(settings));
+        syncCheckbox(tileNetherCheckbox, settings.netherEnabled());
+        if (customNetherTileField != null) {
+            updatingText = true;
+            customNetherTileField.setValue(Integer.toString(settings.netherTileSize()));
+            updatingText = false;
+            customNetherTileField.setEditable(editable && settings.netherEnabled());
+            customNetherTileField.active = settings.netherEnabled();
+        }
+        portalRatioSlider.setPreset(portalRatioPreset(settings));
+        portalRatioSlider.active = settings.netherEnabled();
         netherTopologyButton.setValue(settings.netherTerrainMode());
         netherInfo.setMessage(netherInfo(settings));
         netherCurvatureButton.setValue(settings.netherCurvaturePercent());
@@ -498,7 +634,11 @@ public class GlobeWorldSettingsControls implements Layout {
         forceMissingStrongholdCheckbox.active = createWorld && editable && settings.enabled();
         forceMissingNetherFortressCheckbox.active = createWorld && editable && settings.netherEnabled();
         dayNightCycleButton.setValue(settings.dayNightCycleMode());
-        dayNightCycleButton.active = settings.enabled();
+        boolean dayNightCycleSelectable = settings.enabled() && simpleScrollingDayCycleSupported(settings);
+        dayNightCycleButton.active = dayNightCycleSelectable;
+        if (!dayNightCycleSelectable) {
+            dayNightCycleButton.setTooltip(tooltip(scrollingDayCycleDisabledTooltip()));
+        }
         dayLengthSlider.setMultiplier(settings.dayLengthMultiplier());
         dayLengthSlider.active = settings.enabled();
 
@@ -525,7 +665,13 @@ public class GlobeWorldSettingsControls implements Layout {
         overworldTopologyButton.active = false;
         overworldCurvatureButton.active = false;
         overworldCurvatureSlider.active = false;
-        netherModeButton.active = false;
+        netherSizeButton.active = false;
+        tileNetherCheckbox.active = false;
+        if (customNetherTileField != null) {
+            customNetherTileField.setEditable(false);
+            customNetherTileField.active = false;
+        }
+        portalRatioSlider.active = false;
         netherTopologyButton.active = false;
         netherCurvatureButton.active = false;
         netherCurvatureSlider.active = false;
@@ -564,7 +710,9 @@ public class GlobeWorldSettingsControls implements Layout {
             return Component.literal("Nether tile: Disabled");
         }
         return Component.literal("Nether tile: ")
-                .append(tileSummary(settings.netherTileSize(), effectiveNetherTerrainMode(settings)));
+                .append(tileSummary(settings.netherTileSize(), effectiveNetherTerrainMode(settings)))
+                .append(", portal ")
+                .append(Component.literal(settings.netherPortalScaleSummaryLabel()));
     }
 
     private static TerrainMode effectiveOverworldTerrainMode(TilingSettings settings) {
@@ -601,6 +749,12 @@ public class GlobeWorldSettingsControls implements Layout {
         long ratio = distantHorizonsCurveRatio(settings.tileSize());
         return ratio >= DISTANT_HORIZONS_MIN_CURVATURE_RATIO
                 && ratio <= DISTANT_HORIZONS_MAX_CURVATURE_RATIO;
+    }
+
+    private boolean simpleScrollingDayCycleSupported(TilingSettings settings) {
+        return !createWorld
+                || createMode != CreateMode.SIMPLE
+                || (long) settings.tileSize() * 16L >= SIMPLE_SCROLLING_DAY_MIN_TILE_BLOCKS;
     }
 
     private static long distantHorizonsCurveRatio(int tileSizeChunks) {
@@ -642,22 +796,121 @@ public class GlobeWorldSettingsControls implements Layout {
 
     private TilePreset currentTilePreset() {
         int tileSize = settingsGetter.get().tileSize();
-        for (TilePreset preset : TILE_PRESETS) {
+        for (TilePreset preset : SIMPLE_TILE_PRESETS) {
             if (preset.chunks() == tileSize) {
                 return preset;
             }
         }
-        return TILE_PRESETS.stream()
+        return SIMPLE_TILE_PRESETS.stream()
                 .min((a, b) -> Integer.compare(Math.abs(a.chunks() - tileSize), Math.abs(b.chunks() - tileSize)))
-                .orElse(TILE_PRESETS.get(0));
+                .orElse(SIMPLE_TILE_PRESETS.get(0));
     }
 
-    private NetherGlobeMode netherGlobeMode() {
-        TilingSettings settings = settingsGetter.get();
+    private NetherSizePreset netherSizePreset() {
+        return netherSizePreset(settingsGetter.get());
+    }
+
+    private NetherSizePreset netherSizePreset(TilingSettings settings) {
         if (!settings.netherEnabled()) {
-            return NetherGlobeMode.DISABLED;
+            return NetherSizePreset.DISABLED;
         }
-        return settings.effectiveNetherOneEighthOverworldSize() ? NetherGlobeMode.ONE_EIGHTH : NetherGlobeMode.SAME_SIZE;
+
+        for (NetherSizePreset preset : validNetherSizePresets(settings)) {
+            if (preset != NetherSizePreset.DISABLED
+                    && preset != NetherSizePreset.CUSTOM
+                    && preset.tileSize(settings.tileSize()) == settings.netherTileSize()) {
+                return preset;
+            }
+        }
+        return createMode == CreateMode.CUSTOM ? NetherSizePreset.CUSTOM : NetherSizePreset.SAME_SIZE;
+    }
+
+    private List<NetherSizePreset> validNetherSizePresets(TilingSettings settings) {
+        List<NetherSizePreset> presets = new ArrayList<>();
+        presets.add(NetherSizePreset.DISABLED);
+        int minTileSize = createMode == CreateMode.SIMPLE ? SIMPLE_MIN_TILE_SIZE_CHUNKS : 1;
+        for (NetherSizePreset preset : NetherSizePreset.values()) {
+            if (preset == NetherSizePreset.DISABLED || preset == NetherSizePreset.CUSTOM) {
+                continue;
+            }
+            int tileSize = preset.tileSize(settings.tileSize());
+            if (tileSize >= minTileSize && preset.matchesExactly(settings.tileSize())) {
+                presets.add(preset);
+            }
+        }
+        if (createMode == CreateMode.CUSTOM) {
+            presets.add(NetherSizePreset.CUSTOM);
+        }
+        return presets;
+    }
+
+    private TilingSettings applyNetherSizePreset(TilingSettings settings, NetherSizePreset preset) {
+        if (preset == NetherSizePreset.DISABLED) {
+            return settings.withNetherMode(TilingMode.DISABLED);
+        }
+        if (preset == NetherSizePreset.CUSTOM) {
+            return settings.withNetherMode(TilingMode.SQUARE);
+        }
+        int tileSize = preset.tileSize(settings.tileSize());
+        TilingSettings updated = settings.withNetherMode(TilingMode.SQUARE).withNetherTileSize(tileSize);
+        return createMode == CreateMode.SIMPLE ? withPortalScaleMatchingTileRatio(updated) : updated;
+    }
+
+    private PortalRatioPreset portalRatioPreset() {
+        return portalRatioPreset(settingsGetter.get());
+    }
+
+    private static PortalRatioPreset portalRatioPreset(TilingSettings settings) {
+        for (PortalRatioPreset preset : PORTAL_RATIO_PRESETS) {
+            if (preset.numerator == settings.netherPortalScaleNumerator()
+                    && preset.denominator == settings.netherPortalScaleDenominator()) {
+                return preset;
+            }
+        }
+        return PortalRatioPreset.FORWARD_EIGHT;
+    }
+
+    private static int simpleDefaultNetherTileSize(int overworldTileSize) {
+        return Math.max(SIMPLE_MIN_TILE_SIZE_CHUNKS, TilingSettings.defaultNetherTileSize(overworldTileSize));
+    }
+
+    private static TilingSettings withPortalScaleMatchingTileRatio(TilingSettings settings) {
+        PortalRatioPreset preset = portalRatioPresetForTileRatio(settings.tileSize(), settings.netherTileSize());
+        return settings.withNetherPortalScale(preset.numerator, preset.denominator);
+    }
+
+    private static PortalRatioPreset portalRatioPresetForTileRatio(int overworldTileSize, int netherTileSize) {
+        for (PortalRatioPreset preset : PORTAL_RATIO_PRESETS) {
+            if ((long) netherTileSize * (long) preset.numerator
+                    == (long) overworldTileSize * (long) preset.denominator) {
+                return preset;
+            }
+        }
+        return PortalRatioPreset.FORWARD_EIGHT;
+    }
+
+    private static boolean isSimpleNetherSize(TilingSettings settings) {
+        if (!settings.netherEnabled()) {
+            return true;
+        }
+        if (portalRatioPreset(settings) != portalRatioPresetForTileRatio(settings.tileSize(), settings.netherTileSize())) {
+            return false;
+        }
+        if (settings.netherTileSize() < SIMPLE_MIN_TILE_SIZE_CHUNKS) {
+            return false;
+        }
+        for (NetherSizePreset preset : NetherSizePreset.values()) {
+            if (preset == NetherSizePreset.DISABLED || preset == NetherSizePreset.CUSTOM) {
+                continue;
+            }
+            int tileSize = preset.tileSize(settings.tileSize());
+            if (tileSize >= SIMPLE_MIN_TILE_SIZE_CHUNKS
+                    && preset.matchesExactly(settings.tileSize())
+                    && tileSize == settings.netherTileSize()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void addRow(LayoutElement element, BooleanSupplier visible) {
@@ -820,7 +1073,8 @@ public class GlobeWorldSettingsControls implements Layout {
             if (settings.terrainMode() != TerrainMode.AUTO || settings.netherTerrainMode() != TerrainMode.AUTO) {
                 return CUSTOM;
             }
-            return TILE_PRESETS.stream().anyMatch(preset -> preset.chunks() == settings.tileSize()) ? SIMPLE : CUSTOM;
+            return SIMPLE_TILE_PRESETS.stream().anyMatch(preset -> preset.chunks() == settings.tileSize())
+                    && isSimpleNetherSize(settings) ? SIMPLE : CUSTOM;
         }
     }
 
@@ -875,16 +1129,16 @@ public class GlobeWorldSettingsControls implements Layout {
         }
 
         private static double valueFromPreset(TilePreset preset) {
-            int index = TILE_PRESETS.indexOf(preset);
-            if (index < 0 || TILE_PRESETS.size() <= 1) {
+            int index = SIMPLE_TILE_PRESETS.indexOf(preset);
+            if (index < 0 || SIMPLE_TILE_PRESETS.size() <= 1) {
                 return 0.0D;
             }
-            return (double) index / (double) (TILE_PRESETS.size() - 1);
+            return (double) index / (double) (SIMPLE_TILE_PRESETS.size() - 1);
         }
 
         private static TilePreset presetFromValue(double value) {
-            int index = (int) Math.round(Math.clamp(value, 0.0D, 1.0D) * (TILE_PRESETS.size() - 1));
-            return TILE_PRESETS.get(index);
+            int index = (int) Math.round(Math.clamp(value, 0.0D, 1.0D) * (SIMPLE_TILE_PRESETS.size() - 1));
+            return SIMPLE_TILE_PRESETS.get(index);
         }
     }
 
@@ -959,23 +1213,133 @@ public class GlobeWorldSettingsControls implements Layout {
         }
     }
 
-    private enum NetherGlobeMode {
-        DISABLED("Disabled"),
-        SAME_SIZE("Same size"),
-        ONE_EIGHTH("1/8 size");
+    private static class PortalRatioSlider extends AbstractSliderButton {
+        private final Consumer<PortalRatioPreset> onValueChanged;
+        private boolean changingWithMouse;
+        private PortalRatioPreset pendingPreset;
 
-        private final String displayName;
-
-        NetherGlobeMode(String displayName) {
-            this.displayName = displayName;
+        private PortalRatioSlider(
+                int x,
+                int y,
+                int width,
+                int height,
+                PortalRatioPreset initialPreset,
+                Consumer<PortalRatioPreset> onValueChanged) {
+            super(x, y, width, height, Component.empty(), valueFromPreset(initialPreset));
+            this.onValueChanged = onValueChanged;
+            this.pendingPreset = presetFromValue(this.value);
+            updateMessage();
         }
 
-        private TilingSettings apply(TilingSettings settings) {
-            return switch (this) {
-                case DISABLED -> settings.withNetherMode(TilingMode.DISABLED).withNetherOneEighthOverworldSize(false);
-                case SAME_SIZE -> settings.withNetherMode(TilingMode.SQUARE).withNetherOneEighthOverworldSize(false);
-                case ONE_EIGHTH -> settings.withNetherMode(TilingMode.SQUARE).withNetherOneEighthOverworldSize(true);
-            };
+        private void setPreset(PortalRatioPreset preset) {
+            this.value = valueFromPreset(preset);
+            this.pendingPreset = presetFromValue(this.value);
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            PortalRatioPreset preset = presetFromValue(this.value);
+            this.setMessage(Component.literal("Portal Ratio: ").append(Component.literal(preset.displayName)));
+            this.setTooltip(tooltip(portalRatioTooltip(preset)));
+        }
+
+        @Override
+        protected void applyValue() {
+            PortalRatioPreset preset = presetFromValue(this.value);
+            this.value = valueFromPreset(preset);
+            if (this.changingWithMouse) {
+                this.pendingPreset = preset;
+            } else {
+                this.onValueChanged.accept(preset);
+            }
+        }
+
+        @Override
+        public void onClick(MouseButtonEvent event, boolean doubleClick) {
+            this.changingWithMouse = true;
+            this.pendingPreset = presetFromValue(this.value);
+            super.onClick(event, doubleClick);
+        }
+
+        @Override
+        public void onRelease(MouseButtonEvent event) {
+            super.onRelease(event);
+            this.changingWithMouse = false;
+            PortalRatioPreset preset = presetFromValue(this.value);
+            this.pendingPreset = preset;
+            this.onValueChanged.accept(preset);
+        }
+
+        private static double valueFromPreset(PortalRatioPreset preset) {
+            int index = PORTAL_RATIO_PRESETS.indexOf(preset);
+            if (index < 0 || PORTAL_RATIO_PRESETS.size() <= 1) {
+                return 0.0D;
+            }
+            return (double) index / (double) (PORTAL_RATIO_PRESETS.size() - 1);
+        }
+
+        private static PortalRatioPreset presetFromValue(double value) {
+            int index = (int) Math.round(Math.clamp(value, 0.0D, 1.0D) * (PORTAL_RATIO_PRESETS.size() - 1));
+            return PORTAL_RATIO_PRESETS.get(index);
+        }
+    }
+
+    private enum NetherSizePreset {
+        DISABLED("Disabled", 0, 1),
+        ONE_EIGHTH("1/8 size", 1, 8),
+        ONE_FOURTH("1/4 size", 1, 4),
+        ONE_HALF("1/2 size", 1, 2),
+        SAME_SIZE("Same size", 1, 1),
+        DOUBLE("2x size", 2, 1),
+        QUADRUPLE("4x size", 4, 1),
+        CUSTOM("Custom", 0, 1);
+
+        private final String displayName;
+        private final int numerator;
+        private final int denominator;
+
+        NetherSizePreset(String displayName, int numerator, int denominator) {
+            this.displayName = displayName;
+            this.numerator = numerator;
+            this.denominator = denominator;
+        }
+
+        private boolean matchesExactly(int overworldTileSize) {
+            return this == DISABLED
+                    || this == CUSTOM
+                    || ((long) overworldTileSize * (long) numerator) % (long) denominator == 0L;
+        }
+
+        private int tileSize(int overworldTileSize) {
+            if (this == DISABLED || this == CUSTOM) {
+                return 0;
+            }
+            return Math.max(1, (int) ((long) overworldTileSize * (long) numerator / (long) denominator));
+        }
+    }
+
+    private enum PortalRatioPreset {
+        REVERSE_THIRTY_TWO("1:32 reverse", 1, 32),
+        REVERSE_SIXTEEN("1:16 reverse", 1, 16),
+        REVERSE_EIGHT("1:8 reverse", 1, 8),
+        REVERSE_FOUR("1:4 reverse", 1, 4),
+        REVERSE_TWO("1:2 reverse", 1, 2),
+        ONE_TO_ONE("1:1", 1, 1),
+        FORWARD_TWO("1:2", 2, 1),
+        FORWARD_FOUR("1:4", 4, 1),
+        FORWARD_EIGHT("1:8 vanilla", 8, 1),
+        FORWARD_SIXTEEN("1:16", 16, 1),
+        FORWARD_THIRTY_TWO("1:32", 32, 1);
+
+        private final String displayName;
+        private final int numerator;
+        private final int denominator;
+
+        PortalRatioPreset(String displayName, int numerator, int denominator) {
+            this.displayName = displayName;
+            this.numerator = numerator;
+            this.denominator = denominator;
         }
     }
 }

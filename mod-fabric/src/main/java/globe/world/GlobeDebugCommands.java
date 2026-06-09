@@ -91,6 +91,8 @@ public final class GlobeDebugCommands {
                         .executes(context -> printEndPortal(context.getSource(), false))
                         .then(Commands.literal("validate")
                                 .executes(context -> printEndPortal(context.getSource(), true))))
+                .then(Commands.literal("portal_scale")
+                        .executes(context -> printPortalScale(context.getSource())))
                 .then(configCommands());
     }
 
@@ -157,11 +159,13 @@ public final class GlobeDebugCommands {
                 configuredSimulationDistance,
                 effectiveSimulationDistance)), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "Configured tiles: overworld=%s nether=%s nether 1/8 requested/effective=%s/%s",
+                "Configured tiles: overworld=%s nether=%s nether_tile_size=%d portal_scale=%d/%d (%s)",
                 tileSummary(overworldTiling),
                 tileSummary(netherTiling),
-                yesNo(GlobeConfig.netherOneEighthOverworldSize()),
-                yesNo(GlobeConfig.effectiveNetherOneEighthOverworldSize()))), false);
+                GlobeConfig.netherTileSizeChunks(),
+                GlobeConfig.netherPortalScaleNumerator(),
+                GlobeConfig.netherPortalScaleDenominator(),
+                GlobeConfig.netherPortalScaleLabel())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "World block=%d %d %d canon block=%d %d %d",
                 pos.getX(), pos.getY(), pos.getZ(),
@@ -447,6 +451,21 @@ public final class GlobeDebugCommands {
         return report.status().ordinal();
     }
 
+    private static int printPortalScale(CommandSourceStack source) {
+        TilingSettings settings = GlobeConfig.tilingSettings();
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Globe World Nether portal scale: %s, nether_to_overworld=%d/%d, overworld_to_nether=%d/%d",
+                settings.netherPortalScaleLabel(),
+                settings.netherPortalScaleNumerator(),
+                settings.netherPortalScaleDenominator(),
+                settings.netherPortalScaleDenominator(),
+                settings.netherPortalScaleNumerator())), false);
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Nether tile: %s",
+                tileSummary(DimensionTiling.forDimension(Level.NETHER)))), false);
+        return 1;
+    }
+
     private static int printConfig(CommandSourceStack source) {
         TilingSettings settings = GlobeConfig.tilingSettings();
         DimensionTiling overworldTiling = DimensionTiling.forDimension(Level.OVERWORLD);
@@ -463,15 +482,16 @@ public final class GlobeDebugCommands {
                 settings.terrainMode().getSerializedName(),
                 settings.curvaturePercent())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "Nether: mode=%s tile=%d chunks/%d blocks terrain=%s configured=%s curvature=%d%% one_eighth requested/effective=%s/%s",
+                "Nether: mode=%s tile=%d chunks/%d blocks terrain=%s configured=%s curvature=%d%% portal_scale=%d/%d (%s)",
                 settings.netherMode().getSerializedName(),
                 settings.netherTileSize(),
                 settings.netherTileSize() * 16,
                 netherTiling.terrainMode().displayName(),
                 settings.netherTerrainMode().getSerializedName(),
                 settings.netherCurvaturePercent(),
-                yesNo(settings.netherOneEighthOverworldSize()),
-                yesNo(settings.effectiveNetherOneEighthOverworldSize()))), false);
+                settings.netherPortalScaleNumerator(),
+                settings.netherPortalScaleDenominator(),
+                settings.netherPortalScaleLabel())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Day/night: mode=%s day_length_multiplier=%.1f",
                 settings.dayNightCycleMode().getSerializedName(),
