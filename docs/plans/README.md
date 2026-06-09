@@ -19,6 +19,13 @@ point for current behavior and modded code anchors.
   confirm whether rare vanilla trader spawning has an alias-coordinate failure
   before adding fixes.
 
+## Future Architecture
+
+- [V2 architecture plan](v2-architecture/README.md): rebuild-oriented plan for
+  keeping the same canonical-world concept while giving coordinate frames,
+  topology access, packets, entities, raycasts, worldgen, configuration, and
+  migration their own stronger boundaries.
+
 ## Retired Ideas
 
 - [Chest lid alias sync](chest-lid-alias-sync.md): implemented by loaded-alias
