@@ -35,8 +35,9 @@ gameplay hook changes:
   channels. This is high value for playtesting noise and support quality, and
   can be implemented independently of topology behavior.
 - Clean settings split: because backward compatibility is not required,
-  topology, presentation, gameplay, and diagnostics settings can become separate
-  records/codecs without carrying old-field compatibility inside the new model.
+  topology, presentation, and gameplay can become separate records/codecs
+  without carrying old-field compatibility inside the new model. Diagnostics
+  should remain session-only command state.
 - `ActorLocalTargetView` record: package existing `AiAliasUtil` results into
   one object, then migrate one or two AI call sites as proof. The current helper
   behavior can remain the source of truth.
@@ -47,8 +48,7 @@ Durable behavior has moved to the mod mechanics docs for
 [packet policies](../../mod-mechanics/packet-policies.md),
 [diagnostics](../../mod-mechanics/client.md#local-sky-and-diagnostics), and
 [`ActorLocalTargetView`](../../mod-mechanics/entities.md). The settings split
-exists as a compatibility layer; making `GlobeSettings` the actual saved/network
-schema remains future work.
+uses `GlobeSettings` as the actual saved/network schema.
 
 The less-low-risk slices are the ones that change vanilla execution semantics:
 general topological block clipping, projectile swept movement, broader entity
@@ -330,7 +330,7 @@ config set` exposes curvature, day/night mode, and day length, but not tile
 size, tiling mode, terrain mode, Nether tiling, portal scale, or forced
 progression flags (`GlobeDebugCommands.java:99`). The client pause-menu path can
 mutate saved settings and broadcast them in single-player
-(`GlobeClientTilingSettings.java:24`). Multiplayer sync happens at configuration
+(`GlobeClientSettings.java:24`). Multiplayer sync happens at configuration
 join time and during play (`GlobeWorldNetworking.java:29`,
 `GlobeWorldNetworking.java:40`).
 
@@ -350,7 +350,6 @@ preserving the current flat saved shape:
 - `TopologySettings`
 - `PresentationSettings`
 - `GameplaySettings`
-- `DiagnosticsSettings`
 
 Diagnostics should become named channels so high-volume playtesting logs can be
 enabled intentionally by command or config instead of living permanently at
@@ -374,8 +373,8 @@ suggests a sharper order:
    behavior.
 5. Extract `GenerationWindow` only after preserving the existing spillover and
    structure-shift tests/manual cases.
-6. Split settings and diagnostics into clean v2 schemas. Reject v1 saved data
-   clearly unless an importer is deliberately added later.
+6. Split saved settings into clean v2 schemas and keep diagnostics session-only.
+   Reject v1 saved data clearly.
 
 Do not start v2 by deleting v1 utilities. Most of them are the proven behavior
 that v2 should name and contain.

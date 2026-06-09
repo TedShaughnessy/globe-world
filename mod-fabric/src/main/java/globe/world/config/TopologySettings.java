@@ -85,6 +85,29 @@ public record TopologySettings(
         return netherMode == TilingMode.SQUARE;
     }
 
+    public String netherPortalScaleLabel() {
+        if (netherPortalScaleNumerator == 1 && netherPortalScaleDenominator == 1) {
+            return "1:1";
+        }
+        if (netherPortalScaleNumerator == 1) {
+            return "1:%d reverse".formatted(netherPortalScaleDenominator);
+        }
+        if (netherPortalScaleNumerator == 8) {
+            return "1:8 vanilla";
+        }
+        return "1:%d".formatted(netherPortalScaleNumerator);
+    }
+
+    public String netherPortalScaleSummaryLabel() {
+        if (netherPortalScaleNumerator == 1 && netherPortalScaleDenominator == 1) {
+            return "1:1";
+        }
+        if (netherPortalScaleNumerator == 1) {
+            return "1:%d reverse".formatted(netherPortalScaleDenominator);
+        }
+        return "1:%d".formatted(netherPortalScaleNumerator);
+    }
+
     public TilingSettings toTilingSettings(PresentationSettings presentation, GameplaySettings gameplay) {
         return new TilingSettings(
                 mode,

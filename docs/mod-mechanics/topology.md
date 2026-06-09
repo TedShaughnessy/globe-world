@@ -127,12 +127,15 @@ Nether tile size, Nether terrain method, and Nether portal scale are treated as
 permanent world-topology settings. They are visible through `/globeworld
 config`, but intentionally are not mutable through runtime commands.
 
-The v2 settings split exists as a compatibility layer around the current saved
-`TilingSettings` schema. `GlobeSettings` groups durable topology, presentation,
-gameplay, and diagnostics records; `GlobeConfig` keeps the legacy convenience
-methods while `DimensionTiling` reads topology through `TopologySettings`.
-Runtime commands still mutate only presentation/gameplay fields such as
-curvature, day/night mode, and day-length multiplier.
+`GlobeSettings` is the saved server model under the `globe_world` field in
+vanilla `WorldGenSettings`. It serializes durable topology, presentation, and
+gameplay groups. Diagnostics remain session-local command state and are not part
+of saved settings. The codec only accepts the split schema; older flat
+`TilingSettings` saved data is not imported. `TilingSettings` remains an
+internal adapter for call sites that have not yet been migrated to split
+settings. `DimensionTiling` reads topology through `TopologySettings`. Runtime
+commands still mutate only presentation/gameplay fields such as curvature,
+day/night mode, and day-length multiplier.
 
 ## Related Vanilla Mechanics
 

@@ -39,8 +39,8 @@ public class CreateWorldScreenMixin {
             LayeredRegistryAccess<RegistryLayer> registries,
             LevelDataAndDimensions.WorldDataAndGenSettings dataAndGenSettings,
             Optional<GameRules> gameRules,
-            CallbackInfo ci) {
+        CallbackInfo ci) {
         ((TilingSettingsHolder) (Object) dataAndGenSettings.genSettings())
-                .globeWorld$setTilingSettings(GlobeWorldCreateState.get());
+                .globeWorld$setGlobeSettings(GlobeWorldCreateState.get());
     }
 }

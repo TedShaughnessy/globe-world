@@ -13,7 +13,7 @@ durable behavior has been folded into the mod mechanics docs:
   [Client](../../mod-mechanics/client.md#local-sky-and-diagnostics).
 - `ActorLocalTargetView` / `ActorLocalTargets`: implemented as a facade over
   existing AI alias helpers. See [Entities](../../mod-mechanics/entities.md).
-- Clean settings split: partially implemented as a compatibility layer. See
+- Clean settings split: implemented as the saved/network settings model. See
   [Topology](../../mod-mechanics/topology.md#implemented-paths) and
   [Client](../../mod-mechanics/client.md#packet-and-cache-model).
 
@@ -62,33 +62,17 @@ Completed:
 
 ### 5. Settings Split Compatibility Layer
 
-Partially completed:
+Completed:
 
 - Added `TopologySettings`, `PresentationSettings`, `GameplaySettings`,
-  `DiagnosticsSettings`, and `GlobeSettings`.
-- `GlobeConfig` now maintains a split `GlobeSettings` view alongside the
-  current saved/wire `TilingSettings` shape.
+  and `GlobeSettings`.
+- `GlobeSettings` is now the saved and synchronized settings shape. Old saved
+  `TilingSettings` data is not imported.
 - `DimensionTiling` reads topology through `TopologySettings`.
 - Runtime commands still mutate only presentation/gameplay fields.
-
-The full schema migration is intentionally not complete in this pass.
-
-## Remaining Low-Risk Follow-Up
-
-### Finish Clean Settings Split
-
-Goal: make `GlobeSettings` the saved and synchronized settings model rather
-than only a compatibility view.
-
-Remaining targets:
-
-- Worldgen/server saved settings codec.
-- Fabric configuration/play networking payloads.
-- Client settings receiver and `GlobeClientTilingSettings`.
-- World creation state and settings UI construction.
-- `/globeworld config` reporting, if it should show split groups directly.
-- Clear rejection or importer plan for old saved settings if the on-disk schema
-  changes.
+- The world creation state and settings UI now pass `GlobeSettings`; topology
+  is world-creation-only, while presentation and gameplay can be edited at
+  runtime.
 
 Verification:
 
@@ -101,8 +85,8 @@ Verification:
 ### Continue Caller Migration
 
 These facades are now available, but many older callers still correctly use
-`CoordUtil`, `AiAliasUtil`, and direct `TilingSettings` access. Future cleanup
-can migrate them gradually when touching nearby behavior:
+`CoordUtil`, `AiAliasUtil`, and `TilingSettings` as an internal adapter. Future
+cleanup can migrate them gradually when touching nearby behavior:
 
 - packet helpers can use `TopologyContext` names at boundaries;
 - AI/range/pathing mixins can consume `ActorLocalTargets`;

@@ -1,6 +1,6 @@
 package globe.world.client.mixin;
 
-import globe.world.config.TilingSettings;
+import globe.world.config.GlobeSettings;
 import globe.world.config.TilingSettingsHolder;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationContext;
 import net.minecraft.core.LayeredRegistryAccess;
@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(WorldCreationContext.class)
 public class WorldCreationContextMixin implements TilingSettingsHolder {
     @Unique
-    private TilingSettings globeWorld$tilingSettings = TilingSettings.DEFAULT;
+    private GlobeSettings globeWorld$settings = GlobeSettings.DEFAULT;
 
     @Inject(method = "<init>(Lnet/minecraft/world/level/levelgen/WorldGenSettings;Lnet/minecraft/core/LayeredRegistryAccess;Lnet/minecraft/server/ReloadableServerResources;Lnet/minecraft/world/level/WorldDataConfiguration;)V", at = @At("TAIL"))
     private void globeWorld$copyTilingSettings(
@@ -29,7 +29,7 @@ public class WorldCreationContextMixin implements TilingSettingsHolder {
             ReloadableServerResources dataPackResources,
             WorldDataConfiguration dataConfiguration,
             CallbackInfo ci) {
-        globeWorld$setTilingSettings(((TilingSettingsHolder) (Object) worldGenSettings).globeWorld$getTilingSettings());
+        globeWorld$setGlobeSettings(((TilingSettingsHolder) (Object) worldGenSettings).globeWorld$getGlobeSettings());
     }
 
     @Inject(method = "withSettings", at = @At("RETURN"))
@@ -55,17 +55,17 @@ public class WorldCreationContextMixin implements TilingSettingsHolder {
     }
 
     @Override
-    public TilingSettings globeWorld$getTilingSettings() {
-        return globeWorld$tilingSettings;
+    public GlobeSettings globeWorld$getGlobeSettings() {
+        return globeWorld$settings;
     }
 
     @Override
-    public void globeWorld$setTilingSettings(TilingSettings settings) {
-        globeWorld$tilingSettings = settings.sanitized();
+    public void globeWorld$setGlobeSettings(GlobeSettings settings) {
+        globeWorld$settings = settings == null ? GlobeSettings.DEFAULT : settings;
     }
 
     @Unique
     private void globeWorld$copyTilingSettingsTo(WorldCreationContext context) {
-        ((TilingSettingsHolder) (Object) context).globeWorld$setTilingSettings(globeWorld$tilingSettings);
+        ((TilingSettingsHolder) (Object) context).globeWorld$setGlobeSettings(globeWorld$settings);
     }
 }

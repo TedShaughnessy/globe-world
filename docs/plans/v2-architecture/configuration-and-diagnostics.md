@@ -29,12 +29,11 @@ Diagnostics channels are implemented as session-only command-gated debug
 channels. The durable behavior is documented in
 [Client diagnostics](../../mod-mechanics/client.md#local-sky-and-diagnostics).
 
-The settings split is partially implemented as records/codecs and a
-`GlobeSettings` compatibility view around the current saved/wire
-`TilingSettings` shape. The durable behavior is documented in
+The settings split is implemented as records/codecs with `GlobeSettings` as the
+saved and synchronized schema. Old flat `TilingSettings` saved data is not
+imported. The durable behavior is documented in
 [Topology](../../mod-mechanics/topology.md) and
-[Client](../../mod-mechanics/client.md#packet-and-cache-model). Making
-`GlobeSettings` the actual saved/network schema remains future work.
+[Client](../../mod-mechanics/client.md#packet-and-cache-model).
 
 ## Requirements
 
@@ -55,7 +54,6 @@ Implemented config groups:
 TopologySettings
 PresentationSettings
 GameplaySettings
-DiagnosticsSettings
 GlobeSettings
 ```
 
@@ -73,8 +71,6 @@ context. Debug logging should use named channels such as `chunks`, `packets`,
 
 ## Open Questions
 
-- Should diagnostics be saved per world, per client, or only toggled for the
-  current session?
 - Which v1 runtime commands should become migration/admin-only in v2?
 - Should simple mode intentionally hide tiny/debug tile sizes while custom mode
   keeps them available?

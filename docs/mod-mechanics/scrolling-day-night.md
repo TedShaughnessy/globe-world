@@ -23,26 +23,28 @@ clock ownership or server light propagation.
 
 ## Settings
 
-The saved setting is `TilingSettings.dayNightCycleMode()`:
+The saved setting is `GlobeSettings.gameplay().dayNightCycleMode()`:
 
 - `VANILLA`: normal global Minecraft time-of-day behavior.
 - `SCROLLING`: local solar time is derived from canonical X.
 
-The setting is serialized as `day_night_cycle`; legacy saved `"realistic"`
-values decode as `SCROLLING`. The world-creation UI and pause/options Globe
-World settings page expose the setting as `Day/Night Cycle`.
+The setting is serialized as `day_night_cycle` inside the saved
+`globe_world.gameplay` group; legacy saved `"realistic"` values decode as
+`SCROLLING`. The world-creation UI and pause/options Globe World settings page
+expose the setting as `Day/Night Cycle`.
 In simple world-creation mode, scrolling day cycle is disabled and reset to
 `VANILLA` when the Overworld tile is below 7,000 blocks wide. At that scale a
 running player can approximately keep pace with the sun, so the simple preset UI
 keeps local-solar-time behavior off.
 
-Day length is saved separately as `TilingSettings.dayLengthMultiplier()` and
-serialized as `day_length_multiplier`. The UI exposes a discrete `Day Length`
-slider with `0.5x`, then `1x` through `10x`. This multiplier controls how long
-the Overworld day lasts in both `VANILLA` and `SCROLLING` day/night modes:
-`1x` uses vanilla speed, `2x` takes twice as long, and `0.5x` takes half as
-long. `GlobeDayLength` applies the inverse multiplier to vanilla's Overworld
-clock rate, matching the `/time rate` command model.
+Day length is saved separately as
+`GlobeSettings.gameplay().dayLengthMultiplier()` and serialized as
+`day_length_multiplier` in the same gameplay group. The UI exposes a discrete
+`Day Length` slider with `0.5x`, then `1x` through `10x`. This multiplier
+controls how long the Overworld day lasts in both `VANILLA` and `SCROLLING`
+day/night modes: `1x` uses vanilla speed, `2x` takes twice as long, and `0.5x`
+takes half as long. `GlobeDayLength` applies the inverse multiplier to
+vanilla's Overworld clock rate, matching the `/time rate` command model.
 
 `/globeworld config set day_night <vanilla|scrolling>` and
 `/globeworld config set day_length <0.5-10>` update these saved settings at
@@ -149,7 +151,8 @@ These systems intentionally remain global or are accepted for now:
 ## Key Files
 
 - `mod-fabric/src/main/java/globe/world/config/DayNightCycleMode.java`
-- `mod-fabric/src/main/java/globe/world/config/TilingSettings.java`
+- `mod-fabric/src/main/java/globe/world/config/GameplaySettings.java`
+- `mod-fabric/src/main/java/globe/world/config/GlobeSettings.java`
 - `mod-fabric/src/main/java/globe/world/util/GlobeDayLength.java`
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/GlobeLocalDaylight.java`

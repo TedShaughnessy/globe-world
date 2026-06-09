@@ -9,21 +9,15 @@ import net.minecraft.world.level.dimension.DimensionType;
 public class GlobeConfig {
     public static final int DEFAULT_TILE_SIZE_CHUNKS = 1024;
 
-    private static volatile TilingSettings settings = TilingSettings.DEFAULT;
     private static volatile GlobeSettings globeSettings = GlobeSettings.DEFAULT;
     private static volatile int settingsVersion = 0;
 
-    public static void setTilingSettings(TilingSettings newSettings) {
-        TilingSettings sanitized = newSettings.sanitized();
-        if (!sanitized.equals(settings)) {
-            settings = sanitized;
-            globeSettings = GlobeSettings.from(sanitized);
+    public static void setGlobeSettings(GlobeSettings newSettings) {
+        GlobeSettings sanitized = newSettings == null ? GlobeSettings.DEFAULT : newSettings;
+        if (!sanitized.equals(globeSettings)) {
+            globeSettings = sanitized;
             settingsVersion++;
         }
-    }
-
-    public static TilingSettings tilingSettings() {
-        return settings;
     }
 
     public static GlobeSettings globeSettings() {
@@ -43,7 +37,7 @@ public class GlobeConfig {
     }
 
     public static boolean enabled() {
-        return settings.enabled();
+        return globeSettings.topology().enabled();
     }
 
     public static boolean enabled(ResourceKey<Level> dimension) {
@@ -55,7 +49,7 @@ public class GlobeConfig {
     }
 
     public static int tileSizeChunks() {
-        return settings.tileSize();
+        return globeSettings.topology().tileSize();
     }
 
     public static int tileSizeBlocks() {
@@ -71,63 +65,63 @@ public class GlobeConfig {
     }
 
     public static int curvaturePercent() {
-        return settings.curvaturePercent();
+        return globeSettings.presentation().curvaturePercent();
     }
 
     public static int curvaturePercent(ResourceKey<Level> dimension) {
         if (Level.NETHER.equals(dimension)) {
-            return settings.netherCurvaturePercent();
+            return globeSettings.presentation().netherCurvaturePercent();
         }
-        return settings.curvaturePercent();
+        return globeSettings.presentation().curvaturePercent();
     }
 
     public static int netherCurvaturePercent() {
-        return settings.netherCurvaturePercent();
+        return globeSettings.presentation().netherCurvaturePercent();
     }
 
     public static boolean netherEnabled() {
-        return settings.netherEnabled();
+        return globeSettings.topology().netherEnabled();
     }
 
     public static int netherTileSizeChunks() {
-        return settings.netherTileSize();
+        return globeSettings.topology().netherTileSize();
     }
 
     public static int netherPortalScaleNumerator() {
-        return settings.netherPortalScaleNumerator();
+        return globeSettings.topology().netherPortalScaleNumerator();
     }
 
     public static int netherPortalScaleDenominator() {
-        return settings.netherPortalScaleDenominator();
+        return globeSettings.topology().netherPortalScaleDenominator();
     }
 
     public static String netherPortalScaleLabel() {
-        return settings.netherPortalScaleLabel();
+        return globeSettings.topology().netherPortalScaleLabel();
     }
 
     public static double netherPortalTeleportationScale(ServerLevel from, ServerLevel to) {
         if (Level.OVERWORLD.equals(from.dimension()) && Level.NETHER.equals(to.dimension())) {
-            return (double) settings.netherPortalScaleDenominator() / (double) settings.netherPortalScaleNumerator();
+            return (double) netherPortalScaleDenominator() / (double) netherPortalScaleNumerator();
         }
         if (Level.NETHER.equals(from.dimension()) && Level.OVERWORLD.equals(to.dimension())) {
-            return (double) settings.netherPortalScaleNumerator() / (double) settings.netherPortalScaleDenominator();
+            return (double) netherPortalScaleNumerator() / (double) netherPortalScaleDenominator();
         }
         return DimensionType.getTeleportationScale(from.dimensionType(), to.dimensionType());
     }
 
     public static DayNightCycleMode dayNightCycleMode() {
-        return settings.dayNightCycleMode();
+        return globeSettings.gameplay().dayNightCycleMode();
     }
 
     public static double dayLengthMultiplier() {
-        return settings.dayLengthMultiplier();
+        return globeSettings.gameplay().dayLengthMultiplier();
     }
 
     public static boolean forceMissingStronghold() {
-        return settings.forceMissingStronghold();
+        return globeSettings.topology().forceMissingStronghold();
     }
 
     public static boolean forceMissingNetherFortress() {
-        return settings.forceMissingNetherFortress();
+        return globeSettings.topology().forceMissingNetherFortress();
     }
 }

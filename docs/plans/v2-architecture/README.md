@@ -59,7 +59,7 @@ The first low-risk v2 pass has been implemented and folded into
   [Client diagnostics](../../mod-mechanics/client.md#local-sky-and-diagnostics).
 - `ActorLocalTargetView` and `ActorLocalTargets`: see
   [Entities](../../mod-mechanics/entities.md).
-- Split settings records as a compatibility layer: see
+- Split settings records as the saved/network schema: see
   [Topology](../../mod-mechanics/topology.md) and
   [Client](../../mod-mechanics/client.md#packet-and-cache-model).
 

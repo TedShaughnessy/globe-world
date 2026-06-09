@@ -50,16 +50,7 @@ Each high-risk migration should have its own test matrix and rollback point.
 
 ## Compatibility Notes
 
-- V2 does not need backward compatibility with v1 worlds or saved settings.
-- Prefer a clean schema and clear startup failure over silent reinterpretation
-  of old topology, packet, entity, or worldgen ownership data.
-- If compatibility becomes useful later, add it as a separate migration tool or
-  importer instead of shaping the core v2 architecture around it.
-
-## Open Questions
-
-- Should v2 ship as a separate mod id, a major version of the same mod, or a
-  long-lived branch until migration is complete?
-- Which behavior needs automated tests before refactoring begins?
-- Which old-world rejection message or optional importer would be clearest for
-  users if v2 changes saved settings or generation policy?
+- The split settings migration intentionally does not import worlds whose
+  `globe_world` field still has the old `TilingSettings` shape. Remaining
+  `TilingSettings` usage is an internal call-site adapter, not saved-data
+  compatibility.

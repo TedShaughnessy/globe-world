@@ -1,6 +1,6 @@
 package globe.world.client;
 
-import globe.world.config.TilingSettings;
+import globe.world.config.GlobeSettings;
 import globe.world.network.GlobeWorldSettingsAckPayload;
 import globe.world.network.GlobeWorldSettingsPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationConnectionEvents;
@@ -15,18 +15,18 @@ public final class GlobeClientNetworking {
     public static void register() {
         ClientConfigurationNetworking.registerGlobalReceiver(GlobeWorldSettingsPayload.TYPE, (payload, context) ->
                 context.client().execute(() -> {
-                    GlobeClientTilingSettings.applySyncedFromServer(payload.settings());
+                    GlobeClientSettings.applySyncedFromServer(payload.settings());
                     ClientConfigurationNetworking.send(GlobeWorldSettingsAckPayload.INSTANCE);
                 }));
 
         ClientPlayNetworking.registerGlobalReceiver(GlobeWorldSettingsPayload.TYPE, (payload, context) ->
-                GlobeClientTilingSettings.applySyncedFromServer(payload.settings()));
+                GlobeClientSettings.applySyncedFromServer(payload.settings()));
 
         ClientConfigurationConnectionEvents.DISCONNECT.register((listener, client) -> resetSyncedSettings());
         ClientPlayConnectionEvents.DISCONNECT.register((listener, client) -> resetSyncedSettings());
     }
 
     private static void resetSyncedSettings() {
-        GlobeClientTilingSettings.applySyncedFromServer(TilingSettings.DEFAULT);
+        GlobeClientSettings.applySyncedFromServer(GlobeSettings.DEFAULT);
     }
 }

@@ -118,9 +118,12 @@ public final class GlobeCurvatureShader {
     public static int effectiveRenderDistanceChunks(int configuredEffectiveDistance) {
         Minecraft minecraft = Minecraft.getInstance();
         ResourceKey<Level> dimension = minecraft.level == null ? Level.OVERWORLD : minecraft.level.dimension();
+        int curvaturePercent = Level.NETHER.equals(dimension)
+                ? GlobeConfig.presentationSettings().netherCurvaturePercent()
+                : GlobeConfig.presentationSettings().curvaturePercent();
         return GlobeDistanceCaps.effectiveRenderDistance(
                 currentTiling(),
-                GlobeConfig.curvaturePercent(dimension),
+                curvaturePercent,
                 configuredEffectiveDistance,
                 curvatureRenderDistanceCapChunks()
         );

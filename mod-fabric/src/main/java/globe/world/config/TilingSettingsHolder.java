@@ -1,7 +1,7 @@
 package globe.world.config;
 
 public interface TilingSettingsHolder {
-    TilingSettings globeWorld$getTilingSettings();
+    GlobeSettings globeWorld$getGlobeSettings();
 
-    void globeWorld$setTilingSettings(TilingSettings settings);
+    void globeWorld$setGlobeSettings(GlobeSettings settings);
 }

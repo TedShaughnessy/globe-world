@@ -1,6 +1,6 @@
 package globe.world.client;
 
-import globe.world.config.TilingSettings;
+import globe.world.config.GlobeSettings;
 import globe.world.config.TilingSettingsHolder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ScrollableLayout;
@@ -19,8 +19,8 @@ public class GlobeWorldTab extends GridLayoutTab {
     public GlobeWorldTab(CreateWorldScreen screen) {
         super(TITLE);
 
-        TilingSettings initialSettings = ((TilingSettingsHolder) (Object) screen.getUiState().getSettings())
-                .globeWorld$getTilingSettings();
+        GlobeSettings initialSettings = ((TilingSettingsHolder) (Object) screen.getUiState().getSettings())
+                .globeWorld$getGlobeSettings();
         setSettings(screen, initialSettings);
 
         GlobeWorldSettingsControls controls = GlobeWorldSettingsControls.createWorld(
@@ -42,9 +42,9 @@ public class GlobeWorldTab extends GridLayoutTab {
         FrameLayout.alignInRectangle(this.layout, screenRectangle, 0.5F, 0.16666667F);
     }
 
-    private static void setSettings(CreateWorldScreen screen, TilingSettings settings) {
-        TilingSettings sanitized = settings.sanitized();
+    private static void setSettings(CreateWorldScreen screen, GlobeSettings settings) {
+        GlobeSettings sanitized = settings == null ? GlobeSettings.DEFAULT : settings;
         GlobeWorldCreateState.set(sanitized);
-        ((TilingSettingsHolder) (Object) screen.getUiState().getSettings()).globeWorld$setTilingSettings(sanitized);
+        ((TilingSettingsHolder) (Object) screen.getUiState().getSettings()).globeWorld$setGlobeSettings(sanitized);
     }
 }

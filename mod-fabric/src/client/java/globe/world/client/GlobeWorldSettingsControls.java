@@ -1,6 +1,7 @@
 package globe.world.client;
 
 import globe.world.config.DayNightCycleMode;
+import globe.world.config.GlobeSettings;
 import globe.world.config.TilingMode;
 import globe.world.config.TilingSettings;
 import globe.world.util.GlobeCurvature;
@@ -127,8 +128,8 @@ public class GlobeWorldSettingsControls implements Layout {
 
     private final boolean createWorld;
     private final boolean editable;
-    private final Supplier<TilingSettings> settingsGetter;
-    private final Consumer<TilingSettings> settingsSetter;
+    private final Supplier<GlobeSettings> settingsGetter;
+    private final Consumer<GlobeSettings> settingsSetter;
     private final List<Row> rows = new ArrayList<>();
     private final List<LayoutElement> elements = new ArrayList<>();
     private int x;
@@ -167,32 +168,32 @@ public class GlobeWorldSettingsControls implements Layout {
     private GlobeWorldSettingsControls(
             boolean createWorld,
             boolean editable,
-            Supplier<TilingSettings> settingsGetter,
-            Consumer<TilingSettings> settingsSetter) {
+            Supplier<GlobeSettings> settingsGetter,
+            Consumer<GlobeSettings> settingsSetter) {
         this.createWorld = createWorld;
         this.editable = editable;
         this.settingsGetter = settingsGetter;
         this.settingsSetter = settingsSetter;
-        this.createMode = createWorld ? CreateMode.fromSettings(settingsGetter.get()) : CreateMode.CUSTOM;
+        this.createMode = createWorld ? CreateMode.fromSettings(currentSettings()) : CreateMode.CUSTOM;
         build();
         refresh();
     }
 
     public static GlobeWorldSettingsControls createWorld(
-            Supplier<TilingSettings> settingsGetter,
-            Consumer<TilingSettings> settingsSetter) {
+            Supplier<GlobeSettings> settingsGetter,
+            Consumer<GlobeSettings> settingsSetter) {
         return new GlobeWorldSettingsControls(true, true, settingsGetter, settingsSetter);
     }
 
     public static GlobeWorldSettingsControls pauseMenu(
-            Supplier<TilingSettings> settingsGetter,
-            Consumer<TilingSettings> settingsSetter) {
+            Supplier<GlobeSettings> settingsGetter,
+            Consumer<GlobeSettings> settingsSetter) {
         return pauseMenu(settingsGetter, settingsSetter, true);
     }
 
     public static GlobeWorldSettingsControls pauseMenu(
-            Supplier<TilingSettings> settingsGetter,
-            Consumer<TilingSettings> settingsSetter,
+            Supplier<GlobeSettings> settingsGetter,
+            Consumer<GlobeSettings> settingsSetter,
             boolean editable) {
         return new GlobeWorldSettingsControls(false, editable, settingsGetter, settingsSetter);
     }
@@ -231,7 +232,7 @@ public class GlobeWorldSettingsControls implements Layout {
             }
             try {
                 int tileSize = Math.max(1, Integer.parseInt(text));
-                setSettings(settingsGetter.get()
+                setSettings(currentSettings()
                         .withTileSize(tileSize)
                         .withNetherTileSize(simpleDefaultNetherTileSize(tileSize)));
             } catch (NumberFormatException ignored) {
@@ -254,28 +255,28 @@ public class GlobeWorldSettingsControls implements Layout {
         );
 
         overworldTopologyButton = CycleButton.<TerrainMode>builder(
-                        mode -> topologyLabel(mode, TerrainMode.forOverworldTileSize(settingsGetter.get().tileSize())),
-                        settingsGetter.get().terrainMode()
+                        mode -> topologyLabel(mode, TerrainMode.forOverworldTileSize(currentSettings().tileSize())),
+                        currentSettings().terrainMode()
                 )
                 .withValues(TERRAIN_MODE_OPTIONS)
                 .withTooltip(mode -> tooltip(mode.tooltip()))
                 .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Overworld Topology"),
-                        (button, mode) -> setSettings(settingsGetter.get().withTerrainMode(mode)));
+                        (button, mode) -> setSettings(currentSettings().withTerrainMode(mode)));
         addRow(
                 overworldTopologyButton,
-                () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled()
+                () -> createWorld && createMode == CreateMode.CUSTOM && currentSettings().enabled()
         );
 
         overworldInfo = infoText(Component.empty());
-        addRow(overworldInfo, () -> !createWorld || settingsGetter.get().enabled() && createMode == CreateMode.CUSTOM);
+        addRow(overworldInfo, () -> !createWorld || currentSettings().enabled() && createMode == CreateMode.CUSTOM);
 
         overworldCurvatureButton = curvatureButton(
                 "Overworld Curvature",
-                settingsGetter.get().curvaturePercent(),
+                currentSettings().curvaturePercent(),
                 CURVATURE_TOOLTIP,
-                percent -> setSettings(settingsGetter.get().withCurvaturePercent(percent))
+                percent -> setSettings(currentSettings().withCurvaturePercent(percent))
         );
-        addRow(overworldCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && settingsGetter.get().enabled());
+        addRow(overworldCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && currentSettings().enabled());
 
         overworldCurvatureSlider = new GlobeCurvatureSlider(
                 0,
@@ -283,16 +284,16 @@ public class GlobeWorldSettingsControls implements Layout {
                 CONTROL_WIDTH,
                 20,
                 Component.literal("Overworld Curvature"),
-                settingsGetter.get().curvaturePercent(),
-                percent -> setSettings(settingsGetter.get().withCurvaturePercent(percent))
+                currentSettings().curvaturePercent(),
+                percent -> setSettings(currentSettings().withCurvaturePercent(percent))
         );
         overworldCurvatureSlider.setTooltip(tooltip(CURVATURE_TOOLTIP));
-        addRow(overworldCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && settingsGetter.get().enabled());
+        addRow(overworldCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && currentSettings().enabled());
 
         overworldDistantHorizonsAdvice = infoText(Component.empty());
         addRow(
                 overworldDistantHorizonsAdvice,
-                () -> DISTANT_HORIZONS_LOADED && distantHorizonsAdviceSupported(settingsGetter.get())
+                () -> DISTANT_HORIZONS_LOADED && distantHorizonsAdviceSupported(currentSettings())
         );
 
         netherSizeButton = CycleButton.<NetherSizePreset>builder(
@@ -302,7 +303,7 @@ public class GlobeWorldSettingsControls implements Layout {
                 .withValues(new CycleButton.ValueListSupplier<NetherSizePreset>() {
                     @Override
                     public List<NetherSizePreset> getSelectedList() {
-                        return validNetherSizePresets(settingsGetter.get());
+                        return validNetherSizePresets(currentSettings());
                     }
 
                     @Override
@@ -312,16 +313,16 @@ public class GlobeWorldSettingsControls implements Layout {
                 })
                 .withTooltip(preset -> tooltip(netherSizeTooltip(preset)))
                 .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Nether Size"),
-                        (button, preset) -> setSettings(applyNetherSizePreset(settingsGetter.get(), preset)));
-        addSectionRow(netherSizeButton, () -> createWorld && createMode == CreateMode.SIMPLE && settingsGetter.get().enabled());
+                        (button, preset) -> setSettings(applyNetherSizePreset(currentSettings(), preset)));
+        addSectionRow(netherSizeButton, () -> createWorld && createMode == CreateMode.SIMPLE && currentSettings().enabled());
 
         tileNetherCheckbox = progressionCheckbox(
                 "Tile Nether",
                 "Enables Nether wrapping and the custom Nether controls.",
-                settingsGetter.get().netherEnabled(),
-                selected -> setSettings(settingsGetter.get().withNetherMode(selected ? TilingMode.SQUARE : TilingMode.DISABLED))
+                currentSettings().netherEnabled(),
+                selected -> setSettings(currentSettings().withNetherMode(selected ? TilingMode.SQUARE : TilingMode.DISABLED))
         );
-        addSectionRow(tileNetherCheckbox, () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled());
+        addSectionRow(tileNetherCheckbox, () -> createWorld && createMode == CreateMode.CUSTOM && currentSettings().enabled());
 
         customNetherTileField = new EditBox(minecraft.font, 110, 20, Component.literal("Nether Tile Size"));
         customNetherTileField.setMaxLength(7);
@@ -332,7 +333,7 @@ public class GlobeWorldSettingsControls implements Layout {
             }
             try {
                 int tileSize = Math.max(1, Integer.parseInt(text));
-                setSettings(settingsGetter.get()
+                setSettings(currentSettings()
                         .withNetherMode(TilingMode.SQUARE)
                         .withNetherTileSize(tileSize));
             } catch (NumberFormatException ignored) {
@@ -350,7 +351,7 @@ public class GlobeWorldSettingsControls implements Layout {
                         customNetherTileField,
                         CONTROL_WIDTH
                 ),
-                () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled()
+                () -> createWorld && createMode == CreateMode.CUSTOM && currentSettings().enabled()
         );
 
         portalRatioSlider = new PortalRatioSlider(
@@ -359,33 +360,33 @@ public class GlobeWorldSettingsControls implements Layout {
                 CONTROL_WIDTH,
                 20,
                 portalRatioPreset(),
-                preset -> setSettings(settingsGetter.get().withNetherPortalScale(preset.numerator, preset.denominator))
+                preset -> setSettings(currentSettings().withNetherPortalScale(preset.numerator, preset.denominator))
         );
-        addRow(portalRatioSlider, () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled());
+        addRow(portalRatioSlider, () -> createWorld && createMode == CreateMode.CUSTOM && currentSettings().enabled());
 
         netherTopologyButton = CycleButton.<TerrainMode>builder(
-                        mode -> topologyLabel(mode, TerrainMode.forNetherTileSize(settingsGetter.get().netherTileSize())),
-                        settingsGetter.get().netherTerrainMode()
+                        mode -> topologyLabel(mode, TerrainMode.forNetherTileSize(currentSettings().netherTileSize())),
+                        currentSettings().netherTerrainMode()
                 )
                 .withValues(TERRAIN_MODE_OPTIONS)
                 .withTooltip(mode -> tooltip(mode.tooltip()))
                 .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Nether Topology"),
-                        (button, mode) -> setSettings(settingsGetter.get().withNetherTerrainMode(mode)));
+                        (button, mode) -> setSettings(currentSettings().withNetherTerrainMode(mode)));
         addRow(
                 netherTopologyButton,
-                () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().netherEnabled()
+                () -> createWorld && createMode == CreateMode.CUSTOM && currentSettings().netherEnabled()
         );
 
         netherInfo = infoText(Component.empty());
-        addRow(netherInfo, () -> !createWorld || settingsGetter.get().enabled() && createMode == CreateMode.CUSTOM, createWorld ? ROW_SPACING : SECTION_SPACING);
+        addRow(netherInfo, () -> !createWorld || currentSettings().enabled() && createMode == CreateMode.CUSTOM, createWorld ? ROW_SPACING : SECTION_SPACING);
 
         netherCurvatureButton = curvatureButton(
                 "Nether Curvature",
-                settingsGetter.get().netherCurvaturePercent(),
+                currentSettings().netherCurvaturePercent(),
                 CURVATURE_TOOLTIP,
-                percent -> setSettings(settingsGetter.get().withNetherCurvaturePercent(percent))
+                percent -> setSettings(currentSettings().withNetherCurvaturePercent(percent))
         );
-        addRow(netherCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && settingsGetter.get().enabled());
+        addRow(netherCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && currentSettings().enabled());
 
         netherCurvatureSlider = new GlobeCurvatureSlider(
                 0,
@@ -393,11 +394,11 @@ public class GlobeWorldSettingsControls implements Layout {
                 CONTROL_WIDTH,
                 20,
                 Component.literal("Nether Curvature"),
-                settingsGetter.get().netherCurvaturePercent(),
-                percent -> setSettings(settingsGetter.get().withNetherCurvaturePercent(percent))
+                currentSettings().netherCurvaturePercent(),
+                percent -> setSettings(currentSettings().withNetherCurvaturePercent(percent))
         );
         netherCurvatureSlider.setTooltip(tooltip(CURVATURE_TOOLTIP));
-        addRow(netherCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && settingsGetter.get().enabled());
+        addRow(netherCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && currentSettings().enabled());
 
         progressionStructuresLabel = new StringWidget(
                 CONTROL_WIDTH,
@@ -405,44 +406,44 @@ public class GlobeWorldSettingsControls implements Layout {
                 Component.literal("Progression Structures"),
                 minecraft.font
         );
-        addSectionRow(progressionStructuresLabel, () -> progressionStructuresVisible(settingsGetter.get()));
+        addSectionRow(progressionStructuresLabel, () -> createWorld && progressionStructuresVisible(currentSettings()));
 
         forceMissingStrongholdCheckbox = progressionCheckbox(
                 "Force Missing Stronghold",
                 FORCE_MISSING_STRONGHOLD_TOOLTIP,
-                settingsGetter.get().forceMissingStronghold(),
-                selected -> setSettings(settingsGetter.get().withForceMissingStronghold(selected))
+                currentSettings().forceMissingStronghold(),
+                selected -> setSettings(currentSettings().withForceMissingStronghold(selected))
         );
-        addRow(forceMissingStrongholdCheckbox, () -> settingsGetter.get().enabled());
+        addRow(forceMissingStrongholdCheckbox, () -> createWorld && currentSettings().enabled());
 
         forceMissingNetherFortressCheckbox = progressionCheckbox(
                 "Force Missing Fortress",
                 FORCE_MISSING_FORTRESS_TOOLTIP,
-                settingsGetter.get().forceMissingNetherFortress(),
-                selected -> setSettings(settingsGetter.get().withForceMissingNetherFortress(selected))
+                currentSettings().forceMissingNetherFortress(),
+                selected -> setSettings(currentSettings().withForceMissingNetherFortress(selected))
         );
-        addRow(forceMissingNetherFortressCheckbox, () -> settingsGetter.get().netherEnabled());
+        addRow(forceMissingNetherFortressCheckbox, () -> createWorld && currentSettings().netherEnabled());
 
         dayLengthSlider = new DayLengthMultiplierSlider(
                 0,
                 0,
                 DAY_LENGTH_SLIDER_WIDTH,
                 20,
-                settingsGetter.get().dayLengthMultiplier(),
-                multiplier -> setSettings(settingsGetter.get().withDayLengthMultiplier(multiplier))
+                currentSettings().dayLengthMultiplier(),
+                multiplier -> setSettings(currentSettings().withDayLengthMultiplier(multiplier))
         );
         dayLengthSlider.setTooltip(tooltip(DAY_LENGTH_TOOLTIP));
 
-        dayNightCycleButton = CycleButton.<DayNightCycleMode>builder(mode -> Component.literal(mode.displayName()), settingsGetter.get().dayNightCycleMode())
+        dayNightCycleButton = CycleButton.<DayNightCycleMode>builder(mode -> Component.literal(mode.displayName()), currentSettings().dayNightCycleMode())
                 .withValues(DayNightCycleMode.values())
                 .withTooltip(mode -> tooltip(dayCycleTooltip(mode)))
                 .create(0, 0, DAY_NIGHT_MODE_WIDTH, 20, Component.literal("Day Cycle"),
-                        (button, mode) -> setSettings(settingsGetter.get().withDayNightCycleMode(mode)));
+                        (button, mode) -> setSettings(currentSettings().withDayNightCycleMode(mode)));
 
         LinearLayout dayNightRow = LinearLayout.horizontal().spacing(ROW_SPACING);
         dayNightRow.addChild(dayLengthSlider);
         dayNightRow.addChild(dayNightCycleButton);
-        addSectionRow(dayNightRow, () -> settingsGetter.get().enabled());
+        addSectionRow(dayNightRow, () -> currentSettings().enabled());
     }
 
     private Checkbox progressionCheckbox(
@@ -539,8 +540,20 @@ public class GlobeWorldSettingsControls implements Layout {
         return new MultiLineTextWidget(text, Minecraft.getInstance().font).setMaxWidth(INFO_WIDTH).setMaxRows(3);
     }
 
+    private TilingSettings currentSettings() {
+        return settingsGetter.get().toTilingSettings().sanitized();
+    }
+
+    private GlobeSettings globeSettingsFor(TilingSettings settings) {
+        TilingSettings sanitized = settings.sanitized();
+        if (createWorld) {
+            return GlobeSettings.from(sanitized);
+        }
+        return settingsGetter.get().withRuntimeSettings(sanitized);
+    }
+
     private void setSettings(TilingSettings settings) {
-        settingsSetter.accept(settings.sanitized());
+        settingsSetter.accept(globeSettingsFor(settings));
         refresh();
     }
 
@@ -573,22 +586,23 @@ public class GlobeWorldSettingsControls implements Layout {
     }
 
     private void setSimpleTilePreset(TilePreset preset) {
-        if (settingsGetter.get().tileSize() == preset.chunks()) {
+        if (currentSettings().tileSize() == preset.chunks()) {
             return;
         }
         setSettings(simpleSettingsForTileSize(preset.chunks()));
     }
 
     private void refresh() {
-        TilingSettings settings = settingsGetter.get().sanitized();
+        TilingSettings originalSettings = currentSettings();
+        TilingSettings settings = originalSettings.sanitized();
         if (createWorld
                 && createMode == CreateMode.SIMPLE
                 && !simpleScrollingDayCycleSupported(settings)
                 && settings.dayNightCycleMode() == DayNightCycleMode.SCROLLING) {
             settings = settings.withDayNightCycleMode(DayNightCycleMode.VANILLA);
         }
-        if (!settings.equals(settingsGetter.get())) {
-            settingsSetter.accept(settings);
+        if (!settings.equals(originalSettings)) {
+            settingsSetter.accept(globeSettingsFor(settings));
         }
 
         if (createWorld && settings.enabled() && createMode == CreateMode.DISABLED) {
@@ -795,7 +809,7 @@ public class GlobeWorldSettingsControls implements Layout {
     }
 
     private TilePreset currentTilePreset() {
-        int tileSize = settingsGetter.get().tileSize();
+        int tileSize = currentSettings().tileSize();
         for (TilePreset preset : SIMPLE_TILE_PRESETS) {
             if (preset.chunks() == tileSize) {
                 return preset;
@@ -807,7 +821,7 @@ public class GlobeWorldSettingsControls implements Layout {
     }
 
     private NetherSizePreset netherSizePreset() {
-        return netherSizePreset(settingsGetter.get());
+        return netherSizePreset(currentSettings());
     }
 
     private NetherSizePreset netherSizePreset(TilingSettings settings) {
@@ -857,7 +871,7 @@ public class GlobeWorldSettingsControls implements Layout {
     }
 
     private PortalRatioPreset portalRatioPreset() {
-        return portalRatioPreset(settingsGetter.get());
+        return portalRatioPreset(currentSettings());
     }
 
     private static PortalRatioPreset portalRatioPreset(TilingSettings settings) {

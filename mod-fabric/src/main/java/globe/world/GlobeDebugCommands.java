@@ -9,8 +9,12 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import globe.world.config.GlobeConfig;
 import globe.world.config.DayNightCycleMode;
+import globe.world.config.GlobeSettings;
+import globe.world.config.GameplaySettings;
+import globe.world.config.PresentationSettings;
 import globe.world.config.TilingSettings;
 import globe.world.config.TilingSettingsHolder;
+import globe.world.config.TopologySettings;
 import globe.world.diagnostics.DiagnosticsChannel;
 import globe.world.diagnostics.GlobeDiagnostics;
 import globe.world.entity.ActorLocalTargetView;
@@ -170,6 +174,7 @@ public final class GlobeDebugCommands {
         DimensionTiling tiling = topology.tiling();
         DimensionTiling overworldTiling = DimensionTiling.forDimension(Level.OVERWORLD);
         DimensionTiling netherTiling = DimensionTiling.forDimension(Level.NETHER);
+        TopologySettings savedTopology = GlobeConfig.topologySettings();
         BlockPos pos = player.blockPosition();
         ChunkPos chunk = player.chunkPosition();
         BlockPos canonicalPos = topology.canonicalBlock(pos);
@@ -189,10 +194,10 @@ public final class GlobeDebugCommands {
                 "Configured tiles: overworld=%s nether=%s nether_tile_size=%d portal_scale=%d/%d (%s)",
                 tileSummary(overworldTiling),
                 tileSummary(netherTiling),
-                GlobeConfig.netherTileSizeChunks(),
-                GlobeConfig.netherPortalScaleNumerator(),
-                GlobeConfig.netherPortalScaleDenominator(),
-                GlobeConfig.netherPortalScaleLabel())), false);
+                savedTopology.netherTileSize(),
+                savedTopology.netherPortalScaleNumerator(),
+                savedTopology.netherPortalScaleDenominator(),
+                savedTopology.netherPortalScaleLabel())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "World block=%d %d %d canon block=%d %d %d",
                 pos.getX(), pos.getY(), pos.getZ(),
@@ -488,7 +493,7 @@ public final class GlobeDebugCommands {
     }
 
     private static int printPortalScale(CommandSourceStack source) {
-        TilingSettings settings = GlobeConfig.tilingSettings();
+        TopologySettings settings = GlobeConfig.topologySettings();
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Globe World Nether portal scale: %s, nether_to_overworld=%d/%d, overworld_to_nether=%d/%d",
                 settings.netherPortalScaleLabel(),
@@ -503,7 +508,9 @@ public final class GlobeDebugCommands {
     }
 
     private static int printConfig(CommandSourceStack source) {
-        TilingSettings settings = GlobeConfig.tilingSettings();
+        TopologySettings topology = GlobeConfig.topologySettings();
+        PresentationSettings presentation = GlobeConfig.presentationSettings();
+        GameplaySettings gameplay = GlobeConfig.gameplaySettings();
         DimensionTiling overworldTiling = DimensionTiling.forDimension(Level.OVERWORLD);
         DimensionTiling netherTiling = DimensionTiling.forDimension(Level.NETHER);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
@@ -511,48 +518,50 @@ public final class GlobeDebugCommands {
                 GlobeConfig.settingsVersion())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Overworld: mode=%s tile=%d chunks/%d blocks terrain=%s configured=%s curvature=%d%%",
-                settings.mode().getSerializedName(),
-                settings.tileSize(),
-                settings.tileSize() * 16,
+                topology.mode().getSerializedName(),
+                topology.tileSize(),
+                topology.tileSize() * 16,
                 overworldTiling.terrainMode().displayName(),
-                settings.terrainMode().getSerializedName(),
-                settings.curvaturePercent())), false);
+                topology.terrainMode().getSerializedName(),
+                presentation.curvaturePercent())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Nether: mode=%s tile=%d chunks/%d blocks terrain=%s configured=%s curvature=%d%% portal_scale=%d/%d (%s)",
-                settings.netherMode().getSerializedName(),
-                settings.netherTileSize(),
-                settings.netherTileSize() * 16,
+                topology.netherMode().getSerializedName(),
+                topology.netherTileSize(),
+                topology.netherTileSize() * 16,
                 netherTiling.terrainMode().displayName(),
-                settings.netherTerrainMode().getSerializedName(),
-                settings.netherCurvaturePercent(),
-                settings.netherPortalScaleNumerator(),
-                settings.netherPortalScaleDenominator(),
-                settings.netherPortalScaleLabel())), false);
+                topology.netherTerrainMode().getSerializedName(),
+                presentation.netherCurvaturePercent(),
+                topology.netherPortalScaleNumerator(),
+                topology.netherPortalScaleDenominator(),
+                topology.netherPortalScaleLabel())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Day/night: mode=%s day_length_multiplier=%.1f",
-                settings.dayNightCycleMode().getSerializedName(),
-                settings.dayLengthMultiplier())), false);
+                gameplay.dayNightCycleMode().getSerializedName(),
+                gameplay.dayLengthMultiplier())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Forced progression structures: stronghold=%s nether_fortress=%s",
-                yesNo(settings.forceMissingStronghold()),
-                yesNo(settings.forceMissingNetherFortress()))), false);
+                yesNo(topology.forceMissingStronghold()),
+                yesNo(topology.forceMissingNetherFortress()))), false);
         return 1;
     }
 
     private static int updateSettings(CommandSourceStack source, SettingsUpdater updater, String message)
             throws CommandSyntaxException {
-        TilingSettings oldSettings = GlobeConfig.tilingSettings().sanitized();
+        GlobeSettings oldGlobeSettings = GlobeConfig.globeSettings();
+        TilingSettings oldSettings = oldGlobeSettings.toTilingSettings().sanitized();
         TilingSettings newSettings = updater.apply(oldSettings).sanitized();
         if (newSettings.equals(oldSettings)) {
             source.sendSuccess(() -> Component.literal(message + ": already set"), false);
             return 0;
         }
+        GlobeSettings newGlobeSettings = oldGlobeSettings.withRuntimeSettings(newSettings);
 
-        ((TilingSettingsHolder) (Object) source.getServer().getWorldGenSettings()).globeWorld$setTilingSettings(newSettings);
+        ((TilingSettingsHolder) (Object) source.getServer().getWorldGenSettings()).globeWorld$setGlobeSettings(newGlobeSettings);
         source.getServer().getWorldGenSettings().setDirty();
-        GlobeConfig.setTilingSettings(newSettings);
-        GlobeDayLength.applyToServer(source.getServer(), newSettings);
-        GlobeWorldNetworking.broadcastSettings(source.getServer(), newSettings);
+        GlobeConfig.setGlobeSettings(newGlobeSettings);
+        GlobeDayLength.applyToServer(source.getServer(), newGlobeSettings.gameplay());
+        GlobeWorldNetworking.broadcastSettings(source.getServer(), newGlobeSettings);
         source.sendSuccess(() -> Component.literal(message + " and saved it to this world."), true);
         printConfig(source);
         source.sendSuccess(() -> Component.literal(

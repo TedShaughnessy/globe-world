@@ -32,7 +32,7 @@ tile size resets saved explicit terrain methods back to `AUTO`.
 
 ## Forced Progression Structures
 
-`TilingSettings` saves two world-generation policy toggles:
+`GlobeSettings.topology()` saves two world-generation policy toggles:
 `force_missing_stronghold` and `force_missing_nether_fortress`. The stronghold
 toggle is wired for the Overworld, and the fortress toggle is wired for the
 Nether. The settings mean "force one if missing", not "always create one":

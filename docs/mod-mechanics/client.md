@@ -26,15 +26,14 @@ alias. The Minecraft 26.1.2 audit table lives in
 [Packet Policies](packet-policies.md).
 
 Server-authoritative settings are synchronized to modded clients during the
-Fabric configuration phase before play starts. The current wire payload still
-uses the compatibility `TilingSettings` shape while the server-side code also
-maintains the split `GlobeSettings` view. The client applies those
-settings before first chunks, entity packets, and rendering decisions, then
-acknowledges the configuration task so the join can continue. Runtime server
-setting changes from commands or an integrated LAN host are sent again during
-the play phase. If a world has wrapping enabled and a joining client cannot
-receive the settings payload, the server disconnects that client with a Globe
-World client-required message.
+Fabric configuration phase before play starts. The wire payload uses
+`GlobeSettings`, the same split model saved by the server. The client applies
+those settings before first chunks, entity packets, and rendering decisions,
+then acknowledges the configuration task so the join can continue. Runtime
+server setting changes from commands or an integrated LAN host are sent again
+during the play phase. If a world has wrapping enabled and a joining client
+cannot receive the settings payload, the server disconnects that client with a
+Globe World client-required message.
 
 `ClientboundPlayerPositionPacket` is not broadly virtualized because vanilla
 uses it for teleport acknowledgement state. Globe World instead canonicalizes
@@ -49,8 +48,9 @@ ownership remain out of scope; the server packet stream is the authority.
 
 `GlobeCurvatureShader` rewrites relevant vanilla world vertex shaders at
 resource load time. Overworld and Nether curvature are saved in
-`TilingSettings`, exposed through world creation and pause/options UI, and can
-be disabled with `0%`. `/globeworld config set curvature <0-100>` and
+`GlobeSettings.presentation()`, exposed through world creation and
+pause/options UI, and can be disabled with `0%`.
+`/globeworld config set curvature <0-100>` and
 `/globeworld config set nether_curvature <0-100>` update the saved curvature
 settings at runtime.
 
@@ -189,7 +189,7 @@ Client diagnostics are intentionally targeted:
 - Settings sync:
   `GlobeWorldNetworking`, `GlobeWorldSettingsPayload`,
   `GlobeWorldSettingsAckPayload`, `GlobeClientNetworking`,
-  `GlobeClientTilingSettings`, `GlobeWorldSettingsScreen`,
+  `GlobeClientSettings`, `GlobeWorldSettingsScreen`,
   `GlobeWorldSettingsControls`.
 - Curvature and picking:
   `GlobeCurvature`, `GlobeCurvatureShader`, `GlobeCurvedRaycast`,

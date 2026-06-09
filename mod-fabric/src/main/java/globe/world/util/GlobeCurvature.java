@@ -1,6 +1,7 @@
 package globe.world.util;
 
 import globe.world.config.GlobeConfig;
+import globe.world.config.PresentationSettings;
 import globe.world.config.TilingSettings;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -26,7 +27,11 @@ public final class GlobeCurvature {
             return 0.0D;
         }
 
-        return curvatureRadiusBlocks(tiling.tileSizeChunks(), GlobeConfig.curvaturePercent(dimension));
+        PresentationSettings presentation = GlobeConfig.presentationSettings();
+        int curvaturePercent = Level.NETHER.equals(dimension)
+                ? presentation.netherCurvaturePercent()
+                : presentation.curvaturePercent();
+        return curvatureRadiusBlocks(tiling.tileSizeChunks(), curvaturePercent);
     }
 
     public static double curvatureRadiusBlocks(int tileSizeChunks, int curvaturePercent) {
