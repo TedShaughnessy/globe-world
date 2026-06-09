@@ -22,7 +22,6 @@ public class SensingMixin {
         if (original.call(mob, target)) {
             return true;
         }
-        return AiAliasUtil.aliasLineOfSight(mob, target)
-                || AiAliasUtil.wrappedHorizontalDistanceIsShorter(mob, target);
+        return AiAliasUtil.aliasLineOfSight(mob, target);
     }
 }

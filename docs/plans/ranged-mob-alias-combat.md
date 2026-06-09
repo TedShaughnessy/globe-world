@@ -2,9 +2,12 @@
 
 ## Status
 
-Investigative. Target acquisition and pursuit are partly alias-aware, but
-projectile launch, projectile travel, creeper swelling, and several custom
-combat goals still use raw vanilla X/Z coordinates.
+Partially implemented. Target acquisition, pursuit, ranged attack readiness,
+common ranged launch vectors, creeper swelling, and several custom combat gates
+are alias-aware. Arrow entity collision now tests wrapped entity hitboxes for
+vanilla arrow movement. Other projectile travel/collision, shulker-bullet
+homing, phantom attack anchors, and some raw custom target-search boxes remain
+open.
 
 ## Prompt
 
@@ -19,7 +22,7 @@ falls back to raw target geometry.
 
 ## Current Coverage
 
-The existing AI alias pass covers many target-selection and goal-distance
+The AI alias pass covers many target-selection, goal-distance, and launch-vector
 decisions:
 
 - `AiAliasUtil` computes nearest target aliases, alias hitboxes, and wrapped
@@ -35,10 +38,20 @@ decisions:
   `FlyingPathNavigationMixin` redirect entity path targets to useful aliases.
 - `RangedAttackGoalMixin`, `RangedBowAttackGoalMixin`, and
   `RangedCrossbowAttackGoalMixin` wrap the standard ranged-goal distance checks.
+- `AbstractSkeletonRangedAttackMixin`, `IllusionerRangedAttackMixin`,
+  `DrownedRangedAttackMixin`, `SnowGolemRangedAttackMixin`,
+  `LlamaRangedAttackMixin`, `WitchRangedAttackMixin`,
+  `CrossbowItemRangedAttackMixin`, `BlazeAttackGoalMixin`,
+  `GhastShootFireballGoalMixin`, `WitherBossRangedAttackMixin`, and
+  `BreezeShootMixin` aim common ranged launches at the nearest target alias.
+- `SwellGoalMixin`, `GuardianAttackGoalMixin`,
+  `GuardianAttackSelectorMixin`, and `ShulkerAttackGoalMixin` wrap close-range
+  or custom attack readiness gates that do not go through the standard melee or
+  ranged goals.
 
 That coverage is enough for many mobs to notice, chase, face, and start attack
 windup against a player whose nearest visible alias differs from raw storage
-coordinates.
+coordinates, then aim the first projectile or special attack at that alias.
 
 ## Skeleton Finding
 
@@ -66,16 +79,14 @@ vanilla bow timing:
 - `RangedBowAttackGoal` requires stable sight before stopping, drawing, and
   releasing. Short interruptions reset or delay the shot.
 - Arrows are canonicalized like other non-player entities before storage and
-  after server ticks. Their trajectory vector survives, but raycast/collision is
-  still raw.
+  after server ticks. Their trajectory vector survives.
 - `AbstractArrow.tick` raycasts blocks and entities between raw `position()` and
-  `position() + deltaMovement`. It does not test wrapped copies of blocks,
-  players, or mobs.
+  `position() + deltaMovement`. Globe World supplements the entity portion with
+  nearest-alias hitbox tests, but block clipping is still raw.
 
-## Cross-Tile Projectile Launch Risks
+## Cross-Tile Projectile Launch Coverage
 
-These mobs use the standard ranged goals for readiness but compute the final
-projectile vector from raw target coordinates:
+These mobs use alias target X/Z before computing the final projectile vector:
 
 - Skeletons and strays: `AbstractSkeleton.performRangedAttack`.
 - Illusioners: `Illusioner.performRangedAttack`.
@@ -86,11 +97,15 @@ projectile vector from raw target coordinates:
 - Pillagers and piglins with crossbows: `CrossbowAttackMob.performCrossbowAttack`
   delegates to `CrossbowItem.shootProjectile`, which uses raw
   `targetOverride.getX()/getZ()`.
+- Blazes: `Blaze.BlazeAttackGoal`.
+- Ghasts: `GhastShootFireballGoal`, plus target-facing in
+  `Ghast.faceMovementDirection`.
+- Withers: main and side-head wither-skull targeting.
+- Breezes: `Shoot`.
 
-Expected symptom: the mob can correctly track and begin attacking across a tile,
-but the projectile launches toward the raw/canonical target instead of the
-nearest visible alias. Depending on tile size and where the entities stand, this
-can look like firing sideways, firing behind the player, or never hitting.
+Y calculations, target leading, potion selection, charge timing, and vanilla
+inaccuracy are intentionally preserved. Projectile physics after launch remains
+separate.
 
 ## Target Search Box Risks
 
@@ -115,7 +130,7 @@ frames.
 
 All non-player projectiles are continuously canonicalized through
 `EntityCanonicalizer`. That prevents duplicate projectile storage but does not
-make projectile physics toroidal.
+make projectile physics fully toroidal.
 
 Vanilla projectile movement uses raw block/entity collision:
 
@@ -125,32 +140,38 @@ Vanilla projectile movement uses raw block/entity collision:
   `AbstractHurtingProjectile.tick`, and `ShulkerBullet.tick` all depend on that
   raw move-vector hit result.
 
-Expected symptom: a projectile that should cross a tile edge may canonicalize
-back into the canonical tile but miss the wrapped block/player/entity it should
-have hit, or hit a raw obstacle in the wrong frame.
+`AbstractArrowAliasCollisionMixin` now wraps the `AbstractArrow.findHitEntities`
+entity path. It keeps vanilla hits, queries canonical candidate boxes, scans
+server players that may live in raw alias coordinates, and tests each real
+entity's nearest alias hitbox via `ProjectileAliasUtil`. The resulting hit still
+targets the real entity, so vanilla damage, deflection, piercing, and pickup
+logic own the result.
 
-## Custom Ranged Goal Gaps
+`ThrownSplashPotionAliasEffectMixin` wraps splash-potion effect application
+after impact. It adds wrapped living-entity candidates to vanilla's raw
+`effectAabb` query and measures potion falloff against each candidate's nearest
+alias box, so witch-thrown splash potions can apply status effects to players
+and mobs in alias tiles.
+
+Expected remaining symptom: a projectile that should cross a tile edge may
+canonicalize back into the canonical tile but miss the wrapped block it should
+have hit, hit a raw obstacle in the wrong frame, or miss wrapped entity
+collision/effects for projectile classes that do not yet have a targeted wrapper.
+
+## Remaining Custom Ranged Goal Gaps
 
 Several mobs do not use the standard `RangedAttackGoal`/`RangedBowAttackGoal`
 path for all attack logic, so the current ranged-goal mixins do not fully cover
 them:
 
-- Blaze: `Blaze.BlazeAttackGoal` uses raw `distanceToSqr(target)`, raw
-  `target.getX()/getZ()` for movement, and raw fireball direction.
-- Ghast: `GhastShootFireballGoal` uses raw `target.distanceToSqr(ghast)`, direct
-  `ghast.hasLineOfSight(target)`, and raw fireball direction. `Ghast.faceMovementDirection`
-  also turns toward raw target X/Z.
-- Guardian and elder guardian: `GuardianAttackGoal` calls direct
-  `guardian.hasLineOfSight(target)` rather than `Sensing`, and client beam
-  visuals use raw target coordinates.
-- Shulker: `ShulkerAttackGoal` uses raw `distanceToSqr(target)` for the 20-block
-  attack gate. `ShulkerBullet` homes via raw target block positions and raw
-  move-vector collision.
-- Wither: side-head targeting uses raw `distanceToSqr`, direct
-  `hasLineOfSight`, raw head tracking, and raw wither-skull vectors.
-- Breeze: `Shoot` uses raw `position().distanceToSqr(target.position())`, raw
-  `lookAt(..., target.position())`, and raw wind-charge vectors. `BreezeUtil`
-  line-of-sight checks use raw `Vec3` targets.
+- Guardian and elder guardian: server attack gates use alias distance/sight, but
+  client beam visuals still use raw target coordinates.
+- Shulker: attack range uses alias distance, but `ShulkerBullet` homes via raw
+  target block positions and raw move-vector collision.
+- Wither: side-head attack gates and skull vectors use aliases, but side-head
+  visual tracking and movement steering still use raw target coordinates.
+- Breeze: `Shoot` uses alias range, look, and wind-charge vectors, but
+  `BreezeUtil` jump/slide line-of-sight checks still use raw `Vec3` targets.
 - Phantom: target selection uses `TargetingConditions` for range/sight, but
   attack anchors and sweep targets use raw target block/position coordinates.
 
@@ -158,60 +179,48 @@ Expected symptoms vary by mob: some may fail to start attacks across a seam,
 some may attack through/around the wrong obstacle, and some may launch correctly
 only when the raw and nearest-alias frames happen to coincide.
 
-## Close-Range Special Attack Gaps
+## Close-Range Special Attack Coverage
 
 Some non-ranged attacks have their own readiness gates outside
-`MeleeAttackGoal`, so the current melee reach mixin does not cover them.
+`MeleeAttackGoal`, so the melee reach mixin does not cover them by itself.
 
 Creepers use `SwellGoal` before exploding:
 
-- `SwellGoal.canUse()` starts swelling only when
+- `SwellGoalMixin` wraps `canUse()` so swelling starts when
   `creeper.distanceToSqr(target) < 9.0`.
-- `SwellGoal.tick()` cancels swelling when
+- `SwellGoalMixin` wraps `tick()` so swelling continues or cancels when
   `creeper.distanceToSqr(target) > 49.0` or when sensing reports no line of
   sight.
 - `Creeper.explodeCreeper()` explodes at the creeper's own raw/canonical
-  position, so the observed failure is likely the swell gate rather than the
-  final explosion center.
+  position, so the alias-sensitive part is the swell gate rather than the final
+  explosion center.
 
 Expected symptom: the creeper can acquire and path to a player through the
 nearest alias, but it never primes, or it starts priming and then backs out,
 because raw storage coordinates remain outside the vanilla 3-block start or
 7-block continuation thresholds.
 
-## Line-Of-Sight Concern
+## Line-Of-Sight Coverage
 
-`SensingMixin` currently returns true when `AiAliasUtil.aliasLineOfSight(...)`
-is true, or when `AiAliasUtil.wrappedHorizontalDistanceIsShorter(...)` is true.
-The second fallback can make a mob treat a wrapped target as visible even if the
-alias clip did not prove visibility. That may have been useful while debugging
-seam sight, but for ranged mobs it can cause a bow/crossbow goal to charge and
-shoot at a target that should be blocked.
+`SensingMixin` now returns true only when vanilla raw line of sight succeeds or
+`AiAliasUtil.aliasLineOfSight(...)` proves the nearest-alias ray is clear. The
+old "wrapped distance is shorter" fallback is no longer a blanket substitute for
+visibility.
 
-This does not explain an ordinary same-frame skeleton shot by itself, because
-vanilla raw line of sight should already handle that case. It can explain ranged
-mobs deciding to fire after crossing tile frames or around tile edges.
+## Remaining Fix Shape
 
-## Proposed Fix Shape
+The implemented launch-vector pass uses shared `AiAliasUtil` nearest-alias
+helpers instead of per-mob coordinate math. Remaining work:
 
-Use one shared "ranged alias target" helper instead of patching each mob with
-slightly different math:
-
-- Given `shooter`, `target`, and optional projectile spawn position, return the
-  target's nearest alias position relative to the shooter or projectile origin.
-- Add the same convention for special non-projectile combat readiness checks,
-  starting with `SwellGoal`'s 3-block start and 7-block continuation gates.
-- Use the helper in bow, trident, snowball, spit, potion, fireball, skull,
-  wind-charge, and crossbow launch sites before calculating X/Z direction.
-- Keep Y calculations vanilla unless a mob uses a target `BlockPos` derived from
-  X/Z, such as shulker bullets and phantom anchors.
 - Wrap or supplement raw target-search AABBs where custom goals do not already
   start from the full player list.
-- Tighten `SensingMixin` so the "wrapped distance is shorter" fallback is not a
-  blanket substitute for line-of-sight in ranged attack decisions.
-- Add projectile collision wrapping separately: launch-vector fixes will make
-  first-frame aim correct, but arrows, potions, fireballs, and bullets still need
-  wrapped block/entity hit tests when they cross tile edges.
+- Continue projectile collision wrapping: launch-vector fixes make first-frame
+  aim correct, arrows now have wrapped entity hit tests, and splash potions now
+  have wrapped effect recipients, but arrow/potion block clipping plus
+  fireballs, wind charges, wither skulls, and bullets still need wrapped
+  travel/collision coverage.
+- Audit homing and anchor systems that derive target `BlockPos` values from raw
+  X/Z, especially shulker bullets and phantom attacks.
 
 ## Test Matrix
 

@@ -29,6 +29,9 @@ public final class AiAliasUtil {
     }
 
     public static Vec3 nearestAliasPosition(Entity actor, Entity target) {
+        if (!canAlias(actor, target)) {
+            return target.position();
+        }
         return nearestAliasPosition(
                 actor.level(),
                 actor.getX(),
@@ -39,7 +42,28 @@ public final class AiAliasUtil {
                 target.getZ());
     }
 
+    public static Vec3 nearestAliasPosition(Entity actor, Entity target, double originX, double originY, double originZ) {
+        if (!canAlias(actor, target)) {
+            return target.position();
+        }
+        return nearestAliasPosition(
+                actor.level(),
+                originX,
+                originY,
+                originZ,
+                target.getX(),
+                target.getY(),
+                target.getZ());
+    }
+
+    public static Vec3 nearestAliasPosition(Entity actor, Entity target, Vec3 origin) {
+        return nearestAliasPosition(actor, target, origin.x, origin.y, origin.z);
+    }
+
     public static Vec3 nearestAliasEyePosition(Entity actor, Entity target) {
+        if (!canAlias(actor, target)) {
+            return new Vec3(target.getX(), target.getEyeY(), target.getZ());
+        }
         Vec3 alias = nearestAliasPosition(
                 actor.level(),
                 actor.getX(),
@@ -48,7 +72,7 @@ public final class AiAliasUtil {
                 target.getX(),
                 target.getEyeY(),
                 target.getZ());
-        return actor.level() == target.level() ? alias : new Vec3(target.getX(), target.getEyeY(), target.getZ());
+        return alias;
     }
 
     public static Vec3 nearestAliasPosition(

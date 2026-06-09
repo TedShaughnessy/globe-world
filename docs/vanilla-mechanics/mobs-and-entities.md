@@ -28,6 +28,24 @@ Common sources jar:
 - `net/minecraft/world/entity/ai/control/LookControl.java`
 - `net/minecraft/world/entity/ai/navigation/PathNavigation.java`
 - `net/minecraft/world/entity/monster/Creeper.java`
+- `net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java`
+- `net/minecraft/world/entity/monster/illager/Illusioner.java`
+- `net/minecraft/world/entity/monster/zombie/Drowned.java`
+- `net/minecraft/world/entity/animal/golem/SnowGolem.java`
+- `net/minecraft/world/entity/animal/equine/Llama.java`
+- `net/minecraft/world/entity/monster/Witch.java`
+- `net/minecraft/world/item/CrossbowItem.java`
+- `net/minecraft/world/entity/monster/Blaze.java`
+- `net/minecraft/world/entity/monster/Ghast.java`
+- `net/minecraft/world/entity/monster/Guardian.java`
+- `net/minecraft/world/entity/monster/Shulker.java`
+- `net/minecraft/world/entity/boss/wither/WitherBoss.java`
+- `net/minecraft/world/entity/monster/breeze/Shoot.java`
+- `net/minecraft/world/entity/projectile/ProjectileUtil.java`
+- `net/minecraft/world/entity/projectile/Projectile.java`
+- `net/minecraft/world/entity/projectile/arrow/AbstractArrow.java`
+- `net/minecraft/world/entity/projectile/throwableitemprojectile/AbstractThrownPotion.java`
+- `net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownSplashPotion.java`
 - `net/minecraft/world/level/NaturalSpawner.java`
 - `net/minecraft/world/level/LocalMobCapCalculator.java`
 - `net/minecraft/world/level/entity/PersistentEntitySectionManager.java`
@@ -110,6 +128,11 @@ has already been accepted as a candidate:
   `RangedCrossbowAttackGoal` mix raw distance, line-of-sight cache checks, look
   control, and
   `PathNavigation.moveTo(target, ...)`.
+- Ranged mob attack implementations often compute final projectile X/Z vectors
+  from raw target coordinates after a goal has already decided to attack.
+  Examples include skeleton/illusioner arrows, drowned tridents, snow golem
+  snowballs, llama spit, witch splash potions, crossbow target overrides, blaze
+  fireballs, ghast fireballs, wither skulls, and breeze wind charges.
 - `SwellGoal` is separate from `MeleeAttackGoal`: it starts creeper swelling
   with raw `creeper.distanceToSqr(target) < 9.0`, then keeps or cancels swelling
   with raw 7-block distance and cached line-of-sight checks.
@@ -125,6 +148,84 @@ For wrapped worlds, these anchors need a consistent "nearest alias" convention:
 storage identity stays on the real entity, but distance, sight, look, attack
 reach, and entity path targets should use the topological copy nearest the
 acting mob.
+
+## Hurt Knockback
+
+`LivingEntity.hurtServer(...)` applies base hurt knockback after damage is
+accepted. Projectile damage asks the projectile for a horizontal knockback
+direction, but ordinary entity damage falls back to
+`DamageSource.getSourcePosition()`, which usually returns the direct entity's
+raw position. Vanilla then passes `sourceX - victimX` and `sourceZ - victimZ`
+to `LivingEntity.knockback(...)`; the knockback method subtracts the normalized
+direction from the victim's velocity, pushing the victim away from that source.
+
+Important anchors:
+
+- `DamageSources.java:210` creates mob attack sources with the mob as the
+  direct entity.
+- `DamageSource.java:105` returns an explicit damage position or the direct
+  entity's raw `position()`.
+- `LivingEntity.java:1231` branches projectile knockback away from ordinary
+  source-position knockback.
+- `LivingEntity.java:1235` computes the raw source-to-victim X/Z direction.
+- `LivingEntity.java:1239` applies base hurt knockback.
+- `LivingEntity.java:1613` normalizes the supplied X/Z direction and pushes the
+  victim away from it.
+- `LivingEntity.java:1283` `applyItemBlocking(...)` uses the same source
+  position to decide whether a held blocking item faces the incoming attack.
+
+For wrapped worlds, ordinary melee damage needs the damage source position
+projected into the victim's nearest alias frame before vanilla computes
+knockback, damage indicators, or shield-facing checks.
+
+## Projectile Collision
+
+`AbstractArrow.tick()` handles arrow movement directly. For physics-enabled
+arrows it clips blocks from the current raw position to `position() +
+deltaMovement`, then `stepMoveAndHit(...)` calls `findHitEntities(...)` for
+entity hits along the same raw segment.
+
+Important anchors:
+
+- `AbstractArrow.java:217` reads the block state at the arrow's raw block
+  position.
+- `AbstractArrow.java:269` uses `Level.clipIncludingBorder(...)` for the raw
+  block ray.
+- `AbstractArrow.java:293` collects entity hits before deciding whether the
+  first result is an entity hit or the block hit.
+- `AbstractArrow.java:488` delegates entity collection to
+  `ProjectileUtil.getManyEntityHitResult(...)`.
+- `ProjectileUtil.java:170` queries raw `Level.getEntities(...)` and clips raw
+  entity bounding boxes.
+
+For wrapped worlds, launch vectors can be correct while vanilla arrow
+collisions still need a separate alias-box pass. The `EntityHitResult` can refer
+to the real entity even when the tested hitbox is a virtual copy, because
+vanilla damage and piercing state are stored on the real entity identity.
+
+## Splash Potion Effects
+
+`AbstractThrownPotion.onHit(...)` dispatches splash potions to
+`ThrownSplashPotion.onHitAsPotion(...)` after the projectile has impacted. The
+splash path builds a small `potionAabb` at the hit location, inflates it by the
+4-block splash range, queries living entities in that raw box, and then applies
+effects only when `potionAabb.distanceToSqr(entityBox) < 16.0`.
+
+Important anchors:
+
+- `ThrowableProjectile.java:45` gets a move-vector hit result and moves the
+  projectile to the impact location.
+- `AbstractThrownPotion.java:75` calls `onHitAsPotion(...)` for potion stacks
+  with effects.
+- `ThrownSplashPotion.java:40` moves the potion bounding box to the hit
+  location.
+- `ThrownSplashPotion.java:42` queries raw living entities in the inflated
+  splash box.
+- `ThrownSplashPotion.java:48` measures raw box-to-box splash distance before
+  calculating effect scale and duration.
+
+For wrapped worlds, both the affected-entity query and the per-target distance
+falloff need the target's nearest alias box relative to the potion impact box.
 
 ## Player Tracking And Entity Packets
 
@@ -258,9 +359,10 @@ Current status:
 - Good: spawn position math and mob caps are mostly wrapped to canonical chunk identity.
 - Good: `ServerChunkCache.tickSpawningChunk(...)` now receives each canonical chunk at most once per `collectSpawningChunks(...)` pass, avoiding duplicate spawn attempts, inhabited-time increments, and thunder work from aliases.
 - Partial: mob AI now uses nearest-alias distance, sight cache, look, melee
-  reach, and a small-tile multi-alias entity path target set. The underlying
-  pathfinder/node evaluator is still raw rather than fully toroidal, and
-  projectile physics across seams are not part of this AI pass.
+  reach, ranged launch vectors for common ranged mobs, and a small-tile
+  multi-alias entity path target set. The underlying pathfinder/node evaluator
+  is still raw rather than fully toroidal, and projectile physics across seams
+  are not part of this AI pass.
 
 Best rule of thumb:
 

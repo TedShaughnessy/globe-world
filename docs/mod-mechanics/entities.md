@@ -60,7 +60,40 @@ cancelled for non-canonical chunks.
 local tile frame. Targeting conditions, nearest-entity selection, brain sensors,
 target retention, line of sight, look controls, melee checks, ranged-goal
 distance checks, and move-toward-target goals use the nearest topological alias
-instead of raw coordinates.
+instead of raw coordinates. Alias line of sight must be proven by a wrapped
+ray; wrapped horizontal distance alone is not treated as visibility.
+
+Ranged mob launch math uses the same target-alias convention before calculating
+projectile X/Z vectors. Skeletons, illusioners, drowned, snow golems, llamas,
+witches, crossbow mobs, blazes, ghasts, withers, and breezes aim at the nearest
+target alias while preserving vanilla Y calculations, leading, potion choice,
+charge timing, and inaccuracy. Creeper swelling, guardian beam attack gates,
+and shulker attack range also use alias distance so a mob that has already
+pathfound to a wrapped-near target can start and continue its attack.
+
+Damage-source direction uses the same nearest-alias convention. Vanilla
+`LivingEntity.hurtServer(...)` derives hurt knockback and damage indicators from
+`DamageSource.getSourcePosition()`, and item blocking uses that position for
+the incoming attack angle. `LivingEntityDamageSourceAliasMixin` maps entity
+sources, such as zombies, to the victim's nearest alias before those checks run,
+so a seam-adjacent melee hit pushes and blocks as if the attacker were in the
+visible wrapped tile.
+
+Arrow entity collision supplements vanilla's raw entity raycast with wrapped
+entity hitboxes. `AbstractArrowAliasCollisionMixin` keeps vanilla hits, then
+uses `ProjectileAliasUtil` to test candidate entities in the nearest alias
+frame to the arrow's movement segment. The `EntityHitResult` still points at the
+real entity, so damage, pierce tracking, pickup, and enchantment behavior stay
+on vanilla's entity identity while a skeleton arrow can hit a player or mob
+through the visible wrapped copy.
+
+Splash-potion area effects use wrapped entity candidates and wrapped falloff
+distance. `ThrownSplashPotionAliasEffectMixin` keeps vanilla's initial list,
+adds entities found through the canonical query box plus alias-frame players,
+then measures each candidate against the hit potion AABB using that entity's
+nearest alias box. This lets witch splash potions apply status effects to
+players and mobs visible in an alias tile while preserving vanilla duration
+scaling and instant-effect math.
 
 Entity-derived path requests target the nearest alias block position. Small
 tiles expand the request to nearby whole-tile target aliases so vanilla's
@@ -120,7 +153,20 @@ canonicalized but currently sit outside canonical X/Z.
   `FlyingPathNavigationMixin`, `LookControlMixin`, `MobLookMixin`,
   `MeleeAttackGoalMixin`, `RangedAttackGoalMixin`,
   `RangedBowAttackGoalMixin`, `RangedCrossbowAttackGoalMixin`,
-  `LookAtPlayerGoalMixin`, `MoveTowardsTargetGoalMixin`.
+  `LookAtPlayerGoalMixin`, `MoveTowardsTargetGoalMixin`,
+  `AbstractSkeletonRangedAttackMixin`, `IllusionerRangedAttackMixin`,
+  `DrownedRangedAttackMixin`, `SnowGolemRangedAttackMixin`,
+  `LlamaRangedAttackMixin`, `WitchRangedAttackMixin`,
+  `CrossbowItemRangedAttackMixin`, `BlazeAttackGoalMixin`,
+  `GhastFacingMixin`, `GhastShootFireballGoalMixin`,
+  `WitherBossRangedAttackMixin`, `BreezeShootMixin`,
+  `SwellGoalMixin`, `GuardianAttackGoalMixin`,
+  `GuardianAttackSelectorMixin`, `ShulkerAttackGoalMixin`.
+- Damage direction:
+  `LivingEntityDamageSourceAliasMixin`, `DamageAliasUtil`.
+- Arrow collision:
+  `AbstractArrowAliasCollisionMixin`, `ThrownSplashPotionAliasEffectMixin`,
+  `ProjectileAliasUtil`.
 - Player interaction and presentation:
   `PlayerInteractionRangeMixin`, `PlayerItemPickupMixin`,
   `FishingHookMixin`,
@@ -147,6 +193,7 @@ canonicalized but currently sit outside canonical X/Z.
 - Full toroidal pathfinding remains deferred; current path requests target
   useful aliases but vanilla node search does not wrap every neighbor relation.
 - General projectile physics across tile seams remains separate from ranged mob
-  target selection, facing, and the fishing-specific owner/pullback fixes.
+  target selection, launch vectors, facing, arrow entity-hit wrapping, and the
+  fishing-specific owner/pullback fixes.
 - Visual aliases currently skip leashed entities and mounted player stacks;
   player passenger/vehicle stacks need dedicated multiplayer testing.
