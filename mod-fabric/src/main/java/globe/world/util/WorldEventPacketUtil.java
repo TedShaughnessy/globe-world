@@ -1,6 +1,7 @@
 package globe.world.util;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundBlockDestructionPacket;
 import net.minecraft.network.protocol.game.ClientboundBlockEventPacket;
@@ -11,7 +12,13 @@ import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public final class WorldEventPacketUtil {
     private WorldEventPacketUtil() {
@@ -47,6 +54,13 @@ public final class WorldEventPacketUtil {
             return virtualizeExplode(explode, viewer);
         }
         return packet;
+    }
+
+    public static List<Packet<?>> virtualizeForLoadedAliases(Packet<?> packet, ServerPlayer viewer) {
+        if (packet instanceof ClientboundBlockEventPacket) {
+            return virtualizeBlockEventForLoadedAliases((ClientboundBlockEventPacket) packet, viewer);
+        }
+        return List.of(virtualizeFor(packet, viewer));
     }
 
     public static Vec3 virtualizePos(ServerLevel level, Vec3 pos, ServerPlayer viewer) {
@@ -127,12 +141,56 @@ public final class WorldEventPacketUtil {
         return new ClientboundBlockEventPacket(virtualPos, packet.getBlock(), packet.getB0(), packet.getB1());
     }
 
+    private static List<Packet<?>> virtualizeBlockEventForLoadedAliases(
+            ClientboundBlockEventPacket packet,
+            ServerPlayer viewer) {
+        BlockPos canonicalPos = CoordUtil.wrapBlockPos(viewer.level(), packet.getPos());
+        int canonicalChunkX = SectionPos.blockToSectionCoord(canonicalPos.getX());
+        int canonicalChunkZ = SectionPos.blockToSectionCoord(canonicalPos.getZ());
+        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
+                viewer,
+                viewer.level().dimension(),
+                canonicalChunkX,
+                canonicalChunkZ);
+        if (aliases.isEmpty()) {
+            return List.of(virtualizeBlockEvent(packet, viewer));
+        }
+
+        Set<BlockPos> seenPositions = new HashSet<>(aliases.size());
+        List<Packet<?>> packets = new ArrayList<>(aliases.size());
+        for (ChunkPos alias : aliases) {
+            BlockPos visiblePos = offsetBlockPos(canonicalPos, canonicalChunkX, canonicalChunkZ, alias);
+            if (seenPositions.add(visiblePos)) {
+                packets.add(new ClientboundBlockEventPacket(
+                        visiblePos,
+                        packet.getBlock(),
+                        packet.getB0(),
+                        packet.getB1()
+                ));
+            }
+        }
+        return packets;
+    }
+
     private static Packet<?> virtualizeBlockDestruction(ClientboundBlockDestructionPacket packet, ServerPlayer viewer) {
         BlockPos virtualPos = virtualizeBlockPos(viewer.level(), packet.getPos(), viewer);
         if (virtualPos.equals(packet.getPos())) {
             return packet;
         }
         return new ClientboundBlockDestructionPacket(packet.getId(), virtualPos, packet.getProgress());
+    }
+
+    private static BlockPos offsetBlockPos(
+            BlockPos canonicalPos,
+            int canonicalChunkX,
+            int canonicalChunkZ,
+            ChunkPos alias) {
+        int dx = (alias.x() - canonicalChunkX) * 16;
+        int dz = (alias.z() - canonicalChunkZ) * 16;
+        if (dx == 0 && dz == 0) {
+            return canonicalPos;
+        }
+        return canonicalPos.offset(dx, 0, dz);
     }
 
     private static Packet<?> virtualizeParticles(ClientboundLevelParticlesPacket packet, ServerPlayer viewer) {

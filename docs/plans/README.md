@@ -12,8 +12,6 @@ point for current behavior and modded code anchors.
 - [Ranged mob alias combat audit](ranged-mob-alias-combat.md): investigate
   ranged and special mob attack readiness, launch, line-of-sight, and projectile
   collision gaps around tiled entity aliases.
-- [Chest lid alias sync](chest-lid-alias-sync.md): fan out chest/container block
-  events to loaded aliases and make container opener rechecks alias-aware.
 - [Nether size and portal scale options](nether-portal-scale.md): replace the
   fixed one-eighth Nether option with separate Nether tile-size and portal-ratio
   settings, including same-size fast travel and reverse ratios.
@@ -23,6 +21,8 @@ point for current behavior and modded code anchors.
 
 ## Retired Ideas
 
+- [Chest lid alias sync](chest-lid-alias-sync.md): implemented by loaded-alias
+  block-event fanout and alias-aware container opener rechecks.
 - Client canonical chunk cache: not pursued. Globe World keeps the client cache
   vanilla-shaped and relies on server-side canonical chunk ownership plus
   relabeled packets for alias rendering.

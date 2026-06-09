@@ -2,10 +2,15 @@
 
 ## Status
 
-Planned. Chests can remain visually open in tiled worlds because vanilla chest
-lid state is synchronized through block events, while Globe World's loaded-alias
-fanout currently covers ordinary block, block-entity, section, and light update
-packets.
+Implemented. Vanilla chest lid state is synchronized through block events, so
+Globe World now fans `ClientboundBlockEventPacket` out to every loaded alias of
+the affected canonical chunk. Container opener rechecks are also alias-aware for
+server players so a chest opened through a visible alias is not prematurely
+counted as closed around its canonical block position.
+
+Durable behavior is documented in
+[Blocks And Ticks](../mod-mechanics/blocks-and-ticks.md), with vanilla source
+anchors in [Block Entities](../vanilla-mechanics/block-entities.md).
 
 ## Symptom
 
@@ -42,29 +47,22 @@ Covered paths:
   `ClientboundBlockUpdatePacket`, `ClientboundBlockEntityDataPacket`,
   `ClientboundSectionBlocksUpdatePacket`, and `ClientboundLightUpdatePacket` to
   every loaded alias tracked by `ChunkAliasTracker`.
+- `WorldEventPacketUtil.virtualizeForLoadedAliases(...)` fans out
+  `ClientboundBlockEventPacket` to every loaded alias tracked by
+  `ChunkAliasTracker`.
 - `ChunkHolderMixin` routes chunk-holder block update broadcasts through that
   loaded-alias fanout.
 
-Gap:
-
-- `WorldEventPacketUtil.virtualizeBlockEvent(...)` virtualizes
-  `ClientboundBlockEventPacket` to a single viewer-nearest alias.
-- `PlayerListBroadcastMixin` sends exactly that one virtualized packet for
-  world-event broadcasts.
-- If the open event and close event are virtualized to different aliases, or if
-  multiple aliases of the same canonical chest are loaded, the stale alias can
-  keep rendering as open.
-
-Secondary risk:
+Server-side opener rechecks:
 
 - `ContainerOpenersCounter.getEntitiesWithContainerOpen(...)` builds a raw
   `AABB` around the canonical block-entity position and asks
   `Level.getEntities(...)` for candidates.
 - In a tiled world, a player can have the chest menu open while standing near a
   visual alias far from the canonical block position.
-- `Player.hasContainerOpen(container, blockPos)` only checks whether the current
-  menu belongs to that container. The raw candidate search decides whether the
-  player is seen during the opener recheck.
+- `ContainerOpenersCounterMixin` keeps vanilla's raw candidates, then adds
+  server players whose bounding boxes intersect the player-nearest alias of the
+  search box and whose open menu still matches the container.
 
 ## Goal
 
@@ -81,20 +79,21 @@ duplicate server-side container side effects.
   this pass. Start with block events because they mutate client-side block
   entity presentation state.
 
-## Implementation Plan
+## Implementation Notes
 
 ### 1. Add Loaded-Alias Fanout For Block Events
 
-Add a loaded-alias path for `ClientboundBlockEventPacket`.
+`WorldEventPacketUtil` has a loaded-alias path for
+`ClientboundBlockEventPacket`.
 
-Suggested shape:
+Shape:
 
 ```java
 public static List<Packet<?>> virtualizeForLoadedAliases(Packet<?> packet, ServerPlayer viewer)
 ```
 
-in `WorldEventPacketUtil`, mirroring `BlockPacketUtil` but handling only packets
-owned by the world-event broadcast path.
+This mirrors `BlockPacketUtil` but handles packets owned by the world-event
+broadcast path.
 
 For `ClientboundBlockEventPacket`:
 
@@ -117,20 +116,13 @@ dz = (alias.z - canonicalChunkZ) * 16
 visiblePos = canonicalPos.offset(dx, 0, dz)
 ```
 
-Keep the helper local to `WorldEventPacketUtil` or factor a small shared
-position-offset helper if duplication with `BlockPacketUtil` starts to grow.
+The offset helper is currently local to `WorldEventPacketUtil`; factor it only
+if duplication with `BlockPacketUtil` starts to grow.
 
 ### 2. Route Broadcast Block Events Through The Fanout
 
-Update `PlayerListBroadcastMixin.broadcastWorldEventWithWrappedDistance(...)`.
-
-Current behavior:
-
-```java
-player.connection.send(WorldEventPacketUtil.virtualizeFor(packet, player));
-```
-
-New behavior:
+`PlayerListBroadcastMixin.broadcastWorldEventWithWrappedDistance(...)` sends all
+packets returned by the fanout helper:
 
 ```java
 for (Packet<?> virtualPacket : WorldEventPacketUtil.virtualizeForLoadedAliases(packet, player)) {
@@ -147,13 +139,14 @@ For non-block-event packets, `virtualizeForLoadedAliases(...)` can simply return
 
 ### 3. Add Alias-Aware Container Opener Rechecks
 
-Add a mixin on `ContainerOpenersCounter.getEntitiesWithContainerOpen(...)`.
+`ContainerOpenersCounterMixin` wraps
+`ContainerOpenersCounter.getEntitiesWithContainerOpen(...)`.
 
-Suggested file:
+File:
 
 - `mod-fabric/src/main/java/globe/world/mixin/ContainerOpenersCounterMixin.java`
 
-Suggested mixin target:
+Mixin target:
 
 - Wrap the `Level.getEntities(Entity, AABB, Predicate)` invocation inside
   `ContainerOpenersCounter.getEntitiesWithContainerOpen(...)`.
@@ -175,7 +168,7 @@ Behavior:
 This keeps opener rechecks from dropping a player who is raw-far from the
 canonical chest but topologically near the visible alias they opened.
 
-Register the mixin in `mod-fabric/src/main/resources/globe-world.mixins.json`.
+The mixin is registered in `mod-fabric/src/main/resources/globe-world.mixins.json`.
 
 ### 4. Keep Interaction And Storage Canonical
 
@@ -188,21 +181,20 @@ Do not change:
 Those paths already make alias interaction operate on the canonical chest. The
 new work should only fix lid/event presentation and opener recheck candidates.
 
-## Files To Change
+## Implemented Files
 
 - `mod-fabric/src/main/java/globe/world/util/WorldEventPacketUtil.java`
-  - Add loaded-alias fanout for `ClientboundBlockEventPacket`.
+  - Adds loaded-alias fanout for `ClientboundBlockEventPacket`.
 - `mod-fabric/src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
-  - Send all packets returned by the new fanout helper.
+  - Sends all packets returned by the fanout helper.
 - `mod-fabric/src/main/java/globe/world/mixin/ContainerOpenersCounterMixin.java`
-  - Supplement opener recheck entity candidates with alias-near players.
+  - Supplements opener recheck entity candidates with alias-near players.
 - `mod-fabric/src/main/resources/globe-world.mixins.json`
-  - Register `ContainerOpenersCounterMixin`.
+  - Registers `ContainerOpenersCounterMixin`.
 - `docs/mod-mechanics/blocks-and-ticks.md`
-  - After implementation, update the world-event paragraph to say block events
-    are fanned out to all loaded aliases.
+  - Documents loaded-alias block-event fanout and alias-aware opener rechecks.
 - `docs/vanilla-mechanics/block-entities.md`
-  - Add a chest/open-count note if useful after validating the fix.
+  - Documents vanilla chest/open-count block events and opener rechecks.
 
 ## Validation
 
@@ -244,11 +236,12 @@ Recommended diagnostics while testing:
 
 ## Done Criteria
 
-- Closing a chest sends close-count block events to every loaded alias for the
-  affected canonical chunk.
-- Opener rechecks count a player standing at a visible alias of an open
-  canonical container.
-- The issue is removed from `dev-work.md` or replaced with a link to the
-  completed mod-mechanics docs.
-- Durable behavior is folded into `docs/mod-mechanics/blocks-and-ticks.md`, and
-  this plan is retired or kept only for historical investigation notes.
+- Implemented: closing a chest sends close-count block events to every loaded
+  alias for the affected canonical chunk.
+- Implemented: opener rechecks count a player standing at a visible alias of an
+  open canonical container.
+- Not applicable in this tree: no `dev-work.md` entry was found during this
+  implementation.
+- Done: durable behavior is folded into
+  `docs/mod-mechanics/blocks-and-ticks.md`, and this plan is retired or kept
+  only for historical investigation notes.

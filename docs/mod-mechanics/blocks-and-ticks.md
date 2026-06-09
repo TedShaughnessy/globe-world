@@ -49,10 +49,18 @@ per alias with positions or chunk coordinates offset into that alias.
 `WorldEventPacketUtil` virtualizes world-event and cosmetic packets whose
 positions are not sent through `ChunkHolder`: positional sounds, level events,
 block events, block destruction progress, particles, and explosion centers.
+Block events are fanned out to every loaded alias of the affected canonical
+chunk because container lids and similar block-entity presentations mutate
+client-local state from those events rather than from ordinary block updates.
 `PlayerListBroadcastMixin` wraps vanilla's positional broadcast path so players
 near an alias receive sounds and events using wrapped distance checks.
 `ServerLevelWorldEventMixin` handles the custom per-player send paths for block
 destruction, particles, explosions, and global level events.
+
+Container opener rechecks keep the server open count canonical, but add
+alias-near players to vanilla's candidate list. This prevents chests opened
+through a visible alias from being counted as closed during the periodic
+`ContainerOpenersCounter` search around the canonical block position.
 
 Random block ticks are canonicalized and deduped during
 `ChunkMap.forEachBlockTickingChunk`. Globe snapshots the ticking chunk keys
@@ -74,6 +82,7 @@ outside the canonical tile.
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ChunkMapBlockTickingMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ContainerOpenersCounterMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ServerLevelWorldEventMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/LodestoneTrackerMixin.java`

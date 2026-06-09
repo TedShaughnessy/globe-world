@@ -90,6 +90,22 @@ Client application:
 - `ClientPacketListener.java:1440` `handleBlockEntityData`
 - `ClientPacketListener.java:849` full chunk with block entity tags
 
+## Container Lid Open Counts
+
+Chest lid animation is not synchronized through the block entity update packet.
+`ChestBlockEntity.startOpen(...)` and `stopOpen(...)` update a
+`ContainerOpenersCounter`; `signalOpenCount(...)` then calls
+`Level.blockEvent(pos, block, 1, currentOpenCount)`. The client applies the
+resulting `ClientboundBlockEventPacket` at the exact packet position, and
+`ChestBlockEntity.triggerEvent(1, count)` sets the lid target open when
+`count > 0`.
+
+`ContainerOpenersCounter.recheckOpeners(...)` periodically rebuilds the open
+count by querying `Level.getEntities(null, new AABB(pos).inflate(range), ...)`
+around the stored block-entity position. Topology changes that separate storage
+coordinates from visible coordinates must keep both the block-event packet
+position and this opener search in mind.
+
 ## Audit Questions
 
 - Is a block entity unique by canonical storage position, visible position, or both?

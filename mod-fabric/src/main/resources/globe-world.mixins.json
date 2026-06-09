@@ -22,6 +22,7 @@
 		"ClientboundPlayerLookAtPacketAccessor",
 		"ClientboundSectionBlocksUpdatePacketAccessor",
 		"ChunkMapPlayerProviderMixin",
+		"ContainerOpenersCounterMixin",
 		"DensityFunctionsNoiseMixin",
 		"DensityFunctionsShiftAMixin",
 		"DensityFunctionsShiftBMixin",

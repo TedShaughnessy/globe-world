@@ -45,7 +45,9 @@ public class PlayerListBroadcastMixin {
             if (player != except && player.level().dimension().equals(dimension)) {
                 ServerLevel level = player.level();
                 if (WorldEventPacketUtil.wrappedDistanceSqr(level, source, player) < rangeSqr) {
-                    player.connection.send(WorldEventPacketUtil.virtualizeFor(packet, player));
+                    for (Packet<?> virtualPacket : WorldEventPacketUtil.virtualizeForLoadedAliases(packet, player)) {
+                        player.connection.send(virtualPacket);
+                    }
                 }
             }
         }
