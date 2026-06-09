@@ -12,7 +12,6 @@ import globe.world.config.DayNightCycleMode;
 import globe.world.config.GlobeSettings;
 import globe.world.config.GameplaySettings;
 import globe.world.config.PresentationSettings;
-import globe.world.config.TilingSettings;
 import globe.world.config.GlobeSettingsHolder;
 import globe.world.config.TopologySettings;
 import globe.world.diagnostics.DiagnosticsChannel;
@@ -58,7 +57,7 @@ public final class GlobeDebugCommands {
 
     @FunctionalInterface
     private interface SettingsUpdater {
-        TilingSettings apply(TilingSettings settings) throws CommandSyntaxException;
+        GlobeSettings apply(GlobeSettings settings) throws CommandSyntaxException;
     }
 
     public static void register() {
@@ -139,15 +138,17 @@ public final class GlobeDebugCommands {
                                 .then(Commands.argument("percent", IntegerArgumentType.integer(0, 100))
                                         .executes(context -> updateSettings(
                                                 context.getSource(),
-                                                settings -> settings.withCurvaturePercent(
-                                                        IntegerArgumentType.getInteger(context, "percent")),
+                                                settings -> settings.withPresentation(
+                                                        settings.presentation().withCurvaturePercent(
+                                                                IntegerArgumentType.getInteger(context, "percent"))),
                                                 "Updated Overworld curvature"))))
                         .then(Commands.literal("nether_curvature")
                                 .then(Commands.argument("percent", IntegerArgumentType.integer(0, 100))
                                         .executes(context -> updateSettings(
                                                 context.getSource(),
-                                                settings -> settings.withNetherCurvaturePercent(
-                                                        IntegerArgumentType.getInteger(context, "percent")),
+                                                settings -> settings.withPresentation(
+                                                        settings.presentation().withNetherCurvaturePercent(
+                                                                IntegerArgumentType.getInteger(context, "percent"))),
                                                 "Updated Nether curvature"))))
                         .then(Commands.literal("day_night")
                                 .then(Commands.argument("mode", StringArgumentType.word())
@@ -155,16 +156,18 @@ public final class GlobeDebugCommands {
                                                 new String[]{"vanilla", "scrolling"}, builder))
                                         .executes(context -> updateSettings(
                                                 context.getSource(),
-                                                settings -> settings.withDayNightCycleMode(dayNightMode(context, "mode")),
+                                                settings -> settings.withGameplay(
+                                                        settings.gameplay().withDayNightCycleMode(dayNightMode(context, "mode"))),
                                                 "Updated day/night mode"))))
                         .then(Commands.literal("day_length")
                                 .then(Commands.argument("multiplier", DoubleArgumentType.doubleArg(
-                                                TilingSettings.DAY_LENGTH_HALF_MULTIPLIER,
-                                                TilingSettings.DAY_LENGTH_MAX_MULTIPLIER))
+                                                GameplaySettings.DAY_LENGTH_HALF_MULTIPLIER,
+                                                GameplaySettings.DAY_LENGTH_MAX_MULTIPLIER))
                                         .executes(context -> updateSettings(
                                                 context.getSource(),
-                                                settings -> settings.withDayLengthMultiplier(
-                                                        DoubleArgumentType.getDouble(context, "multiplier")),
+                                                settings -> settings.withGameplay(
+                                                        settings.gameplay().withDayLengthMultiplier(
+                                                                DoubleArgumentType.getDouble(context, "multiplier"))),
                                                 "Updated day length")))));
     }
 
@@ -549,13 +552,11 @@ public final class GlobeDebugCommands {
     private static int updateSettings(CommandSourceStack source, SettingsUpdater updater, String message)
             throws CommandSyntaxException {
         GlobeSettings oldGlobeSettings = GlobeConfig.globeSettings();
-        TilingSettings oldSettings = oldGlobeSettings.toTilingSettings().sanitized();
-        TilingSettings newSettings = updater.apply(oldSettings).sanitized();
-        if (newSettings.equals(oldSettings)) {
+        GlobeSettings newGlobeSettings = updater.apply(oldGlobeSettings);
+        if (newGlobeSettings.equals(oldGlobeSettings)) {
             source.sendSuccess(() -> Component.literal(message + ": already set"), false);
             return 0;
         }
-        GlobeSettings newGlobeSettings = oldGlobeSettings.withRuntimeSettings(newSettings);
 
         ((GlobeSettingsHolder) (Object) source.getServer().getWorldGenSettings()).globeWorld$setGlobeSettings(newGlobeSettings);
         source.getServer().getWorldGenSettings().setDirty();

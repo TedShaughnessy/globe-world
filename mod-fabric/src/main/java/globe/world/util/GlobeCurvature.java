@@ -2,7 +2,6 @@ package globe.world.util;
 
 import globe.world.config.GlobeConfig;
 import globe.world.config.PresentationSettings;
-import globe.world.config.TilingSettings;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
@@ -12,7 +11,7 @@ public final class GlobeCurvature {
     private static final double MIN_TINY_TILE_CURVATURE_DROP_CLAMP_DISTANCE_BLOCKS = 64.0D;
     private static final int SMALL_TILE_CURVATURE_LIMIT_CHUNKS = 15;
     private static final int TINY_TILE_CURVATURE_LIMIT_CHUNKS = 6;
-    private static final float NORMAL_MAX_CURVATURE_SCALE = TilingSettings.CURVATURE_REALISTIC_SCALE;
+    private static final float NORMAL_MAX_CURVATURE_SCALE = PresentationSettings.CURVATURE_REALISTIC_SCALE;
     private static final float TINY_TILE_MAX_CURVATURE_SCALE = 24.0F;
 
     private GlobeCurvature() {
@@ -39,7 +38,7 @@ public final class GlobeCurvature {
         float tileSize = sanitizedTileSizeChunks * 16.0F;
         float curvatureScale = curvatureScaleForTileSize(
                 sanitizedTileSizeChunks,
-                TilingSettings.curvatureScaleFromPercent(curvaturePercent)
+                PresentationSettings.curvatureScaleFromPercent(curvaturePercent)
         );
         if (curvatureScale <= 0.0F) {
             return 0.0D;

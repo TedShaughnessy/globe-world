@@ -4,6 +4,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import globe.world.util.TerrainMode;
 
+import java.util.List;
+
 public record TopologySettings(
         TilingMode mode,
         int tileSize,
@@ -15,7 +17,41 @@ public record TopologySettings(
         int netherPortalScaleDenominator,
         boolean forceMissingStronghold,
         boolean forceMissingNetherFortress) {
-    public static final TopologySettings DEFAULT = from(TilingSettings.DEFAULT);
+    public static final int FORCED_STRUCTURE_SMALL_TILE_MAX_CHUNKS = 256;
+    public static final int DEFAULT_NETHER_TILE_SIZE_CHUNKS = Math.max(1, GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS / 8);
+    public static final int DEFAULT_NETHER_PORTAL_SCALE_NUMERATOR = 8;
+    public static final int DEFAULT_NETHER_PORTAL_SCALE_DENOMINATOR = 1;
+
+    private static final PortalScale DEFAULT_NETHER_PORTAL_SCALE = new PortalScale(
+            DEFAULT_NETHER_PORTAL_SCALE_NUMERATOR,
+            DEFAULT_NETHER_PORTAL_SCALE_DENOMINATOR
+    );
+    private static final List<PortalScale> ALLOWED_NETHER_PORTAL_SCALES = List.of(
+            new PortalScale(1, 32),
+            new PortalScale(1, 16),
+            new PortalScale(1, 8),
+            new PortalScale(1, 4),
+            new PortalScale(1, 2),
+            new PortalScale(1, 1),
+            new PortalScale(2, 1),
+            new PortalScale(4, 1),
+            DEFAULT_NETHER_PORTAL_SCALE,
+            new PortalScale(16, 1),
+            new PortalScale(32, 1)
+    );
+
+    public static final TopologySettings DEFAULT = new TopologySettings(
+            TilingMode.DISABLED,
+            GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS,
+            TerrainMode.AUTO,
+            TilingMode.DISABLED,
+            TerrainMode.AUTO,
+            DEFAULT_NETHER_TILE_SIZE_CHUNKS,
+            DEFAULT_NETHER_PORTAL_SCALE_NUMERATOR,
+            DEFAULT_NETHER_PORTAL_SCALE_DENOMINATOR,
+            false,
+            false
+    );
     public static final Codec<TopologySettings> CODEC =
             RecordCodecBuilder.create(instance ->
                     instance.group(
@@ -33,47 +69,33 @@ public record TopologySettings(
             );
 
     public TopologySettings {
-        TilingSettings sanitized = new TilingSettings(
-                mode,
-                tileSize,
-                terrainMode,
-                PresentationSettings.DEFAULT.curvaturePercent(),
-                PresentationSettings.DEFAULT.netherCurvaturePercent(),
-                netherMode,
-                netherTerrainMode,
-                netherTileSize,
-                netherPortalScaleNumerator,
-                netherPortalScaleDenominator,
-                GameplaySettings.DEFAULT.dayNightCycleMode(),
-                GameplaySettings.DEFAULT.dayLengthMultiplier(),
-                forceMissingStronghold,
-                forceMissingNetherFortress
-        ).sanitized();
-        mode = sanitized.mode();
-        tileSize = sanitized.tileSize();
-        terrainMode = sanitized.terrainMode();
-        netherMode = sanitized.netherMode();
-        netherTerrainMode = sanitized.netherTerrainMode();
-        netherTileSize = sanitized.netherTileSize();
-        netherPortalScaleNumerator = sanitized.netherPortalScaleNumerator();
-        netherPortalScaleDenominator = sanitized.netherPortalScaleDenominator();
-        forceMissingStronghold = sanitized.forceMissingStronghold();
-        forceMissingNetherFortress = sanitized.forceMissingNetherFortress();
+        int sanitizedTileSize = sanitizeTileSize(tileSize);
+        int sanitizedNetherTileSize = sanitizeTileSize(netherTileSize);
+        TilingMode sanitizedMode = mode != null ? mode : TilingMode.DISABLED;
+        TilingMode sanitizedNetherMode = netherMode != null ? netherMode : TilingMode.DISABLED;
+        PortalScale scale = sanitizeNetherPortalScale(netherPortalScaleNumerator, netherPortalScaleDenominator);
+        mode = sanitizedMode;
+        tileSize = sanitizedTileSize;
+        terrainMode = sanitizeTerrainMode(sanitizedMode, terrainMode);
+        netherMode = sanitizedNetherMode;
+        netherTerrainMode = sanitizeTerrainMode(sanitizedNetherMode, netherTerrainMode);
+        netherTileSize = sanitizedNetherTileSize;
+        netherPortalScaleNumerator = scale.numerator();
+        netherPortalScaleDenominator = scale.denominator();
     }
 
-    public static TopologySettings from(TilingSettings settings) {
-        TilingSettings sanitized = settings.sanitized();
+    public static TopologySettings square(int tileSize) {
         return new TopologySettings(
-                sanitized.mode(),
-                sanitized.tileSize(),
-                sanitized.terrainMode(),
-                sanitized.netherMode(),
-                sanitized.netherTerrainMode(),
-                sanitized.netherTileSize(),
-                sanitized.netherPortalScaleNumerator(),
-                sanitized.netherPortalScaleDenominator(),
-                sanitized.forceMissingStronghold(),
-                sanitized.forceMissingNetherFortress()
+                TilingMode.SQUARE,
+                tileSize,
+                TerrainMode.AUTO,
+                TilingMode.DISABLED,
+                TerrainMode.AUTO,
+                defaultNetherTileSize(tileSize),
+                DEFAULT_NETHER_PORTAL_SCALE_NUMERATOR,
+                DEFAULT_NETHER_PORTAL_SCALE_DENOMINATOR,
+                defaultForceMissingStronghold(TilingMode.SQUARE, tileSize),
+                false
         );
     }
 
@@ -108,62 +130,178 @@ public record TopologySettings(
         return "1:%d".formatted(netherPortalScaleNumerator);
     }
 
-    public TilingSettings toTilingSettings(PresentationSettings presentation, GameplaySettings gameplay) {
-        return new TilingSettings(
-                mode,
+    public TopologySettings withMode(TilingMode newMode) {
+        return new TopologySettings(
+                newMode,
                 tileSize,
                 terrainMode,
-                presentation.curvaturePercent(),
-                presentation.netherCurvaturePercent(),
                 netherMode,
                 netherTerrainMode,
                 netherTileSize,
                 netherPortalScaleNumerator,
                 netherPortalScaleDenominator,
-                gameplay.dayNightCycleMode(),
-                gameplay.dayLengthMultiplier(),
-                forceMissingStronghold,
+                defaultForceMissingStronghold(newMode, tileSize),
                 forceMissingNetherFortress
-        ).sanitized();
-    }
-
-    public TopologySettings withMode(TilingMode newMode) {
-        return from(asAdapter().withMode(newMode));
+        );
     }
 
     public TopologySettings withTileSize(int newTileSize) {
-        return from(asAdapter().withTileSize(newTileSize));
+        return new TopologySettings(
+                mode,
+                newTileSize,
+                TerrainMode.AUTO,
+                netherMode,
+                netherTerrainMode,
+                netherTileSize,
+                netherPortalScaleNumerator,
+                netherPortalScaleDenominator,
+                defaultForceMissingStronghold(mode, newTileSize),
+                forceMissingNetherFortress
+        );
     }
 
     public TopologySettings withTerrainMode(TerrainMode newTerrainMode) {
-        return from(asAdapter().withTerrainMode(newTerrainMode));
+        return new TopologySettings(
+                mode,
+                tileSize,
+                newTerrainMode,
+                netherMode,
+                netherTerrainMode,
+                netherTileSize,
+                netherPortalScaleNumerator,
+                netherPortalScaleDenominator,
+                forceMissingStronghold,
+                forceMissingNetherFortress
+        );
     }
 
     public TopologySettings withNetherMode(TilingMode newNetherMode) {
-        return from(asAdapter().withNetherMode(newNetherMode));
+        return new TopologySettings(
+                mode,
+                tileSize,
+                terrainMode,
+                newNetherMode,
+                TerrainMode.AUTO,
+                netherTileSize,
+                netherPortalScaleNumerator,
+                netherPortalScaleDenominator,
+                forceMissingStronghold,
+                defaultForceMissingNetherStructure(newNetherMode, netherTileSize)
+        );
     }
 
     public TopologySettings withNetherTerrainMode(TerrainMode newNetherTerrainMode) {
-        return from(asAdapter().withNetherTerrainMode(newNetherTerrainMode));
+        return new TopologySettings(
+                mode,
+                tileSize,
+                terrainMode,
+                netherMode,
+                newNetherTerrainMode,
+                netherTileSize,
+                netherPortalScaleNumerator,
+                netherPortalScaleDenominator,
+                forceMissingStronghold,
+                forceMissingNetherFortress
+        );
     }
 
     public TopologySettings withNetherTileSize(int newNetherTileSize) {
-        return from(asAdapter().withNetherTileSize(newNetherTileSize));
+        int sanitizedNetherTileSize = sanitizeTileSize(newNetherTileSize);
+        return new TopologySettings(
+                mode,
+                tileSize,
+                terrainMode,
+                netherMode,
+                TerrainMode.AUTO,
+                sanitizedNetherTileSize,
+                netherPortalScaleNumerator,
+                netherPortalScaleDenominator,
+                forceMissingStronghold,
+                defaultForceMissingNetherStructure(netherMode, sanitizedNetherTileSize)
+        );
     }
 
     public TopologySettings withNetherPortalScale(int numerator, int denominator) {
-        return from(asAdapter().withNetherPortalScale(numerator, denominator));
+        PortalScale scale = sanitizeNetherPortalScale(numerator, denominator);
+        return new TopologySettings(
+                mode,
+                tileSize,
+                terrainMode,
+                netherMode,
+                netherTerrainMode,
+                netherTileSize,
+                scale.numerator(),
+                scale.denominator(),
+                forceMissingStronghold,
+                forceMissingNetherFortress
+        );
     }
 
     public TopologySettings withForceMissingStronghold(boolean newForceMissingStronghold) {
-        return from(asAdapter().withForceMissingStronghold(newForceMissingStronghold));
+        return new TopologySettings(
+                mode,
+                tileSize,
+                terrainMode,
+                netherMode,
+                netherTerrainMode,
+                netherTileSize,
+                netherPortalScaleNumerator,
+                netherPortalScaleDenominator,
+                newForceMissingStronghold,
+                forceMissingNetherFortress
+        );
     }
 
     public TopologySettings withForceMissingNetherFortress(boolean newForceMissingNetherFortress) {
-        return from(asAdapter().withForceMissingNetherFortress(newForceMissingNetherFortress));
+        return new TopologySettings(
+                mode,
+                tileSize,
+                terrainMode,
+                netherMode,
+                netherTerrainMode,
+                netherTileSize,
+                netherPortalScaleNumerator,
+                netherPortalScaleDenominator,
+                forceMissingStronghold,
+                newForceMissingNetherFortress
+        );
     }
 
-    private TilingSettings asAdapter() {
-        return toTilingSettings(PresentationSettings.DEFAULT, GameplaySettings.DEFAULT);
+    public static int defaultNetherTileSize(int overworldTileSize) {
+        int sanitizedTileSize = sanitizeTileSize(overworldTileSize);
+        return sanitizedTileSize >= 8 && sanitizedTileSize % 8 == 0
+                ? Math.max(1, sanitizedTileSize / 8)
+                : sanitizedTileSize;
+    }
+
+    private static TerrainMode sanitizeTerrainMode(TilingMode tilingMode, TerrainMode terrainMode) {
+        if (tilingMode != TilingMode.SQUARE || terrainMode == null || terrainMode == TerrainMode.DISABLED) {
+            return TerrainMode.AUTO;
+        }
+        return terrainMode;
+    }
+
+    private static int sanitizeTileSize(int tileSize) {
+        return Math.max(1, tileSize);
+    }
+
+    private static PortalScale sanitizeNetherPortalScale(int numerator, int denominator) {
+        PortalScale requested = new PortalScale(Math.max(1, numerator), Math.max(1, denominator));
+        return ALLOWED_NETHER_PORTAL_SCALES.contains(requested) ? requested : DEFAULT_NETHER_PORTAL_SCALE;
+    }
+
+    private static boolean defaultForceMissingStronghold(TilingMode mode, int tileSize) {
+        return mode == TilingMode.SQUARE && isSmallProgressionTile(tileSize);
+    }
+
+    private static boolean defaultForceMissingNetherStructure(TilingMode mode, int tileSize) {
+        return mode == TilingMode.SQUARE && isSmallProgressionTile(tileSize);
+    }
+
+    private static boolean isSmallProgressionTile(int tileSize) {
+        return sanitizeTileSize(tileSize) <= FORCED_STRUCTURE_SMALL_TILE_MAX_CHUNKS;
+    }
+
+    private record PortalScale(int numerator, int denominator) {
     }
 }

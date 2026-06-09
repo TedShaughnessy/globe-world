@@ -51,9 +51,8 @@ Each high-risk migration should have its own test matrix and rollback point.
 ## Compatibility Notes
 
 - The split settings migration intentionally does not import worlds whose
-  `globe_world` field still has the old `TilingSettings` shape. Remaining
-  `TilingSettings` usage is an internal call-site adapter and normalizer, not
-  saved-data compatibility. The saved-settings holder is `GlobeSettingsHolder`;
-  create-world controls edit topology through `TopologySettings`, curvature
-  through `PresentationSettings`, and day/night behavior through
-  `GameplaySettings`.
+  `globe_world` field still has the old `TilingSettings` shape. The
+  `TilingSettings` adapter has been removed; the saved-settings holder is
+  `GlobeSettingsHolder`. Create-world controls edit topology through
+  `TopologySettings`, curvature through `PresentationSettings`, and day/night
+  behavior through `GameplaySettings`.

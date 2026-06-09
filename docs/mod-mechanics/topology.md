@@ -85,7 +85,8 @@ eight Nether blocks map to one Overworld block.
 - `mod-fabric/src/main/java/globe/world/util/DimensionTiling.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContexts.java`
-- `mod-fabric/src/main/java/globe/world/config/TilingSettings.java`
+- `mod-fabric/src/main/java/globe/world/config/TopologySettings.java`
+- `mod-fabric/src/main/java/globe/world/config/GlobeSettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeConfig.java`
 - `mod-fabric/src/main/java/globe/world/mixin/WorldGenSettingsMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ServerLevelTicksDimensionMixin.java`
@@ -132,9 +133,9 @@ vanilla `WorldGenSettings`. It serializes durable topology, presentation, and
 gameplay groups. Diagnostics remain session-local command state and are not part
 of saved settings. The codec only accepts the split schema; older flat
 `TilingSettings` saved data is not imported. `GlobeSettingsHolder` is the
-world-creation and saved-settings boundary. `TilingSettings` remains a
-short-lived internal adapter and normalizer for call sites that have not yet
-been migrated to split settings. `DimensionTiling` reads topology through
+world-creation and saved-settings boundary. `TopologySettings`,
+`PresentationSettings`, and `GameplaySettings` now own their normalization and
+update helpers directly. `DimensionTiling` reads topology through
 `TopologySettings`, and the settings UI edits topology, presentation, and
 gameplay as separate `GlobeSettings` sections. Runtime commands still mutate
 only presentation/gameplay fields such as curvature, day/night mode, and

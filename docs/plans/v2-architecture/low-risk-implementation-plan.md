@@ -75,7 +75,9 @@ Completed:
   runtime.
 - The saved-settings holder is named `GlobeSettingsHolder`. Settings UI controls
   now mutate `TopologySettings`, `PresentationSettings`, and `GameplaySettings`
-  directly; `TilingSettings` is limited to adapter and normalization paths.
+  directly.
+- `TilingSettings` has been removed; split settings records own normalization
+  and update helpers directly.
 
 Verification:
 
@@ -88,8 +90,8 @@ Verification:
 ### Continue Caller Migration
 
 These facades are now available, but many older callers still correctly use
-`CoordUtil`, `AiAliasUtil`, and `TilingSettings` as an internal adapter. Future
-cleanup can migrate them gradually when touching nearby behavior:
+`CoordUtil` and `AiAliasUtil` as internal adapters. Future cleanup can migrate
+them gradually when touching nearby behavior:
 
 - packet helpers can use `TopologyContext` names at boundaries;
 - AI/range/pathing mixins can consume `ActorLocalTargets`;

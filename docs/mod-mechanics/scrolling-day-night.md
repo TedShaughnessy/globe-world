@@ -49,7 +49,7 @@ vanilla's Overworld clock rate, matching the `/time rate` command model.
 `/globeworld config set day_night <vanilla|scrolling>` and
 `/globeworld config set day_length <0.5-10>` update these saved settings at
 runtime. Day-length command values up to `0.75` are sanitized to `0.5`; larger
-values are sanitized to whole-number multipliers, matching `TilingSettings`.
+values are sanitized to whole-number multipliers by `GameplaySettings`.
 
 ## Longitude Math
 

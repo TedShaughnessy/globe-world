@@ -313,17 +313,13 @@ phases may still need a degraded path or compatibility adapters.
 
 Viability: high, but still worth doing.
 
-The current settings record mixes several responsibilities:
+The original settings record mixed several responsibilities:
 
 - topology and generation: `mode`, `tileSize`, terrain modes, Nether tiling,
-  Nether portal scale, forced progression structure policy
-  (`TilingSettings.java:10`);
-- presentation: Overworld/Nether curvature percentages
-  (`TilingSettings.java:15`);
-- runtime gameplay: day/night cycle mode and day length multiplier
-  (`TilingSettings.java:21`);
-- saved defaults and migration/sanitization behavior in the same record
-  (`TilingSettings.java:88`, `TilingSettings.java:435`).
+  Nether portal scale, forced progression structure policy;
+- presentation: Overworld/Nether curvature percentages;
+- runtime gameplay: day/night cycle mode and day length multiplier;
+- saved defaults and migration/sanitization behavior in the same record.
 
 Runtime commands already respect part of the desired separation. `/globeworld
 config set` exposes curvature, day/night mode, and day length, but not tile
@@ -343,9 +339,10 @@ load diagnostics, spillover cleanup/staleness, and interesting block mutations
 (`ClientActionDiagnostics.java:62`, `WorldGenSpillover.java:180`,
 `WorldGenSpillover.java:197`, `LevelSetBlockBroadcastMixin.java:157`).
 
-V2 should split `TilingSettings` into smaller records. Because v2 does not need
-to load v1 worlds, the new records can have their own clean codecs instead of
-preserving the current flat saved shape:
+This has since been implemented by deleting the flat `TilingSettings` adapter
+and splitting saved settings into smaller records. Because v2 does not need to
+load v1 worlds, the new records have their own clean codecs instead of
+preserving the old flat saved shape:
 
 - `TopologySettings`
 - `PresentationSettings`
