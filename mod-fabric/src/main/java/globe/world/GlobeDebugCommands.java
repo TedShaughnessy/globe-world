@@ -13,7 +13,7 @@ import globe.world.config.GlobeSettings;
 import globe.world.config.GameplaySettings;
 import globe.world.config.PresentationSettings;
 import globe.world.config.TilingSettings;
-import globe.world.config.TilingSettingsHolder;
+import globe.world.config.GlobeSettingsHolder;
 import globe.world.config.TopologySettings;
 import globe.world.diagnostics.DiagnosticsChannel;
 import globe.world.diagnostics.GlobeDiagnostics;
@@ -557,7 +557,7 @@ public final class GlobeDebugCommands {
         }
         GlobeSettings newGlobeSettings = oldGlobeSettings.withRuntimeSettings(newSettings);
 
-        ((TilingSettingsHolder) (Object) source.getServer().getWorldGenSettings()).globeWorld$setGlobeSettings(newGlobeSettings);
+        ((GlobeSettingsHolder) (Object) source.getServer().getWorldGenSettings()).globeWorld$setGlobeSettings(newGlobeSettings);
         source.getServer().getWorldGenSettings().setDirty();
         GlobeConfig.setGlobeSettings(newGlobeSettings);
         GlobeDayLength.applyToServer(source.getServer(), newGlobeSettings.gameplay());

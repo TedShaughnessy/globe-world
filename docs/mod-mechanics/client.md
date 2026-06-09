@@ -76,6 +76,9 @@ previews such as inventory players and special item models flat.
 in-world options screen. Its interactive controls include hover tooltips for
 custom topology methods, Overworld and Nether curvature, day-length multiplier,
 day/night behavior, and forced progression-structure toggles.
+The controls mutate the split `GlobeSettings` sections directly: topology
+controls update `TopologySettings`, curvature controls update
+`PresentationSettings`, and day/night controls update `GameplaySettings`.
 In remote multiplayer, the in-world screen shows the synced server settings as
 read-only; local clients cannot silently edit only their own `GlobeConfig`.
 The forced progression-structure toggles are editable only during world

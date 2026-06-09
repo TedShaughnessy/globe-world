@@ -22,4 +22,12 @@ public record PresentationSettings(int curvaturePercent, int netherCurvaturePerc
         TilingSettings sanitized = settings.sanitized();
         return new PresentationSettings(sanitized.curvaturePercent(), sanitized.netherCurvaturePercent());
     }
+
+    public PresentationSettings withCurvaturePercent(int newCurvaturePercent) {
+        return new PresentationSettings(newCurvaturePercent, netherCurvaturePercent);
+    }
+
+    public PresentationSettings withNetherCurvaturePercent(int newNetherCurvaturePercent) {
+        return new PresentationSettings(curvaturePercent, newNetherCurvaturePercent);
+    }
 }

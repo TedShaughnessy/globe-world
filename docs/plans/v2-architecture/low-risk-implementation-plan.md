@@ -73,6 +73,9 @@ Completed:
 - The world creation state and settings UI now pass `GlobeSettings`; topology
   is world-creation-only, while presentation and gameplay can be edited at
   runtime.
+- The saved-settings holder is named `GlobeSettingsHolder`. Settings UI controls
+  now mutate `TopologySettings`, `PresentationSettings`, and `GameplaySettings`
+  directly; `TilingSettings` is limited to adapter and normalization paths.
 
 Verification:
 
@@ -90,7 +93,8 @@ cleanup can migrate them gradually when touching nearby behavior:
 
 - packet helpers can use `TopologyContext` names at boundaries;
 - AI/range/pathing mixins can consume `ActorLocalTargets`;
-- config readers can move through `GlobeConfig` split accessors.
+- remaining config readers can move through `GlobeConfig` split accessors and
+  direct split settings helpers as nearby code is touched.
 
 ## Out Of Scope
 

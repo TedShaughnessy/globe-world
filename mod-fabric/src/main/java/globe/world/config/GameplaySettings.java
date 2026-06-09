@@ -22,4 +22,12 @@ public record GameplaySettings(DayNightCycleMode dayNightCycleMode, double dayLe
         TilingSettings sanitized = settings.sanitized();
         return new GameplaySettings(sanitized.dayNightCycleMode(), sanitized.dayLengthMultiplier());
     }
+
+    public GameplaySettings withDayNightCycleMode(DayNightCycleMode newDayNightCycleMode) {
+        return new GameplaySettings(newDayNightCycleMode, dayLengthMultiplier);
+    }
+
+    public GameplaySettings withDayLengthMultiplier(double newDayLengthMultiplier) {
+        return new GameplaySettings(dayNightCycleMode, newDayLengthMultiplier);
+    }
 }

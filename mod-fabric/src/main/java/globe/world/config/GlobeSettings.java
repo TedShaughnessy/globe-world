@@ -39,6 +39,10 @@ public record GlobeSettings(
         return topology.toTilingSettings(presentation, gameplay);
     }
 
+    public GlobeSettings withTopology(TopologySettings newTopology) {
+        return new GlobeSettings(newTopology, presentation, gameplay);
+    }
+
     public GlobeSettings withPresentation(PresentationSettings newPresentation) {
         return new GlobeSettings(topology, newPresentation, gameplay);
     }

@@ -1,7 +1,7 @@
 package globe.world.client.mixin;
 
 import globe.world.config.GlobeSettings;
-import globe.world.config.TilingSettingsHolder;
+import globe.world.config.GlobeSettingsHolder;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationContext;
 import net.minecraft.core.LayeredRegistryAccess;
 import net.minecraft.server.RegistryLayer;
@@ -18,40 +18,40 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(WorldCreationContext.class)
-public class WorldCreationContextMixin implements TilingSettingsHolder {
+public class WorldCreationContextMixin implements GlobeSettingsHolder {
     @Unique
     private GlobeSettings globeWorld$settings = GlobeSettings.DEFAULT;
 
     @Inject(method = "<init>(Lnet/minecraft/world/level/levelgen/WorldGenSettings;Lnet/minecraft/core/LayeredRegistryAccess;Lnet/minecraft/server/ReloadableServerResources;Lnet/minecraft/world/level/WorldDataConfiguration;)V", at = @At("TAIL"))
-    private void globeWorld$copyTilingSettings(
+    private void globeWorld$copyGlobeSettings(
             WorldGenSettings worldGenSettings,
             LayeredRegistryAccess<RegistryLayer> loadedRegistries,
             ReloadableServerResources dataPackResources,
             WorldDataConfiguration dataConfiguration,
             CallbackInfo ci) {
-        globeWorld$setGlobeSettings(((TilingSettingsHolder) (Object) worldGenSettings).globeWorld$getGlobeSettings());
+        globeWorld$setGlobeSettings(((GlobeSettingsHolder) (Object) worldGenSettings).globeWorld$getGlobeSettings());
     }
 
     @Inject(method = "withSettings", at = @At("RETURN"))
-    private void globeWorld$copyTilingSettingsToUpdatedSettings(
+    private void globeWorld$copyGlobeSettingsToUpdatedSettings(
             WorldOptions options,
             WorldDimensions dimensions,
             CallbackInfoReturnable<WorldCreationContext> cir) {
-        globeWorld$copyTilingSettingsTo(cir.getReturnValue());
+        globeWorld$copyGlobeSettingsTo(cir.getReturnValue());
     }
 
     @Inject(method = "withOptions", at = @At("RETURN"))
-    private void globeWorld$copyTilingSettingsToUpdatedOptions(
+    private void globeWorld$copyGlobeSettingsToUpdatedOptions(
             WorldCreationContext.OptionsModifier modifier,
             CallbackInfoReturnable<WorldCreationContext> cir) {
-        globeWorld$copyTilingSettingsTo(cir.getReturnValue());
+        globeWorld$copyGlobeSettingsTo(cir.getReturnValue());
     }
 
     @Inject(method = "withDimensions", at = @At("RETURN"))
-    private void globeWorld$copyTilingSettingsToUpdatedDimensions(
+    private void globeWorld$copyGlobeSettingsToUpdatedDimensions(
             WorldCreationContext.DimensionsUpdater modifier,
             CallbackInfoReturnable<WorldCreationContext> cir) {
-        globeWorld$copyTilingSettingsTo(cir.getReturnValue());
+        globeWorld$copyGlobeSettingsTo(cir.getReturnValue());
     }
 
     @Override
@@ -65,7 +65,7 @@ public class WorldCreationContextMixin implements TilingSettingsHolder {
     }
 
     @Unique
-    private void globeWorld$copyTilingSettingsTo(WorldCreationContext context) {
-        ((TilingSettingsHolder) (Object) context).globeWorld$setGlobeSettings(globeWorld$settings);
+    private void globeWorld$copyGlobeSettingsTo(WorldCreationContext context) {
+        ((GlobeSettingsHolder) (Object) context).globeWorld$setGlobeSettings(globeWorld$settings);
     }
 }

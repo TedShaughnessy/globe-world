@@ -1,7 +1,7 @@
 package globe.world.network;
 
 import globe.world.config.GlobeSettings;
-import globe.world.config.TilingSettingsHolder;
+import globe.world.config.GlobeSettingsHolder;
 import net.fabricmc.fabric.api.networking.v1.FabricServerConfigurationPacketListenerImpl;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
@@ -49,7 +49,7 @@ public final class GlobeWorldNetworking {
     }
 
     private static void configureJoiningClient(ServerConfigurationPacketListenerImpl listener, MinecraftServer server) {
-        GlobeSettings settings = ((TilingSettingsHolder) (Object) server.getWorldGenSettings())
+        GlobeSettings settings = ((GlobeSettingsHolder) (Object) server.getWorldGenSettings())
                 .globeWorld$getGlobeSettings();
         if (!ServerConfigurationNetworking.canSend(listener, GlobeWorldSettingsPayload.TYPE)) {
             if (requiresClient(settings)) {

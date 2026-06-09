@@ -2,7 +2,7 @@ package globe.world.client;
 
 import globe.world.config.GlobeConfig;
 import globe.world.config.GlobeSettings;
-import globe.world.config.TilingSettingsHolder;
+import globe.world.config.GlobeSettingsHolder;
 import globe.world.network.GlobeWorldNetworking;
 import globe.world.util.GlobeDayLength;
 import net.minecraft.client.Minecraft;
@@ -33,7 +33,7 @@ public final class GlobeClientSettings {
 
         server.executeBlocking(() -> {
             WorldGenSettings worldGenSettings = server.getWorldGenSettings();
-            ((TilingSettingsHolder) (Object) worldGenSettings).globeWorld$setGlobeSettings(sanitized);
+            ((GlobeSettingsHolder) (Object) worldGenSettings).globeWorld$setGlobeSettings(sanitized);
             worldGenSettings.setDirty();
             GlobeConfig.setGlobeSettings(sanitized);
             if (previous.gameplay().dayLengthMultiplier() != sanitized.gameplay().dayLengthMultiplier()) {

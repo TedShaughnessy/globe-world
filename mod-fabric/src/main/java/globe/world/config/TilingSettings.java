@@ -7,6 +7,10 @@ import globe.world.util.TerrainMode;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Short-lived adapter for legacy flat settings call sites. Saved worlds use
+ * {@link GlobeSettings}; new callers should prefer the split settings records.
+ */
 public record TilingSettings(
         TilingMode mode,
         int tileSize,

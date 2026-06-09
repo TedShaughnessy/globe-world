@@ -131,11 +131,14 @@ config`, but intentionally are not mutable through runtime commands.
 vanilla `WorldGenSettings`. It serializes durable topology, presentation, and
 gameplay groups. Diagnostics remain session-local command state and are not part
 of saved settings. The codec only accepts the split schema; older flat
-`TilingSettings` saved data is not imported. `TilingSettings` remains an
-internal adapter for call sites that have not yet been migrated to split
-settings. `DimensionTiling` reads topology through `TopologySettings`. Runtime
-commands still mutate only presentation/gameplay fields such as curvature,
-day/night mode, and day-length multiplier.
+`TilingSettings` saved data is not imported. `GlobeSettingsHolder` is the
+world-creation and saved-settings boundary. `TilingSettings` remains a
+short-lived internal adapter and normalizer for call sites that have not yet
+been migrated to split settings. `DimensionTiling` reads topology through
+`TopologySettings`, and the settings UI edits topology, presentation, and
+gameplay as separate `GlobeSettings` sections. Runtime commands still mutate
+only presentation/gameplay fields such as curvature, day/night mode, and
+day-length multiplier.
 
 ## Related Vanilla Mechanics
 

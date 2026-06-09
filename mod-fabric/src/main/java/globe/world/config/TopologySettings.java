@@ -126,4 +126,44 @@ public record TopologySettings(
                 forceMissingNetherFortress
         ).sanitized();
     }
+
+    public TopologySettings withMode(TilingMode newMode) {
+        return from(asAdapter().withMode(newMode));
+    }
+
+    public TopologySettings withTileSize(int newTileSize) {
+        return from(asAdapter().withTileSize(newTileSize));
+    }
+
+    public TopologySettings withTerrainMode(TerrainMode newTerrainMode) {
+        return from(asAdapter().withTerrainMode(newTerrainMode));
+    }
+
+    public TopologySettings withNetherMode(TilingMode newNetherMode) {
+        return from(asAdapter().withNetherMode(newNetherMode));
+    }
+
+    public TopologySettings withNetherTerrainMode(TerrainMode newNetherTerrainMode) {
+        return from(asAdapter().withNetherTerrainMode(newNetherTerrainMode));
+    }
+
+    public TopologySettings withNetherTileSize(int newNetherTileSize) {
+        return from(asAdapter().withNetherTileSize(newNetherTileSize));
+    }
+
+    public TopologySettings withNetherPortalScale(int numerator, int denominator) {
+        return from(asAdapter().withNetherPortalScale(numerator, denominator));
+    }
+
+    public TopologySettings withForceMissingStronghold(boolean newForceMissingStronghold) {
+        return from(asAdapter().withForceMissingStronghold(newForceMissingStronghold));
+    }
+
+    public TopologySettings withForceMissingNetherFortress(boolean newForceMissingNetherFortress) {
+        return from(asAdapter().withForceMissingNetherFortress(newForceMissingNetherFortress));
+    }
+
+    private TilingSettings asAdapter() {
+        return toTilingSettings(PresentationSettings.DEFAULT, GameplaySettings.DEFAULT);
+    }
 }

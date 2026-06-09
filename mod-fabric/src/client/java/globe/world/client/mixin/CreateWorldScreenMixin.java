@@ -2,7 +2,7 @@ package globe.world.client.mixin;
 
 import globe.world.client.GlobeWorldTab;
 import globe.world.client.GlobeWorldCreateState;
-import globe.world.config.TilingSettingsHolder;
+import globe.world.config.GlobeSettingsHolder;
 import net.minecraft.client.gui.components.tabs.Tab;
 import net.minecraft.client.gui.components.tabs.TabNavigationBar;
 import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
@@ -35,12 +35,12 @@ public class CreateWorldScreenMixin {
     }
 
     @Inject(method = "createWorldAndCleanup", at = @At("HEAD"))
-    private void globeWorld$saveTilingSettings(
+    private void globeWorld$saveGlobeSettings(
             LayeredRegistryAccess<RegistryLayer> registries,
             LevelDataAndDimensions.WorldDataAndGenSettings dataAndGenSettings,
             Optional<GameRules> gameRules,
         CallbackInfo ci) {
-        ((TilingSettingsHolder) (Object) dataAndGenSettings.genSettings())
+        ((GlobeSettingsHolder) (Object) dataAndGenSettings.genSettings())
                 .globeWorld$setGlobeSettings(GlobeWorldCreateState.get());
     }
 }
