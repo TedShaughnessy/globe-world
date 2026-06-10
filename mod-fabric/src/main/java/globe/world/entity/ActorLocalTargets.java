@@ -2,15 +2,20 @@ package globe.world.entity;
 
 import globe.world.topology.TopologyContext;
 import globe.world.topology.TopologyContexts;
+import globe.world.topology.TopologicalEntityQueries;
 import globe.world.util.AiAliasUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public final class ActorLocalTargets {
     private ActorLocalTargets() {
@@ -50,6 +55,44 @@ public final class ActorLocalTargets {
 
     public static AABB box(Entity actor, Entity target) {
         return AiAliasUtil.nearestAliasBoundingBox(actor, target);
+    }
+
+    public static List<Entity> entitiesInActorRange(
+            Entity actor,
+            Entity except,
+            AABB actorLocalBox,
+            Predicate<? super Entity> selector) {
+        return TopologicalEntityQueries.entities(actor.level(), except, actorLocalBox, selector);
+    }
+
+    public static <T extends Entity> List<T> targetsInActorRange(
+            Entity actor,
+            Class<T> entityClass,
+            AABB actorLocalBox,
+            Predicate<? super T> selector) {
+        return TopologicalEntityQueries.entitiesOfClass(actor.level(), entityClass, actorLocalBox, selector);
+    }
+
+    public static <T extends LivingEntity> T nearestTarget(
+            LivingEntity actor,
+            Iterable<? extends T> candidates,
+            Predicate<? super T> selector) {
+        return java.util.stream.StreamSupport.stream(candidates.spliterator(), false)
+                .filter(selector)
+                .min(Comparator.comparingDouble(candidate -> distanceToSqr(actor, candidate)))
+                .orElse(null);
+    }
+
+    public static List<Entity> entitiesInBox(Level level, Entity except, AABB visibleBox, Predicate<? super Entity> selector) {
+        return TopologicalEntityQueries.entities(level, except, visibleBox, selector);
+    }
+
+    public static <T extends Entity> List<T> entitiesOfClassInBox(
+            Level level,
+            Class<T> entityClass,
+            AABB visibleBox,
+            Predicate<? super T> selector) {
+        return TopologicalEntityQueries.entitiesOfClass(level, entityClass, visibleBox, selector);
     }
 
     public static double distanceToSqr(Entity actor, Entity target) {

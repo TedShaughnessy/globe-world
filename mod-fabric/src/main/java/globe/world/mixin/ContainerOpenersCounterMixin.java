@@ -2,10 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.CoordUtil;
-import globe.world.util.DimensionTiling;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
+import globe.world.topology.TopologicalEntityQueries;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.ContainerOpenersCounter;
@@ -31,22 +28,6 @@ public class ContainerOpenersCounterMixin {
             AABB searchBox,
             Predicate<? super Entity> selector,
             Operation<List<Entity>> original) {
-        List<Entity> entities = original.call(level, except, searchBox, selector);
-        if (!(level instanceof ServerLevel serverLevel) || !DimensionTiling.forLevel(level).enabled()) {
-            return entities;
-        }
-
-        for (ServerPlayer player : serverLevel.players()) {
-            if (entities.contains(player)) {
-                continue;
-            }
-
-            AABB virtualSearchBox = CoordUtil.virtualAabb(level, searchBox, player.getX(), player.getZ());
-            if (virtualSearchBox.intersects(player.getBoundingBox()) && selector.test(player)) {
-                entities.add(player);
-            }
-        }
-
-        return entities;
+        return TopologicalEntityQueries.entities(level, except, searchBox, selector);
     }
 }

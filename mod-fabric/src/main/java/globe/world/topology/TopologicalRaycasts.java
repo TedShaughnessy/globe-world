@@ -4,8 +4,6 @@ import com.mojang.datafixers.util.Either;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
@@ -59,18 +57,9 @@ public final class TopologicalRaycasts {
         List<EntitySweepHit> hits = new ArrayList<>();
         Set<Entity> candidates = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
 
-        AABB canonicalSearchBox = context.canonicalBox(searchBox);
-        for (Entity entity : level.getEntities(source, canonicalSearchBox, matching)) {
+        for (Entity entity : TopologicalEntityQueries.entities(level, source, searchBox, matching)) {
             if (candidates.add(entity)) {
                 addEntityHits(level, context, source, from, to, searchBox, matching, options, hits, entity);
-            }
-        }
-
-        if (context.enabled() && level instanceof ServerLevel serverLevel) {
-            for (ServerPlayer player : serverLevel.players()) {
-                if (candidates.add(player)) {
-                    addEntityHits(level, context, source, from, to, searchBox, matching, options, hits, player);
-                }
             }
         }
 

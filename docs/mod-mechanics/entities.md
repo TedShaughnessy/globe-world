@@ -62,6 +62,9 @@ cancelled for non-canonical chunks.
 local tile frame. `ActorLocalTargets` packages the same calculations into an
 `ActorLocalTargetView` containing the canonical position, actor-local position,
 actor-local hitbox, wrapped distances, same-level status, and aliasing status.
+Broad query helpers route through `TopologicalEntityQueries`, which splits
+visible-frame lookup boxes across canonical tile edges, dedupes canonical
+entity identity, and adds alias-frame server players.
 Alias line of sight now delegates to the v2 `TopologicalRaycasts` primitive,
 which returns visible-frame block hits with canonical hit identity.
 Targeting conditions, nearest-entity selection, brain sensors, target retention,
@@ -107,12 +110,11 @@ arrow or thrown trident can hit a player or mob through the visible wrapped
 copy.
 
 Splash-potion area effects use wrapped entity candidates and wrapped falloff
-distance. `ThrownSplashPotionAliasEffectMixin` keeps vanilla's initial list,
-adds entities found through the canonical query box plus alias-frame players,
-then measures each candidate against the hit potion AABB using that entity's
-nearest alias box. This lets witch splash potions apply status effects to
-players and mobs visible in an alias tile while preserving vanilla duration
-scaling and instant-effect math.
+distance. `ThrownSplashPotionAliasEffectMixin` gathers candidates through the
+shared topological entity query, then measures each candidate against the hit
+potion AABB using that entity's nearest alias box. This lets witch splash
+potions apply status effects to players and mobs visible in an alias tile while
+preserving vanilla duration scaling and instant-effect math.
 
 Entity-derived path requests target the nearest alias block position. Small
 tiles expand the request to nearby whole-tile target aliases so vanilla's
@@ -172,7 +174,7 @@ canonicalized but currently sit outside canonical X/Z.
   `MobDespawnDistanceMixin`.
 - AI and pathing:
   `AiAliasUtil`, `ActorLocalTargetView`, `ActorLocalTargets`,
-  `TopologicalRaycasts`,
+  `TopologicalEntityQueries`, `TopologicalRaycasts`,
   `MobNavigationAliasUtil`, `TargetingConditionsMixin`,
   `ServerEntityGetterMixin`, `NearestLivingEntitySensorMixin`, `SensingMixin`,
   `TargetGoalMixin`, `PathNavigationMixin`, `GroundPathNavigationMixin`,
@@ -193,7 +195,7 @@ canonicalized but currently sit outside canonical X/Z.
 - Projectile collision:
   `AbstractArrowAliasCollisionMixin`, `ThrownSplashPotionAliasEffectMixin`,
   `ProjectileAliasUtil`, `ProjectileUtilTopologicalMoveMixin`,
-  `TopologicalRaycasts`.
+  `TopologicalEntityQueries`, `TopologicalRaycasts`.
 - Player interaction and presentation:
   `PlayerInteractionRangeMixin`, `PlayerItemPickupMixin`,
   `FishingHookMixin`,

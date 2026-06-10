@@ -66,6 +66,9 @@ The first low-risk v2 pass has been implemented and folded into
   [Client diagnostics](../../mod-mechanics/client.md#local-sky-and-diagnostics).
 - `ActorLocalTargetView` and `ActorLocalTargets`: see
   [Entities](../../mod-mechanics/entities.md).
+- `TopologicalEntityQueries` broad entity lookup boxes: see
+  [Topology](../../mod-mechanics/topology.md) and
+  [Entities](../../mod-mechanics/entities.md).
 - Runtime block/chunk helper migration through `TopologyContext`: see
   [Chunks](../../mod-mechanics/chunks.md) and
   [Blocks And Ticks](../../mod-mechanics/blocks-and-ticks.md).

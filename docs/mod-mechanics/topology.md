@@ -55,6 +55,20 @@ arithmetic.
 Canonicalization is used before state access. Virtualization is used when
 building viewer-facing positions, especially packets and tracking decisions.
 
+## Topological Entity Queries
+
+`TopologicalEntityQueries` is the v2 boundary for broad entity lookup boxes. It
+keeps vanilla entity identity and predicates, but gathers candidates from every
+canonical slice touched by a visible-frame query box. A query near the canonical
+tile edge is split across the wrapped X/Z edges instead of only wrapping the
+box center.
+
+The helper dedupes by entity identity, includes canonical non-player storage,
+and adds server players whose nearest visible alias intersects the query box.
+`ActorLocalTargets` exposes actor-facing adapters such as
+`targetsInActorRange(...)`, while projectile, pickup, container-open, sensor,
+and `ServerEntityGetter` hooks use the same lower-level primitive.
+
 ## Topological Raycast Primitives
 
 `TopologicalRaycasts` is the v2 boundary for ray-like topology queries. It keeps
@@ -122,6 +136,7 @@ eight Nether blocks map to one Overworld block.
 - `mod-fabric/src/main/java/globe/world/util/DimensionTiling.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContexts.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologicalEntityQueries.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologicalRaycasts.java`
 - `mod-fabric/src/main/java/globe/world/config/TopologySettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeSettings.java`

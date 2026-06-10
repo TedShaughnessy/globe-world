@@ -25,8 +25,9 @@ primitive yet beyond v1 behavior and planning notes.
 | Area | Done so far | Remaining |
 | --- | --- | --- |
 | Topology access layer | The low-risk access helpers are in place and several runtime systems call them. | Decide which remaining utilities should move behind the layer; keep server authority, presentation, and alias visibility boundaries clear. |
-| Actor-local entity targets | `ActorLocalTargetView` / `ActorLocalTargets` package existing AI alias behavior and are used by debug commands, nearest-entity selection, and look-at goals. | Broader AI/range/pathing callers can migrate as nearby behavior is touched; wider `EntityGetter` replacement is still a design risk. |
-| Migration strategy | Phases 2 and 3 have substantial implemented pieces; phase 4 has first primitives for entity targets and raycasts. | Worldgen window work, broad entity-query migration, visual/diagnostic polish, and eventual v1 adapter retirement still need separate passes. |
+| Actor-local entity targets | `ActorLocalTargetView` / `ActorLocalTargets` package existing AI alias behavior and are used by debug commands, nearest-entity selection, actor-range queries, and look-at goals. | Broader AI/range/pathing callers can migrate as nearby behavior is touched; wider raw `EntityGetter` replacement is still a design risk. |
+| Broad entity-query replacement | `TopologicalEntityQueries` gathers visible-frame entity boxes through canonical tile-edge splits, identity dedupe, and alias-frame players. `ServerEntityGetter`, brain sensors, pickup, container-open checks, splash-potion candidates, and ray sweeps use it. | Audit remaining raw `EntityGetter` callers, especially collision-style queries and places where visible-frame boxes would affect vanilla side effects. |
+| Migration strategy | Phases 2 and 3 have substantial implemented pieces; phase 4 has primitives for entity targets, broad entity queries, and raycasts. | Worldgen window work, visual/diagnostic polish, and eventual v1 adapter retirement still need separate passes. |
 | Seam-behavior checklist | [Seam-Behavior Checklist](seam-test-matrix.md) now captures manual checks and automation candidates for preserving v1 behavior during v2 migration. | Convert the crispest checks into automated tests or command diagnostics as the harness matures. |
 
 ## Not Started
@@ -34,7 +35,6 @@ primitive yet beyond v1 behavior and planning notes.
 | Area | Notes |
 | --- | --- |
 | `GenerationWindow` / full toroidal worldgen window | V1 spillover and structure handling still exist, but the explicit v2 generation-window primitive has not been built. |
-| Broad entity-query replacement | Existing targeted mixins and `ActorLocalTargets` cover important cases, but there is no general v2 query API such as `targetsInActorRange(...)`. |
 | V1 adapter retirement | `CoordUtil`, `AiAliasUtil`, and targeted mixins remain valid backing utilities/adapters until their callers are migrated deliberately. |
 
 ## Next Sensible Pieces
