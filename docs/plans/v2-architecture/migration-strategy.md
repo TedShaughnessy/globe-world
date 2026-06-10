@@ -19,10 +19,10 @@ while preserving behavior.
 - Add coordinate-frame naming and `TopologyContext`. Implemented; durable
   behavior now lives in [Topology](../../mod-mechanics/topology.md).
 - Add topology access helpers while keeping existing v1 utilities alive.
-- Add topological raycast prototypes behind unused or low-risk adapter paths.
+- Add topological raycast primitives behind unused or low-risk adapter paths.
   Implemented for alias line of sight, arrow-family entity/block hits, and the
   shared server-side projectile move-vector path; durable behavior now lives in
-  [Topology](../../mod-mechanics/topology.md#topological-raycast-prototypes)
+  [Topology](../../mod-mechanics/topology.md#topological-raycast-primitives)
   and [Entities](../../mod-mechanics/entities.md#ai-interaction-and-pathing).
 - Add diagnostics channels without changing gameplay behavior. Implemented; see
   [Client diagnostics](../../mod-mechanics/client.md#local-sky-and-diagnostics).
@@ -44,9 +44,9 @@ while preserving behavior.
 
 - Broad entity queries; the first `ActorLocalTargetView` facade is implemented
   and documented in [Entities](../../mod-mechanics/entities.md).
-- Projectile and raycast behavior has an implemented shared prototype. Remaining
-  work is audit-focused: client prediction visuals, class-specific projectile
-  movement quirks, very long rays, and optional raycast diagnostics.
+- Projectile and raycast authority has an implemented shared primitive. Client
+  projectile prediction visuals, very long rays, and optional raycast
+  diagnostics remain polish/regression work rather than migration blockers.
 - Worldgen generation window and spillover ownership.
 
 Each high-risk migration should have its own test matrix and rollback point.

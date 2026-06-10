@@ -49,7 +49,7 @@ World period:
 | --- | --- | --- |
 | Coordinate helpers | Done | [topology.md](topology.md) |
 | Dimension-specific tiling | Implemented | [topology.md](topology.md) |
-| Topological raycast primitives | Implemented prototype | [topology.md](topology.md) |
+| Topological raycast primitives | Implemented | [topology.md](topology.md) |
 | Chunk lookup and packet relabeling | Done | [chunks.md](chunks.md) |
 | Canonical chunk lifetime | Done | [chunks.md](chunks.md) |
 | Multiple rendered aliases | Done | [chunks.md](chunks.md) |

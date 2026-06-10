@@ -62,12 +62,13 @@ Status keys:
 | Case | Setup | Expected behavior | Status |
 | --- | --- | --- | --- |
 | Block picking | Pick blocks across the visible seam on the client. | The hit result corresponds to the visible alias and canonical block owner. | Manual |
-| Arrow-family block hit | Shoot an arrow or trident at a block just across a seam. | Server block collision uses the topological clip and hits the visible target. | Manual |
-| Arrow-family entity hit | Shoot an entity visible across a seam. | Entity collision tests visible alias hitboxes and reports the canonical entity. | Manual |
-| Thrown projectile move-vector path | Throw snowballs, eggs, ender pearls, potions, or similar projectiles across a seam. | The shared server move-vector path can hit wrapped blocks/entities. | Manual |
-| Class-specific projectile visuals | Check fireworks, shulker bullets, fishing bobbers, wind charges, fireballs, and trident return. | Server authority remains correct; any client-side correction snaps or visual discontinuities are recorded. | Manual |
-| Long ray behavior | Test long lines of sight or projectiles spanning more than one tile width. | Alias scan radius limits are understood and documented for that caller. | Open design |
-| Raycast diagnostic command | Add or use a future `/globeworld raycast` command at a seam. | The report shows raw, canonical, visible hit, entity, and block frames. | Open design |
+| Arrow-family block hit | Shoot an arrow or trident at a block just across a seam. | Server block collision uses the topological clip and hits the visible target. | Implemented; manual regression |
+| Arrow-family entity hit | Shoot an entity visible across a seam. | Entity collision tests visible alias hitboxes and reports the canonical entity. | Implemented; manual regression |
+| Thrown projectile move-vector path | Throw snowballs, eggs, ender pearls, potions, or similar projectiles across a seam. | The shared server move-vector path can hit wrapped blocks/entities. | Implemented; manual regression |
+| Shared view/attack ray helpers | Brush a block or use an attack-range component weapon across a seam. | Server validation and entity sweeps use wrapped block/entity targets. | Implemented; manual regression |
+| Class-specific projectile visuals | Check fireworks, shulker bullets, fishing bobbers, wind charges, fireballs, and trident return. | Server authority remains correct; any client-side correction snaps or visual discontinuities are recorded. | Visual polish |
+| Long ray behavior | Test long lines of sight or projectiles spanning more than one tile width. | Alias scan radius limits are understood and documented for that caller. | Regression watch |
+| Raycast diagnostic command | Add or use a future `/globeworld raycast` command at a seam. | The report shows raw, canonical, visible hit, entity, and block frames. | Optional diagnostic |
 
 ## Portals, Travel, And Player State
 

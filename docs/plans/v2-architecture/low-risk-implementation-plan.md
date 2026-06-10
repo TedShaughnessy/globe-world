@@ -134,10 +134,12 @@ them gradually when touching nearby behavior:
 
 These remain future/high-risk work and should keep their own plans:
 
-- general topological block clipping;
-- projectile swept movement;
 - broad entity query replacement;
 - `GenerationWindow` / full toroidal worldgen window.
+
+General topological block clipping and projectile swept movement have since
+been implemented in `TopologicalRaycasts`; keep their remaining visual and
+long-ray checks in the seam test matrix rather than this low-risk plan.
 
 ## Cross-Milestone Checks
 

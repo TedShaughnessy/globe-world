@@ -50,9 +50,10 @@ Durable behavior has moved to the mod mechanics docs for
 [`ActorLocalTargetView`](../../mod-mechanics/entities.md). The settings split
 uses `GlobeSettings` as the actual saved/network schema.
 
-The less-low-risk slices are the ones that change vanilla execution semantics:
-general topological block clipping, projectile swept movement, broader entity
-query replacement, and the worldgen `GenerationWindow`.
+The less-low-risk slices are the ones that change vanilla execution semantics.
+General topological block clipping and projectile swept movement are now
+implemented through `TopologicalRaycasts`; broader entity query replacement and
+the worldgen `GenerationWindow` remain separate high-risk work.
 
 See [Low-Risk Implementation Plan](low-risk-implementation-plan.md) for the
 completed low-risk status and remaining follow-up.
@@ -231,32 +232,33 @@ query in the level.
 
 ## Topological Raycasts
 
-Viability: moderate. This is one of the places where v2 would add a real new
+Viability: implemented. This is one of the places where v2 added a real new
 primitive rather than mostly reorganizing existing code.
 
-Current coverage is useful but fragmented:
+Current coverage now enters `TopologicalRaycasts`:
 
 - AI line of sight maps the target eye to an actor-local alias and then calls
-  vanilla `clip` (`AiAliasUtil.java:200`). This proves alias endpoint selection,
-  not a general wrapped block ray.
+  `TopologicalRaycasts.topologicalLineOfSight(...)` through `AiAliasUtil`.
 - Arrow entity collision keeps vanilla hits and adds wrapped entity hitboxes
-  through `ProjectileAliasUtil.addWrappedEntityHits`
-  (`AbstractArrowAliasCollisionMixin.java:21`,
-  `ProjectileAliasUtil.java:26`). The result still references the real entity,
-  which is exactly the canonical identity model v2 wants.
+  through `ProjectileAliasUtil.addWrappedEntityHits`. The result still
+  references the real entity, which is exactly the canonical identity model v2
+  wants.
+- Arrow-family block clipping uses `TopologicalRaycasts.topologicalClip(...)`
+  through `AbstractArrowAliasCollisionMixin`.
+- Shared server-side `ProjectileUtil` move-vector, view-vector, and
+  attack-range ray helpers use `TopologicalRaycasts` through
+  `ProjectileUtilTopologicalMoveMixin`.
 - `ProjectileAliasUtil` can also extend splash-potion style area queries with
-  canonical and alias-frame entities (`ProjectileAliasUtil.java:59`).
+  canonical and alias-frame entities.
 - Client picking has a separate curved ray implementation in
   `GlobeCurvedRaycast`, including block and entity picking
   (`GlobeCurvedRaycast.java:25`, `GlobeCurvedRaycast.java:60`,
   `GlobeCurvedRaycast.java:105`). `LocalPlayerMixin` replaces local picking
   with this helper (`LocalPlayerMixin.java:14`).
 
-The missing primitive is a server-authoritative topological block clip/swept
-movement API. Projectile launch vectors, arrow entity hits, and fishing
-owner/pullback behavior can be alias-aware, but general projectile block
-collision still follows vanilla space unless a specific projectile path has
-been patched.
+The server-authoritative topological block clip/swept movement API now exists.
+Remaining work is bounded to visual prediction, long-ray regression checks, and
+optional diagnostics rather than core projectile collision authority.
 
 V2 should define bounded scan rules early. For short interactions, testing the
 nearest alias frame is enough. For long rays or very small tiles, the ray can
@@ -367,9 +369,9 @@ suggests a sharper order:
 3. Introduce `ActorLocalTargetView` and migrate AI mixins gradually. Keep
    class-specific ranged attack adapters where vanilla side effects are
    intertwined.
-4. Prototype topological block clipping and projectile swept collision behind
-   debug-only or narrow projectile paths before replacing broader movement
-   behavior.
+4. Keep topological block clipping and projectile/raycast authority in the
+   shared `TopologicalRaycasts` primitive, with client visual prediction and
+   long-ray behavior covered by regression checks.
 5. Extract `GenerationWindow` only after preserving the existing spillover and
    structure-shift tests/manual cases.
 6. Split saved settings into clean v2 schemas and keep diagnostics session-only.

@@ -62,7 +62,7 @@ cancelled for non-canonical chunks.
 local tile frame. `ActorLocalTargets` packages the same calculations into an
 `ActorLocalTargetView` containing the canonical position, actor-local position,
 actor-local hitbox, wrapped distances, same-level status, and aliasing status.
-Alias line of sight now delegates to the v2 `TopologicalRaycasts` prototype,
+Alias line of sight now delegates to the v2 `TopologicalRaycasts` primitive,
 which returns visible-frame block hits with canonical hit identity.
 Targeting conditions, nearest-entity selection, brain sensors, target retention,
 line of sight, look controls, melee checks, ranged-goal distance checks, and
@@ -86,18 +86,21 @@ sources, such as zombies, to the victim's nearest alias before those checks run,
 so a seam-adjacent melee hit pushes and blocks as if the attacker were in the
 visible wrapped tile.
 
-Projectile collision uses the v2 `TopologicalRaycasts` prototypes for the
+Projectile collision uses the v2 `TopologicalRaycasts` primitives for the
 server-authoritative move-vector path. `ProjectileUtilTopologicalMoveMixin`
 routes vanilla's shared `ProjectileUtil.getHitResultOnMoveVector(...)` overloads
 through `topologicalProjectileMove(...)`, covering thrown items, fishing
 bobbers, llama spit, shulker bullets, fireworks, fireballs, and wind charges.
 The result keeps visible-frame hit locations for movement while block callbacks
 receive canonical block positions and entity hits point at the real entity.
+The same mixin also routes server-side `ProjectileUtil` view-vector and
+attack-range helpers through topological rays, so shared brush validation and
+component-weapon sweeps use wrapped block/entity targets instead of raw space.
 
 Arrows and tridents have separate vanilla arrow-family paths, so
 `AbstractArrowAliasCollisionMixin` also wraps their direct block clip. It keeps
 vanilla arrow entity hits, then uses `ProjectileAliasUtil` and the v2 entity
-sweep prototype to test candidate entities in the nearest alias frame to the
+sweep primitive to test candidate entities in the nearest alias frame to the
 projectile's movement segment. Damage, pierce tracking, pickup, trident return,
 and enchantment behavior stay on vanilla's entity identity while a skeleton
 arrow or thrown trident can hit a player or mob through the visible wrapped

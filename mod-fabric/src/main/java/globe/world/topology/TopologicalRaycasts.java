@@ -1,5 +1,6 @@
 package globe.world.topology;
 
+import com.mojang.datafixers.util.Either;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
@@ -8,6 +9,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.item.component.AttackRange;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
@@ -18,6 +20,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -101,6 +104,56 @@ public final class TopologicalRaycasts {
         ).visibleHit().getType() == HitResult.Type.MISS;
     }
 
+    public static HitResult topologicalViewVector(
+            Entity source,
+            Predicate<Entity> matching,
+            double distance) {
+        Vec3 delta = source.getViewVector(0.0F).scale(distance);
+        Vec3 from = source.getEyePosition();
+        Vec3 to = from.add(delta);
+        Level level = source.level();
+        BlockTraceResult blockHit = topologicalClip(
+                level,
+                from,
+                to,
+                new BlockTraceOptions(ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, source, true)
+        );
+        Vec3 entityTo = blockHit.visibleHit().getType() == HitResult.Type.MISS
+                ? to
+                : blockHit.visibleHit().getLocation();
+        List<EntitySweepHit> entityHits = topologicalEntitySweep(
+                level,
+                source,
+                from,
+                entityTo,
+                source.getBoundingBox().expandTowards(delta).inflate(1.0D),
+                matching,
+                new EntitySweepOptions(ClipContext.Block.COLLIDER, 0.0F, false, DEFAULT_ALIAS_TILE_RADIUS)
+        );
+        return entityHits.isEmpty() ? blockHit.visibleHitWithCanonicalBlock() : entityHits.getFirst().visibleHit();
+    }
+
+    public static Either<BlockHitResult, Collection<EntityHitResult>> topologicalHitEntitiesAlong(
+            Entity attacker,
+            AttackRange attackRange,
+            Predicate<Entity> matching,
+            ClipContext.Block blockClipType) {
+        Vec3 look = attacker.getHeadLookAngle();
+        Vec3 eyePosition = attacker.getEyePosition();
+        Vec3 from = eyePosition.add(look.scale(attackRange.effectiveMinRange(attacker)));
+        double movementComponent = attacker.getKnownMovement().dot(look);
+        Vec3 to = eyePosition.add(look.scale(attackRange.effectiveMaxRange(attacker) + Math.max(0.0D, movementComponent)));
+        return topologicalHitEntitiesAlong(
+                attacker,
+                eyePosition,
+                from,
+                matching,
+                to,
+                attackRange.hitboxMargin(),
+                blockClipType
+        );
+    }
+
     public static ProjectileMoveResult topologicalProjectileMove(
             Entity projectile,
             Vec3 nextPosition,
@@ -131,6 +184,44 @@ public final class TopologicalRaycasts {
         return new ProjectileMoveResult(from, nextPosition, blockHit, entityHits, firstHit);
     }
 
+    private static Either<BlockHitResult, Collection<EntityHitResult>> topologicalHitEntitiesAlong(
+            Entity source,
+            Vec3 origin,
+            Vec3 from,
+            Predicate<Entity> matching,
+            Vec3 to,
+            float entityMargin,
+            ClipContext.Block blockClipType) {
+        Level level = source.level();
+        BlockTraceResult blockHit = topologicalClip(
+                level,
+                origin,
+                to,
+                new BlockTraceOptions(blockClipType, ClipContext.Fluid.NONE, source, true)
+        );
+        BlockHitResult visibleBlockHit = blockHit.visibleHitWithCanonicalBlock();
+        if (visibleBlockHit.getType() != HitResult.Type.MISS) {
+            to = visibleBlockHit.getLocation();
+            if (origin.distanceToSqr(to) < origin.distanceToSqr(from)) {
+                return Either.left(visibleBlockHit);
+            }
+        }
+
+        AABB searchArea = AABB.ofSize(from, entityMargin, entityMargin, entityMargin)
+                .expandTowards(to.subtract(from))
+                .inflate(1.0D);
+        List<EntityHitResult> entityHits = topologicalEntitySweep(
+                level,
+                source,
+                from,
+                to,
+                searchArea,
+                matching,
+                new EntitySweepOptions(blockClipType, entityMargin, true, DEFAULT_ALIAS_TILE_RADIUS)
+        ).stream().map(EntitySweepHit::visibleHit).toList();
+        return entityHits.isEmpty() ? Either.left(visibleBlockHit) : Either.right(entityHits);
+    }
+
     private static void addEntityHits(
             Level level,
             TopologyContext context,
@@ -148,7 +239,7 @@ public final class TopologicalRaycasts {
 
         AABB canonicalBox = context.canonicalBox(entity.getBoundingBox());
         EntitySweepHit nearest = null;
-        for (AABB visibleBox : visibleBoxes(context, canonicalBox, from, searchBox, options.aliasTileRadius())) {
+        for (AABB visibleBox : visibleBoxes(context, canonicalBox, from, searchBox, options.entityMargin(), options.aliasTileRadius())) {
             EntityHitResult hit = findEntityHit(level, source, from, to, visibleBox, entity, options);
             if (hit != null) {
                 EntitySweepHit candidate = new EntitySweepHit(
@@ -169,7 +260,13 @@ public final class TopologicalRaycasts {
         }
     }
 
-    private static List<AABB> visibleBoxes(TopologyContext context, AABB canonicalBox, Vec3 from, AABB searchBox, int aliasTileRadius) {
+    private static List<AABB> visibleBoxes(
+            TopologyContext context,
+            AABB canonicalBox,
+            Vec3 from,
+            AABB searchBox,
+            float entityMargin,
+            int aliasTileRadius) {
         if (!context.enabled()) {
             return List.of(canonicalBox);
         }
@@ -181,7 +278,8 @@ public final class TopologicalRaycasts {
         double centerZ = (canonicalBox.minZ + canonicalBox.maxZ) * 0.5D;
         int baseTileX = CoordUtil.virtualBlockTileOffset(tiling, centerX, from.x());
         int baseTileZ = CoordUtil.virtualBlockTileOffset(tiling, centerZ, from.z());
-        AABB paddedSearchBox = searchBox.inflate(ProjectileUtil.DEFAULT_ENTITY_HIT_RESULT_MARGIN + 1.0E-7D);
+        double padding = Math.max(ProjectileUtil.DEFAULT_ENTITY_HIT_RESULT_MARGIN, entityMargin) + 1.0E-7D;
+        AABB paddedSearchBox = searchBox.inflate(padding);
         List<AABB> boxes = new ArrayList<>();
 
         for (int offsetX = -radius; offsetX <= radius; offsetX++) {

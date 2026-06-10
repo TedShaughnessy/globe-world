@@ -18,6 +18,7 @@ primitive yet beyond v1 behavior and planning notes.
 | Settings split | `GlobeSettings` is the saved/network schema with topology, presentation, and gameplay sections. Old flat `TilingSettings` data is not imported. | [Topology](../../mod-mechanics/topology.md), [Client](../../mod-mechanics/client.md#packet-and-cache-model) |
 | Low-risk block/chunk helper migration | Runtime chunk lookup, block mutation/access, ticks, packet fanout, chunk alias visibility, and related helpers now use `TopologyContext` names at subsystem boundaries. | [Topology](../../mod-mechanics/topology.md), [Chunks](../../mod-mechanics/chunks.md), [Blocks And Ticks](../../mod-mechanics/blocks-and-ticks.md) |
 | Entity and waypoint packet helper migration | Entity packet aliases, waypoint block/chunk aliases, wrapped waypoint range checks, and waypoint chunk visibility use topology-context frame helpers. | [Entities](../../mod-mechanics/entities.md) |
+| Topological raycasts and projectile authority | `TopologicalRaycasts` provides block clips, entity sweeps, line of sight, view-vector rays, attack-range sweeps, and projectile movement. Arrow-family paths, the shared server projectile move-vector path, and shared server `ProjectileUtil` ray helpers route through the primitive. | [Topology](../../mod-mechanics/topology.md), [Entities](../../mod-mechanics/entities.md) |
 
 ## Partial
 
@@ -25,8 +26,7 @@ primitive yet beyond v1 behavior and planning notes.
 | --- | --- | --- |
 | Topology access layer | The low-risk access helpers are in place and several runtime systems call them. | Decide which remaining utilities should move behind the layer; keep server authority, presentation, and alias visibility boundaries clear. |
 | Actor-local entity targets | `ActorLocalTargetView` / `ActorLocalTargets` package existing AI alias behavior and are used by debug commands, nearest-entity selection, and look-at goals. | Broader AI/range/pathing callers can migrate as nearby behavior is touched; wider `EntityGetter` replacement is still a design risk. |
-| Topological raycasts | `TopologicalRaycasts` provides block clips, entity sweeps, line of sight, and a projectile movement prototype used by arrow-family paths and the shared server move-vector path. | Audit client projectile prediction, very long rays, class-specific projectile visuals/movement, and optional raycast diagnostics. |
-| Migration strategy | Phases 2 and 3 have substantial implemented pieces; phase 4 has first primitives for entity targets and raycasts. | Worldgen window work, broad entity-query migration, remaining projectile audits, and eventual v1 adapter retirement still need separate passes. |
+| Migration strategy | Phases 2 and 3 have substantial implemented pieces; phase 4 has first primitives for entity targets and raycasts. | Worldgen window work, broad entity-query migration, visual/diagnostic polish, and eventual v1 adapter retirement still need separate passes. |
 | Seam-behavior checklist | [Seam-Behavior Checklist](seam-test-matrix.md) now captures manual checks and automation candidates for preserving v1 behavior during v2 migration. | Convert the crispest checks into automated tests or command diagnostics as the harness matures. |
 
 ## Not Started
@@ -41,8 +41,8 @@ primitive yet beyond v1 behavior and planning notes.
 
 1. Keep migrating nearby callers to `TopologyContext` and `ActorLocalTargets`
    opportunistically.
-2. Audit projectile classes that have class-specific movement or presentation
-   side effects.
+2. Keep client-side projectile prediction, long-ray behavior, and raycast
+   diagnostics on the seam checklist as polish/regression checks.
 3. Design `GenerationWindow` separately before touching worldgen ownership
    code.
 4. Convert the most deterministic seam checks into automated tests or focused

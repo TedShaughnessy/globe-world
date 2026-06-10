@@ -20,7 +20,7 @@ point for current behavior and modded code anchors.
   [Globe World Mod Mechanics](../mod-mechanics/README.md): topology context,
   packet policies, diagnostics channels, actor-local target views, and the
   split settings schema.
-- The first topological raycast prototype is implemented and folded into
-  [Topology](../mod-mechanics/topology.md#topological-raycast-prototypes):
-  block clips, entity sweeps, line of sight, arrow-family hits, and the shared
-  server-side projectile move-vector path.
+- The topological raycast primitive is implemented and folded into
+  [Topology](../mod-mechanics/topology.md#topological-raycast-primitives):
+  block clips, entity sweeps, line of sight, arrow-family hits, shared
+  server-side projectile movement, view-vector rays, and attack-range sweeps.

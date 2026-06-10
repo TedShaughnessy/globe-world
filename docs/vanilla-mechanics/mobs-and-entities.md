@@ -187,21 +187,32 @@ entity hits along the same raw segment.
 
 Important anchors:
 
-- `AbstractArrow.java:217` reads the block state at the arrow's raw block
+- `AbstractArrow.java:181` reads the block state at the arrow's raw block
   position.
-- `AbstractArrow.java:269` uses `Level.clipIncludingBorder(...)` for the raw
+- `AbstractArrow.java:258` uses `Level.clipIncludingBorder(...)` for the raw
   block ray.
-- `AbstractArrow.java:293` collects entity hits before deciding whether the
+- `AbstractArrow.java:281` collects entity hits before deciding whether the
   first result is an entity hit or the block hit.
 - `AbstractArrow.java:488` delegates entity collection to
   `ProjectileUtil.getManyEntityHitResult(...)`.
-- `ProjectileUtil.java:170` queries raw `Level.getEntities(...)` and clips raw
+- `ProjectileUtil.java:173` queries raw `Level.getEntities(...)` and clips raw
   entity bounding boxes.
+- `ProjectileUtil.java:31` and `ProjectileUtil.java:49` are the shared
+  move-vector helpers used by throwable item projectiles, fishing bobbers,
+  llama spit, shulker bullets, fireworks, hurting projectiles, and wind
+  charges.
+- `ProjectileUtil.java:56` is the shared view-vector helper used by brush
+  targeting.
+- `ProjectileUtil.java:38` is the shared attack-range sweep helper used by
+  attack-range component weapons.
 
 For wrapped worlds, launch vectors can be correct while vanilla arrow
 collisions still need a separate alias-box pass. The `EntityHitResult` can refer
 to the real entity even when the tested hitbox is a virtual copy, because
 vanilla damage and piercing state are stored on the real entity identity.
+Shared `ProjectileUtil` ray helpers need the same block-first/entity-sweep
+ordering as vanilla while replacing raw block positions with canonical block
+owners and testing real entities through their nearest visible alias boxes.
 
 ## Splash Potion Effects
 
@@ -213,15 +224,15 @@ effects only when `potionAabb.distanceToSqr(entityBox) < 16.0`.
 
 Important anchors:
 
-- `ThrowableProjectile.java:45` gets a move-vector hit result and moves the
+- `ThrowableProjectile.java:50` gets a move-vector hit result and moves the
   projectile to the impact location.
-- `AbstractThrownPotion.java:75` calls `onHitAsPotion(...)` for potion stacks
+- `AbstractThrownPotion.java:80` calls `onHitAsPotion(...)` for potion stacks
   with effects.
-- `ThrownSplashPotion.java:40` moves the potion bounding box to the hit
+- `ThrownSplashPotion.java:44` moves the potion bounding box to the hit
   location.
-- `ThrownSplashPotion.java:42` queries raw living entities in the inflated
+- `ThrownSplashPotion.java:46` queries raw living entities in the inflated
   splash box.
-- `ThrownSplashPotion.java:48` measures raw box-to-box splash distance before
+- `ThrownSplashPotion.java:53` measures raw box-to-box splash distance before
   calculating effect scale and duration.
 
 For wrapped worlds, both the affected-entity query and the per-target distance

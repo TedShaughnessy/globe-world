@@ -55,11 +55,11 @@ arithmetic.
 Canonicalization is used before state access. Virtualization is used when
 building viewer-facing positions, especially packets and tracking decisions.
 
-## Topological Raycast Prototypes
+## Topological Raycast Primitives
 
-`TopologicalRaycasts` is the v2 prototype boundary for ray-like topology
-queries. It keeps vanilla clip modes explicit while returning both visible-frame
-hit data and canonical hit identity:
+`TopologicalRaycasts` is the v2 boundary for ray-like topology queries. It keeps
+vanilla clip modes explicit while returning both visible-frame hit data and
+canonical hit identity:
 
 - `topologicalClip(...)` runs a block/fluid clip in the caller's visible frame
   and canonicalizes the hit block position and hit location.
@@ -67,8 +67,12 @@ hit data and canonical hit identity:
   visible alias hitboxes, returning the earliest visible hit per entity.
 - `topologicalLineOfSight(...)` maps a target into an actor-local frame before
   doing a collider clip.
-- `topologicalProjectileMove(...)` packages block clipping and entity sweep
-  pieces for later projectile movement migration.
+- `topologicalViewVector(...)` mirrors vanilla's shared view-vector ray helper
+  for server-side item validation paths such as brush targeting.
+- `topologicalHitEntitiesAlong(...)` mirrors vanilla's shared attack-range ray
+  helper for server-side component weapons.
+- `topologicalProjectileMove(...)` packages block clipping and entity sweep for
+  server-authoritative projectile movement.
 
 The default entity alias radius is intentionally zero, matching the existing v1
 projectile behavior of testing the nearest alias frame to the ray origin. Wider
@@ -81,10 +85,11 @@ with the canonical owner. Arrow block clipping uses this adapter so vanilla
 movement and entity ordering can stay visible-frame while block callbacks and
 state lookups receive canonical identity.
 
-`ProjectileUtilTopologicalMoveMixin` applies `topologicalProjectileMove(...)`
-to vanilla's shared server-side move-vector projectile hit path. Client-side
-prediction stays on vanilla's raw helper for now, while the server-authoritative
-hit result supplies canonical block/entity identity.
+`ProjectileUtilTopologicalMoveMixin` applies these primitives to vanilla's
+shared server-side `ProjectileUtil` ray helpers: move-vector projectile hits,
+view-vector hits, and attack-range entity sweeps. Client-side projectile
+prediction stays on vanilla's raw helper for now, while server-authoritative hit
+results supply canonical block/entity identity.
 
 ## Dimension Policy
 

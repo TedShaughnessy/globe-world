@@ -9,8 +9,8 @@ limitations.
 
 Projectile block clipping was the clearest example: a launch vector could be
 correct while the later collision path still used raw vanilla space. The shared
-move-vector path now uses topological hit results on the server, but individual
-projectile classes may still need visual or movement-specific audits.
+move-vector path and the remaining shared server `ProjectileUtil` ray helpers
+now use topological hit results.
 
 ## V2 Direction
 
@@ -18,12 +18,12 @@ Make topological raycasting and swept collision a first-class primitive. A
 caller should ask the topology layer to trace from one frame to another and get
 back both the canonical hit identity and the visible hit frame.
 
-## Implemented Prototype
+## Implemented Primitive
 
 The first shared primitive now lives in
 `mod-fabric/src/main/java/globe/world/topology/TopologicalRaycasts.java`.
 Durable behavior is documented in
-[Topology](../../mod-mechanics/topology.md#topological-raycast-prototypes).
+[Topology](../../mod-mechanics/topology.md#topological-raycast-primitives).
 
 Current entry points:
 
@@ -32,15 +32,18 @@ Current entry points:
 - `topologicalEntitySweep(...)`: canonical entity identity tested through
   visible alias hitboxes, with the earliest visible hit per entity.
 - `topologicalLineOfSight(...)`: actor-local target visibility.
-- `topologicalProjectileMove(...)`: combined block/entity movement prototype
-  for later projectile migration.
+- `topologicalViewVector(...)`: server-side view-vector block/entity hits.
+- `topologicalHitEntitiesAlong(...)`: server-side attack-range entity sweeps.
+- `topologicalProjectileMove(...)`: combined block/entity projectile movement.
 
-Existing v1 behavior now enters the prototype for alias line of sight,
+Existing v1 behavior now enters the primitive for alias line of sight,
 arrow-family entity alias hits, arrow-family block clipping, and the
 server-authoritative shared `ProjectileUtil.getHitResultOnMoveVector(...)` path
 used by thrown projectiles, fishing bobbers, fireworks, shulker bullets, llama
-spit, fireballs, and wind charges. Full class-specific movement/visual cleanup
-remains open work.
+spit, fireballs, and wind charges. The 2026-06-10 projectile/raycast audit also
+covered `ProjectileUtil.getHitResultOnViewVector(...)` and
+`ProjectileUtil.getHitEntitiesAlong(...)`, which are used by brush validation
+and attack-range component weapons.
 
 ## Requirements
 
@@ -75,16 +78,20 @@ segment.
 - Easier test matrix for wrapped blocks, wrapped entities, and obstructed seam
   cases.
 
-## Remaining Audits
+## Audit Result
 
-- Client-side projectile prediction still uses vanilla raw helpers. This keeps
-  the server authoritative and avoids changing presentation code during the
-  prototype, but seam-crossing projectiles should be watched for visible
-  correction snaps.
+The server-authoritative projectile/raycast primitive is implemented. Vanilla
+projectile classes that collide through the shared move-vector helper are
+covered by `ProjectileUtilTopologicalMoveMixin`; arrows and tridents are covered
+by `AbstractArrowAliasCollisionMixin`; splash-potion area effects keep their
+separate wrapped entity query.
+
+Remaining items are polish and regression checks, not v2 blockers:
+
+- Client-side projectile prediction still uses vanilla raw helpers. The server
+  remains authoritative, but seam-crossing projectiles should be watched for
+  visible correction snaps.
 - Very long rays still use the default nearest-alias entity radius unless a
   caller opts into `EntitySweepOptions.withAliasTileRadius(...)`.
-- Class-specific movement visuals remain worth auditing for fireworks, shulker
-  bullets, fishing bobbers, wind charges, and trident return behavior because
-  vanilla side effects are intertwined with their tick methods.
 - A `/globeworld raycast` diagnostic command would make future seam bug reports
-  easier to inspect, but is not required for the prototype.
+  easier to inspect, but is optional.
