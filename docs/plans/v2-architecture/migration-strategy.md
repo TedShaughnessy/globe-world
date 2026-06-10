@@ -19,7 +19,9 @@ while preserving behavior.
 - Add coordinate-frame naming and `TopologyContext`. Implemented; durable
   behavior now lives in [Topology](../../mod-mechanics/topology.md).
 - Add topology access helpers while keeping existing v1 utilities alive.
-- Add topological raycast prototypes behind unused or debug-only paths.
+- Add topological raycast prototypes behind unused or low-risk adapter paths.
+  Implemented; durable behavior now lives in
+  [Topology](../../mod-mechanics/topology.md#topological-raycast-prototypes).
 - Add diagnostics channels without changing gameplay behavior. Implemented; see
   [Client diagnostics](../../mod-mechanics/client.md#local-sky-and-diagnostics).
 

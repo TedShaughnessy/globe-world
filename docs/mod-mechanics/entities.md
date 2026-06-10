@@ -60,6 +60,8 @@ cancelled for non-canonical chunks.
 local tile frame. `ActorLocalTargets` packages the same calculations into an
 `ActorLocalTargetView` containing the canonical position, actor-local position,
 actor-local hitbox, wrapped distances, same-level status, and aliasing status.
+Alias line of sight now delegates to the v2 `TopologicalRaycasts` prototype,
+which returns visible-frame block hits with canonical hit identity.
 Targeting conditions, nearest-entity selection, brain sensors, target retention,
 line of sight, look controls, melee checks, ranged-goal distance checks, and
 move-toward-target goals use the nearest topological alias instead of raw
@@ -84,11 +86,12 @@ visible wrapped tile.
 
 Arrow entity collision supplements vanilla's raw entity raycast with wrapped
 entity hitboxes. `AbstractArrowAliasCollisionMixin` keeps vanilla hits, then
-uses `ProjectileAliasUtil` to test candidate entities in the nearest alias
-frame to the arrow's movement segment. The `EntityHitResult` still points at the
-real entity, so damage, pierce tracking, pickup, and enchantment behavior stay
-on vanilla's entity identity while a skeleton arrow can hit a player or mob
-through the visible wrapped copy.
+uses `ProjectileAliasUtil` and the v2 `TopologicalRaycasts` entity sweep
+prototype to test candidate entities in the nearest alias frame to the arrow's
+movement segment. The `EntityHitResult` still points at the real entity, so
+damage, pierce tracking, pickup, and enchantment behavior stay on vanilla's
+entity identity while a skeleton arrow can hit a player or mob through the
+visible wrapped copy.
 
 Splash-potion area effects use wrapped entity candidates and wrapped falloff
 distance. `ThrownSplashPotionAliasEffectMixin` keeps vanilla's initial list,
@@ -151,6 +154,7 @@ canonicalized but currently sit outside canonical X/Z.
   `MobDespawnDistanceMixin`.
 - AI and pathing:
   `AiAliasUtil`, `ActorLocalTargetView`, `ActorLocalTargets`,
+  `TopologicalRaycasts`,
   `MobNavigationAliasUtil`, `TargetingConditionsMixin`,
   `ServerEntityGetterMixin`, `NearestLivingEntitySensorMixin`, `SensingMixin`,
   `TargetGoalMixin`, `PathNavigationMixin`, `GroundPathNavigationMixin`,
@@ -170,7 +174,7 @@ canonicalized but currently sit outside canonical X/Z.
   `LivingEntityDamageSourceAliasMixin`, `DamageAliasUtil`.
 - Arrow collision:
   `AbstractArrowAliasCollisionMixin`, `ThrownSplashPotionAliasEffectMixin`,
-  `ProjectileAliasUtil`.
+  `ProjectileAliasUtil`, `TopologicalRaycasts`.
 - Player interaction and presentation:
   `PlayerInteractionRangeMixin`, `PlayerItemPickupMixin`,
   `FishingHookMixin`,

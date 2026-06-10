@@ -55,6 +55,9 @@ When investigating vanilla Minecraft behavior, inspect these sources before gues
 ## Working Notes
 
 - Prefer repo-local patterns and existing mixin style when changing code.
+- Treat `dev-work.md` as the user's informal scratchpad. Do not use it as
+  authoritative planning or implementation context unless the user explicitly
+  asks about it or points Codex to it.
 - Use `docs/vanilla-mechanics/README.md` as the progressive-disclosure index for vanilla Minecraft mechanics and source references.
 - Use `docs/mod-mechanics/README.md` as the entry point for project-specific behavior and update it when mechanics or implementation files change.
 - Use `docs/plans/README.md` for active/unimplemented work and update it when plans are added, implemented, superseded, or retired.

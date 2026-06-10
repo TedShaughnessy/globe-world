@@ -16,6 +16,27 @@ Make topological raycasting and swept collision a first-class primitive. A
 caller should ask the topology layer to trace from one frame to another and get
 back both the canonical hit identity and the visible hit frame.
 
+## Implemented Prototype
+
+The first shared primitive now lives in
+`mod-fabric/src/main/java/globe/world/topology/TopologicalRaycasts.java`.
+Durable behavior is documented in
+[Topology](../../mod-mechanics/topology.md#topological-raycast-prototypes).
+
+Current entry points:
+
+- `topologicalClip(...)`: visible-frame block/fluid clip with canonicalized
+  block hit identity.
+- `topologicalEntitySweep(...)`: canonical entity identity tested through
+  visible alias hitboxes, with the earliest visible hit per entity.
+- `topologicalLineOfSight(...)`: actor-local target visibility.
+- `topologicalProjectileMove(...)`: combined block/entity movement prototype
+  for later projectile migration.
+
+Existing v1 behavior now enters the prototype for alias line of sight and arrow
+entity alias hits. Projectile block movement and full call-site migration remain
+open work.
+
 ## Requirements
 
 - Support block hits and entity hits.

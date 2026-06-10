@@ -54,6 +54,26 @@ underlying source of the arithmetic.
 Canonicalization is used before state access. Virtualization is used when
 building viewer-facing positions, especially packets and tracking decisions.
 
+## Topological Raycast Prototypes
+
+`TopologicalRaycasts` is the v2 prototype boundary for ray-like topology
+queries. It keeps vanilla clip modes explicit while returning both visible-frame
+hit data and canonical hit identity:
+
+- `topologicalClip(...)` runs a block/fluid clip in the caller's visible frame
+  and canonicalizes the hit block position and hit location.
+- `topologicalEntitySweep(...)` tests canonical entity identity through
+  visible alias hitboxes, returning the earliest visible hit per entity.
+- `topologicalLineOfSight(...)` maps a target into an actor-local frame before
+  doing a collider clip.
+- `topologicalProjectileMove(...)` packages block clipping and entity sweep
+  pieces for later projectile movement migration.
+
+The default entity alias radius is intentionally zero, matching the existing v1
+projectile behavior of testing the nearest alias frame to the ray origin. Wider
+alias scans are opt-in through `EntitySweepOptions.withAliasTileRadius(...)` so
+tiny-tile experiments have an explicit cost cap.
+
 ## Dimension Policy
 
 `DimensionTiling` resolves the effective tiling context for Overworld, Nether,
@@ -85,6 +105,7 @@ eight Nether blocks map to one Overworld block.
 - `mod-fabric/src/main/java/globe/world/util/DimensionTiling.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContexts.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologicalRaycasts.java`
 - `mod-fabric/src/main/java/globe/world/config/TopologySettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeSettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeConfig.java`

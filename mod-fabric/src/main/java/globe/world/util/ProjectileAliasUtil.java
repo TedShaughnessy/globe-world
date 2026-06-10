@@ -1,15 +1,13 @@
 package globe.world.util;
 
+import globe.world.topology.TopologicalRaycasts;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -34,7 +32,7 @@ public final class ProjectileAliasUtil {
             ClipContext.Block clipType,
             boolean includeFromEntity) {
         DimensionTiling tiling = DimensionTiling.forLevel(level);
-        if (!tiling.enabled() || !(level instanceof ServerLevel serverLevel)) {
+        if (!tiling.enabled() || !(level instanceof ServerLevel)) {
             return vanillaHits;
         }
 
@@ -44,13 +42,17 @@ public final class ProjectileAliasUtil {
             hitEntities.add(hit.getEntity());
         }
 
-        AABB canonicalSearchArea = CoordUtil.wrapAabb(tiling, targetSearchArea);
-        for (Entity entity : level.getEntities(source, canonicalSearchArea, matching)) {
-            addAliasHit(level, source, from, to, matching, clipType, includeFromEntity, hits, hitEntities, entity);
-        }
-
-        for (ServerPlayer player : serverLevel.players()) {
-            addAliasHit(level, source, from, to, matching, clipType, includeFromEntity, hits, hitEntities, player);
+        for (TopologicalRaycasts.EntitySweepHit hit : TopologicalRaycasts.topologicalEntitySweep(
+                level,
+                source,
+                from,
+                to,
+                targetSearchArea,
+                matching,
+                TopologicalRaycasts.EntitySweepOptions.projectile(source, clipType, includeFromEntity))) {
+            if (hitEntities.add(hit.entity())) {
+                hits.add(hit.visibleHit());
+            }
         }
 
         return hits;
@@ -100,72 +102,4 @@ public final class ProjectileAliasUtil {
         }
     }
 
-    private static void addAliasHit(
-            Level level,
-            Entity source,
-            Vec3 from,
-            Vec3 to,
-            Predicate<Entity> matching,
-            ClipContext.Block clipType,
-            boolean includeFromEntity,
-            List<EntityHitResult> hits,
-            Set<Entity> hitEntities,
-            Entity entity) {
-        if (entity == source || hitEntities.contains(entity) || !matching.test(entity)) {
-            return;
-        }
-
-        AABB canonicalBox = CoordUtil.wrapAabb(level, entity.getBoundingBox());
-        AABB aliasBox = CoordUtil.virtualAabb(level, canonicalBox, from.x, from.z);
-        EntityHitResult hit = findAliasHit(level, source, from, to, aliasBox, entity, clipType, includeFromEntity);
-        if (hit != null) {
-            hits.add(hit);
-            hitEntities.add(entity);
-        }
-    }
-
-    private static EntityHitResult findAliasHit(
-            Level level,
-            Entity source,
-            Vec3 from,
-            Vec3 to,
-            AABB aliasBox,
-            Entity entity,
-            ClipContext.Block clipType,
-            boolean includeFromEntity) {
-        if (includeFromEntity && aliasBox.contains(from)) {
-            return new EntityHitResult(entity, from);
-        }
-
-        return aliasBox.clip(from, to)
-                .map(location -> new EntityHitResult(entity, location))
-                .orElseGet(() -> findMarginAliasHit(level, source, from, to, aliasBox, entity, clipType));
-    }
-
-    private static EntityHitResult findMarginAliasHit(
-            Level level,
-            Entity source,
-            Vec3 from,
-            Vec3 to,
-            AABB aliasBox,
-            Entity entity,
-            ClipContext.Block clipType) {
-        float entityMargin = ProjectileUtil.computeMargin(source);
-        if (entityMargin <= 0.0F) {
-            return null;
-        }
-
-        return aliasBox.inflate(entityMargin).clip(from, to)
-                .flatMap(outsideHitPosition -> {
-                    Vec3 towardsTarget = aliasBox.getCenter();
-                    BlockHitResult blockHit = level.clipIncludingBorder(
-                            new ClipContext(outsideHitPosition, towardsTarget, clipType, ClipContext.Fluid.NONE, source));
-                    if (blockHit.getType() != HitResult.Type.MISS) {
-                        towardsTarget = blockHit.getLocation();
-                    }
-                    return aliasBox.clip(outsideHitPosition, towardsTarget);
-                })
-                .map(location -> new EntityHitResult(entity, location))
-                .orElse(null);
-    }
 }

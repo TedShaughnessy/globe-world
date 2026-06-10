@@ -2,15 +2,14 @@ package globe.world.util;
 
 import globe.world.topology.TopologyContext;
 import globe.world.topology.TopologyContexts;
+import globe.world.topology.TopologicalRaycasts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.LinkedHashSet;
@@ -201,14 +200,7 @@ public final class AiAliasUtil {
             return false;
         }
 
-        Vec3 from = new Vec3(actor.getX(), actor.getEyeY(), actor.getZ());
-        Vec3 to = nearestAliasEyePosition(actor, target);
-        if (to.distanceTo(from) > 128.0D) {
-            return false;
-        }
-        return actor.level()
-                .clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, actor))
-                .getType() == HitResult.Type.MISS;
+        return TopologicalRaycasts.topologicalLineOfSight(actor, target);
     }
 
     public static boolean wrappedHorizontalDistanceIsShorter(Entity actor, Entity target) {
