@@ -45,6 +45,10 @@ instead of growing a second generation of isolated fixes.
 10. [Low-Risk Implementation Plan](low-risk-implementation-plan.md): concrete
     status for implemented low-risk primitives and remaining migration
     follow-ups.
+11. [Progress Tracker](progress.md): short status map for fully done,
+    partially implemented, and not-started v2 work.
+12. [Seam-Behavior Checklist](seam-test-matrix.md): manual test matrix and
+    automation candidates for preserving v1 seam behavior during v2 migration.
 
 ## Implemented Low-Risk Primitives
 
@@ -70,7 +74,8 @@ The first low-risk v2 pass has been implemented and folded into
   [Client](../../mod-mechanics/client.md#packet-and-cache-model).
 
 Remaining architecture work should build from those mechanics docs rather than
-the original low-risk checklist.
+the original low-risk checklist. For a quick status map, see the
+[Progress Tracker](progress.md).
 
 ## Non-Goals
 
