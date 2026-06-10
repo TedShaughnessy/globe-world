@@ -1,7 +1,7 @@
-# V2 Seam-Behavior Checklist
+# Seam-Behavior Checklist
 
-This checklist defines the behavior v2 should preserve while internals move
-behind stronger topology APIs. It is written as a manual test matrix first, with
+This checklist defines seam behavior Globe World should preserve during future
+feature work and refactors. It is written as a manual test matrix first, with
 notes for cases that could later become automated game tests or diagnostics.
 
 Use small custom tiles for stress testing. A 4x4 chunk Overworld tile exposes
@@ -13,7 +13,7 @@ Status keys:
 
 - `Manual`: practical playtest or command-driven check.
 - `Candidate automated`: suitable for a focused future test or diagnostic.
-- `Open design`: depends on an unimplemented v2 primitive.
+- `Open design`: depends on an unimplemented primitive or feature plan.
 
 ## Core Topology
 
@@ -86,7 +86,7 @@ Status keys:
 | Feature spillover | Generate features that write across an edge, such as trees or decorations. | Wrapped writes land in the canonical target once observable and do not replay forever. | Manual |
 | Structure edge behavior | Generate structures whose pieces cross a tile edge. | Canonical structure ownership is preserved; virtual edge pieces do not become independent owners. | Manual |
 | Nether fortress progression | Generate Nether fortresses near edges. | Progression-critical pieces remain available under the current structure edge policy. | Manual |
-| `GenerationWindow` replacement | Replace spillover behavior with an explicit toroidal generation window. | Reads, writes, deferred writes, and unsafe destinations have named policies. | Open design |
+| `GenerationWindow` replacement | Replace spillover behavior with an explicit toroidal generation window. | Reads, writes, deferred writes, and unsafe destinations have named policies. | [Worldgen improvements](worldgen-improvements.md) |
 
 ## Diagnostics And Regression Notes
 

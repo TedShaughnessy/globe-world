@@ -7,12 +7,14 @@ Implemented investigations have been folded into
 [Globe World Mod Mechanics](../mod-mechanics/README.md), which is the entry
 point for current behavior and modded code anchors.
 
-## Future Architecture
+## Future Improvements
 
-- [V2 architecture plan](v2-architecture/README.md): rebuild-oriented plan for
-  keeping the same canonical-world concept while giving coordinate frames,
-  topology access, packets, entities, raycasts, worldgen, configuration, and
-  migration their own stronger boundaries.
+- [Worldgen improvements](worldgen-improvements.md): standalone plan for
+  replacing implicit spillover and structure-edge behavior with an explicit
+  toroidal generation window.
+- [Seam-behavior checklist](seam-behavior-checklist.md): manual regression
+  matrix and automation candidates for preserving seam behavior during future
+  work.
 
 ## Implemented From Plans
 
@@ -24,6 +26,9 @@ point for current behavior and modded code anchors.
   [Topology](../mod-mechanics/topology.md#topological-raycast-primitives):
   block clips, entity sweeps, line of sight, arrow-family hits, shared
   server-side projectile movement, view-vector rays, and attack-range sweeps.
-- The non-worldgen v2 migration is implemented; the remaining v2 architecture
-  work is the explicit
-  [GenerationWindow](v2-architecture/worldgen-window.md) worldgen model.
+- The v2 migration is implemented for topology contexts, packets, diagnostics,
+  settings, entity targeting, broad entity queries, and raycasts. Worldgen
+  improvement work is tracked separately in
+  [Worldgen improvements](worldgen-improvements.md).
+  The completed v2 feature-plan pages have been retired; durable behavior now
+  lives in mod mechanics docs.

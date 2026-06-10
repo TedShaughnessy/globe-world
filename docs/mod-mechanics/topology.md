@@ -44,8 +44,8 @@ The coordinate helper layer answers four questions:
 supports raw helpers, level-aware helpers, dimension-aware helpers, and helpers
 that use the current worldgen/scoped tiling context.
 
-`TopologyContext` is the named v2 boundary for this math. It wraps a dimension
-and its effective `DimensionTiling`, then exposes frame-named helpers such as
+`TopologyContext` is the named boundary for this math. It wraps a dimension and
+its effective `DimensionTiling`, then exposes frame-named helpers such as
 `canonicalBlock`, `canonicalChunk`, `virtualBlockForViewer`,
 `virtualChunkForViewer`, `wrappedDistanceSqr`, `loadedAliasesFor`, and
 `shouldAllowAliasMutation`. Runtime block/chunk access helpers use these names
@@ -57,11 +57,11 @@ building viewer-facing positions, especially packets and tracking decisions.
 
 ## Topological Entity Queries
 
-`TopologicalEntityQueries` is the v2 boundary for broad entity lookup boxes. It
-keeps vanilla entity identity and predicates, but gathers candidates from every
-canonical slice touched by a visible-frame query box. A query near the canonical
-tile edge is split across the wrapped X/Z edges instead of only wrapping the
-box center.
+`TopologicalEntityQueries` is the shared boundary for broad entity lookup
+boxes. It keeps vanilla entity identity and predicates, but gathers candidates
+from every canonical slice touched by a visible-frame query box. A query near
+the canonical tile edge is split across the wrapped X/Z edges instead of only
+wrapping the box center.
 
 The helper dedupes by entity identity, includes canonical non-player storage,
 and adds server players whose nearest visible alias intersects the query box.
@@ -71,9 +71,9 @@ and `ServerEntityGetter` hooks use the same lower-level primitive.
 
 ## Topological Raycast Primitives
 
-`TopologicalRaycasts` is the v2 boundary for ray-like topology queries. It keeps
-vanilla clip modes explicit while returning both visible-frame hit data and
-canonical hit identity:
+`TopologicalRaycasts` is the shared boundary for ray-like topology queries. It
+keeps vanilla clip modes explicit while returning both visible-frame hit data
+and canonical hit identity:
 
 - `topologicalClip(...)` runs a block/fluid clip in the caller's visible frame
   and canonicalizes the hit block position and hit location.

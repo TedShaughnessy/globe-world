@@ -65,7 +65,7 @@ actor-local hitbox, wrapped distances, same-level status, and aliasing status.
 Broad query helpers route through `TopologicalEntityQueries`, which splits
 visible-frame lookup boxes across canonical tile edges, dedupes canonical
 entity identity, and adds alias-frame server players.
-Alias line of sight now delegates to the v2 `TopologicalRaycasts` primitive,
+Alias line of sight now delegates to the shared `TopologicalRaycasts` primitive,
 which returns visible-frame block hits with canonical hit identity.
 Targeting conditions, nearest-entity selection, brain sensors, target retention,
 line of sight, look controls, melee checks, ranged-goal distance checks, and
@@ -89,7 +89,7 @@ sources, such as zombies, to the victim's nearest alias before those checks run,
 so a seam-adjacent melee hit pushes and blocks as if the attacker were in the
 visible wrapped tile.
 
-Projectile collision uses the v2 `TopologicalRaycasts` primitives for the
+Projectile collision uses the shared `TopologicalRaycasts` primitives for the
 server-authoritative move-vector path. `ProjectileUtilTopologicalMoveMixin`
 routes vanilla's shared `ProjectileUtil.getHitResultOnMoveVector(...)` overloads
 through `topologicalProjectileMove(...)`, covering thrown items, fishing
@@ -102,7 +102,7 @@ component-weapon sweeps use wrapped block/entity targets instead of raw space.
 
 Arrows and tridents have separate vanilla arrow-family paths, so
 `AbstractArrowAliasCollisionMixin` also wraps their direct block clip. It keeps
-vanilla arrow entity hits, then uses `ProjectileAliasUtil` and the v2 entity
+vanilla arrow entity hits, then uses `ProjectileAliasUtil` and the shared entity
 sweep primitive to test candidate entities in the nearest alias frame to the
 projectile's movement segment. Damage, pierce tracking, pickup, trident return,
 and enchantment behavior stay on vanilla's entity identity while a skeleton
@@ -219,10 +219,21 @@ canonicalized but currently sit outside canonical X/Z.
 
 - Stress-test canonical entity ticking from alias simulation chunks under heavy
   death/despawn cases.
+- Raw vanilla `EntityGetter` replacement is intentionally not global. Collision
+  and other side-effect-sensitive query paths need caller-specific audit before
+  they use visible-frame boxes.
 - Full toroidal pathfinding remains deferred; current path requests target
   useful aliases but vanilla node search does not wrap every neighbor relation.
 - General projectile physics across tile seams remains separate from ranged mob
   target selection, launch vectors, facing, arrow entity-hit wrapping, and the
   fishing-specific owner/pullback fixes.
+- Client projectile prediction still uses vanilla raw helpers. Server
+  authority is topological, but seam-crossing projectiles need visual
+  regression testing for correction snaps.
+- Very long rays use the default nearest-alias entity radius unless a caller
+  explicitly opts into a wider `EntitySweepOptions` radius. Keep long lines of
+  sight and tiny-tile rays on the regression checklist.
+- A `/globeworld raycast` diagnostic command would make future seam bug
+  reports easier to inspect, but it is optional.
 - Visual aliases currently skip leashed entities and mounted player stacks;
   player passenger/vehicle stacks need dedicated multiplayer testing.
