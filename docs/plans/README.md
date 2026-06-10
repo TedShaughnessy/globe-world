@@ -22,4 +22,5 @@ point for current behavior and modded code anchors.
   split settings schema.
 - The first topological raycast prototype is implemented and folded into
   [Topology](../mod-mechanics/topology.md#topological-raycast-prototypes):
-  block clips, entity sweeps, line of sight, and a projectile movement facade.
+  block clips, entity sweeps, line of sight, arrow-family hits, and the shared
+  server-side projectile move-vector path.

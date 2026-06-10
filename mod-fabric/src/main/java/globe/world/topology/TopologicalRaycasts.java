@@ -117,7 +117,7 @@ public final class TopologicalRaycasts {
         Vec3 entityTo = blockHit.visibleHit().getType() == HitResult.Type.MISS
                 ? nextPosition
                 : blockHit.visibleHit().getLocation();
-        AABB searchBox = projectile.getBoundingBox().expandTowards(entityTo.subtract(from)).inflate(1.0D);
+        AABB searchBox = projectile.getBoundingBox().expandTowards(nextPosition.subtract(from)).inflate(1.0D);
         List<EntitySweepHit> entityHits = topologicalEntitySweep(
                 level,
                 projectile,
@@ -127,7 +127,7 @@ public final class TopologicalRaycasts {
                 matching,
                 EntitySweepOptions.projectile(projectile, blockClipType, false)
         );
-        HitResult firstHit = entityHits.isEmpty() ? blockHit.visibleHit() : entityHits.getFirst().visibleHit();
+        HitResult firstHit = entityHits.isEmpty() ? blockHit.visibleHitWithCanonicalBlock() : entityHits.getFirst().visibleHit();
         return new ProjectileMoveResult(from, nextPosition, blockHit, entityHits, firstHit);
     }
 
@@ -295,6 +295,17 @@ public final class TopologicalRaycasts {
     }
 
     public record BlockTraceResult(BlockHitResult visibleHit, BlockHitResult canonicalHit, double distanceSqr) {
+        public BlockHitResult visibleHitWithCanonicalBlock() {
+            if (visibleHit.getType() != HitResult.Type.BLOCK || visibleHit.isWorldBorderHit()) {
+                return visibleHit;
+            }
+            return new BlockHitResult(
+                    visibleHit.getLocation(),
+                    visibleHit.getDirection(),
+                    canonicalHit.getBlockPos(),
+                    visibleHit.isInside()
+            );
+        }
     }
 
     public record EntitySweepHit(

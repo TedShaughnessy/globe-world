@@ -74,6 +74,17 @@ projectile behavior of testing the nearest alias frame to the ray origin. Wider
 alias scans are opt-in through `EntitySweepOptions.withAliasTileRadius(...)` so
 tiny-tile experiments have an explicit cost cap.
 
+Block trace results also expose `visibleHitWithCanonicalBlock()`, which keeps
+the hit location in the caller's visible frame but replaces the block position
+with the canonical owner. Arrow block clipping uses this adapter so vanilla
+movement and entity ordering can stay visible-frame while block callbacks and
+state lookups receive canonical identity.
+
+`ProjectileUtilTopologicalMoveMixin` applies `topologicalProjectileMove(...)`
+to vanilla's shared server-side move-vector projectile hit path. Client-side
+prediction stays on vanilla's raw helper for now, while the server-authoritative
+hit result supplies canonical block/entity identity.
+
 ## Dimension Policy
 
 `DimensionTiling` resolves the effective tiling context for Overworld, Nether,

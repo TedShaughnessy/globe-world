@@ -7,8 +7,10 @@ sight, projectile entity hits, fishing line behavior, and projectile movement.
 Some are alias-aware, some are partially wrapped, and some remain known v1
 limitations.
 
-Projectile block clipping is the clearest example: a launch vector can be
-correct while the later collision path still uses raw vanilla space.
+Projectile block clipping was the clearest example: a launch vector could be
+correct while the later collision path still used raw vanilla space. The shared
+move-vector path now uses topological hit results on the server, but individual
+projectile classes may still need visual or movement-specific audits.
 
 ## V2 Direction
 
@@ -33,9 +35,12 @@ Current entry points:
 - `topologicalProjectileMove(...)`: combined block/entity movement prototype
   for later projectile migration.
 
-Existing v1 behavior now enters the prototype for alias line of sight and arrow
-entity alias hits. Projectile block movement and full call-site migration remain
-open work.
+Existing v1 behavior now enters the prototype for alias line of sight,
+arrow-family entity alias hits, arrow-family block clipping, and the
+server-authoritative shared `ProjectileUtil.getHitResultOnMoveVector(...)` path
+used by thrown projectiles, fishing bobbers, fireworks, shulker bullets, llama
+spit, fireballs, and wind charges. Full class-specific movement/visual cleanup
+remains open work.
 
 ## Requirements
 
@@ -70,10 +75,16 @@ segment.
 - Easier test matrix for wrapped blocks, wrapped entities, and obstructed seam
   cases.
 
-## Open Questions
+## Remaining Audits
 
-- Should projectiles physically move in a virtual frame until canonicalized, or
-  remain canonical and only raycast through aliases?
-- How should long rays behave when they can cross multiple tile periods?
-- Which projectile classes can share a generic movement wrapper, and which need
-  class-specific handling because vanilla side effects are intertwined?
+- Client-side projectile prediction still uses vanilla raw helpers. This keeps
+  the server authoritative and avoids changing presentation code during the
+  prototype, but seam-crossing projectiles should be watched for visible
+  correction snaps.
+- Very long rays still use the default nearest-alias entity radius unless a
+  caller opts into `EntitySweepOptions.withAliasTileRadius(...)`.
+- Class-specific movement visuals remain worth auditing for fireworks, shulker
+  bullets, fishing bobbers, wind charges, and trident return behavior because
+  vanilla side effects are intertwined with their tick methods.
+- A `/globeworld raycast` diagnostic command would make future seam bug reports
+  easier to inspect, but is not required for the prototype.

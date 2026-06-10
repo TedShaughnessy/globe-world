@@ -84,14 +84,22 @@ sources, such as zombies, to the victim's nearest alias before those checks run,
 so a seam-adjacent melee hit pushes and blocks as if the attacker were in the
 visible wrapped tile.
 
-Arrow entity collision supplements vanilla's raw entity raycast with wrapped
-entity hitboxes. `AbstractArrowAliasCollisionMixin` keeps vanilla hits, then
-uses `ProjectileAliasUtil` and the v2 `TopologicalRaycasts` entity sweep
-prototype to test candidate entities in the nearest alias frame to the arrow's
-movement segment. The `EntityHitResult` still points at the real entity, so
-damage, pierce tracking, pickup, and enchantment behavior stay on vanilla's
-entity identity while a skeleton arrow can hit a player or mob through the
-visible wrapped copy.
+Projectile collision uses the v2 `TopologicalRaycasts` prototypes for the
+server-authoritative move-vector path. `ProjectileUtilTopologicalMoveMixin`
+routes vanilla's shared `ProjectileUtil.getHitResultOnMoveVector(...)` overloads
+through `topologicalProjectileMove(...)`, covering thrown items, fishing
+bobbers, llama spit, shulker bullets, fireworks, fireballs, and wind charges.
+The result keeps visible-frame hit locations for movement while block callbacks
+receive canonical block positions and entity hits point at the real entity.
+
+Arrows and tridents have separate vanilla arrow-family paths, so
+`AbstractArrowAliasCollisionMixin` also wraps their direct block clip. It keeps
+vanilla arrow entity hits, then uses `ProjectileAliasUtil` and the v2 entity
+sweep prototype to test candidate entities in the nearest alias frame to the
+projectile's movement segment. Damage, pierce tracking, pickup, trident return,
+and enchantment behavior stay on vanilla's entity identity while a skeleton
+arrow or thrown trident can hit a player or mob through the visible wrapped
+copy.
 
 Splash-potion area effects use wrapped entity candidates and wrapped falloff
 distance. `ThrownSplashPotionAliasEffectMixin` keeps vanilla's initial list,
@@ -172,9 +180,10 @@ canonicalized but currently sit outside canonical X/Z.
   `GuardianAttackSelectorMixin`, `ShulkerAttackGoalMixin`.
 - Damage direction:
   `LivingEntityDamageSourceAliasMixin`, `DamageAliasUtil`.
-- Arrow collision:
+- Projectile collision:
   `AbstractArrowAliasCollisionMixin`, `ThrownSplashPotionAliasEffectMixin`,
-  `ProjectileAliasUtil`, `TopologicalRaycasts`.
+  `ProjectileAliasUtil`, `ProjectileUtilTopologicalMoveMixin`,
+  `TopologicalRaycasts`.
 - Player interaction and presentation:
   `PlayerInteractionRangeMixin`, `PlayerItemPickupMixin`,
   `FishingHookMixin`,
