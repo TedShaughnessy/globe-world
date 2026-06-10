@@ -4,7 +4,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.util.DimensionTiling;
 import globe.world.util.WaypointPacketUtil;
-import globe.world.util.WorldEventPacketUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket;
@@ -76,8 +75,7 @@ public class WaypointBlockConnectionMixin {
     }
 
     private BlockPos virtualBlockPos(Vec3i position) {
-        BlockPos pos = new BlockPos(position.getX(), position.getY(), position.getZ());
-        return WorldEventPacketUtil.virtualizeBlockPos(this.receiver.level(), pos, this.receiver);
+        return WaypointPacketUtil.virtualBlockPos(position, this.receiver);
     }
 
     @Inject(method = "update", at = @At("TAIL"))

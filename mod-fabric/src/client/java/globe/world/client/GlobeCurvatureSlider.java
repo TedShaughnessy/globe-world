@@ -1,6 +1,6 @@
 package globe.world.client;
 
-import globe.world.config.TilingSettings;
+import globe.world.config.PresentationSettings;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
@@ -42,9 +42,9 @@ public class GlobeCurvatureSlider extends AbstractSliderButton {
     protected void updateMessage() {
         int percent = percentFromValue(this.value);
         Component value = switch (percent) {
-            case TilingSettings.CURVATURE_DISABLED_PERCENT -> Component.literal("0% (Disabled)");
-            case TilingSettings.CURVATURE_COMFORTABLE_PERCENT -> Component.literal("50% (Comfortable)");
-            case TilingSettings.CURVATURE_REALISTIC_PERCENT -> Component.literal("100% (Realistic)");
+            case PresentationSettings.CURVATURE_DISABLED_PERCENT -> Component.literal("0% (Disabled)");
+            case PresentationSettings.CURVATURE_COMFORTABLE_PERCENT -> Component.literal("50% (Comfortable)");
+            case PresentationSettings.CURVATURE_REALISTIC_PERCENT -> Component.literal("100% (Realistic)");
             default -> Component.literal(percent + "%");
         };
         this.setMessage(Component.empty().append(this.label).append(": ").append(value));
@@ -78,10 +78,10 @@ public class GlobeCurvatureSlider extends AbstractSliderButton {
     }
 
     private static double valueFromPercent(int percent) {
-        return TilingSettings.sanitizeCurvaturePercent(percent) / 100.0;
+        return PresentationSettings.sanitizeCurvaturePercent(percent) / 100.0;
     }
 
     private static int percentFromValue(double value) {
-        return TilingSettings.sanitizeCurvaturePercent((int) Math.round(value * 100.0));
+        return PresentationSettings.sanitizeCurvaturePercent((int) Math.round(value * 100.0));
     }
 }

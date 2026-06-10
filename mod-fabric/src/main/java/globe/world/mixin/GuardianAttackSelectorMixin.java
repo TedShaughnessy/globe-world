@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Guardian;
@@ -25,6 +25,6 @@ public class GuardianAttackSelectorMixin {
             )
     )
     private double useAliasDistance(LivingEntity target, Entity guardian, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(this.guardian, target);
+        return ActorLocalTargets.distanceToSqr(this.guardian, target);
     }
 }

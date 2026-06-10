@@ -75,7 +75,7 @@ public final class GlobeLocalDaylight {
     }
 
     public static boolean enabled(Level level) {
-        return GlobeConfig.dayNightCycleMode() == DayNightCycleMode.SCROLLING
+        return GlobeConfig.gameplaySettings().dayNightCycleMode() == DayNightCycleMode.SCROLLING
                 && DimensionTiling.forLevel(level).enabled()
                 && level.dimensionType().hasSkyLight()
                 && !level.dimensionType().hasFixedTime();
@@ -196,7 +196,7 @@ public final class GlobeLocalDaylight {
     }
 
     private static boolean localTimelineActive() {
-        return GlobeConfig.dayNightCycleMode() == DayNightCycleMode.SCROLLING
+        return GlobeConfig.gameplaySettings().dayNightCycleMode() == DayNightCycleMode.SCROLLING
                 && DimensionTiling.currentOrOverworld().enabled();
     }
 

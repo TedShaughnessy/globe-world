@@ -1,7 +1,7 @@
 package globe.world.util;
 
 import globe.world.config.GlobeConfig;
-import globe.world.config.TilingSettings;
+import globe.world.config.TopologySettings;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
@@ -26,7 +26,7 @@ public record DimensionTiling(boolean enabled, int tileSizeChunks, TerrainMode t
     }
 
     public static DimensionTiling forDimension(ResourceKey<Level> dimension) {
-        TilingSettings settings = GlobeConfig.tilingSettings();
+        TopologySettings settings = GlobeConfig.topologySettings();
         if (Level.OVERWORLD.equals(dimension)) {
             return settings.enabled()
                     ? new DimensionTiling(

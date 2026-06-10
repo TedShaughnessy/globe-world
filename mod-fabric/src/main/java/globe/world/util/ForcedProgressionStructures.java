@@ -58,7 +58,7 @@ public final class ForcedProgressionStructures {
             StructureTemplateManager structureTemplateManager,
             ResourceKey<Level> levelKey) {
         if (!Level.OVERWORLD.equals(levelKey)
-                || !GlobeConfig.forceMissingStronghold()
+                || !GlobeConfig.topologySettings().forceMissingStronghold()
                 || SharedConstants.DEBUG_DISABLE_STRUCTURES
                 || !structureManager.shouldGenerateStructures()) {
             return;
@@ -158,7 +158,7 @@ public final class ForcedProgressionStructures {
                 structureTemplateManager,
                 levelKey,
                 tiling,
-                GlobeConfig.forceMissingNetherFortress()
+                GlobeConfig.topologySettings().forceMissingNetherFortress()
         );
     }
 
@@ -194,7 +194,7 @@ public final class ForcedProgressionStructures {
 
     private static Optional<ChunkPos> forcedOverworldStrongholdChunk(ServerLevel level) {
         if (!Level.OVERWORLD.equals(level.dimension())
-                || !GlobeConfig.forceMissingStronghold()
+                || !GlobeConfig.topologySettings().forceMissingStronghold()
                 || SharedConstants.DEBUG_DISABLE_STRUCTURES
                 || !level.structureManager().shouldGenerateStructures()) {
             return Optional.empty();

@@ -1,7 +1,7 @@
 package globe.world.network;
 
-import globe.world.config.TilingSettings;
-import globe.world.config.TilingSettingsHolder;
+import globe.world.config.GlobeSettings;
+import globe.world.config.GlobeSettingsHolder;
 import net.fabricmc.fabric.api.networking.v1.FabricServerConfigurationPacketListenerImpl;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
@@ -37,8 +37,8 @@ public final class GlobeWorldNetworking {
         ServerConfigurationConnectionEvents.CONFIGURE.register(GlobeWorldNetworking::configureJoiningClient);
     }
 
-    public static void broadcastSettings(MinecraftServer server, TilingSettings settings) {
-        TilingSettings sanitized = settings.sanitized();
+    public static void broadcastSettings(MinecraftServer server, GlobeSettings settings) {
+        GlobeSettings sanitized = settings == null ? GlobeSettings.DEFAULT : settings;
         for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
             if (ServerPlayNetworking.canSend(player, GlobeWorldSettingsPayload.TYPE)) {
                 ServerPlayNetworking.send(player, new GlobeWorldSettingsPayload(sanitized));
@@ -49,9 +49,8 @@ public final class GlobeWorldNetworking {
     }
 
     private static void configureJoiningClient(ServerConfigurationPacketListenerImpl listener, MinecraftServer server) {
-        TilingSettings settings = ((TilingSettingsHolder) (Object) server.getWorldGenSettings())
-                .globeWorld$getTilingSettings()
-                .sanitized();
+        GlobeSettings settings = ((GlobeSettingsHolder) (Object) server.getWorldGenSettings())
+                .globeWorld$getGlobeSettings();
         if (!ServerConfigurationNetworking.canSend(listener, GlobeWorldSettingsPayload.TYPE)) {
             if (requiresClient(settings)) {
                 listener.disconnect(CLIENT_REQUIRED_MESSAGE);
@@ -62,11 +61,11 @@ public final class GlobeWorldNetworking {
         ((FabricServerConfigurationPacketListenerImpl) listener).addTask(new SettingsSyncTask(settings));
     }
 
-    private static boolean requiresClient(TilingSettings settings) {
-        return settings.enabled() || settings.netherEnabled();
+    private static boolean requiresClient(GlobeSettings settings) {
+        return settings.topology().enabled() || settings.topology().netherEnabled();
     }
 
-    private record SettingsSyncTask(TilingSettings settings) implements ConfigurationTask {
+    private record SettingsSyncTask(GlobeSettings settings) implements ConfigurationTask {
         @Override
         public void start(Consumer<Packet<?>> sender) {
             sender.accept(ServerConfigurationNetworking.createClientboundPacket(new GlobeWorldSettingsPayload(settings)));

@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.entity.Entity;
@@ -35,7 +35,7 @@ public abstract class GroundPathNavigationMixin extends PathNavigation {
     @WrapMethod(method = "createPath(Lnet/minecraft/world/entity/Entity;I)Lnet/minecraft/world/level/pathfinder/Path;")
     @Nullable
     private Path createPathToTargetAliases(Entity target, int reachRange, Operation<Path> original) {
-        if (!AiAliasUtil.canAlias(this.mob, target)) {
+        if (!ActorLocalTargets.canAlias(this.mob, target)) {
             return original.call(target, reachRange);
         }
 
@@ -49,7 +49,7 @@ public abstract class GroundPathNavigationMixin extends PathNavigation {
     @Unique
     private Set<BlockPos> globeWorld$surfaceAdjustedAliasTargets(Entity target, int reachRange) {
         Set<BlockPos> adjusted = new LinkedHashSet<>();
-        for (BlockPos pos : AiAliasUtil.pathTargetBlockPositions(this.mob, target)) {
+        for (BlockPos pos : ActorLocalTargets.pathTargetBlockPositions(this.mob, target)) {
             LevelChunk chunk = this.level.getChunkSource().getChunkNow(
                     SectionPos.blockToSectionCoord(pos.getX()),
                     SectionPos.blockToSectionCoord(pos.getZ()));

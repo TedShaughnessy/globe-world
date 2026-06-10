@@ -36,6 +36,8 @@ stay relative. When an entity crosses the viewer-facing tile threshold, the
 server sends an absolute sync and the client snaps tile-sized rebases instead
 of interpolating across the tile. Standalone remote players use the same snap
 path for visual rebases; the local player and mounted player stacks are skipped.
+The entity packet helper uses `TopologyContext` for dimension-aware
+viewer-nearest alias coordinates.
 
 ## Tracking, Ticking, And Spawning
 
@@ -56,12 +58,20 @@ cancelled for non-canonical chunks.
 
 ## AI, Interaction, And Pathing
 
-`AiAliasUtil` maps targets, hitboxes, and query boxes into the acting mob's
-local tile frame. Targeting conditions, nearest-entity selection, brain sensors,
-target retention, line of sight, look controls, melee checks, ranged-goal
-distance checks, and move-toward-target goals use the nearest topological alias
-instead of raw coordinates. Alias line of sight must be proven by a wrapped
-ray; wrapped horizontal distance alone is not treated as visibility.
+`ActorLocalTargets` maps targets, hitboxes, and query boxes into the acting
+mob's local tile frame. It can package those calculations into an
+`ActorLocalTargetView` containing the canonical position, actor-local position,
+actor-local hitbox, wrapped distances, same-level status, and aliasing status.
+Broad query helpers route through `TopologicalEntityQueries`, which splits
+visible-frame lookup boxes across canonical tile edges, dedupes canonical
+entity identity, and adds alias-frame server players.
+Alias line of sight now delegates to the shared `TopologicalRaycasts` primitive,
+which returns visible-frame block hits with canonical hit identity.
+Targeting conditions, nearest-entity selection, brain sensors, target retention,
+line of sight, look controls, melee checks, ranged-goal distance checks, and
+move-toward-target goals use the nearest topological alias instead of raw
+coordinates. Alias line of sight must be proven by a wrapped ray; wrapped
+horizontal distance alone is not treated as visibility.
 
 Ranged mob launch math uses the same target-alias convention before calculating
 projectile X/Z vectors. Skeletons, illusioners, drowned, snow golems, llamas,
@@ -79,21 +89,32 @@ sources, such as zombies, to the victim's nearest alias before those checks run,
 so a seam-adjacent melee hit pushes and blocks as if the attacker were in the
 visible wrapped tile.
 
-Arrow entity collision supplements vanilla's raw entity raycast with wrapped
-entity hitboxes. `AbstractArrowAliasCollisionMixin` keeps vanilla hits, then
-uses `ProjectileAliasUtil` to test candidate entities in the nearest alias
-frame to the arrow's movement segment. The `EntityHitResult` still points at the
-real entity, so damage, pierce tracking, pickup, and enchantment behavior stay
-on vanilla's entity identity while a skeleton arrow can hit a player or mob
-through the visible wrapped copy.
+Projectile collision uses the shared `TopologicalRaycasts` primitives for the
+server-authoritative move-vector path. `ProjectileUtilTopologicalMoveMixin`
+routes vanilla's shared `ProjectileUtil.getHitResultOnMoveVector(...)` overloads
+through `topologicalProjectileMove(...)`, covering thrown items, fishing
+bobbers, llama spit, shulker bullets, fireworks, fireballs, and wind charges.
+The result keeps visible-frame hit locations for movement while block callbacks
+receive canonical block positions and entity hits point at the real entity.
+The same mixin also routes server-side `ProjectileUtil` view-vector and
+attack-range helpers through topological rays, so shared brush validation and
+component-weapon sweeps use wrapped block/entity targets instead of raw space.
+
+Arrows and tridents have separate vanilla arrow-family paths, so
+`AbstractArrowAliasCollisionMixin` also wraps their direct block clip. It keeps
+vanilla arrow entity hits, then uses `ProjectileAliasUtil` and the shared entity
+sweep primitive to test candidate entities in the nearest alias frame to the
+projectile's movement segment. Damage, pierce tracking, pickup, trident return,
+and enchantment behavior stay on vanilla's entity identity while a skeleton
+arrow or thrown trident can hit a player or mob through the visible wrapped
+copy.
 
 Splash-potion area effects use wrapped entity candidates and wrapped falloff
-distance. `ThrownSplashPotionAliasEffectMixin` keeps vanilla's initial list,
-adds entities found through the canonical query box plus alias-frame players,
-then measures each candidate against the hit potion AABB using that entity's
-nearest alias box. This lets witch splash potions apply status effects to
-players and mobs visible in an alias tile while preserving vanilla duration
-scaling and instant-effect math.
+distance. `ThrownSplashPotionAliasEffectMixin` gathers candidates through the
+shared topological entity query, then measures each candidate against the hit
+potion AABB using that entity's nearest alias box. This lets witch splash
+potions apply status effects to players and mobs visible in an alias tile while
+preserving vanilla duration scaling and instant-effect math.
 
 Entity-derived path requests target the nearest alias block position. Small
 tiles expand the request to nearby whole-tile target aliases so vanilla's
@@ -104,6 +125,11 @@ Player pickup and interaction reach checks use wrapped target boxes, so players
 near a seam interact with the visible alias while packets still refer to the
 canonical entity or block. Curved client picking is documented in
 [Client](client.md).
+
+Waypoint block, chunk, and azimuth packets use the receiver's nearest
+`TopologyContext` alias. Waypoint range checks use wrapped distances in the
+source dimension, and chunk visibility checks test the receiver-facing virtual
+chunk.
 
 Fishing bobbers remain canonical non-player entities, but owner-relative
 fishing logic uses wrapped X/Z math. `FishingHookMixin` keeps vanilla's held-rod
@@ -128,8 +154,8 @@ curvature interaction.
 ## Diagnostics
 
 `/globeworld entity <target>` reports an entity's raw/canonical position,
-canonicalization policy, root/passenger state, and mob target alias/pathing
-distances when available.
+canonicalization policy, root/passenger state, and the `ActorLocalTargetView`
+for mob target alias/pathing distances when available.
 
 `/globeworld entities` counts loaded entities that should be continuously
 canonicalized but currently sit outside canonical X/Z.
@@ -147,7 +173,9 @@ canonicalized but currently sit outside canonical X/Z.
   `NaturalSpawnerMixin`, `ChunkStatusTasksMixin`,
   `MobDespawnDistanceMixin`.
 - AI and pathing:
-  `AiAliasUtil`, `MobNavigationAliasUtil`, `TargetingConditionsMixin`,
+  `ActorLocalTargetView`, `ActorLocalTargets`, `TopologicalEntityQueries`,
+  `TopologicalRaycasts`,
+  `MobNavigationAliasUtil`, `TargetingConditionsMixin`,
   `ServerEntityGetterMixin`, `NearestLivingEntitySensorMixin`, `SensingMixin`,
   `TargetGoalMixin`, `PathNavigationMixin`, `GroundPathNavigationMixin`,
   `FlyingPathNavigationMixin`, `LookControlMixin`, `MobLookMixin`,
@@ -164,9 +192,10 @@ canonicalized but currently sit outside canonical X/Z.
   `GuardianAttackSelectorMixin`, `ShulkerAttackGoalMixin`.
 - Damage direction:
   `LivingEntityDamageSourceAliasMixin`, `DamageAliasUtil`.
-- Arrow collision:
+- Projectile collision:
   `AbstractArrowAliasCollisionMixin`, `ThrownSplashPotionAliasEffectMixin`,
-  `ProjectileAliasUtil`.
+  `ProjectileAliasUtil`, `ProjectileUtilTopologicalMoveMixin`,
+  `TopologicalEntityQueries`, `TopologicalRaycasts`.
 - Player interaction and presentation:
   `PlayerInteractionRangeMixin`, `PlayerItemPickupMixin`,
   `FishingHookMixin`,
@@ -190,10 +219,21 @@ canonicalized but currently sit outside canonical X/Z.
 
 - Stress-test canonical entity ticking from alias simulation chunks under heavy
   death/despawn cases.
+- Raw vanilla `EntityGetter` replacement is intentionally not global. Collision
+  and other side-effect-sensitive query paths need caller-specific audit before
+  they use visible-frame boxes.
 - Full toroidal pathfinding remains deferred; current path requests target
   useful aliases but vanilla node search does not wrap every neighbor relation.
 - General projectile physics across tile seams remains separate from ranged mob
   target selection, launch vectors, facing, arrow entity-hit wrapping, and the
   fishing-specific owner/pullback fixes.
+- Client projectile prediction still uses vanilla raw helpers. Server
+  authority is topological, but seam-crossing projectiles need visual
+  regression testing for correction snaps.
+- Very long rays use the default nearest-alias entity radius unless a caller
+  explicitly opts into a wider `EntitySweepOptions` radius. Keep long lines of
+  sight and tiny-tile rays on the regression checklist.
+- A `/globeworld raycast` diagnostic command would make future seam bug
+  reports easier to inspect, but it is optional.
 - Visual aliases currently skip leashed entities and mounted player stacks;
   player passenger/vehicle stacks need dedicated multiplayer testing.

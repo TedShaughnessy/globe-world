@@ -1,23 +1,136 @@
-package globe.world.util;
+package globe.world.entity;
 
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
+import globe.world.topology.TopologicalEntityQueries;
+import globe.world.topology.TopologicalRaycasts;
+import globe.world.util.CoordUtil;
+import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.Comparator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
-public final class AiAliasUtil {
+public final class ActorLocalTargets {
     private static final int ENTITY_TARGET_ALIAS_RADIUS = 1;
 
-    private AiAliasUtil() {
+    private ActorLocalTargets() {
+    }
+
+    public static ActorLocalTargetView view(Entity actor, Entity target) {
+        boolean sameLevel = actor.level() == target.level();
+        boolean aliasingEnabled = canAlias(actor, target);
+        TopologyContext context = TopologyContexts.forLevel(target.level());
+        Vec3 canonicalPosition = new Vec3(
+                context.canonicalBlockX(target.getX()),
+                target.getY(),
+                context.canonicalBlockX(target.getZ())
+        );
+        AABB canonicalBox = context.canonicalBox(target.getBoundingBox());
+        return new ActorLocalTargetView(
+                actor,
+                target,
+                canonicalPosition,
+                position(actor, target),
+                canonicalBox,
+                box(actor, target),
+                distanceToSqr(actor, target),
+                horizontalDistanceToSqr(actor, target),
+                sameLevel,
+                aliasingEnabled
+        );
+    }
+
+    public static Vec3 position(Entity actor, Entity target) {
+        return nearestAliasPosition(actor, target);
+    }
+
+    public static Vec3 eyePosition(LivingEntity actor, Entity target) {
+        return nearestAliasEyePosition(actor, target);
+    }
+
+    public static AABB box(Entity actor, Entity target) {
+        return nearestAliasBoundingBox(actor, target);
+    }
+
+    public static List<Entity> entitiesInActorRange(
+            Entity actor,
+            Entity except,
+            AABB actorLocalBox,
+            Predicate<? super Entity> selector) {
+        return TopologicalEntityQueries.entities(actor.level(), except, actorLocalBox, selector);
+    }
+
+    public static <T extends Entity> List<T> targetsInActorRange(
+            Entity actor,
+            Class<T> entityClass,
+            AABB actorLocalBox,
+            Predicate<? super T> selector) {
+        return TopologicalEntityQueries.entitiesOfClass(actor.level(), entityClass, actorLocalBox, selector);
+    }
+
+    public static <T extends LivingEntity> T nearestTarget(
+            LivingEntity actor,
+            Iterable<? extends T> candidates,
+            Predicate<? super T> selector) {
+        return java.util.stream.StreamSupport.stream(candidates.spliterator(), false)
+                .filter(selector)
+                .min(Comparator.comparingDouble(candidate -> distanceToSqr(actor, candidate)))
+                .orElse(null);
+    }
+
+    public static List<Entity> entitiesInBox(Level level, Entity except, AABB visibleBox, Predicate<? super Entity> selector) {
+        return TopologicalEntityQueries.entities(level, except, visibleBox, selector);
+    }
+
+    public static <T extends Entity> List<T> entitiesOfClassInBox(
+            Level level,
+            Class<T> entityClass,
+            AABB visibleBox,
+            Predicate<? super T> selector) {
+        return TopologicalEntityQueries.entitiesOfClass(level, entityClass, visibleBox, selector);
+    }
+
+    public static double distanceToSqr(Entity actor, Entity target) {
+        if (!canAlias(actor, target)) {
+            return actor.distanceToSqr(target);
+        }
+        return distanceToSqr(actor, target.getX(), target.getY(), target.getZ());
+    }
+
+    public static double distanceToSqr(Entity actor, double targetX, double targetY, double targetZ) {
+        if (!enabled(actor.level())) {
+            return actor.distanceToSqr(targetX, targetY, targetZ);
+        }
+        Vec3 alias = nearestAliasPosition(
+                actor.level(),
+                actor.getX(),
+                actor.getY(),
+                actor.getZ(),
+                targetX,
+                targetY,
+                targetZ);
+        return actor.distanceToSqr(alias.x, alias.y, alias.z);
+    }
+
+    public static boolean hasLineOfSight(LivingEntity actor, Entity target) {
+        return !canAlias(actor, target)
+                ? actor.hasLineOfSight(target)
+                : aliasLineOfSight(actor, target);
+    }
+
+    public static Set<BlockPos> pathTargets(Mob actor, Entity target) {
+        return pathTargetBlockPositions(actor, target);
     }
 
     public static boolean enabled(Level level) {
@@ -64,7 +177,7 @@ public final class AiAliasUtil {
         if (!canAlias(actor, target)) {
             return new Vec3(target.getX(), target.getEyeY(), target.getZ());
         }
-        Vec3 alias = nearestAliasPosition(
+        return nearestAliasPosition(
                 actor.level(),
                 actor.getX(),
                 actor.getY(),
@@ -72,7 +185,6 @@ public final class AiAliasUtil {
                 target.getX(),
                 target.getEyeY(),
                 target.getZ());
-        return alias;
     }
 
     public static Vec3 nearestAliasPosition(
@@ -88,12 +200,9 @@ public final class AiAliasUtil {
             return new Vec3(targetX, targetY, targetZ);
         }
 
-        double canonicalX = CoordUtil.wrapBlock(tiling, targetX);
-        double canonicalZ = CoordUtil.wrapBlock(tiling, targetZ);
-        return new Vec3(
-                CoordUtil.virtualBlock(tiling, canonicalX, actorX),
-                targetY,
-                CoordUtil.virtualBlock(tiling, canonicalZ, actorZ));
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        Vec3 canonical = new Vec3(topology.canonicalBlockX(targetX), targetY, topology.canonicalBlockX(targetZ));
+        return topology.virtualBlockForViewer(canonical, new Vec3(actorX, actorY, actorZ));
     }
 
     public static BlockPos nearestAliasBlockPos(Entity actor, Entity target) {
@@ -138,28 +247,6 @@ public final class AiAliasUtil {
         return aliasBlockPositions(actor, target, ENTITY_TARGET_ALIAS_RADIUS);
     }
 
-    public static double distanceToSqr(Entity actor, Entity target) {
-        if (!canAlias(actor, target)) {
-            return actor.distanceToSqr(target);
-        }
-        return distanceToSqr(actor, target.getX(), target.getY(), target.getZ());
-    }
-
-    public static double distanceToSqr(Entity actor, double targetX, double targetY, double targetZ) {
-        if (!enabled(actor.level())) {
-            return actor.distanceToSqr(targetX, targetY, targetZ);
-        }
-        Vec3 alias = nearestAliasPosition(
-                actor.level(),
-                actor.getX(),
-                actor.getY(),
-                actor.getZ(),
-                targetX,
-                targetY,
-                targetZ);
-        return actor.distanceToSqr(alias.x, alias.y, alias.z);
-    }
-
     public static double horizontalDistanceToSqr(Entity actor, Entity target) {
         if (!canAlias(actor, target)) {
             double dx = actor.getX() - target.getX();
@@ -173,14 +260,15 @@ public final class AiAliasUtil {
         if (!enabled(level)) {
             return rawBox;
         }
-        return CoordUtil.wrapAabb(level, rawBox);
+        return TopologyContexts.forLevel(level).canonicalBox(rawBox);
     }
 
     public static AABB nearestAliasQueryBox(Entity actor, AABB rawBox) {
         if (!enabled(actor.level())) {
             return rawBox;
         }
-        return CoordUtil.virtualAabb(actor.level(), canonicalQueryBox(actor.level(), rawBox), actor.getX(), actor.getZ());
+        TopologyContext context = TopologyContexts.forLevel(actor.level());
+        return context.virtualBoxForViewer(canonicalQueryBox(actor.level(), rawBox), actor.position());
     }
 
     public static AABB nearestAliasBoundingBox(Entity actor, Entity target) {
@@ -202,14 +290,7 @@ public final class AiAliasUtil {
             return false;
         }
 
-        Vec3 from = new Vec3(actor.getX(), actor.getEyeY(), actor.getZ());
-        Vec3 to = nearestAliasEyePosition(actor, target);
-        if (to.distanceTo(from) > 128.0D) {
-            return false;
-        }
-        return actor.level()
-                .clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, actor))
-                .getType() == HitResult.Type.MISS;
+        return TopologicalRaycasts.topologicalLineOfSight(actor, target);
     }
 
     public static boolean wrappedHorizontalDistanceIsShorter(Entity actor, Entity target) {

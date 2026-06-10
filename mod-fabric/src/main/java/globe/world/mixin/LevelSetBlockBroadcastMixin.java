@@ -2,8 +2,9 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.GlobeWorld;
-import globe.world.util.CoordUtil;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
+import globe.world.topology.TopologyContexts;
 import java.util.ArrayDeque;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -43,22 +44,22 @@ public abstract class LevelSetBlockBroadcastMixin {
         ordinal = 0
     )
     private BlockPos canonicalizeServerSetBlockPos(BlockPos pos) {
-        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+        return isClientSide() ? pos : globeWorld$canonicalBlock(pos);
     }
 
     @ModifyVariable(method = "getBlockEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeServerGetBlockEntityPos(BlockPos pos) {
-        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+        return isClientSide() ? pos : globeWorld$canonicalBlock(pos);
     }
 
     @ModifyVariable(method = "removeBlockEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeServerRemoveBlockEntityPos(BlockPos pos) {
-        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+        return isClientSide() ? pos : globeWorld$canonicalBlock(pos);
     }
 
     @ModifyVariable(method = "blockEntityChanged", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeServerBlockEntityChangedPos(BlockPos pos) {
-        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+        return isClientSide() ? pos : globeWorld$canonicalBlock(pos);
     }
 
     @Inject(
@@ -74,7 +75,7 @@ public abstract class LevelSetBlockBroadcastMixin {
             CallbackInfoReturnable<Boolean> cir) {
         GlobeWorldSetBlockFrame frame = new GlobeWorldSetBlockFrame();
         frame.originalPos = pos;
-        frame.canonicalPos = CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+        frame.canonicalPos = globeWorld$canonicalBlock(pos);
         frame.targetState = state;
         frame.flags = flags;
         frame.caller = globeWorld$caller();
@@ -155,20 +156,28 @@ public abstract class LevelSetBlockBroadcastMixin {
     }
 
     @Unique
+    private BlockPos globeWorld$canonicalBlock(BlockPos pos) {
+        return TopologyContexts.forLevel((Level) (Object) this).canonicalBlock(pos);
+    }
+
+    @Unique
     private void globeWorld$logInterestingBlockMutation(GlobeWorldSetBlockFrame frame, BlockState newState) {
         if (isClientSide() || !globeWorld$isInterestingMutation(frame.oldState, newState)) {
             return;
         }
         if (globeWorld$blockMutationLogCount >= 200) {
             if (globeWorld$blockMutationLogCount == 200) {
-                GlobeWorld.LOGGER.warn("GW_BLOCK_MUTATION logging limit reached; suppressing further grass/dirt mutation logs");
+                GlobeDiagnostics.warn(
+                        DiagnosticsChannel.BLOCK_MUTATION,
+                        "GW_BLOCK_MUTATION logging limit reached; suppressing further grass/dirt mutation logs");
                 globeWorld$blockMutationLogCount++;
             }
             return;
         }
         globeWorld$blockMutationLogCount++;
 
-        GlobeWorld.LOGGER.warn(
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.BLOCK_MUTATION,
                 "GW_BLOCK_MUTATION original={} canonical={} mutation={} chunk={} old={} new={} flags={} caller={}",
                 frame.originalPos,
                 frame.canonicalPos,

@@ -87,6 +87,7 @@
 		"PlayerItemPickupMixin",
 		"PlayerLocalSleepMixin",
 		"PortalProcessorMixin",
+		"ProjectileUtilTopologicalMoveMixin",
 		"RandomStatePeriodicRandomMixin",
 		"RangedAttackGoalMixin",
 		"RangedBowAttackGoalMixin",

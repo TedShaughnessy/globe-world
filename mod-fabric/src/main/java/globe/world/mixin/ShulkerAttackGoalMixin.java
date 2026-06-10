@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.monster.Shulker;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,6 +18,6 @@ public class ShulkerAttackGoalMixin {
             )
     )
     private double useAliasDistance(Shulker shulker, Entity target, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(shulker, target);
+        return ActorLocalTargets.distanceToSqr(shulker, target);
     }
 }

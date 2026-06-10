@@ -1,6 +1,7 @@
 package globe.world.mixin;
 
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.server.level.ServerLevel;
@@ -39,7 +40,8 @@ public class ChunkMapRandomTickMixin {
             globeWorld$randomTickedCanonicalChunks.clear();
         }
 
-        ChunkPos canonicalPos = CoordUtil.wrapChunkPos(level, chunk.getPos());
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        ChunkPos canonicalPos = topology.canonicalChunk(chunk.getPos());
         if (!globeWorld$randomTickedCanonicalChunks.add(canonicalPos.pack())) {
             ci.cancel();
             return;

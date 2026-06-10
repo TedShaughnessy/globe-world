@@ -1,7 +1,8 @@
 package globe.world.client;
 
 import globe.world.config.GlobeConfig;
-import globe.world.config.TilingSettings;
+import globe.world.config.GameplaySettings;
+import globe.world.config.TopologySettings;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.GlobeEntityAliasing;
@@ -173,12 +174,12 @@ public final class GlobeDebugHud {
     }
 
     private static String dayCycleSummary() {
-        TilingSettings settings = GlobeConfig.tilingSettings().sanitized();
+        GameplaySettings settings = GlobeConfig.gameplaySettings();
         return settings.dayNightCycleMode().displayName() + " x" + formatMultiplier(settings.dayLengthMultiplier());
     }
 
     private static String portalScaleSummary() {
-        TilingSettings settings = GlobeConfig.tilingSettings().sanitized();
+        TopologySettings settings = GlobeConfig.topologySettings();
         return String.format(
                 Locale.ROOT,
                 "%s (%d/%d)",

@@ -22,16 +22,18 @@ Full chunk packets are sourced from canonical chunks and relabeled to the alias
 chunk position before the client sees them. Later block, section, block-entity,
 biome, light, world-event, waypoint, sign-editor, look-at, map, and entity
 packets are copied or virtualized per viewer so their X/Z matches the visible
-alias.
+alias. The Minecraft 26.1.2 audit table lives in
+[Packet Policies](packet-policies.md).
 
-Server-authoritative `TilingSettings` are synchronized to modded clients during
-the Fabric configuration phase before play starts. The client applies those
-settings before first chunks, entity packets, and rendering decisions, then
-acknowledges the configuration task so the join can continue. Runtime server
-setting changes from commands or an integrated LAN host are sent again during
-the play phase. If a world has wrapping enabled and a joining client cannot
-receive the settings payload, the server disconnects that client with a Globe
-World client-required message.
+Server-authoritative settings are synchronized to modded clients during the
+Fabric configuration phase before play starts. The wire payload uses
+`GlobeSettings`, the same split model saved by the server. The client applies
+those settings before first chunks, entity packets, and rendering decisions,
+then acknowledges the configuration task so the join can continue. Runtime
+server setting changes from commands or an integrated LAN host are sent again
+during the play phase. If a world has wrapping enabled and a joining client
+cannot receive the settings payload, the server disconnects that client with a
+Globe World client-required message.
 
 `ClientboundPlayerPositionPacket` is not broadly virtualized because vanilla
 uses it for teleport acknowledgement state. Globe World instead canonicalizes
@@ -46,8 +48,9 @@ ownership remain out of scope; the server packet stream is the authority.
 
 `GlobeCurvatureShader` rewrites relevant vanilla world vertex shaders at
 resource load time. Overworld and Nether curvature are saved in
-`TilingSettings`, exposed through world creation and pause/options UI, and can
-be disabled with `0%`. `/globeworld config set curvature <0-100>` and
+`GlobeSettings.presentation()`, exposed through world creation and
+pause/options UI, and can be disabled with `0%`.
+`/globeworld config set curvature <0-100>` and
 `/globeworld config set nether_curvature <0-100>` update the saved curvature
 settings at runtime.
 
@@ -73,6 +76,9 @@ previews such as inventory players and special item models flat.
 in-world options screen. Its interactive controls include hover tooltips for
 custom topology methods, Overworld and Nether curvature, day-length multiplier,
 day/night behavior, and forced progression-structure toggles.
+The controls mutate the split `GlobeSettings` sections directly: topology
+controls update `TopologySettings`, curvature controls update
+`PresentationSettings`, and day/night controls update `GameplaySettings`.
 In remote multiplayer, the in-world screen shows the synced server settings as
 read-only; local clients cannot silently edit only their own `GlobeConfig`.
 The forced progression-structure toggles are editable only during world
@@ -165,6 +171,11 @@ Client diagnostics are intentionally targeted:
 
 - `F3+Y`: Globe debug overlay and tile-border renderer, including current
   Overworld/Nether tile widths and Nether portal ratio.
+- `/globeworld debug list`: show server diagnostic channels and whether each
+  channel is enabled for this session.
+- `/globeworld debug enable <channel>` and `/globeworld debug disable <channel>`:
+  turn one server diagnostic channel on or off.
+- `/globeworld debug clear`: turn all server diagnostic channels off.
 - `/globeworld client entity_aliases`: show local entity visual alias settings.
 - `/globeworld client entity_aliases mode`: cycle local entity visual alias mode.
 - `/globeworld client entity_aliases rings`: cycle local entity visual alias ring limit.
@@ -174,13 +185,14 @@ Client diagnostics are intentionally targeted:
 - Packet virtualization:
   `BlockPacketUtil`, `ChunkPacketUtil`, `WorldEventPacketUtil`,
   `EntityPacketUtil`, `WaypointPacketUtil`,
+  `PacketVirtualizationPolicies`,
   `ClientboundLevelChunkWithLightMixin`, `ChunkMapBiomeResendMixin`,
   `PlayerListBroadcastMixin`, `ServerLevelWorldEventMixin`,
   `ServerPlayerInteractionPacketMixin`.
 - Settings sync:
   `GlobeWorldNetworking`, `GlobeWorldSettingsPayload`,
   `GlobeWorldSettingsAckPayload`, `GlobeClientNetworking`,
-  `GlobeClientTilingSettings`, `GlobeWorldSettingsScreen`,
+  `GlobeClientSettings`, `GlobeWorldSettingsScreen`,
   `GlobeWorldSettingsControls`.
 - Curvature and picking:
   `GlobeCurvature`, `GlobeCurvatureShader`, `GlobeCurvedRaycast`,
@@ -199,6 +211,7 @@ Client diagnostics are intentionally targeted:
   `FishingHookRendererMixin`,
   `GlobeEntityAliasDiagnostics`.
 - Diagnostics and settings:
+  `DiagnosticsChannel`, `GlobeDiagnostics`,
   `GlobeClientDebugCommands`, `GlobeDebugHud`, `GlobeDebugState`,
   `GlobeTileBorderRenderer`, `KeyboardHandlerMixin`.
 

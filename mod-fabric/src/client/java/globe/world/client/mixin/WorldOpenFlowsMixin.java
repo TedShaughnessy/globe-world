@@ -2,8 +2,8 @@ package globe.world.client.mixin;
 
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.DataResult;
-import globe.world.config.TilingSettings;
-import globe.world.config.TilingSettingsHolder;
+import globe.world.config.GlobeSettings;
+import globe.world.config.GlobeSettingsHolder;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationContext;
 import net.minecraft.client.gui.screens.worldselection.WorldOpenFlows;
 import net.minecraft.world.level.LevelSettings;
@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(WorldOpenFlows.class)
 public class WorldOpenFlowsMixin {
     @Inject(method = "recreateWorldData", at = @At("RETURN"))
-    private void globeWorld$copyTilingSettingsToRecreatedContext(
+    private void globeWorld$copyGlobeSettingsToRecreatedContext(
             LevelStorageAccess levelSourceAccess,
             CallbackInfoReturnable<Pair<LevelSettings, WorldCreationContext>> cir) {
         WorldCreationContext context = cir.getReturnValue().getSecond();
@@ -28,8 +28,8 @@ public class WorldOpenFlowsMixin {
                 WorldGenSettings.TYPE
         );
         worldGenSettings.result().ifPresent(settings -> {
-            TilingSettings tilingSettings = ((TilingSettingsHolder) (Object) settings).globeWorld$getTilingSettings();
-            ((TilingSettingsHolder) (Object) context).globeWorld$setTilingSettings(tilingSettings);
+            GlobeSettings globeSettings = ((GlobeSettingsHolder) (Object) settings).globeWorld$getGlobeSettings();
+            ((GlobeSettingsHolder) (Object) context).globeWorld$setGlobeSettings(globeSettings);
         });
     }
 }

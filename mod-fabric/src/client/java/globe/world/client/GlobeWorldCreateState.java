@@ -1,18 +1,18 @@
 package globe.world.client;
 
-import globe.world.config.TilingSettings;
+import globe.world.config.GlobeSettings;
 
 public final class GlobeWorldCreateState {
-    private static TilingSettings settings = TilingSettings.DEFAULT;
+    private static GlobeSettings settings = GlobeSettings.DEFAULT;
 
     private GlobeWorldCreateState() {
     }
 
-    public static TilingSettings get() {
+    public static GlobeSettings get() {
         return settings;
     }
 
-    public static void set(TilingSettings newSettings) {
-        settings = newSettings.sanitized();
+    public static void set(GlobeSettings newSettings) {
+        settings = newSettings == null ? GlobeSettings.DEFAULT : newSettings;
     }
 }

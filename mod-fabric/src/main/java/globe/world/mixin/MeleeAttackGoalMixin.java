@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import globe.world.util.MobNavigationAliasUtil;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -52,7 +52,7 @@ public class MeleeAttackGoalMixin {
             )
     )
     private double compareTargetToPathedAlias(LivingEntity target, double x, double y, double z, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(target, x, y, z);
+        return ActorLocalTargets.distanceToSqr(target, x, y, z);
     }
 
     @WrapOperation(
@@ -63,7 +63,7 @@ public class MeleeAttackGoalMixin {
             )
     )
     private double storeNearestAliasPathedTargetX(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition(this.mob, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition(this.mob, target);
         return alias.x;
     }
 
@@ -75,7 +75,7 @@ public class MeleeAttackGoalMixin {
             )
     )
     private double storeNearestAliasPathedTargetZ(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition(this.mob, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition(this.mob, target);
         return alias.z;
     }
 
@@ -87,6 +87,6 @@ public class MeleeAttackGoalMixin {
             )
     )
     private double useAliasDistanceForRecomputeDelay(PathfinderMob mob, Entity target, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(mob, target);
+        return ActorLocalTargets.distanceToSqr(mob, target);
     }
 }

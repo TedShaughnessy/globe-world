@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.monster.Guardian;
 import org.spongepowered.asm.mixin.Final;
@@ -24,7 +24,7 @@ public class GuardianAttackGoalMixin {
             )
     )
     private double useAliasDistance(Guardian guardian, Entity target, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(guardian, target);
+        return ActorLocalTargets.distanceToSqr(guardian, target);
     }
 
     @WrapOperation(
@@ -35,6 +35,6 @@ public class GuardianAttackGoalMixin {
             )
     )
     private boolean useAliasLineOfSight(Guardian guardian, Entity target, Operation<Boolean> original) {
-        return original.call(guardian, target) || AiAliasUtil.aliasLineOfSight(this.guardian, target);
+        return original.call(guardian, target) || ActorLocalTargets.aliasLineOfSight(this.guardian, target);
     }
 }

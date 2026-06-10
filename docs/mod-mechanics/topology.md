@@ -44,8 +44,66 @@ The coordinate helper layer answers four questions:
 supports raw helpers, level-aware helpers, dimension-aware helpers, and helpers
 that use the current worldgen/scoped tiling context.
 
+`TopologyContext` is the named boundary for this math. It wraps a dimension and
+its effective `DimensionTiling`, then exposes frame-named helpers such as
+`canonicalBlock`, `canonicalChunk`, `virtualBlockForViewer`,
+`virtualChunkForViewer`, `wrappedDistanceSqr`, `loadedAliasesFor`, and
+`shouldAllowAliasMutation`. Runtime block/chunk access helpers use these names
+at subsystem boundaries, while `CoordUtil` remains the underlying source of the
+arithmetic.
+
 Canonicalization is used before state access. Virtualization is used when
 building viewer-facing positions, especially packets and tracking decisions.
+
+## Topological Entity Queries
+
+`TopologicalEntityQueries` is the shared boundary for broad entity lookup
+boxes. It keeps vanilla entity identity and predicates, but gathers candidates
+from every canonical slice touched by a visible-frame query box. A query near
+the canonical tile edge is split across the wrapped X/Z edges instead of only
+wrapping the box center.
+
+The helper dedupes by entity identity, includes canonical non-player storage,
+and adds server players whose nearest visible alias intersects the query box.
+`ActorLocalTargets` exposes actor-facing adapters such as
+`targetsInActorRange(...)`, while projectile, pickup, container-open, sensor,
+and `ServerEntityGetter` hooks use the same lower-level primitive.
+
+## Topological Raycast Primitives
+
+`TopologicalRaycasts` is the shared boundary for ray-like topology queries. It
+keeps vanilla clip modes explicit while returning both visible-frame hit data
+and canonical hit identity:
+
+- `topologicalClip(...)` runs a block/fluid clip in the caller's visible frame
+  and canonicalizes the hit block position and hit location.
+- `topologicalEntitySweep(...)` tests canonical entity identity through
+  visible alias hitboxes, returning the earliest visible hit per entity.
+- `topologicalLineOfSight(...)` maps a target into an actor-local frame before
+  doing a collider clip.
+- `topologicalViewVector(...)` mirrors vanilla's shared view-vector ray helper
+  for server-side item validation paths such as brush targeting.
+- `topologicalHitEntitiesAlong(...)` mirrors vanilla's shared attack-range ray
+  helper for server-side component weapons.
+- `topologicalProjectileMove(...)` packages block clipping and entity sweep for
+  server-authoritative projectile movement.
+
+The default entity alias radius is intentionally zero, matching the existing v1
+projectile behavior of testing the nearest alias frame to the ray origin. Wider
+alias scans are opt-in through `EntitySweepOptions.withAliasTileRadius(...)` so
+tiny-tile experiments have an explicit cost cap.
+
+Block trace results also expose `visibleHitWithCanonicalBlock()`, which keeps
+the hit location in the caller's visible frame but replaces the block position
+with the canonical owner. Arrow block clipping uses this adapter so vanilla
+movement and entity ordering can stay visible-frame while block callbacks and
+state lookups receive canonical identity.
+
+`ProjectileUtilTopologicalMoveMixin` applies these primitives to vanilla's
+shared server-side `ProjectileUtil` ray helpers: move-vector projectile hits,
+view-vector hits, and attack-range entity sweeps. Client-side projectile
+prediction stays on vanilla's raw helper for now, while server-authoritative hit
+results supply canonical block/entity identity.
 
 ## Dimension Policy
 
@@ -76,7 +134,12 @@ eight Nether blocks map to one Overworld block.
 
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/DimensionTiling.java`
-- `mod-fabric/src/main/java/globe/world/config/TilingSettings.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologyContexts.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologicalEntityQueries.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologicalRaycasts.java`
+- `mod-fabric/src/main/java/globe/world/config/TopologySettings.java`
+- `mod-fabric/src/main/java/globe/world/config/GlobeSettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeConfig.java`
 - `mod-fabric/src/main/java/globe/world/mixin/WorldGenSettingsMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ServerLevelTicksDimensionMixin.java`
@@ -85,7 +148,8 @@ eight Nether blocks map to one Overworld block.
 
 ## Implemented Paths
 
-- Runtime chunk, block, and entity packet paths use dimension context.
+- Runtime chunk, block, entity packet, and waypoint packet paths use dimension
+  context.
 - Server chunk lookup, alias tickets, random ticks, spawning collection,
   tracking, block mutation, and worldgen region access use dimension-aware
   wrapping.
@@ -117,6 +181,19 @@ Tile size, Overworld tiling mode, Overworld terrain method, Nether tiling mode,
 Nether tile size, Nether terrain method, and Nether portal scale are treated as
 permanent world-topology settings. They are visible through `/globeworld
 config`, but intentionally are not mutable through runtime commands.
+
+`GlobeSettings` is the saved server model under the `globe_world` field in
+vanilla `WorldGenSettings`. It serializes durable topology, presentation, and
+gameplay groups. Diagnostics remain session-local command state and are not part
+of saved settings. The codec only accepts the split schema; older flat
+`TilingSettings` saved data is not imported. `GlobeSettingsHolder` is the
+world-creation and saved-settings boundary. `TopologySettings`,
+`PresentationSettings`, and `GameplaySettings` now own their normalization and
+update helpers directly. `DimensionTiling` reads topology through
+`TopologySettings`, and the settings UI edits topology, presentation, and
+gameplay as separate `GlobeSettings` sections. Runtime commands still mutate
+only presentation/gameplay fields such as curvature, day/night mode, and
+day-length multiplier.
 
 ## Related Vanilla Mechanics
 

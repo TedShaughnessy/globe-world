@@ -1,5 +1,6 @@
 package globe.world.util;
 
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -16,7 +17,7 @@ public final class DamageAliasUtil {
 
         Entity directEntity = source.getDirectEntity();
         if (directEntity != null && directEntity.level() == victim.level()) {
-            return AiAliasUtil.nearestAliasPosition(victim, directEntity);
+            return ActorLocalTargets.nearestAliasPosition(victim, directEntity);
         }
 
         double x = CoordUtil.virtualBlock(

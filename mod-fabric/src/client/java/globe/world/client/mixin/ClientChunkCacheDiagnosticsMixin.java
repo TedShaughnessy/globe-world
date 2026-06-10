@@ -1,6 +1,7 @@
 package globe.world.client.mixin;
 
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
 import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
@@ -28,13 +29,17 @@ public class ClientChunkCacheDiagnosticsMixin {
     private void logClientViewCenter(int x, int z, CallbackInfo ci) {
         this.globeWorld$viewCenterX = x;
         this.globeWorld$viewCenterZ = z;
-        GlobeWorld.LOGGER.warn("GW_CLIENT_CHUNK_CENTER center={}", format(x, z));
+        GlobeDiagnostics.warn(DiagnosticsChannel.CLIENT_CACHE, "GW_CLIENT_CHUNK_CENTER center={}", format(x, z));
     }
 
     @Inject(method = "updateViewRadius", at = @At("RETURN"))
     private void logClientViewRadius(int viewRange, CallbackInfo ci) {
         this.globeWorld$storageRadius = Math.max(2, viewRange) + 3;
-        GlobeWorld.LOGGER.warn("GW_CLIENT_CHUNK_RADIUS viewRange={} storageRadius={}", viewRange, this.globeWorld$storageRadius);
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.CLIENT_CACHE,
+                "GW_CLIENT_CHUNK_RADIUS viewRange={} storageRadius={}",
+                viewRange,
+                this.globeWorld$storageRadius);
     }
 
     @Inject(method = "replaceWithPacketData", at = @At("RETURN"))
@@ -47,7 +52,8 @@ public class ClientChunkCacheDiagnosticsMixin {
             CallbackInfoReturnable<LevelChunk> cir) {
         if (cir.getReturnValue() == null) {
             this.globeWorld$ignoredChunkPackets++;
-            GlobeWorld.LOGGER.warn(
+            GlobeDiagnostics.warn(
+                    DiagnosticsChannel.CLIENT_CACHE,
                     "GW_CLIENT_CHUNK_PACKET ignored count={} chunk={} center={}",
                     this.globeWorld$ignoredChunkPackets,
                     format(chunkX, chunkZ),
@@ -58,7 +64,8 @@ public class ClientChunkCacheDiagnosticsMixin {
 
         this.globeWorld$acceptedChunkPackets++;
         if (this.globeWorld$acceptedChunkPackets <= 8 || isNearViewEdge(chunkX, chunkZ)) {
-            GlobeWorld.LOGGER.warn(
+            GlobeDiagnostics.warn(
+                    DiagnosticsChannel.CLIENT_CACHE,
                     "GW_CLIENT_CHUNK_PACKET accepted count={} chunk={} center={}",
                     this.globeWorld$acceptedChunkPackets,
                     format(chunkX, chunkZ),

@@ -1,6 +1,7 @@
 package globe.world.util;
 
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
@@ -163,11 +164,12 @@ public class ChunkAliasTracker {
             int removed,
             String playerName,
             ResourceKey<Level> dimension) {
-        if (removed <= 0 || !GlobeWorld.LOGGER.isDebugEnabled()) {
+        if (removed <= 0) {
             return;
         }
 
-        GlobeWorld.LOGGER.debug(
+        GlobeDiagnostics.debug(
+                DiagnosticsChannel.CHUNKS,
                 "GW_CHUNK_ALIAS_TRACKER cleanup scope={} removed={} player={} dimension={}",
                 scope,
                 removed,

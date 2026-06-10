@@ -2,8 +2,8 @@ package globe.world.mixin;
 
 import com.mojang.datafixers.DataFixer;
 import globe.world.config.GlobeConfig;
-import globe.world.config.TilingSettings;
-import globe.world.config.TilingSettingsHolder;
+import globe.world.config.GlobeSettings;
+import globe.world.config.GlobeSettingsHolder;
 import globe.world.util.ChunkAliasTracker;
 import globe.world.util.GlobeDayLength;
 import globe.world.util.WorldGenSpillover;
@@ -35,7 +35,7 @@ public class MinecraftServerMixin implements WorldGenSpilloverOwner {
     }
 
     @Inject(method = "<init>", at = @At("TAIL"))
-    private void globeWorld$loadTilingSettings(
+    private void globeWorld$loadGlobeSettings(
             Thread serverThread,
             LevelStorageSource.LevelStorageAccess storageSource,
             PackRepository packRepository,
@@ -46,17 +46,17 @@ public class MinecraftServerMixin implements WorldGenSpilloverOwner {
             Services services,
             LevelLoadListener progressListener,
             boolean debug,
-            CallbackInfo ci) {
+        CallbackInfo ci) {
         MinecraftServer server = (MinecraftServer) (Object) this;
-        TilingSettings settings = ((TilingSettingsHolder) (Object) server.getWorldGenSettings()).globeWorld$getTilingSettings();
-        GlobeConfig.setTilingSettings(settings);
+        GlobeSettings settings = ((GlobeSettingsHolder) (Object) server.getWorldGenSettings()).globeWorld$getGlobeSettings();
+        GlobeConfig.setGlobeSettings(settings);
     }
 
     @Inject(method = "loadLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/MinecraftServer;prepareLevels()V"))
     private void globeWorld$applyDayLength(CallbackInfo ci) {
         MinecraftServer server = (MinecraftServer) (Object) this;
-        TilingSettings settings = ((TilingSettingsHolder) (Object) server.getWorldGenSettings()).globeWorld$getTilingSettings();
-        GlobeDayLength.applyToServer(server, settings);
+        GlobeSettings settings = ((GlobeSettingsHolder) (Object) server.getWorldGenSettings()).globeWorld$getGlobeSettings();
+        GlobeDayLength.applyToServer(server, settings.gameplay());
     }
 
     @Inject(method = "stopServer", at = @At("HEAD"))

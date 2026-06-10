@@ -2,8 +2,8 @@ package globe.world.mixin;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import globe.world.config.TilingSettings;
-import globe.world.config.TilingSettingsHolder;
+import globe.world.config.GlobeSettings;
+import globe.world.config.GlobeSettingsHolder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.levelgen.WorldDimensions;
@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(WorldGenSettings.class)
-public class WorldGenSettingsMixin implements TilingSettingsHolder {
+public class WorldGenSettingsMixin implements GlobeSettingsHolder {
     @Mutable
     @Shadow
     @Final
@@ -32,7 +32,7 @@ public class WorldGenSettingsMixin implements TilingSettingsHolder {
     public static SavedDataType<WorldGenSettings> TYPE;
 
     @Unique
-    private TilingSettings globeWorld$tilingSettings = TilingSettings.DEFAULT;
+    private GlobeSettings globeWorld$settings = GlobeSettings.DEFAULT;
 
     @Inject(method = "<clinit>", at = @At("TAIL"))
     private static void globeWorld$replaceCodec(CallbackInfo ci) {
@@ -40,11 +40,11 @@ public class WorldGenSettingsMixin implements TilingSettingsHolder {
                 instance.group(
                         WorldOptions.CODEC.forGetter(WorldGenSettings::options),
                         WorldDimensions.CODEC.forGetter(WorldGenSettings::dimensions),
-                        TilingSettings.CODEC.optionalFieldOf("globe_world", TilingSettings.DEFAULT)
-                                .forGetter(settings -> ((TilingSettingsHolder) (Object) settings).globeWorld$getTilingSettings())
-                ).apply(instance, (options, dimensions, tilingSettings) -> {
+                        GlobeSettings.CODEC.optionalFieldOf("globe_world", GlobeSettings.DEFAULT)
+                                .forGetter(settings -> ((GlobeSettingsHolder) (Object) settings).globeWorld$getGlobeSettings())
+                ).apply(instance, (options, dimensions, globeSettings) -> {
                     WorldGenSettings settings = new WorldGenSettings(options, dimensions);
-                    ((TilingSettingsHolder) (Object) settings).globeWorld$setTilingSettings(tilingSettings);
+                    ((GlobeSettingsHolder) (Object) settings).globeWorld$setGlobeSettings(globeSettings);
                     return settings;
                 })
         );
@@ -55,7 +55,7 @@ public class WorldGenSettingsMixin implements TilingSettingsHolder {
                             WorldOptions.defaultWithRandomSeed(),
                             new WorldDimensions(new java.util.HashMap<>())
                     );
-                    ((TilingSettingsHolder) (Object) settings).globeWorld$setTilingSettings(TilingSettings.DEFAULT);
+                    ((GlobeSettingsHolder) (Object) settings).globeWorld$setGlobeSettings(GlobeSettings.DEFAULT);
                     return settings;
                 },
                 CODEC,
@@ -64,12 +64,12 @@ public class WorldGenSettingsMixin implements TilingSettingsHolder {
     }
 
     @Override
-    public TilingSettings globeWorld$getTilingSettings() {
-        return globeWorld$tilingSettings;
+    public GlobeSettings globeWorld$getGlobeSettings() {
+        return globeWorld$settings;
     }
 
     @Override
-    public void globeWorld$setTilingSettings(TilingSettings settings) {
-        globeWorld$tilingSettings = settings.sanitized();
+    public void globeWorld$setGlobeSettings(GlobeSettings settings) {
+        globeWorld$settings = settings == null ? GlobeSettings.DEFAULT : settings;
     }
 }

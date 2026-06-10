@@ -1,7 +1,8 @@
 package globe.world.util;
 
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundBlockDestructionPacket;
 import net.minecraft.network.protocol.game.ClientboundBlockEventPacket;
@@ -64,48 +65,27 @@ public final class WorldEventPacketUtil {
     }
 
     public static Vec3 virtualizePos(ServerLevel level, Vec3 pos, ServerPlayer viewer) {
-        double canonicalX = CoordUtil.wrapBlock(level, pos.x());
-        double canonicalZ = CoordUtil.wrapBlock(level, pos.z());
-        double virtualX = CoordUtil.virtualBlock(level, canonicalX, viewer.getX());
-        double virtualZ = CoordUtil.virtualBlock(level, canonicalZ, viewer.getZ());
-        if (virtualX == pos.x() && virtualZ == pos.z()) {
-            return pos;
-        }
-        return new Vec3(virtualX, pos.y(), virtualZ);
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        Vec3 canonical = new Vec3(topology.canonicalBlockX(pos.x()), pos.y(), topology.canonicalBlockX(pos.z()));
+        return topology.virtualBlockForViewer(canonical, viewer.position());
     }
 
     public static BlockPos virtualizeBlockPos(ServerLevel level, BlockPos pos, ServerPlayer viewer) {
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(level, pos);
-        int virtualX = (int) CoordUtil.virtualBlock(level, canonicalPos.getX(), viewer.getX());
-        int virtualZ = (int) CoordUtil.virtualBlock(level, canonicalPos.getZ(), viewer.getZ());
-        if (virtualX == pos.getX() && virtualZ == pos.getZ()) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        BlockPos canonicalPos = topology.canonicalBlock(pos);
+        BlockPos virtualPos = topology.virtualBlockForViewer(canonicalPos, viewer);
+        if (virtualPos.equals(pos)) {
             return pos;
         }
-        return new BlockPos(virtualX, pos.getY(), virtualZ);
+        return virtualPos;
     }
 
     public static double wrappedDistanceSqr(ServerLevel level, Vec3 source, ServerPlayer viewer) {
-        return CoordUtil.wrappedDistanceSqr(
-                level,
-                source.x(),
-                source.y(),
-                source.z(),
-                viewer.getX(),
-                viewer.getY(),
-                viewer.getZ()
-        );
+        return TopologyContexts.forLevel(level).wrappedDistanceSqr(source, viewer.position());
     }
 
     public static double wrappedDistanceSqr(ServerLevel level, Vec3 source, Vec3 viewer) {
-        return CoordUtil.wrappedDistanceSqr(
-                level,
-                source.x(),
-                source.y(),
-                source.z(),
-                viewer.x(),
-                viewer.y(),
-                viewer.z()
-        );
+        return TopologyContexts.forLevel(level).wrappedDistanceSqr(source, viewer);
     }
 
     private static Packet<?> virtualizeSound(ClientboundSoundPacket packet, ServerPlayer viewer) {
@@ -144,14 +124,10 @@ public final class WorldEventPacketUtil {
     private static List<Packet<?>> virtualizeBlockEventForLoadedAliases(
             ClientboundBlockEventPacket packet,
             ServerPlayer viewer) {
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(viewer.level(), packet.getPos());
-        int canonicalChunkX = SectionPos.blockToSectionCoord(canonicalPos.getX());
-        int canonicalChunkZ = SectionPos.blockToSectionCoord(canonicalPos.getZ());
-        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
-                viewer,
-                viewer.level().dimension(),
-                canonicalChunkX,
-                canonicalChunkZ);
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        BlockPos canonicalPos = topology.canonicalBlock(packet.getPos());
+        ChunkPos canonicalChunk = topology.canonicalChunkForBlock(canonicalPos);
+        List<ChunkPos> aliases = topology.loadedAliasesFor(viewer, canonicalChunk);
         if (aliases.isEmpty()) {
             return List.of(virtualizeBlockEvent(packet, viewer));
         }
@@ -159,7 +135,7 @@ public final class WorldEventPacketUtil {
         Set<BlockPos> seenPositions = new HashSet<>(aliases.size());
         List<Packet<?>> packets = new ArrayList<>(aliases.size());
         for (ChunkPos alias : aliases) {
-            BlockPos visiblePos = offsetBlockPos(canonicalPos, canonicalChunkX, canonicalChunkZ, alias);
+            BlockPos visiblePos = offsetBlockPos(canonicalPos, canonicalChunk, alias);
             if (seenPositions.add(visiblePos)) {
                 packets.add(new ClientboundBlockEventPacket(
                         visiblePos,
@@ -182,11 +158,10 @@ public final class WorldEventPacketUtil {
 
     private static BlockPos offsetBlockPos(
             BlockPos canonicalPos,
-            int canonicalChunkX,
-            int canonicalChunkZ,
+            ChunkPos canonicalChunk,
             ChunkPos alias) {
-        int dx = (alias.x() - canonicalChunkX) * 16;
-        int dz = (alias.z() - canonicalChunkZ) * 16;
+        int dx = (alias.x() - canonicalChunk.x()) * 16;
+        int dz = (alias.z() - canonicalChunk.z()) * 16;
         if (dx == 0 && dz == 0) {
             return canonicalPos;
         }

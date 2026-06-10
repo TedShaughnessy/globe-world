@@ -193,7 +193,7 @@ public final class GlobeScrollingSky {
     }
 
     private static boolean localTimelineActive() {
-        return GlobeConfig.enabled() && GlobeConfig.dayNightCycleMode() == DayNightCycleMode.SCROLLING;
+        return GlobeConfig.enabled() && GlobeConfig.gameplaySettings().dayNightCycleMode() == DayNightCycleMode.SCROLLING;
     }
 
     private static void addFloatOverride(

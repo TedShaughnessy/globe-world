@@ -1,6 +1,9 @@
 package globe.world.util;
 
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -17,20 +20,13 @@ public final class ClientActionDiagnostics {
     }
 
     public static boolean shouldRejectAliasMutation(ServerPlayer player, ServerLevel level, BlockPos rawPos, String action) {
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(level, rawPos);
-        if (canonicalPos.equals(rawPos)) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        TopologyContext.AliasMutationAccess access = topology.aliasMutationAccess(level, rawPos);
+        if (access.allowed()) {
             return false;
         }
 
-        ChunkPos canonicalChunk = new ChunkPos(
-                CoordUtil.wrapChunk(level, ChunkPos.containing(rawPos).x()),
-                CoordUtil.wrapChunk(level, ChunkPos.containing(rawPos).z())
-        );
-        if (level.shouldTickBlocksAt(canonicalChunk.pack())) {
-            return false;
-        }
-
-        logRejectedAliasMutation(player, level, rawPos, canonicalPos, canonicalChunk, action);
+        logRejectedAliasMutation(player, level, rawPos, access.canonicalBlock(), access.canonicalChunk(), action);
         return true;
     }
 
@@ -59,7 +55,8 @@ public final class ClientActionDiagnostics {
         boolean canonicalBlockTicking = level.shouldTickBlocksAt(canonicalChunk.pack());
         boolean canonicalLoaded = level.getChunkSource().getChunkNow(canonicalChunk.x(), canonicalChunk.z()) != null;
 
-        GlobeWorld.LOGGER.warn(
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.BLOCK_MUTATION,
                 "GW_CLIENT_BLOCK_ACTION_REJECTED action={} reason=canonical_chunk_not_block_ticking player={} dimension={} rawPos={} rawChunk={} canonicalPos={} canonicalChunk={} playerChunk={} rawBlockTicking={} canonicalBlockTicking={} canonicalLoaded={}",
                 action,
                 player.getScoreboardName(),

@@ -1,8 +1,11 @@
 package globe.world.client;
 
 import globe.world.config.DayNightCycleMode;
+import globe.world.config.GameplaySettings;
+import globe.world.config.GlobeSettings;
+import globe.world.config.PresentationSettings;
 import globe.world.config.TilingMode;
-import globe.world.config.TilingSettings;
+import globe.world.config.TopologySettings;
 import globe.world.util.GlobeCurvature;
 import globe.world.util.TerrainMode;
 import net.fabricmc.loader.api.FabricLoader;
@@ -54,12 +57,12 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final long DISTANT_HORIZONS_MIN_CURVATURE_RATIO = 50L;
     private static final long DISTANT_HORIZONS_MAX_CURVATURE_RATIO = 5_000L;
     private static final List<Integer> CURVATURE_PRESETS = List.of(
-            TilingSettings.CURVATURE_DISABLED_PERCENT,
-            TilingSettings.CURVATURE_COMFORTABLE_PERCENT,
-            TilingSettings.CURVATURE_REALISTIC_PERCENT
+            PresentationSettings.CURVATURE_DISABLED_PERCENT,
+            PresentationSettings.CURVATURE_COMFORTABLE_PERCENT,
+            PresentationSettings.CURVATURE_REALISTIC_PERCENT
     );
     private static final List<Double> DAY_LENGTH_PRESETS = List.of(
-            TilingSettings.DAY_LENGTH_HALF_MULTIPLIER,
+            GameplaySettings.DAY_LENGTH_HALF_MULTIPLIER,
             1.0D,
             2.0D,
             3.0D,
@@ -69,7 +72,7 @@ public class GlobeWorldSettingsControls implements Layout {
             7.0D,
             8.0D,
             9.0D,
-            TilingSettings.DAY_LENGTH_MAX_MULTIPLIER
+            GameplaySettings.DAY_LENGTH_MAX_MULTIPLIER
     );
     private static final List<TerrainMode> TERRAIN_MODE_OPTIONS = List.of(
             TerrainMode.AUTO,
@@ -127,8 +130,8 @@ public class GlobeWorldSettingsControls implements Layout {
 
     private final boolean createWorld;
     private final boolean editable;
-    private final Supplier<TilingSettings> settingsGetter;
-    private final Consumer<TilingSettings> settingsSetter;
+    private final Supplier<GlobeSettings> settingsGetter;
+    private final Consumer<GlobeSettings> settingsSetter;
     private final List<Row> rows = new ArrayList<>();
     private final List<LayoutElement> elements = new ArrayList<>();
     private int x;
@@ -167,32 +170,32 @@ public class GlobeWorldSettingsControls implements Layout {
     private GlobeWorldSettingsControls(
             boolean createWorld,
             boolean editable,
-            Supplier<TilingSettings> settingsGetter,
-            Consumer<TilingSettings> settingsSetter) {
+            Supplier<GlobeSettings> settingsGetter,
+            Consumer<GlobeSettings> settingsSetter) {
         this.createWorld = createWorld;
         this.editable = editable;
         this.settingsGetter = settingsGetter;
         this.settingsSetter = settingsSetter;
-        this.createMode = createWorld ? CreateMode.fromSettings(settingsGetter.get()) : CreateMode.CUSTOM;
+        this.createMode = createWorld ? CreateMode.fromSettings(currentGlobeSettings()) : CreateMode.CUSTOM;
         build();
         refresh();
     }
 
     public static GlobeWorldSettingsControls createWorld(
-            Supplier<TilingSettings> settingsGetter,
-            Consumer<TilingSettings> settingsSetter) {
+            Supplier<GlobeSettings> settingsGetter,
+            Consumer<GlobeSettings> settingsSetter) {
         return new GlobeWorldSettingsControls(true, true, settingsGetter, settingsSetter);
     }
 
     public static GlobeWorldSettingsControls pauseMenu(
-            Supplier<TilingSettings> settingsGetter,
-            Consumer<TilingSettings> settingsSetter) {
+            Supplier<GlobeSettings> settingsGetter,
+            Consumer<GlobeSettings> settingsSetter) {
         return pauseMenu(settingsGetter, settingsSetter, true);
     }
 
     public static GlobeWorldSettingsControls pauseMenu(
-            Supplier<TilingSettings> settingsGetter,
-            Consumer<TilingSettings> settingsSetter,
+            Supplier<GlobeSettings> settingsGetter,
+            Consumer<GlobeSettings> settingsSetter,
             boolean editable) {
         return new GlobeWorldSettingsControls(false, editable, settingsGetter, settingsSetter);
     }
@@ -213,7 +216,7 @@ public class GlobeWorldSettingsControls implements Layout {
                     .withValues(CreateMode.values())
                     .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Globe World"), (button, mode) -> {
                         this.createMode = mode;
-                        setSettings(settingsForMode(mode));
+                        setGlobeSettings(globeSettingsForMode(mode));
                     });
             addRow(createModeButton, () -> true);
         }
@@ -231,7 +234,7 @@ public class GlobeWorldSettingsControls implements Layout {
             }
             try {
                 int tileSize = Math.max(1, Integer.parseInt(text));
-                setSettings(settingsGetter.get()
+                setTopology(currentTopology()
                         .withTileSize(tileSize)
                         .withNetherTileSize(simpleDefaultNetherTileSize(tileSize)));
             } catch (NumberFormatException ignored) {
@@ -254,28 +257,28 @@ public class GlobeWorldSettingsControls implements Layout {
         );
 
         overworldTopologyButton = CycleButton.<TerrainMode>builder(
-                        mode -> topologyLabel(mode, TerrainMode.forOverworldTileSize(settingsGetter.get().tileSize())),
-                        settingsGetter.get().terrainMode()
+                        mode -> topologyLabel(mode, TerrainMode.forOverworldTileSize(currentTopology().tileSize())),
+                        currentTopology().terrainMode()
                 )
                 .withValues(TERRAIN_MODE_OPTIONS)
                 .withTooltip(mode -> tooltip(mode.tooltip()))
                 .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Overworld Topology"),
-                        (button, mode) -> setSettings(settingsGetter.get().withTerrainMode(mode)));
+                        (button, mode) -> setTopology(currentTopology().withTerrainMode(mode)));
         addRow(
                 overworldTopologyButton,
-                () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled()
+                () -> createWorld && createMode == CreateMode.CUSTOM && currentTopology().enabled()
         );
 
         overworldInfo = infoText(Component.empty());
-        addRow(overworldInfo, () -> !createWorld || settingsGetter.get().enabled() && createMode == CreateMode.CUSTOM);
+        addRow(overworldInfo, () -> !createWorld || currentTopology().enabled() && createMode == CreateMode.CUSTOM);
 
         overworldCurvatureButton = curvatureButton(
                 "Overworld Curvature",
-                settingsGetter.get().curvaturePercent(),
+                currentPresentation().curvaturePercent(),
                 CURVATURE_TOOLTIP,
-                percent -> setSettings(settingsGetter.get().withCurvaturePercent(percent))
+                percent -> setPresentation(currentPresentation().withCurvaturePercent(percent))
         );
-        addRow(overworldCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && settingsGetter.get().enabled());
+        addRow(overworldCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && currentTopology().enabled());
 
         overworldCurvatureSlider = new GlobeCurvatureSlider(
                 0,
@@ -283,16 +286,16 @@ public class GlobeWorldSettingsControls implements Layout {
                 CONTROL_WIDTH,
                 20,
                 Component.literal("Overworld Curvature"),
-                settingsGetter.get().curvaturePercent(),
-                percent -> setSettings(settingsGetter.get().withCurvaturePercent(percent))
+                currentPresentation().curvaturePercent(),
+                percent -> setPresentation(currentPresentation().withCurvaturePercent(percent))
         );
         overworldCurvatureSlider.setTooltip(tooltip(CURVATURE_TOOLTIP));
-        addRow(overworldCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && settingsGetter.get().enabled());
+        addRow(overworldCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && currentTopology().enabled());
 
         overworldDistantHorizonsAdvice = infoText(Component.empty());
         addRow(
                 overworldDistantHorizonsAdvice,
-                () -> DISTANT_HORIZONS_LOADED && distantHorizonsAdviceSupported(settingsGetter.get())
+                () -> DISTANT_HORIZONS_LOADED && distantHorizonsAdviceSupported(currentTopology())
         );
 
         netherSizeButton = CycleButton.<NetherSizePreset>builder(
@@ -302,7 +305,7 @@ public class GlobeWorldSettingsControls implements Layout {
                 .withValues(new CycleButton.ValueListSupplier<NetherSizePreset>() {
                     @Override
                     public List<NetherSizePreset> getSelectedList() {
-                        return validNetherSizePresets(settingsGetter.get());
+                        return validNetherSizePresets(currentTopology());
                     }
 
                     @Override
@@ -312,16 +315,16 @@ public class GlobeWorldSettingsControls implements Layout {
                 })
                 .withTooltip(preset -> tooltip(netherSizeTooltip(preset)))
                 .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Nether Size"),
-                        (button, preset) -> setSettings(applyNetherSizePreset(settingsGetter.get(), preset)));
-        addSectionRow(netherSizeButton, () -> createWorld && createMode == CreateMode.SIMPLE && settingsGetter.get().enabled());
+                        (button, preset) -> setTopology(applyNetherSizePreset(currentTopology(), preset)));
+        addSectionRow(netherSizeButton, () -> createWorld && createMode == CreateMode.SIMPLE && currentTopology().enabled());
 
         tileNetherCheckbox = progressionCheckbox(
                 "Tile Nether",
                 "Enables Nether wrapping and the custom Nether controls.",
-                settingsGetter.get().netherEnabled(),
-                selected -> setSettings(settingsGetter.get().withNetherMode(selected ? TilingMode.SQUARE : TilingMode.DISABLED))
+                currentTopology().netherEnabled(),
+                selected -> setTopology(currentTopology().withNetherMode(selected ? TilingMode.SQUARE : TilingMode.DISABLED))
         );
-        addSectionRow(tileNetherCheckbox, () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled());
+        addSectionRow(tileNetherCheckbox, () -> createWorld && createMode == CreateMode.CUSTOM && currentTopology().enabled());
 
         customNetherTileField = new EditBox(minecraft.font, 110, 20, Component.literal("Nether Tile Size"));
         customNetherTileField.setMaxLength(7);
@@ -332,7 +335,7 @@ public class GlobeWorldSettingsControls implements Layout {
             }
             try {
                 int tileSize = Math.max(1, Integer.parseInt(text));
-                setSettings(settingsGetter.get()
+                setTopology(currentTopology()
                         .withNetherMode(TilingMode.SQUARE)
                         .withNetherTileSize(tileSize));
             } catch (NumberFormatException ignored) {
@@ -350,7 +353,7 @@ public class GlobeWorldSettingsControls implements Layout {
                         customNetherTileField,
                         CONTROL_WIDTH
                 ),
-                () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled()
+                () -> createWorld && createMode == CreateMode.CUSTOM && currentTopology().enabled()
         );
 
         portalRatioSlider = new PortalRatioSlider(
@@ -359,33 +362,33 @@ public class GlobeWorldSettingsControls implements Layout {
                 CONTROL_WIDTH,
                 20,
                 portalRatioPreset(),
-                preset -> setSettings(settingsGetter.get().withNetherPortalScale(preset.numerator, preset.denominator))
+                preset -> setTopology(currentTopology().withNetherPortalScale(preset.numerator, preset.denominator))
         );
-        addRow(portalRatioSlider, () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().enabled());
+        addRow(portalRatioSlider, () -> createWorld && createMode == CreateMode.CUSTOM && currentTopology().enabled());
 
         netherTopologyButton = CycleButton.<TerrainMode>builder(
-                        mode -> topologyLabel(mode, TerrainMode.forNetherTileSize(settingsGetter.get().netherTileSize())),
-                        settingsGetter.get().netherTerrainMode()
+                        mode -> topologyLabel(mode, TerrainMode.forNetherTileSize(currentTopology().netherTileSize())),
+                        currentTopology().netherTerrainMode()
                 )
                 .withValues(TERRAIN_MODE_OPTIONS)
                 .withTooltip(mode -> tooltip(mode.tooltip()))
                 .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Nether Topology"),
-                        (button, mode) -> setSettings(settingsGetter.get().withNetherTerrainMode(mode)));
+                        (button, mode) -> setTopology(currentTopology().withNetherTerrainMode(mode)));
         addRow(
                 netherTopologyButton,
-                () -> createWorld && createMode == CreateMode.CUSTOM && settingsGetter.get().netherEnabled()
+                () -> createWorld && createMode == CreateMode.CUSTOM && currentTopology().netherEnabled()
         );
 
         netherInfo = infoText(Component.empty());
-        addRow(netherInfo, () -> !createWorld || settingsGetter.get().enabled() && createMode == CreateMode.CUSTOM, createWorld ? ROW_SPACING : SECTION_SPACING);
+        addRow(netherInfo, () -> !createWorld || currentTopology().enabled() && createMode == CreateMode.CUSTOM, createWorld ? ROW_SPACING : SECTION_SPACING);
 
         netherCurvatureButton = curvatureButton(
                 "Nether Curvature",
-                settingsGetter.get().netherCurvaturePercent(),
+                currentPresentation().netherCurvaturePercent(),
                 CURVATURE_TOOLTIP,
-                percent -> setSettings(settingsGetter.get().withNetherCurvaturePercent(percent))
+                percent -> setPresentation(currentPresentation().withNetherCurvaturePercent(percent))
         );
-        addRow(netherCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && settingsGetter.get().enabled());
+        addRow(netherCurvatureButton, () -> createWorld && createMode == CreateMode.SIMPLE && currentTopology().enabled());
 
         netherCurvatureSlider = new GlobeCurvatureSlider(
                 0,
@@ -393,11 +396,11 @@ public class GlobeWorldSettingsControls implements Layout {
                 CONTROL_WIDTH,
                 20,
                 Component.literal("Nether Curvature"),
-                settingsGetter.get().netherCurvaturePercent(),
-                percent -> setSettings(settingsGetter.get().withNetherCurvaturePercent(percent))
+                currentPresentation().netherCurvaturePercent(),
+                percent -> setPresentation(currentPresentation().withNetherCurvaturePercent(percent))
         );
         netherCurvatureSlider.setTooltip(tooltip(CURVATURE_TOOLTIP));
-        addRow(netherCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && settingsGetter.get().enabled());
+        addRow(netherCurvatureSlider, () -> (!createWorld || createMode == CreateMode.CUSTOM) && currentTopology().enabled());
 
         progressionStructuresLabel = new StringWidget(
                 CONTROL_WIDTH,
@@ -405,44 +408,44 @@ public class GlobeWorldSettingsControls implements Layout {
                 Component.literal("Progression Structures"),
                 minecraft.font
         );
-        addSectionRow(progressionStructuresLabel, () -> progressionStructuresVisible(settingsGetter.get()));
+        addSectionRow(progressionStructuresLabel, () -> createWorld && progressionStructuresVisible(currentTopology()));
 
         forceMissingStrongholdCheckbox = progressionCheckbox(
                 "Force Missing Stronghold",
                 FORCE_MISSING_STRONGHOLD_TOOLTIP,
-                settingsGetter.get().forceMissingStronghold(),
-                selected -> setSettings(settingsGetter.get().withForceMissingStronghold(selected))
+                currentTopology().forceMissingStronghold(),
+                selected -> setTopology(currentTopology().withForceMissingStronghold(selected))
         );
-        addRow(forceMissingStrongholdCheckbox, () -> settingsGetter.get().enabled());
+        addRow(forceMissingStrongholdCheckbox, () -> createWorld && currentTopology().enabled());
 
         forceMissingNetherFortressCheckbox = progressionCheckbox(
                 "Force Missing Fortress",
                 FORCE_MISSING_FORTRESS_TOOLTIP,
-                settingsGetter.get().forceMissingNetherFortress(),
-                selected -> setSettings(settingsGetter.get().withForceMissingNetherFortress(selected))
+                currentTopology().forceMissingNetherFortress(),
+                selected -> setTopology(currentTopology().withForceMissingNetherFortress(selected))
         );
-        addRow(forceMissingNetherFortressCheckbox, () -> settingsGetter.get().netherEnabled());
+        addRow(forceMissingNetherFortressCheckbox, () -> createWorld && currentTopology().netherEnabled());
 
         dayLengthSlider = new DayLengthMultiplierSlider(
                 0,
                 0,
                 DAY_LENGTH_SLIDER_WIDTH,
                 20,
-                settingsGetter.get().dayLengthMultiplier(),
-                multiplier -> setSettings(settingsGetter.get().withDayLengthMultiplier(multiplier))
+                currentGameplay().dayLengthMultiplier(),
+                multiplier -> setGameplay(currentGameplay().withDayLengthMultiplier(multiplier))
         );
         dayLengthSlider.setTooltip(tooltip(DAY_LENGTH_TOOLTIP));
 
-        dayNightCycleButton = CycleButton.<DayNightCycleMode>builder(mode -> Component.literal(mode.displayName()), settingsGetter.get().dayNightCycleMode())
+        dayNightCycleButton = CycleButton.<DayNightCycleMode>builder(mode -> Component.literal(mode.displayName()), currentGameplay().dayNightCycleMode())
                 .withValues(DayNightCycleMode.values())
                 .withTooltip(mode -> tooltip(dayCycleTooltip(mode)))
                 .create(0, 0, DAY_NIGHT_MODE_WIDTH, 20, Component.literal("Day Cycle"),
-                        (button, mode) -> setSettings(settingsGetter.get().withDayNightCycleMode(mode)));
+                        (button, mode) -> setGameplay(currentGameplay().withDayNightCycleMode(mode)));
 
         LinearLayout dayNightRow = LinearLayout.horizontal().spacing(ROW_SPACING);
         dayNightRow.addChild(dayLengthSlider);
         dayNightRow.addChild(dayNightCycleButton);
-        addSectionRow(dayNightRow, () -> settingsGetter.get().enabled());
+        addSectionRow(dayNightRow, () -> currentTopology().enabled());
     }
 
     private Checkbox progressionCheckbox(
@@ -486,19 +489,19 @@ public class GlobeWorldSettingsControls implements Layout {
     }
 
     private static Component curvatureLabel(int percent) {
-        return switch (TilingSettings.sanitizeCurvaturePercent(percent)) {
-            case TilingSettings.CURVATURE_DISABLED_PERCENT -> Component.literal("Off");
-            case TilingSettings.CURVATURE_COMFORTABLE_PERCENT -> Component.literal("Comfortable");
-            case TilingSettings.CURVATURE_REALISTIC_PERCENT -> Component.literal("Realistic");
+        return switch (PresentationSettings.sanitizeCurvaturePercent(percent)) {
+            case PresentationSettings.CURVATURE_DISABLED_PERCENT -> Component.literal("Off");
+            case PresentationSettings.CURVATURE_COMFORTABLE_PERCENT -> Component.literal("Comfortable");
+            case PresentationSettings.CURVATURE_REALISTIC_PERCENT -> Component.literal("Realistic");
             default -> Component.literal(percent + "%");
         };
     }
 
     private static String curvatureTooltip(int percent, String fallback) {
-        return switch (TilingSettings.sanitizeCurvaturePercent(percent)) {
-            case TilingSettings.CURVATURE_DISABLED_PERCENT -> "Off keeps terrain visually flat.";
-            case TilingSettings.CURVATURE_COMFORTABLE_PERCENT -> "Comfortable adds a gentler curve so the world feels round without hiding too much terrain.";
-            case TilingSettings.CURVATURE_REALISTIC_PERCENT -> "Realistic uses the full globe curve for the selected tile size.";
+        return switch (PresentationSettings.sanitizeCurvaturePercent(percent)) {
+            case PresentationSettings.CURVATURE_DISABLED_PERCENT -> "Off keeps terrain visually flat.";
+            case PresentationSettings.CURVATURE_COMFORTABLE_PERCENT -> "Comfortable adds a gentler curve so the world feels round without hiding too much terrain.";
+            case PresentationSettings.CURVATURE_REALISTIC_PERCENT -> "Realistic uses the full globe curve for the selected tile size.";
             default -> fallback;
         };
     }
@@ -539,60 +542,101 @@ public class GlobeWorldSettingsControls implements Layout {
         return new MultiLineTextWidget(text, Minecraft.getInstance().font).setMaxWidth(INFO_WIDTH).setMaxRows(3);
     }
 
-    private void setSettings(TilingSettings settings) {
-        settingsSetter.accept(settings.sanitized());
+    private GlobeSettings currentGlobeSettings() {
+        GlobeSettings settings = settingsGetter.get();
+        return settings == null ? GlobeSettings.DEFAULT : settings;
+    }
+
+    private TopologySettings currentTopology() {
+        return currentGlobeSettings().topology();
+    }
+
+    private PresentationSettings currentPresentation() {
+        return currentGlobeSettings().presentation();
+    }
+
+    private GameplaySettings currentGameplay() {
+        return currentGlobeSettings().gameplay();
+    }
+
+    private void setGlobeSettings(GlobeSettings settings) {
+        settingsSetter.accept(settings);
         refresh();
     }
 
-    private TilingSettings settingsForMode(CreateMode mode) {
+    private void setTopology(TopologySettings topology) {
+        setGlobeSettings(currentGlobeSettings().withTopology(topology));
+    }
+
+    private void setPresentation(PresentationSettings presentation) {
+        setGlobeSettings(currentGlobeSettings().withPresentation(presentation));
+    }
+
+    private void setGameplay(GameplaySettings gameplay) {
+        setGlobeSettings(currentGlobeSettings().withGameplay(gameplay));
+    }
+
+    private GlobeSettings globeSettingsForMode(CreateMode mode) {
         return switch (mode) {
-            case DISABLED -> TilingSettings.DISABLED;
-            case SIMPLE, CUSTOM -> TilingSettings.DEFAULT
+            case DISABLED -> new GlobeSettings(
+                    TopologySettings.DEFAULT,
+                    PresentationSettings.DISABLED,
+                    GameplaySettings.DEFAULT
+            );
+            case SIMPLE, CUSTOM -> GlobeSettings.DEFAULT.withTopology(TopologySettings.DEFAULT
                     .withMode(TilingMode.SQUARE)
                     .withNetherMode(TilingMode.SQUARE)
-                    .withNetherTileSize(simpleDefaultNetherTileSize(TilingSettings.DEFAULT.tileSize()))
+                    .withNetherTileSize(simpleDefaultNetherTileSize(TopologySettings.DEFAULT.tileSize()))
                     .withNetherPortalScale(
-                            TilingSettings.DEFAULT_NETHER_PORTAL_SCALE_NUMERATOR,
-                            TilingSettings.DEFAULT_NETHER_PORTAL_SCALE_DENOMINATOR
-                    );
+                            TopologySettings.DEFAULT_NETHER_PORTAL_SCALE_NUMERATOR,
+                            TopologySettings.DEFAULT_NETHER_PORTAL_SCALE_DENOMINATOR
+                    ));
         };
     }
 
-    private TilingSettings simpleSettingsForTileSize(int tileSize) {
-        TilingSettings settings = settingsForMode(CreateMode.SIMPLE)
+    private GlobeSettings simpleSettingsForTileSize(int tileSize) {
+        GlobeSettings globeSettings = globeSettingsForMode(CreateMode.SIMPLE);
+        TopologySettings topology = globeSettings.topology()
                 .withTileSize(tileSize)
                 .withNetherTileSize(simpleDefaultNetherTileSize(tileSize));
-        settings = withPortalScaleMatchingTileRatio(settings);
-        if (!simpleScrollingDayCycleSupported(settings)) {
-            settings = settings.withDayNightCycleMode(DayNightCycleMode.VANILLA);
+        topology = withPortalScaleMatchingTileRatio(topology);
+        globeSettings = globeSettings.withTopology(topology);
+        if (!simpleScrollingDayCycleSupported(topology)) {
+            globeSettings = globeSettings.withGameplay(globeSettings.gameplay().withDayNightCycleMode(DayNightCycleMode.VANILLA));
         }
         if (tileSize > ITALY_TILE_SIZE_CHUNKS) {
-            settings = settings.withCurvaturePercent(TilingSettings.CURVATURE_DISABLED_PERCENT);
+            globeSettings = globeSettings.withPresentation(
+                    globeSettings.presentation().withCurvaturePercent(PresentationSettings.CURVATURE_DISABLED_PERCENT)
+            );
         }
-        return settings;
+        return globeSettings;
     }
 
     private void setSimpleTilePreset(TilePreset preset) {
-        if (settingsGetter.get().tileSize() == preset.chunks()) {
+        if (currentTopology().tileSize() == preset.chunks()) {
             return;
         }
-        setSettings(simpleSettingsForTileSize(preset.chunks()));
+        setGlobeSettings(simpleSettingsForTileSize(preset.chunks()));
     }
 
     private void refresh() {
-        TilingSettings settings = settingsGetter.get().sanitized();
+        GlobeSettings globeSettings = currentGlobeSettings();
+        TopologySettings topology = globeSettings.topology();
+        PresentationSettings presentation = globeSettings.presentation();
+        GameplaySettings gameplay = globeSettings.gameplay();
         if (createWorld
                 && createMode == CreateMode.SIMPLE
-                && !simpleScrollingDayCycleSupported(settings)
-                && settings.dayNightCycleMode() == DayNightCycleMode.SCROLLING) {
-            settings = settings.withDayNightCycleMode(DayNightCycleMode.VANILLA);
-        }
-        if (!settings.equals(settingsGetter.get())) {
-            settingsSetter.accept(settings);
+                && !simpleScrollingDayCycleSupported(topology)
+                && gameplay.dayNightCycleMode() == DayNightCycleMode.SCROLLING) {
+            globeSettings = globeSettings.withGameplay(gameplay.withDayNightCycleMode(DayNightCycleMode.VANILLA));
+            settingsSetter.accept(globeSettings);
+            topology = globeSettings.topology();
+            presentation = globeSettings.presentation();
+            gameplay = globeSettings.gameplay();
         }
 
-        if (createWorld && settings.enabled() && createMode == CreateMode.DISABLED) {
-            createMode = CreateMode.fromSettings(settings);
+        if (createWorld && topology.enabled() && createMode == CreateMode.DISABLED) {
+            createMode = CreateMode.fromSettings(globeSettings);
         }
 
         if (createModeButton != null) {
@@ -603,44 +647,44 @@ public class GlobeWorldSettingsControls implements Layout {
         }
         if (customTileField != null) {
             updatingText = true;
-            customTileField.setValue(Integer.toString(settings.tileSize()));
+            customTileField.setValue(Integer.toString(topology.tileSize()));
             updatingText = false;
         }
-        overworldTopologyButton.setValue(settings.terrainMode());
-        overworldInfo.setMessage(overworldInfo(settings));
-        overworldCurvatureButton.setValue(settings.curvaturePercent());
-        overworldCurvatureSlider.setPercent(settings.curvaturePercent());
-        overworldCurvatureSlider.active = settings.enabled();
-        overworldDistantHorizonsAdvice.setMessage(distantHorizonsAdvice(settings));
-        netherSizeButton.setValue(netherSizePreset(settings));
-        syncCheckbox(tileNetherCheckbox, settings.netherEnabled());
+        overworldTopologyButton.setValue(topology.terrainMode());
+        overworldInfo.setMessage(overworldInfo(topology));
+        overworldCurvatureButton.setValue(presentation.curvaturePercent());
+        overworldCurvatureSlider.setPercent(presentation.curvaturePercent());
+        overworldCurvatureSlider.active = topology.enabled();
+        overworldDistantHorizonsAdvice.setMessage(distantHorizonsAdvice(topology));
+        netherSizeButton.setValue(netherSizePreset(topology));
+        syncCheckbox(tileNetherCheckbox, topology.netherEnabled());
         if (customNetherTileField != null) {
             updatingText = true;
-            customNetherTileField.setValue(Integer.toString(settings.netherTileSize()));
+            customNetherTileField.setValue(Integer.toString(topology.netherTileSize()));
             updatingText = false;
-            customNetherTileField.setEditable(editable && settings.netherEnabled());
-            customNetherTileField.active = settings.netherEnabled();
+            customNetherTileField.setEditable(editable && topology.netherEnabled());
+            customNetherTileField.active = topology.netherEnabled();
         }
-        portalRatioSlider.setPreset(portalRatioPreset(settings));
-        portalRatioSlider.active = settings.netherEnabled();
-        netherTopologyButton.setValue(settings.netherTerrainMode());
-        netherInfo.setMessage(netherInfo(settings));
-        netherCurvatureButton.setValue(settings.netherCurvaturePercent());
-        netherCurvatureButton.active = settings.netherEnabled();
-        netherCurvatureSlider.setPercent(settings.netherCurvaturePercent());
-        netherCurvatureSlider.active = settings.netherEnabled();
-        syncCheckbox(forceMissingStrongholdCheckbox, settings.forceMissingStronghold());
-        syncCheckbox(forceMissingNetherFortressCheckbox, settings.forceMissingNetherFortress());
-        forceMissingStrongholdCheckbox.active = createWorld && editable && settings.enabled();
-        forceMissingNetherFortressCheckbox.active = createWorld && editable && settings.netherEnabled();
-        dayNightCycleButton.setValue(settings.dayNightCycleMode());
-        boolean dayNightCycleSelectable = settings.enabled() && simpleScrollingDayCycleSupported(settings);
+        portalRatioSlider.setPreset(portalRatioPreset(topology));
+        portalRatioSlider.active = topology.netherEnabled();
+        netherTopologyButton.setValue(topology.netherTerrainMode());
+        netherInfo.setMessage(netherInfo(topology));
+        netherCurvatureButton.setValue(presentation.netherCurvaturePercent());
+        netherCurvatureButton.active = topology.netherEnabled();
+        netherCurvatureSlider.setPercent(presentation.netherCurvaturePercent());
+        netherCurvatureSlider.active = topology.netherEnabled();
+        syncCheckbox(forceMissingStrongholdCheckbox, topology.forceMissingStronghold());
+        syncCheckbox(forceMissingNetherFortressCheckbox, topology.forceMissingNetherFortress());
+        forceMissingStrongholdCheckbox.active = createWorld && editable && topology.enabled();
+        forceMissingNetherFortressCheckbox.active = createWorld && editable && topology.netherEnabled();
+        dayNightCycleButton.setValue(gameplay.dayNightCycleMode());
+        boolean dayNightCycleSelectable = topology.enabled() && simpleScrollingDayCycleSupported(topology);
         dayNightCycleButton.active = dayNightCycleSelectable;
         if (!dayNightCycleSelectable) {
             dayNightCycleButton.setTooltip(tooltip(scrollingDayCycleDisabledTooltip()));
         }
-        dayLengthSlider.setMultiplier(settings.dayLengthMultiplier());
-        dayLengthSlider.active = settings.enabled();
+        dayLengthSlider.setMultiplier(gameplay.dayLengthMultiplier());
+        dayLengthSlider.active = topology.enabled();
 
         applyEditability();
         arrange();
@@ -693,34 +737,34 @@ public class GlobeWorldSettingsControls implements Layout {
         }
     }
 
-    private boolean progressionStructuresVisible(TilingSettings settings) {
-        return settings.enabled() || settings.netherEnabled();
+    private boolean progressionStructuresVisible(TopologySettings topology) {
+        return topology.enabled() || topology.netherEnabled();
     }
 
-    private Component overworldInfo(TilingSettings settings) {
-        if (!settings.enabled()) {
+    private Component overworldInfo(TopologySettings topology) {
+        if (!topology.enabled()) {
             return Component.literal("Overworld tile: Disabled");
         }
         return Component.literal("Overworld tile: ")
-                .append(tileSummary(settings.tileSize(), effectiveOverworldTerrainMode(settings)));
+                .append(tileSummary(topology.tileSize(), effectiveOverworldTerrainMode(topology)));
     }
 
-    private Component netherInfo(TilingSettings settings) {
-        if (!settings.netherEnabled()) {
+    private Component netherInfo(TopologySettings topology) {
+        if (!topology.netherEnabled()) {
             return Component.literal("Nether tile: Disabled");
         }
         return Component.literal("Nether tile: ")
-                .append(tileSummary(settings.netherTileSize(), effectiveNetherTerrainMode(settings)))
+                .append(tileSummary(topology.netherTileSize(), effectiveNetherTerrainMode(topology)))
                 .append(", portal ")
-                .append(Component.literal(settings.netherPortalScaleSummaryLabel()));
+                .append(Component.literal(topology.netherPortalScaleSummaryLabel()));
     }
 
-    private static TerrainMode effectiveOverworldTerrainMode(TilingSettings settings) {
-        return effectiveTerrainMode(settings.terrainMode(), TerrainMode.forOverworldTileSize(settings.tileSize()));
+    private static TerrainMode effectiveOverworldTerrainMode(TopologySettings topology) {
+        return effectiveTerrainMode(topology.terrainMode(), TerrainMode.forOverworldTileSize(topology.tileSize()));
     }
 
-    private static TerrainMode effectiveNetherTerrainMode(TilingSettings settings) {
-        return effectiveTerrainMode(settings.netherTerrainMode(), TerrainMode.forNetherTileSize(settings.netherTileSize()));
+    private static TerrainMode effectiveNetherTerrainMode(TopologySettings topology) {
+        return effectiveTerrainMode(topology.netherTerrainMode(), TerrainMode.forNetherTileSize(topology.netherTileSize()));
     }
 
     private static TerrainMode effectiveTerrainMode(TerrainMode mode, TerrainMode autoMode) {
@@ -736,31 +780,31 @@ public class GlobeWorldSettingsControls implements Layout {
         ));
     }
 
-    private Component distantHorizonsAdvice(TilingSettings settings) {
-        long ratio = distantHorizonsCurveRatio(settings.tileSize());
+    private Component distantHorizonsAdvice(TopologySettings topology) {
+        long ratio = distantHorizonsCurveRatio(topology.tileSize());
         return Component.literal("Set Distant Horizons Earth curvature to %s for realism.".formatted(number(ratio)));
     }
 
-    private static boolean distantHorizonsAdviceSupported(TilingSettings settings) {
-        if (!settings.enabled()) {
+    private static boolean distantHorizonsAdviceSupported(TopologySettings topology) {
+        if (!topology.enabled()) {
             return false;
         }
 
-        long ratio = distantHorizonsCurveRatio(settings.tileSize());
+        long ratio = distantHorizonsCurveRatio(topology.tileSize());
         return ratio >= DISTANT_HORIZONS_MIN_CURVATURE_RATIO
                 && ratio <= DISTANT_HORIZONS_MAX_CURVATURE_RATIO;
     }
 
-    private boolean simpleScrollingDayCycleSupported(TilingSettings settings) {
+    private boolean simpleScrollingDayCycleSupported(TopologySettings topology) {
         return !createWorld
                 || createMode != CreateMode.SIMPLE
-                || (long) settings.tileSize() * 16L >= SIMPLE_SCROLLING_DAY_MIN_TILE_BLOCKS;
+                || (long) topology.tileSize() * 16L >= SIMPLE_SCROLLING_DAY_MIN_TILE_BLOCKS;
     }
 
     private static long distantHorizonsCurveRatio(int tileSizeChunks) {
         double radius = GlobeCurvature.curvatureRadiusBlocks(
                 tileSizeChunks,
-                TilingSettings.CURVATURE_REALISTIC_PERCENT
+                PresentationSettings.CURVATURE_REALISTIC_PERCENT
         );
         if (radius <= 0.0D) {
             return 0L;
@@ -787,15 +831,15 @@ public class GlobeWorldSettingsControls implements Layout {
     }
 
     private static String multiplierLabel(double multiplier) {
-        double sanitized = TilingSettings.sanitizeDayLengthMultiplier(multiplier);
-        if (sanitized == TilingSettings.DAY_LENGTH_HALF_MULTIPLIER) {
+        double sanitized = GameplaySettings.sanitizeDayLengthMultiplier(multiplier);
+        if (sanitized == GameplaySettings.DAY_LENGTH_HALF_MULTIPLIER) {
             return "0.5x";
         }
         return "%dx".formatted((int) sanitized);
     }
 
     private TilePreset currentTilePreset() {
-        int tileSize = settingsGetter.get().tileSize();
+        int tileSize = currentTopology().tileSize();
         for (TilePreset preset : SIMPLE_TILE_PRESETS) {
             if (preset.chunks() == tileSize) {
                 return preset;
@@ -807,25 +851,25 @@ public class GlobeWorldSettingsControls implements Layout {
     }
 
     private NetherSizePreset netherSizePreset() {
-        return netherSizePreset(settingsGetter.get());
+        return netherSizePreset(currentTopology());
     }
 
-    private NetherSizePreset netherSizePreset(TilingSettings settings) {
-        if (!settings.netherEnabled()) {
+    private NetherSizePreset netherSizePreset(TopologySettings topology) {
+        if (!topology.netherEnabled()) {
             return NetherSizePreset.DISABLED;
         }
 
-        for (NetherSizePreset preset : validNetherSizePresets(settings)) {
+        for (NetherSizePreset preset : validNetherSizePresets(topology)) {
             if (preset != NetherSizePreset.DISABLED
                     && preset != NetherSizePreset.CUSTOM
-                    && preset.tileSize(settings.tileSize()) == settings.netherTileSize()) {
+                    && preset.tileSize(topology.tileSize()) == topology.netherTileSize()) {
                 return preset;
             }
         }
         return createMode == CreateMode.CUSTOM ? NetherSizePreset.CUSTOM : NetherSizePreset.SAME_SIZE;
     }
 
-    private List<NetherSizePreset> validNetherSizePresets(TilingSettings settings) {
+    private List<NetherSizePreset> validNetherSizePresets(TopologySettings topology) {
         List<NetherSizePreset> presets = new ArrayList<>();
         presets.add(NetherSizePreset.DISABLED);
         int minTileSize = createMode == CreateMode.SIMPLE ? SIMPLE_MIN_TILE_SIZE_CHUNKS : 1;
@@ -833,8 +877,8 @@ public class GlobeWorldSettingsControls implements Layout {
             if (preset == NetherSizePreset.DISABLED || preset == NetherSizePreset.CUSTOM) {
                 continue;
             }
-            int tileSize = preset.tileSize(settings.tileSize());
-            if (tileSize >= minTileSize && preset.matchesExactly(settings.tileSize())) {
+            int tileSize = preset.tileSize(topology.tileSize());
+            if (tileSize >= minTileSize && preset.matchesExactly(topology.tileSize())) {
                 presets.add(preset);
             }
         }
@@ -844,26 +888,29 @@ public class GlobeWorldSettingsControls implements Layout {
         return presets;
     }
 
-    private TilingSettings applyNetherSizePreset(TilingSettings settings, NetherSizePreset preset) {
+    private TopologySettings applyNetherSizePreset(TopologySettings topology, NetherSizePreset preset) {
         if (preset == NetherSizePreset.DISABLED) {
-            return settings.withNetherMode(TilingMode.DISABLED);
+            return topology.withNetherMode(TilingMode.DISABLED);
         }
         if (preset == NetherSizePreset.CUSTOM) {
-            return settings.withNetherMode(TilingMode.SQUARE);
+            return topology.withNetherMode(TilingMode.SQUARE);
         }
-        int tileSize = preset.tileSize(settings.tileSize());
-        TilingSettings updated = settings.withNetherMode(TilingMode.SQUARE).withNetherTileSize(tileSize);
-        return createMode == CreateMode.SIMPLE ? withPortalScaleMatchingTileRatio(updated) : updated;
+        int tileSize = preset.tileSize(topology.tileSize());
+        TopologySettings updated = topology.withNetherMode(TilingMode.SQUARE).withNetherTileSize(tileSize);
+        if (createMode != CreateMode.SIMPLE) {
+            return updated;
+        }
+        return withPortalScaleMatchingTileRatio(updated);
     }
 
     private PortalRatioPreset portalRatioPreset() {
-        return portalRatioPreset(settingsGetter.get());
+        return portalRatioPreset(currentTopology());
     }
 
-    private static PortalRatioPreset portalRatioPreset(TilingSettings settings) {
+    private static PortalRatioPreset portalRatioPreset(TopologySettings topology) {
         for (PortalRatioPreset preset : PORTAL_RATIO_PRESETS) {
-            if (preset.numerator == settings.netherPortalScaleNumerator()
-                    && preset.denominator == settings.netherPortalScaleDenominator()) {
+            if (preset.numerator == topology.netherPortalScaleNumerator()
+                    && preset.denominator == topology.netherPortalScaleDenominator()) {
                 return preset;
             }
         }
@@ -871,12 +918,12 @@ public class GlobeWorldSettingsControls implements Layout {
     }
 
     private static int simpleDefaultNetherTileSize(int overworldTileSize) {
-        return Math.max(SIMPLE_MIN_TILE_SIZE_CHUNKS, TilingSettings.defaultNetherTileSize(overworldTileSize));
+        return Math.max(SIMPLE_MIN_TILE_SIZE_CHUNKS, TopologySettings.defaultNetherTileSize(overworldTileSize));
     }
 
-    private static TilingSettings withPortalScaleMatchingTileRatio(TilingSettings settings) {
-        PortalRatioPreset preset = portalRatioPresetForTileRatio(settings.tileSize(), settings.netherTileSize());
-        return settings.withNetherPortalScale(preset.numerator, preset.denominator);
+    private static TopologySettings withPortalScaleMatchingTileRatio(TopologySettings topology) {
+        PortalRatioPreset preset = portalRatioPresetForTileRatio(topology.tileSize(), topology.netherTileSize());
+        return topology.withNetherPortalScale(preset.numerator, preset.denominator);
     }
 
     private static PortalRatioPreset portalRatioPresetForTileRatio(int overworldTileSize, int netherTileSize) {
@@ -889,24 +936,24 @@ public class GlobeWorldSettingsControls implements Layout {
         return PortalRatioPreset.FORWARD_EIGHT;
     }
 
-    private static boolean isSimpleNetherSize(TilingSettings settings) {
-        if (!settings.netherEnabled()) {
+    private static boolean isSimpleNetherSize(TopologySettings topology) {
+        if (!topology.netherEnabled()) {
             return true;
         }
-        if (portalRatioPreset(settings) != portalRatioPresetForTileRatio(settings.tileSize(), settings.netherTileSize())) {
+        if (portalRatioPreset(topology) != portalRatioPresetForTileRatio(topology.tileSize(), topology.netherTileSize())) {
             return false;
         }
-        if (settings.netherTileSize() < SIMPLE_MIN_TILE_SIZE_CHUNKS) {
+        if (topology.netherTileSize() < SIMPLE_MIN_TILE_SIZE_CHUNKS) {
             return false;
         }
         for (NetherSizePreset preset : NetherSizePreset.values()) {
             if (preset == NetherSizePreset.DISABLED || preset == NetherSizePreset.CUSTOM) {
                 continue;
             }
-            int tileSize = preset.tileSize(settings.tileSize());
+            int tileSize = preset.tileSize(topology.tileSize());
             if (tileSize >= SIMPLE_MIN_TILE_SIZE_CHUNKS
-                    && preset.matchesExactly(settings.tileSize())
-                    && tileSize == settings.netherTileSize()) {
+                    && preset.matchesExactly(topology.tileSize())
+                    && tileSize == topology.netherTileSize()) {
                 return true;
             }
         }
@@ -1066,15 +1113,16 @@ public class GlobeWorldSettingsControls implements Layout {
             this.displayName = displayName;
         }
 
-        private static CreateMode fromSettings(TilingSettings settings) {
-            if (!settings.enabled()) {
+        private static CreateMode fromSettings(GlobeSettings settings) {
+            TopologySettings topology = settings.topology();
+            if (!topology.enabled()) {
                 return DISABLED;
             }
-            if (settings.terrainMode() != TerrainMode.AUTO || settings.netherTerrainMode() != TerrainMode.AUTO) {
+            if (topology.terrainMode() != TerrainMode.AUTO || topology.netherTerrainMode() != TerrainMode.AUTO) {
                 return CUSTOM;
             }
-            return SIMPLE_TILE_PRESETS.stream().anyMatch(preset -> preset.chunks() == settings.tileSize())
-                    && isSimpleNetherSize(settings) ? SIMPLE : CUSTOM;
+            return SIMPLE_TILE_PRESETS.stream().anyMatch(preset -> preset.chunks() == topology.tileSize())
+                    && isSimpleNetherSize(topology) ? SIMPLE : CUSTOM;
         }
     }
 
@@ -1199,7 +1247,7 @@ public class GlobeWorldSettingsControls implements Layout {
         }
 
         private static double valueFromMultiplier(double multiplier) {
-            double sanitized = TilingSettings.sanitizeDayLengthMultiplier(multiplier);
+            double sanitized = GameplaySettings.sanitizeDayLengthMultiplier(multiplier);
             int index = DAY_LENGTH_PRESETS.indexOf(sanitized);
             if (index < 0 || DAY_LENGTH_PRESETS.size() <= 1) {
                 return 0.0D;

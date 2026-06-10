@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
@@ -20,7 +20,7 @@ public class WitherBossRangedAttackMixin {
             )
     )
     private double useAliasDistanceForSideHead(WitherBoss wither, Entity target, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(wither, target);
+        return ActorLocalTargets.distanceToSqr(wither, target);
     }
 
     @WrapOperation(
@@ -31,7 +31,7 @@ public class WitherBossRangedAttackMixin {
             )
     )
     private boolean useAliasLineOfSightForSideHead(WitherBoss wither, Entity target, Operation<Boolean> original) {
-        return original.call(wither, target) || AiAliasUtil.aliasLineOfSight(wither, target);
+        return original.call(wither, target) || ActorLocalTargets.aliasLineOfSight(wither, target);
     }
 
     @WrapOperation(
@@ -39,7 +39,7 @@ public class WitherBossRangedAttackMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getX()D")
     )
     private double aimAtAliasX(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition((WitherBoss)(Object)this, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition((WitherBoss)(Object)this, target);
         return alias.x;
     }
 
@@ -48,7 +48,7 @@ public class WitherBossRangedAttackMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getZ()D")
     )
     private double aimAtAliasZ(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition((WitherBoss)(Object)this, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition((WitherBoss)(Object)this, target);
         return alias.z;
     }
 }

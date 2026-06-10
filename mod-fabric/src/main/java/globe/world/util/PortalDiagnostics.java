@@ -1,6 +1,7 @@
 package globe.world.util;
 
-import globe.world.GlobeWorld;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
@@ -31,7 +32,8 @@ public final class PortalDiagnostics {
             return;
         }
 
-        GlobeWorld.LOGGER.warn(
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.PORTALS,
                 "GW_PORTAL_CONTACT player={} dimension={} playerPos={} playerChunk={} portalPos={} portalChunk={} block={} changingDimension={} cooldown={}",
                 player.getScoreboardName(),
                 dimensionName(level),
@@ -64,7 +66,8 @@ public final class PortalDiagnostics {
         }
 
         LAST_PROCESS_LOG.put(key, gameTime);
-        GlobeWorld.LOGGER.warn(
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.PORTALS,
                 "GW_PORTAL_PROCESS player={} dimension={} playerPos={} entryPos={} portalTime={} insideThisTick={} allowed={} ready={} changingDimension={} cooldown={}",
                 player.getScoreboardName(),
                 dimensionName(level),
@@ -84,7 +87,8 @@ public final class PortalDiagnostics {
             return;
         }
 
-        GlobeWorld.LOGGER.warn(
+        GlobeDiagnostics.warn(
+                DiagnosticsChannel.PORTALS,
                 "GW_PORTAL_DESTINATION player={} fromDimension={} entryPos={} result={} targetDimension={} targetPos={}",
                 player.getScoreboardName(),
                 dimensionName(currentLevel),

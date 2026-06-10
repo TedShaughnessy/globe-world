@@ -2,6 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.ClientActionDiagnostics;
 import globe.world.util.CoordUtil;
 import globe.world.util.EntityCanonicalizer;
@@ -148,6 +149,6 @@ public class ServerGamePacketListenerImplMixin {
     private BlockPos canonicalizeSignUpdatePos(
             ServerboundSignUpdatePacket packet,
             Operation<BlockPos> original) {
-        return CoordUtil.wrapBlockPos(this.player.level(), original.call(packet));
+        return TopologyContexts.forLevel(this.player.level()).canonicalBlock(original.call(packet));
     }
 }

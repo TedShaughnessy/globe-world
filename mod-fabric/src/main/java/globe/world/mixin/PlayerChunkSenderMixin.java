@@ -4,9 +4,10 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import globe.world.GlobeChunkPacket;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.ChunkAliasTracker;
 import globe.world.util.ChunkLoadDiagnostics;
-import globe.world.util.CoordUtil;
 import globe.world.util.WorldGenSpillover;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
@@ -57,15 +58,14 @@ public class PlayerChunkSenderMixin {
             ServerLevel level,
             LevelChunk chunk,
             CallbackInfo ci) {
-        int cx = chunk.getPos().x(), cz = chunk.getPos().z();
-        int wcx = CoordUtil.wrapChunk(level, cx), wcz = CoordUtil.wrapChunk(level, cz);
-        if (wcx == cx && wcz == cz) {
+        ChunkPos aliasPos = chunk.getPos();
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        ChunkPos canonicalPos = topology.canonicalChunk(aliasPos);
+        if (canonicalPos.equals(aliasPos)) {
             return;
         }
 
-        ChunkPos aliasPos = new ChunkPos(cx, cz);
-        ChunkPos canonicalPos = new ChunkPos(wcx, wcz);
-        if (level.getChunkSource().getChunkNow(wcx, wcz) == null) {
+        if (level.getChunkSource().getChunkNow(canonicalPos.x(), canonicalPos.z()) == null) {
             ChunkLoadDiagnostics.blockedAliasSend(connection.player, level, aliasPos, canonicalPos);
             connection.chunkSender.markChunkPendingToSend(chunk);
             ci.cancel();
@@ -81,9 +81,8 @@ public class PlayerChunkSenderMixin {
             ServerLevel level,
             LevelChunk chunk,
             CallbackInfo ci) {
-        int cx = chunk.getPos().x(), cz = chunk.getPos().z();
-        int wcx = CoordUtil.wrapChunk(level, cx), wcz = CoordUtil.wrapChunk(level, cz);
-        if (wcx != cx || wcz != cz) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        if (!topology.isCanonical(chunk.getPos())) {
             level.getChunkSource().chunkMap.move(connection.player);
         }
     }
@@ -100,20 +99,22 @@ public class PlayerChunkSenderMixin {
             Operation<ClientboundLevelChunkWithLightPacket> original,
             @Local(argsOnly = true) ServerGamePacketListenerImpl conn,
             @Local(argsOnly = true) ServerLevel level) {
-        int cx = chunk.getPos().x(), cz = chunk.getPos().z();
-        int wcx = CoordUtil.wrapChunk(level, cx), wcz = CoordUtil.wrapChunk(level, cz);
+        ChunkPos aliasPos = chunk.getPos();
+        int cx = aliasPos.x(), cz = aliasPos.z();
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        ChunkPos canonicalPos = topology.canonicalChunk(aliasPos);
 
         LevelChunk chunkToSend = chunk;
 
-        if (wcx != cx || wcz != cz) {
-            LevelChunk canonical = level.getChunkSource().getChunkNow(wcx, wcz);
+        if (!canonicalPos.equals(aliasPos)) {
+            LevelChunk canonical = level.getChunkSource().getChunkNow(canonicalPos.x(), canonicalPos.z());
             if (canonical != null) {
-                ChunkLoadDiagnostics.recoveredAliasSend(conn.player, level, new ChunkPos(cx, cz), new ChunkPos(wcx, wcz));
+                ChunkLoadDiagnostics.recoveredAliasSend(conn.player, level, aliasPos, canonicalPos);
                 chunkToSend = canonical;
             }
         }
 
-        ChunkAliasTracker.addAlias(conn.player, level.dimension(), wcx, wcz, cx, cz);
+        ChunkAliasTracker.addAlias(conn.player, level.dimension(), canonicalPos.x(), canonicalPos.z(), cx, cz);
 
         // Virtual coord = raw coord; client stores each alias at its natural position.
         // Multiple aliases of the same canonical chunk may coexist in the view,
@@ -134,10 +135,10 @@ public class PlayerChunkSenderMixin {
             ChunkPos pos,
             Operation<ClientboundForgetLevelChunkPacket> original,
             @Local(argsOnly = true) ServerPlayer player) {
-        int cx = pos.x(), cz = pos.z();
-        int wcx = CoordUtil.wrapChunk(player.level(), cx), wcz = CoordUtil.wrapChunk(player.level(), cz);
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        ChunkPos canonicalPos = topology.canonicalChunk(pos);
 
-        ChunkAliasTracker.removeAlias(player, player.level().dimension(), wcx, wcz, cx, cz);
+        ChunkAliasTracker.removeAlias(player, player.level().dimension(), canonicalPos.x(), canonicalPos.z(), pos.x(), pos.z());
 
         // Drop uses the raw position — matches the virtual coord used at send time.
         return original.call(pos);

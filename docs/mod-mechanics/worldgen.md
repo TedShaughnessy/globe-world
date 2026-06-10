@@ -32,7 +32,7 @@ tile size resets saved explicit terrain methods back to `AUTO`.
 
 ## Forced Progression Structures
 
-`TilingSettings` saves two world-generation policy toggles:
+`GlobeSettings.topology()` saves two world-generation policy toggles:
 `force_missing_stronghold` and `force_missing_nether_fortress`. The stronghold
 toggle is wired for the Overworld, and the fortress toggle is wired for the
 Nether. The settings mean "force one if missing", not "always create one":
@@ -196,7 +196,11 @@ canonical candidate starts and warns that validation may load or generate
 - `mod-fabric/src/main/java/globe/world/util/TerrainMode.java`
 - `mod-fabric/src/main/java/globe/world/util/PeriodicNoiseUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/PeriodicPositionalRandomFactory.java`
-- `mod-fabric/src/main/java/globe/world/config/TilingSettings.java`
+- `mod-fabric/src/main/java/globe/world/config/GlobeSettings.java`
+- `mod-fabric/src/main/java/globe/world/config/GlobeSettingsHolder.java`
+- `mod-fabric/src/main/java/globe/world/config/TopologySettings.java`
+- `mod-fabric/src/main/java/globe/world/config/PresentationSettings.java`
+- `mod-fabric/src/main/java/globe/world/config/GameplaySettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeConfig.java`
 - `mod-fabric/src/client/java/globe/world/client/GlobeWorldSettingsControls.java`
 - `mod-fabric/src/main/java/globe/world/util/WorldGenSpillover.java`

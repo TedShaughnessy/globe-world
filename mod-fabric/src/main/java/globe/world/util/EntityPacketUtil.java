@@ -1,5 +1,7 @@
 package globe.world.util;
 
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -62,8 +64,9 @@ public class EntityPacketUtil {
     }
 
     private static ClientboundAddEntityPacket virtualizeAddEntity(ClientboundAddEntityPacket packet, ServerPlayer viewer) {
-        double x = CoordUtil.virtualBlock(viewer.level(), packet.getX(), viewer.getX());
-        double z = CoordUtil.virtualBlock(viewer.level(), packet.getZ(), viewer.getZ());
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        double x = topology.virtualBlockXForViewer(packet.getX(), viewer.getX());
+        double z = topology.virtualBlockXForViewer(packet.getZ(), viewer.getZ());
         if (x == packet.getX() && z == packet.getZ()) return packet;
 
         return new ClientboundAddEntityPacket(
@@ -157,18 +160,18 @@ public class EntityPacketUtil {
             boolean keepX,
             boolean keepZ) {
         Vec3 pos = values.position();
-        double x = keepX ? pos.x : CoordUtil.virtualBlock(viewer.level(), pos.x, viewer.getX());
-        double z = keepZ ? pos.z : CoordUtil.virtualBlock(viewer.level(), pos.z, viewer.getZ());
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        double x = keepX ? pos.x : topology.virtualBlockXForViewer(pos.x, viewer.getX());
+        double z = keepZ ? pos.z : topology.virtualBlockXForViewer(pos.z, viewer.getZ());
         if (x == pos.x && z == pos.z) return values;
         return new PositionMoveRotation(new Vec3(x, pos.y, z), values.deltaMovement(), values.yRot(), values.xRot());
     }
 
     private static Vec3 virtualize(Vec3 pos, ServerPlayer viewer) {
-        double canonicalX = CoordUtil.wrapBlock(viewer.level(), pos.x);
-        double canonicalZ = CoordUtil.wrapBlock(viewer.level(), pos.z);
-        double x = CoordUtil.virtualBlock(viewer.level(), canonicalX, viewer.getX());
-        double z = CoordUtil.virtualBlock(viewer.level(), canonicalZ, viewer.getZ());
-        if (x == pos.x && z == pos.z) return pos;
-        return new Vec3(x, pos.y, z);
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        Vec3 canonical = topology.canonicalBlock(pos);
+        Vec3 virtualPos = topology.virtualBlockForViewer(canonical, viewer.position());
+        if (virtualPos.x() == pos.x && virtualPos.z() == pos.z) return pos;
+        return virtualPos;
     }
 }

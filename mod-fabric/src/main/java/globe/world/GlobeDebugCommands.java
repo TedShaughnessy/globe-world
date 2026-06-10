@@ -9,9 +9,17 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import globe.world.config.GlobeConfig;
 import globe.world.config.DayNightCycleMode;
-import globe.world.config.TilingSettings;
-import globe.world.config.TilingSettingsHolder;
-import globe.world.util.AiAliasUtil;
+import globe.world.config.GlobeSettings;
+import globe.world.config.GameplaySettings;
+import globe.world.config.PresentationSettings;
+import globe.world.config.GlobeSettingsHolder;
+import globe.world.config.TopologySettings;
+import globe.world.diagnostics.DiagnosticsChannel;
+import globe.world.diagnostics.GlobeDiagnostics;
+import globe.world.entity.ActorLocalTargetView;
+import globe.world.entity.ActorLocalTargets;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.EndPortalAvailability;
@@ -41,13 +49,15 @@ import java.util.Locale;
 public final class GlobeDebugCommands {
     private static final DynamicCommandExceptionType INVALID_DAY_NIGHT_MODE = new DynamicCommandExceptionType(
             value -> Component.literal("Unknown day/night mode: " + value + " (expected vanilla or scrolling)"));
+    private static final DynamicCommandExceptionType INVALID_DIAGNOSTICS_CHANNEL = new DynamicCommandExceptionType(
+            value -> Component.literal("Unknown diagnostics channel: " + value));
 
     private GlobeDebugCommands() {
     }
 
     @FunctionalInterface
     private interface SettingsUpdater {
-        TilingSettings apply(TilingSettings settings) throws CommandSyntaxException;
+        GlobeSettings apply(GlobeSettings settings) throws CommandSyntaxException;
     }
 
     public static void register() {
@@ -93,7 +103,28 @@ public final class GlobeDebugCommands {
                                 .executes(context -> printEndPortal(context.getSource(), true))))
                 .then(Commands.literal("portal_scale")
                         .executes(context -> printPortalScale(context.getSource())))
+                .then(debugCommands())
                 .then(configCommands());
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> debugCommands() {
+        return Commands.literal("debug")
+                .executes(context -> listDiagnostics(context.getSource()))
+                .then(Commands.literal("list")
+                        .executes(context -> listDiagnostics(context.getSource())))
+                .then(Commands.literal("enable")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.argument("channel", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(diagnosticsChannelNames(), builder))
+                                .executes(context -> setDiagnosticsChannel(context, true))))
+                .then(Commands.literal("disable")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.argument("channel", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(diagnosticsChannelNames(), builder))
+                                .executes(context -> setDiagnosticsChannel(context, false))))
+                .then(Commands.literal("clear")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .executes(context -> clearDiagnostics(context.getSource())));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> configCommands() {
@@ -107,15 +138,17 @@ public final class GlobeDebugCommands {
                                 .then(Commands.argument("percent", IntegerArgumentType.integer(0, 100))
                                         .executes(context -> updateSettings(
                                                 context.getSource(),
-                                                settings -> settings.withCurvaturePercent(
-                                                        IntegerArgumentType.getInteger(context, "percent")),
+                                                settings -> settings.withPresentation(
+                                                        settings.presentation().withCurvaturePercent(
+                                                                IntegerArgumentType.getInteger(context, "percent"))),
                                                 "Updated Overworld curvature"))))
                         .then(Commands.literal("nether_curvature")
                                 .then(Commands.argument("percent", IntegerArgumentType.integer(0, 100))
                                         .executes(context -> updateSettings(
                                                 context.getSource(),
-                                                settings -> settings.withNetherCurvaturePercent(
-                                                        IntegerArgumentType.getInteger(context, "percent")),
+                                                settings -> settings.withPresentation(
+                                                        settings.presentation().withNetherCurvaturePercent(
+                                                                IntegerArgumentType.getInteger(context, "percent"))),
                                                 "Updated Nether curvature"))))
                         .then(Commands.literal("day_night")
                                 .then(Commands.argument("mode", StringArgumentType.word())
@@ -123,30 +156,32 @@ public final class GlobeDebugCommands {
                                                 new String[]{"vanilla", "scrolling"}, builder))
                                         .executes(context -> updateSettings(
                                                 context.getSource(),
-                                                settings -> settings.withDayNightCycleMode(dayNightMode(context, "mode")),
+                                                settings -> settings.withGameplay(
+                                                        settings.gameplay().withDayNightCycleMode(dayNightMode(context, "mode"))),
                                                 "Updated day/night mode"))))
                         .then(Commands.literal("day_length")
                                 .then(Commands.argument("multiplier", DoubleArgumentType.doubleArg(
-                                                TilingSettings.DAY_LENGTH_HALF_MULTIPLIER,
-                                                TilingSettings.DAY_LENGTH_MAX_MULTIPLIER))
+                                                GameplaySettings.DAY_LENGTH_HALF_MULTIPLIER,
+                                                GameplaySettings.DAY_LENGTH_MAX_MULTIPLIER))
                                         .executes(context -> updateSettings(
                                                 context.getSource(),
-                                                settings -> settings.withDayLengthMultiplier(
-                                                        DoubleArgumentType.getDouble(context, "multiplier")),
+                                                settings -> settings.withGameplay(
+                                                        settings.gameplay().withDayLengthMultiplier(
+                                                                DoubleArgumentType.getDouble(context, "multiplier"))),
                                                 "Updated day length")))));
     }
 
     private static int printPos(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        DimensionTiling tiling = DimensionTiling.forLevel(player.level());
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        DimensionTiling tiling = topology.tiling();
         DimensionTiling overworldTiling = DimensionTiling.forDimension(Level.OVERWORLD);
         DimensionTiling netherTiling = DimensionTiling.forDimension(Level.NETHER);
+        TopologySettings savedTopology = GlobeConfig.topologySettings();
         BlockPos pos = player.blockPosition();
         ChunkPos chunk = player.chunkPosition();
-        int canonBlockX = CoordUtil.wrapBlock(tiling, pos.getX());
-        int canonBlockZ = CoordUtil.wrapBlock(tiling, pos.getZ());
-        int canonChunkX = CoordUtil.wrapChunk(tiling, chunk.x());
-        int canonChunkZ = CoordUtil.wrapChunk(tiling, chunk.z());
+        BlockPos canonicalPos = topology.canonicalBlock(pos);
+        ChunkPos canonicalChunk = topology.canonicalChunk(chunk);
         int configuredSimulationDistance = source.getServer().getPlayerList().getSimulationDistance();
         int effectiveSimulationDistance = GlobeDistanceCaps.effectiveSimulationDistance(tiling, configuredSimulationDistance);
 
@@ -162,20 +197,20 @@ public final class GlobeDebugCommands {
                 "Configured tiles: overworld=%s nether=%s nether_tile_size=%d portal_scale=%d/%d (%s)",
                 tileSummary(overworldTiling),
                 tileSummary(netherTiling),
-                GlobeConfig.netherTileSizeChunks(),
-                GlobeConfig.netherPortalScaleNumerator(),
-                GlobeConfig.netherPortalScaleDenominator(),
-                GlobeConfig.netherPortalScaleLabel())), false);
+                savedTopology.netherTileSize(),
+                savedTopology.netherPortalScaleNumerator(),
+                savedTopology.netherPortalScaleDenominator(),
+                savedTopology.netherPortalScaleLabel())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "World block=%d %d %d canon block=%d %d %d",
                 pos.getX(), pos.getY(), pos.getZ(),
-                canonBlockX, pos.getY(), canonBlockZ)), false);
+                canonicalPos.getX(), canonicalPos.getY(), canonicalPos.getZ())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "World chunk=%d %d canon chunk=%d %d tile alias=%+d %+d in canon tile=%s",
                 chunk.x(), chunk.z(),
-                canonChunkX, canonChunkZ,
-                CoordUtil.tileAliasChunk(tiling, chunk.x()), CoordUtil.tileAliasChunk(tiling, chunk.z()),
-                yesNo(CoordUtil.isInCanonicalTile(tiling, pos)))), false);
+                canonicalChunk.x(), canonicalChunk.z(),
+                topology.tileAliasChunkX(chunk.x()), topology.tileAliasChunkX(chunk.z()),
+                yesNo(topology.isCanonical(pos)))), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Longitude offset=%.1f ticks local_solar_day=%.1f ticks",
                 CoordUtil.longitudeOffsetTicks(tiling, player.getX()),
@@ -185,18 +220,18 @@ public final class GlobeDebugCommands {
 
     private static int printBorderDistance(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        DimensionTiling tiling = DimensionTiling.forLevel(player.level());
-        if (!tiling.enabled()) {
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        if (!topology.enabled()) {
             source.sendFailure(Component.literal("Current dimension is not tiled."));
             return 0;
         }
 
-        BorderDistances distances = borderDistances(tiling, player.getX(), player.getZ());
+        BorderDistances distances = borderDistances(topology, player.getX(), player.getZ());
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Canonical X/Z=%.3f %.3f tile=%d blocks",
                 distances.canonicalX(),
                 distances.canonicalZ(),
-                tiling.tileSizeBlocks())), false);
+                topology.tileSizeBlocks())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Distance to border: west=%.3f east=%.3f north=%.3f south=%.3f nearest=%s %.3f blocks",
                 distances.west(),
@@ -244,7 +279,8 @@ public final class GlobeDebugCommands {
                 yesNo(entity.isRemoved()))), false);
         if (entity instanceof Mob mob && mob.getTarget() != null) {
             LivingEntity target = mob.getTarget();
-            Vec3 alias = AiAliasUtil.nearestAliasPosition(mob, target);
+            ActorLocalTargetView targetView = ActorLocalTargets.view(mob, target);
+            Vec3 alias = targetView.actorLocalPosition();
             BlockPos navigationTarget = mob.getNavigation().getTargetPos();
             source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                     "Mob target=%d %s raw=%.3f %.3f %.3f alias=%.3f %.3f %.3f",
@@ -255,8 +291,16 @@ public final class GlobeDebugCommands {
             source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                     "Target distance raw=%.3f wrapped=%.3f navigation target=%s",
                     mob.distanceToSqr(target),
-                    AiAliasUtil.distanceToSqr(mob, target),
+                    targetView.wrappedDistanceSqr(),
                     navigationTarget == null ? "none" : formatBlock(navigationTarget))), false);
+            source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                    "ActorLocalTargetView sameLevel=%s aliasing=%s canonical=%.3f %.3f %.3f localBox=%s",
+                    yesNo(targetView.sameLevel()),
+                    yesNo(targetView.aliasingEnabled()),
+                    targetView.canonicalPosition().x(),
+                    targetView.canonicalPosition().y(),
+                    targetView.canonicalPosition().z(),
+                    targetView.actorLocalBox())), false);
         }
         return 1;
     }
@@ -337,18 +381,18 @@ public final class GlobeDebugCommands {
 
     private static int teleportPlayerToNearestBorder(CommandSourceStack source, int inset) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        DimensionTiling tiling = DimensionTiling.forLevel(player.level());
-        if (!tiling.enabled()) {
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        if (!topology.enabled()) {
             source.sendFailure(Component.literal("Current dimension is not tiled."));
             return 0;
         }
 
-        int clampedInset = Math.min(inset, tiling.tileSizeBlocks() - 1);
-        BorderDistances distances = borderDistances(tiling, player.getX(), player.getZ());
+        int clampedInset = Math.min(inset, topology.tileSizeBlocks() - 1);
+        BorderDistances distances = borderDistances(topology, player.getX(), player.getZ());
         double targetX = distances.canonicalX();
         double targetZ = distances.canonicalZ();
-        double min = tileMin(tiling);
-        double max = tileMaxExclusive(tiling);
+        double min = tileMin(topology);
+        double max = tileMaxExclusive(topology);
         switch (distances.nearestName()) {
             case "west" -> targetX = min + clampedInset;
             case "east" -> targetX = max - 1 - clampedInset;
@@ -452,7 +496,7 @@ public final class GlobeDebugCommands {
     }
 
     private static int printPortalScale(CommandSourceStack source) {
-        TilingSettings settings = GlobeConfig.tilingSettings();
+        TopologySettings settings = GlobeConfig.topologySettings();
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Globe World Nether portal scale: %s, nether_to_overworld=%d/%d, overworld_to_nether=%d/%d",
                 settings.netherPortalScaleLabel(),
@@ -467,7 +511,9 @@ public final class GlobeDebugCommands {
     }
 
     private static int printConfig(CommandSourceStack source) {
-        TilingSettings settings = GlobeConfig.tilingSettings();
+        TopologySettings topology = GlobeConfig.topologySettings();
+        PresentationSettings presentation = GlobeConfig.presentationSettings();
+        GameplaySettings gameplay = GlobeConfig.gameplaySettings();
         DimensionTiling overworldTiling = DimensionTiling.forDimension(Level.OVERWORLD);
         DimensionTiling netherTiling = DimensionTiling.forDimension(Level.NETHER);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
@@ -475,53 +521,86 @@ public final class GlobeDebugCommands {
                 GlobeConfig.settingsVersion())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Overworld: mode=%s tile=%d chunks/%d blocks terrain=%s configured=%s curvature=%d%%",
-                settings.mode().getSerializedName(),
-                settings.tileSize(),
-                settings.tileSize() * 16,
+                topology.mode().getSerializedName(),
+                topology.tileSize(),
+                topology.tileSize() * 16,
                 overworldTiling.terrainMode().displayName(),
-                settings.terrainMode().getSerializedName(),
-                settings.curvaturePercent())), false);
+                topology.terrainMode().getSerializedName(),
+                presentation.curvaturePercent())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Nether: mode=%s tile=%d chunks/%d blocks terrain=%s configured=%s curvature=%d%% portal_scale=%d/%d (%s)",
-                settings.netherMode().getSerializedName(),
-                settings.netherTileSize(),
-                settings.netherTileSize() * 16,
+                topology.netherMode().getSerializedName(),
+                topology.netherTileSize(),
+                topology.netherTileSize() * 16,
                 netherTiling.terrainMode().displayName(),
-                settings.netherTerrainMode().getSerializedName(),
-                settings.netherCurvaturePercent(),
-                settings.netherPortalScaleNumerator(),
-                settings.netherPortalScaleDenominator(),
-                settings.netherPortalScaleLabel())), false);
+                topology.netherTerrainMode().getSerializedName(),
+                presentation.netherCurvaturePercent(),
+                topology.netherPortalScaleNumerator(),
+                topology.netherPortalScaleDenominator(),
+                topology.netherPortalScaleLabel())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Day/night: mode=%s day_length_multiplier=%.1f",
-                settings.dayNightCycleMode().getSerializedName(),
-                settings.dayLengthMultiplier())), false);
+                gameplay.dayNightCycleMode().getSerializedName(),
+                gameplay.dayLengthMultiplier())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Forced progression structures: stronghold=%s nether_fortress=%s",
-                yesNo(settings.forceMissingStronghold()),
-                yesNo(settings.forceMissingNetherFortress()))), false);
+                yesNo(topology.forceMissingStronghold()),
+                yesNo(topology.forceMissingNetherFortress()))), false);
         return 1;
     }
 
     private static int updateSettings(CommandSourceStack source, SettingsUpdater updater, String message)
             throws CommandSyntaxException {
-        TilingSettings oldSettings = GlobeConfig.tilingSettings().sanitized();
-        TilingSettings newSettings = updater.apply(oldSettings).sanitized();
-        if (newSettings.equals(oldSettings)) {
+        GlobeSettings oldGlobeSettings = GlobeConfig.globeSettings();
+        GlobeSettings newGlobeSettings = updater.apply(oldGlobeSettings);
+        if (newGlobeSettings.equals(oldGlobeSettings)) {
             source.sendSuccess(() -> Component.literal(message + ": already set"), false);
             return 0;
         }
 
-        ((TilingSettingsHolder) (Object) source.getServer().getWorldGenSettings()).globeWorld$setTilingSettings(newSettings);
+        ((GlobeSettingsHolder) (Object) source.getServer().getWorldGenSettings()).globeWorld$setGlobeSettings(newGlobeSettings);
         source.getServer().getWorldGenSettings().setDirty();
-        GlobeConfig.setTilingSettings(newSettings);
-        GlobeDayLength.applyToServer(source.getServer(), newSettings);
-        GlobeWorldNetworking.broadcastSettings(source.getServer(), newSettings);
+        GlobeConfig.setGlobeSettings(newGlobeSettings);
+        GlobeDayLength.applyToServer(source.getServer(), newGlobeSettings.gameplay());
+        GlobeWorldNetworking.broadcastSettings(source.getServer(), newGlobeSettings);
         source.sendSuccess(() -> Component.literal(message + " and saved it to this world."), true);
         printConfig(source);
         source.sendSuccess(() -> Component.literal(
                 "Note: existing terrain is not regenerated; connected Globe World clients were synced."),
                 false);
+        return 1;
+    }
+
+    private static int listDiagnostics(CommandSourceStack source) {
+        StringBuilder channels = new StringBuilder();
+        for (DiagnosticsChannel channel : DiagnosticsChannel.values()) {
+            if (channels.length() > 0) {
+                channels.append(", ");
+            }
+            channels.append(channelName(channel))
+                    .append('=')
+                    .append(GlobeDiagnostics.enabled(channel) ? "on" : "off");
+        }
+        source.sendSuccess(() -> Component.literal("Globe World diagnostics: " + channels), false);
+        return 1;
+    }
+
+    private static int setDiagnosticsChannel(CommandContext<CommandSourceStack> context, boolean enabled)
+            throws CommandSyntaxException {
+        DiagnosticsChannel channel = diagnosticsChannel(context, "channel");
+        GlobeDiagnostics.setEnabled(channel, enabled);
+        context.getSource().sendSuccess(() -> Component.literal(String.format(
+                Locale.ROOT,
+                "Globe World diagnostics %s %s",
+                channelName(channel),
+                enabled ? "enabled" : "disabled"
+        )), true);
+        return 1;
+    }
+
+    private static int clearDiagnostics(CommandSourceStack source) {
+        GlobeDiagnostics.clear();
+        source.sendSuccess(() -> Component.literal("Globe World diagnostics cleared."), true);
         return 1;
     }
 
@@ -538,6 +617,29 @@ public final class GlobeDebugCommands {
             case "scrolling", "realistic" -> DayNightCycleMode.SCROLLING;
             default -> throw INVALID_DAY_NIGHT_MODE.create(value);
         };
+    }
+
+    private static DiagnosticsChannel diagnosticsChannel(CommandContext<CommandSourceStack> context, String name)
+            throws CommandSyntaxException {
+        String value = StringArgumentType.getString(context, name).toUpperCase(Locale.ROOT);
+        try {
+            return DiagnosticsChannel.valueOf(value);
+        } catch (IllegalArgumentException ex) {
+            throw INVALID_DIAGNOSTICS_CHANNEL.create(StringArgumentType.getString(context, name));
+        }
+    }
+
+    private static String[] diagnosticsChannelNames() {
+        DiagnosticsChannel[] channels = DiagnosticsChannel.values();
+        String[] names = new String[channels.length];
+        for (int i = 0; i < channels.length; i++) {
+            names[i] = channelName(channels[i]);
+        }
+        return names;
+    }
+
+    private static String channelName(DiagnosticsChannel channel) {
+        return channel.name().toLowerCase(Locale.ROOT);
     }
 
     private static BlockPos canonicalBlockPos(Entity entity) {
@@ -559,11 +661,11 @@ public final class GlobeDebugCommands {
         return value == null || value.isEmpty() ? "none" : value;
     }
 
-    private static BorderDistances borderDistances(DimensionTiling tiling, double x, double z) {
-        double canonicalX = CoordUtil.wrapBlock(tiling, x);
-        double canonicalZ = CoordUtil.wrapBlock(tiling, z);
-        double min = tileMin(tiling);
-        double max = tileMaxExclusive(tiling);
+    private static BorderDistances borderDistances(TopologyContext topology, double x, double z) {
+        double canonicalX = topology.canonicalBlockX(x);
+        double canonicalZ = topology.canonicalBlockX(z);
+        double min = tileMin(topology);
+        double max = tileMaxExclusive(topology);
         double west = canonicalX - min;
         double east = max - canonicalX;
         double north = canonicalZ - min;
@@ -585,12 +687,12 @@ public final class GlobeDebugCommands {
         return new BorderDistances(canonicalX, canonicalZ, west, east, north, south, nearestName, nearestDistance);
     }
 
-    private static double tileMin(DimensionTiling tiling) {
-        return -tiling.tileSizeBlocks() / 2.0D;
+    private static double tileMin(TopologyContext topology) {
+        return -topology.tileSizeBlocks() / 2.0D;
     }
 
-    private static double tileMaxExclusive(DimensionTiling tiling) {
-        return tileMin(tiling) + tiling.tileSizeBlocks();
+    private static double tileMaxExclusive(TopologyContext topology) {
+        return tileMin(topology) + topology.tileSizeBlocks();
     }
 
     private static String tileSummary(DimensionTiling tiling) {
