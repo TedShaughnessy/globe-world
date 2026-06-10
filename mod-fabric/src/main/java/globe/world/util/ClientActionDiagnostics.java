@@ -21,17 +21,12 @@ public final class ClientActionDiagnostics {
 
     public static boolean shouldRejectAliasMutation(ServerPlayer player, ServerLevel level, BlockPos rawPos, String action) {
         TopologyContext topology = TopologyContexts.forLevel(level);
-        BlockPos canonicalPos = topology.canonicalBlock(rawPos);
-        if (canonicalPos.equals(rawPos)) {
+        TopologyContext.AliasMutationAccess access = topology.aliasMutationAccess(level, rawPos);
+        if (access.allowed()) {
             return false;
         }
 
-        ChunkPos canonicalChunk = topology.canonicalChunk(ChunkPos.containing(rawPos));
-        if (level.shouldTickBlocksAt(canonicalChunk.pack())) {
-            return false;
-        }
-
-        logRejectedAliasMutation(player, level, rawPos, canonicalPos, canonicalChunk, action);
+        logRejectedAliasMutation(player, level, rawPos, access.canonicalBlock(), access.canonicalChunk(), action);
         return true;
     }
 

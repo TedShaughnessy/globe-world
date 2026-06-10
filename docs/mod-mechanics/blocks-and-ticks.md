@@ -35,7 +35,8 @@ do not belong to the canonical chunk on reload.
 
 Client block actions that originate from alias coordinates are allowed to mutate
 the canonical block only while the matching canonical chunk is in block-ticking
-range. Block breaking, item use on blocks, and sign text saves use this guard.
+range. `TopologyContext.shouldAllowAliasMutation` owns this policy; block
+breaking, item use on blocks, and sign text saves use this guard.
 Sign text packets also canonicalize the client-sent sign position before vanilla
 checks chunk availability and fetches the `SignBlockEntity`, so editing a sign
 through a visible alias writes the canonical sign text. Player block-interaction

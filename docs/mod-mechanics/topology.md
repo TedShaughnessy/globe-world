@@ -47,9 +47,10 @@ that use the current worldgen/scoped tiling context.
 `TopologyContext` is the named v2 boundary for this math. It wraps a dimension
 and its effective `DimensionTiling`, then exposes frame-named helpers such as
 `canonicalBlock`, `canonicalChunk`, `virtualBlockForViewer`,
-`virtualChunkForViewer`, `wrappedDistanceSqr`, and `loadedAliasesFor`. Runtime
-block/chunk access helpers use these names at subsystem boundaries, while
-`CoordUtil` remains the underlying source of the arithmetic.
+`virtualChunkForViewer`, `wrappedDistanceSqr`, `loadedAliasesFor`, and
+`shouldAllowAliasMutation`. Runtime block/chunk access helpers use these names
+at subsystem boundaries, while `CoordUtil` remains the underlying source of the
+arithmetic.
 
 Canonicalization is used before state access. Virtualization is used when
 building viewer-facing positions, especially packets and tracking decisions.

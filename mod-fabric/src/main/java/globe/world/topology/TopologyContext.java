@@ -6,6 +6,7 @@ import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -164,6 +165,18 @@ public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tili
         return ChunkAliasTracker.aliasesForCanonical(player, dimension, canonicalChunk.x(), canonicalChunk.z());
     }
 
+    public boolean shouldAllowAliasMutation(ServerLevel level, BlockPos rawBlock) {
+        return aliasMutationAccess(level, rawBlock).allowed();
+    }
+
+    public AliasMutationAccess aliasMutationAccess(ServerLevel level, BlockPos rawBlock) {
+        BlockPos canonicalBlock = canonicalBlock(rawBlock);
+        ChunkPos canonicalChunk = canonicalChunkForBlock(canonicalBlock);
+        boolean alias = !canonicalBlock.equals(rawBlock);
+        boolean allowed = !alias || level.shouldTickBlocksAt(canonicalChunk.pack());
+        return new AliasMutationAccess(allowed, alias, canonicalBlock, canonicalChunk);
+    }
+
     public double wrappedDeltaX(double a, double b) {
         return CoordUtil.wrappedDeltaBlock(tiling, a, b);
     }
@@ -178,5 +191,12 @@ public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tili
 
     public int wrappedChunkDistance(int a, int b) {
         return CoordUtil.wrappedChunkDistance(tiling, a, b);
+    }
+
+    public record AliasMutationAccess(
+            boolean allowed,
+            boolean alias,
+            BlockPos canonicalBlock,
+            ChunkPos canonicalChunk) {
     }
 }

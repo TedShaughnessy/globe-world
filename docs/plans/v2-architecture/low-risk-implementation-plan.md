@@ -76,6 +76,8 @@ Completed:
   canonical chunk lookup from block/section positions, viewer-facing
   block/chunk placement, canonical checks, loaded aliases, and wrapped chunk
   distances.
+- Added `shouldAllowAliasMutation` / `AliasMutationAccess` as the server-side
+  alias mutation policy boundary used by client action diagnostics.
 - Migrated server chunk lookup, block mutation/block-entity access, canonical
   alias tickets, full chunk packet relabeling, block packet fanout, biome
   resend fanout, world-event block fanout, tick canonicalization, spawning
