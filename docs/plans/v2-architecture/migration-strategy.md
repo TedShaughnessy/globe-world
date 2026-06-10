@@ -32,6 +32,10 @@ while preserving behavior.
 - Start with packet virtualization organization and diagnostics. Implemented;
   see [Packet Policies](../../mod-mechanics/packet-policies.md).
 - Move block/chunk alias helper calls to the topology access layer.
+  Implemented for runtime block/chunk helper paths; see
+  [Topology](../../mod-mechanics/topology.md),
+  [Chunks](../../mod-mechanics/chunks.md), and
+  [Blocks And Ticks](../../mod-mechanics/blocks-and-ticks.md).
 - Keep behavior equivalent and update docs as files move.
 - Use [Low-Risk Implementation Plan](low-risk-implementation-plan.md) for the
   current status of completed primitives and remaining split-settings work.

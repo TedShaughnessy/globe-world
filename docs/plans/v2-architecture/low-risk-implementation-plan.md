@@ -13,6 +13,14 @@ durable behavior has been folded into the mod mechanics docs:
   [Client](../../mod-mechanics/client.md#local-sky-and-diagnostics).
 - `ActorLocalTargetView` / `ActorLocalTargets`: implemented as a facade over
   existing AI alias helpers. See [Entities](../../mod-mechanics/entities.md).
+- Runtime block/chunk helper migration: implemented for server chunk lookup,
+  block mutation/block-entity access, canonical alias tickets, chunk packet
+  relabeling, block packet fanout, biome resend fanout, world-event block
+  fanout, tick canonicalization, spawning chunk collection, chunk player
+  provider checks, client mutation guards, and bulk section access. See
+  [Topology](../../mod-mechanics/topology.md),
+  [Chunks](../../mod-mechanics/chunks.md), and
+  [Blocks And Ticks](../../mod-mechanics/blocks-and-ticks.md).
 - Clean settings split: implemented as the saved/network settings model. See
   [Topology](../../mod-mechanics/topology.md#implemented-paths) and
   [Client](../../mod-mechanics/client.md#packet-and-cache-model).
@@ -60,7 +68,23 @@ Completed:
   `LookAtPlayerGoalMixin` to consume the new facade.
 - Kept `AiAliasUtil` as the source of behavior while callers migrate.
 
-### 5. Settings Split Compatibility Layer
+### 5. Runtime Block/Chunk Helper Migration
+
+Completed:
+
+- Added topology-context access helpers for canonical chunk/block ownership,
+  canonical chunk lookup from block/section positions, viewer-facing
+  block/chunk placement, canonical checks, loaded aliases, and wrapped chunk
+  distances.
+- Migrated server chunk lookup, block mutation/block-entity access, canonical
+  alias tickets, full chunk packet relabeling, block packet fanout, biome
+  resend fanout, world-event block fanout, tick canonicalization, spawning
+  chunk collection, chunk player provider checks, client mutation guards, and
+  bulk section access to those names.
+- Kept `CoordUtil` as the arithmetic source of truth and `ChunkAliasTracker` as
+  the backing loaded-alias store.
+
+### 6. Settings Split Compatibility Layer
 
 Completed:
 
@@ -93,7 +117,8 @@ These facades are now available, but many older callers still correctly use
 `CoordUtil` and `AiAliasUtil` as internal adapters. Future cleanup can migrate
 them gradually when touching nearby behavior:
 
-- packet helpers can use `TopologyContext` names at boundaries;
+- entity/waypoint packet helpers can use `TopologyContext` names when those
+  subsystems are touched;
 - AI/range/pathing mixins can consume `ActorLocalTargets`;
 - remaining config readers can move through `GlobeConfig` split accessors and
   direct split settings helpers as nearby code is touched.

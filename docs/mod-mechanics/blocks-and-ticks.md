@@ -19,6 +19,10 @@ other mutable behavior.
 ## Implementation
 
 Block/chunk access is wrapped into canonical coordinates before mutation.
+Runtime block/chunk helper paths resolve those owners through
+`TopologyContext`, which gives packet fanout, block mutation, chunk lookup, and
+alias lifecycle code the same dimension-aware names for canonical owners,
+viewer-facing positions, loaded aliases, and wrapped chunk distances.
 Reentrant or skipped block-update notification paths send the actual post-update
 state so the client still receives redstone shape changes such as dot-to-line
 updates.
@@ -67,7 +71,8 @@ Random block ticks are canonicalized and deduped during
 before running callbacks so side effects during block ticks cannot mutate the
 distance-manager map while vanilla is still iterating it. Scheduled block/fluid
 ticks canonicalize positions in `LevelTicks.schedule`, `hasScheduledTick`, and
-`willTickThisTick`.
+`willTickThisTick`. These runtime tick helpers now enter wrapping through
+`TopologyContext`.
 
 Lodestone compass tracking validates the lodestone point of interest at the
 canonical target position in tiled dimensions. This keeps compasses bound to an
@@ -78,7 +83,9 @@ outside the canonical tile.
 
 - `mod-fabric/src/main/java/globe/world/util/BlockPacketUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/WorldEventPacketUtil.java`
+- `mod-fabric/src/main/java/globe/world/util/ClientActionDiagnostics.java`
 - `mod-fabric/src/main/java/globe/world/util/ChunkAliasTracker.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ChunkMapBlockTickingMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java`

@@ -2,7 +2,8 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
@@ -25,9 +26,10 @@ public class ChunkMapPlayerProviderMixin {
             int chunkX,
             int chunkZ,
             Operation<Boolean> original) {
-        ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        ChunkPos virtualChunk = topology.virtualChunkForViewer(chunkX, chunkZ, player);
+        int virtualX = virtualChunk.x();
+        int virtualZ = virtualChunk.z();
         return original.call(chunkMap, player, virtualX, virtualZ);
     }
 
@@ -44,9 +46,10 @@ public class ChunkMapPlayerProviderMixin {
             int chunkX,
             int chunkZ,
             Operation<Boolean> original) {
-        ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        ChunkPos virtualChunk = topology.virtualChunkForViewer(chunkX, chunkZ, player);
+        int virtualX = virtualChunk.x();
+        int virtualZ = virtualChunk.z();
         return original.call(chunkMap, player, virtualX, virtualZ);
     }
 }

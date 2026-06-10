@@ -1,6 +1,6 @@
 package globe.world.mixin;
 
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
@@ -21,11 +21,11 @@ public class BulkSectionAccessMixin {
     @ModifyVariable(method = "getSection", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeBulkSectionPos(BlockPos pos) {
         if (this.level instanceof ServerLevelAccessor serverLevelAccessor) {
-            return CoordUtil.wrapBlockPos(serverLevelAccessor.getLevel(), pos);
+            return TopologyContexts.forLevel(serverLevelAccessor.getLevel()).canonicalBlock(pos);
         }
         if (this.level instanceof Level concreteLevel) {
-            return CoordUtil.wrapBlockPos(concreteLevel, pos);
+            return TopologyContexts.forLevel(concreteLevel).canonicalBlock(pos);
         }
-        return CoordUtil.wrapBlockPos(pos);
+        return TopologyContexts.currentOrOverworld().canonicalBlock(pos);
     }
 }

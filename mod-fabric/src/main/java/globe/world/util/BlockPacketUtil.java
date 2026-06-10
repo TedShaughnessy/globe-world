@@ -5,6 +5,8 @@ import globe.world.diagnostics.GlobeDiagnostics;
 import globe.world.mixin.ClientboundBlockEntityDataPacketAccessor;
 import globe.world.mixin.ClientboundLightUpdatePacketAccessor;
 import globe.world.mixin.ClientboundSectionBlocksUpdatePacketAccessor;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.shorts.ShortArraySet;
 import net.minecraft.core.BlockPos;
@@ -84,12 +86,13 @@ public class BlockPacketUtil {
         ClientboundSectionBlocksUpdatePacketAccessor access =
             (ClientboundSectionBlocksUpdatePacketAccessor) packet;
         SectionPos sectionPos = access.globeWorld$getSectionPos();
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
 
         int virtualSectionX = SectionPos.blockToSectionCoord(
-            (int) CoordUtil.virtualBlock(viewer.level(), sectionPos.minBlockX(), viewer.getX())
+            (int) topology.virtualBlockXForViewer(sectionPos.minBlockX(), viewer.getX())
         );
         int virtualSectionZ = SectionPos.blockToSectionCoord(
-            (int) CoordUtil.virtualBlock(viewer.level(), sectionPos.minBlockZ(), viewer.getZ())
+            (int) topology.virtualBlockXForViewer(sectionPos.minBlockZ(), viewer.getZ())
         );
 
         if (virtualSectionX == sectionPos.x() && virtualSectionZ == sectionPos.z()) return packet;
@@ -116,21 +119,17 @@ public class BlockPacketUtil {
     private static List<Packet<?>> virtualizeBlockUpdateForLoadedAliases(
             ClientboundBlockUpdatePacket packet,
             ServerPlayer viewer) {
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(viewer.level(), packet.getPos());
-        int canonicalChunkX = SectionPos.blockToSectionCoord(canonicalPos.getX());
-        int canonicalChunkZ = SectionPos.blockToSectionCoord(canonicalPos.getZ());
-        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
-                viewer,
-                viewer.level().dimension(),
-                canonicalChunkX,
-                canonicalChunkZ);
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        BlockPos canonicalPos = topology.canonicalBlock(packet.getPos());
+        ChunkPos canonicalChunk = topology.canonicalChunkForBlock(canonicalPos);
+        List<ChunkPos> aliases = topology.loadedAliasesFor(viewer, canonicalChunk);
         if (aliases.isEmpty()) {
             return List.of(virtualizeBlockUpdate(packet, viewer));
         }
 
         List<Packet<?>> packets = new ArrayList<>(aliases.size());
         for (ChunkPos alias : aliases) {
-            packets.add(new ClientboundBlockUpdatePacket(offsetBlockPos(canonicalPos, canonicalChunkX, canonicalChunkZ, alias),
+            packets.add(new ClientboundBlockUpdatePacket(offsetBlockPos(canonicalPos, canonicalChunk, alias),
                     packet.getBlockState()));
         }
         return packets;
@@ -139,14 +138,10 @@ public class BlockPacketUtil {
     private static List<Packet<?>> virtualizeBlockEntityUpdateForLoadedAliases(
             ClientboundBlockEntityDataPacket packet,
             ServerPlayer viewer) {
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(viewer.level(), packet.getPos());
-        int canonicalChunkX = SectionPos.blockToSectionCoord(canonicalPos.getX());
-        int canonicalChunkZ = SectionPos.blockToSectionCoord(canonicalPos.getZ());
-        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
-                viewer,
-                viewer.level().dimension(),
-                canonicalChunkX,
-                canonicalChunkZ);
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        BlockPos canonicalPos = topology.canonicalBlock(packet.getPos());
+        ChunkPos canonicalChunk = topology.canonicalChunkForBlock(canonicalPos);
+        List<ChunkPos> aliases = topology.loadedAliasesFor(viewer, canonicalChunk);
         if (aliases.isEmpty()) {
             return List.of(virtualizeBlockEntityUpdate(packet, viewer));
         }
@@ -154,7 +149,7 @@ public class BlockPacketUtil {
         List<Packet<?>> packets = new ArrayList<>(aliases.size());
         for (ChunkPos alias : aliases) {
             packets.add(ClientboundBlockEntityDataPacketAccessor.globeWorld$new(
-                    offsetBlockPos(canonicalPos, canonicalChunkX, canonicalChunkZ, alias),
+                    offsetBlockPos(canonicalPos, canonicalChunk, alias),
                     packet.getType(),
                     packet.getTag()
             ));
@@ -168,13 +163,9 @@ public class BlockPacketUtil {
         ClientboundSectionBlocksUpdatePacketAccessor access =
             (ClientboundSectionBlocksUpdatePacketAccessor) packet;
         SectionPos sectionPos = access.globeWorld$getSectionPos();
-        int canonicalChunkX = CoordUtil.wrapChunk(viewer.level(), sectionPos.x());
-        int canonicalChunkZ = CoordUtil.wrapChunk(viewer.level(), sectionPos.z());
-        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
-                viewer,
-                viewer.level().dimension(),
-                canonicalChunkX,
-                canonicalChunkZ);
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        ChunkPos canonicalChunk = topology.canonicalChunk(sectionPos);
+        List<ChunkPos> aliases = topology.loadedAliasesFor(viewer, canonicalChunk);
         if (aliases.isEmpty()) {
             return List.of(virtualizeSectionUpdate(packet, viewer));
         }
@@ -189,16 +180,12 @@ public class BlockPacketUtil {
     private static List<Packet<?>> virtualizeLightUpdateForLoadedAliases(
             ClientboundLightUpdatePacket packet,
             ServerPlayer viewer) {
-        int canonicalChunkX = CoordUtil.wrapChunk(viewer.level(), packet.getX());
-        int canonicalChunkZ = CoordUtil.wrapChunk(viewer.level(), packet.getZ());
-        List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
-                viewer,
-                viewer.level().dimension(),
-                canonicalChunkX,
-                canonicalChunkZ);
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        ChunkPos canonicalChunk = topology.canonicalChunk(packet.getX(), packet.getZ());
+        List<ChunkPos> aliases = topology.loadedAliasesFor(viewer, canonicalChunk);
         if (aliases.isEmpty()) {
-            ChunkPos virtualChunk = virtualLightChunk(packet, viewer, canonicalChunkX, canonicalChunkZ);
-            logLightFallback(packet, viewer, canonicalChunkX, canonicalChunkZ, virtualChunk);
+            ChunkPos virtualChunk = virtualLightChunk(packet, viewer, canonicalChunk);
+            logLightFallback(packet, viewer, canonicalChunk, virtualChunk);
             if (virtualChunk.x() == packet.getX() && virtualChunk.z() == packet.getZ()) {
                 return List.of(packet);
             }
@@ -216,19 +203,15 @@ public class BlockPacketUtil {
     }
 
     private static BlockPos virtualBlockPos(BlockPos pos, ServerPlayer viewer) {
-        int x = (int) CoordUtil.virtualBlock(viewer.level(), pos.getX(), viewer.getX());
-        int z = (int) CoordUtil.virtualBlock(viewer.level(), pos.getZ(), viewer.getZ());
-        if (x == pos.getX() && z == pos.getZ()) return pos;
-        return new BlockPos(x, pos.getY(), z);
+        return TopologyContexts.forLevel(viewer.level()).virtualBlockForViewer(pos, viewer);
     }
 
     private static BlockPos offsetBlockPos(
             BlockPos canonicalPos,
-            int canonicalChunkX,
-            int canonicalChunkZ,
+            ChunkPos canonicalChunk,
             ChunkPos alias) {
-        int dx = (alias.x() - canonicalChunkX) * 16;
-        int dz = (alias.z() - canonicalChunkZ) * 16;
+        int dx = (alias.x() - canonicalChunk.x()) * 16;
+        int dz = (alias.z() - canonicalChunk.z()) * 16;
         if (dx == 0 && dz == 0) return canonicalPos;
         return canonicalPos.offset(dx, 0, dz);
     }
@@ -248,19 +231,18 @@ public class BlockPacketUtil {
     }
 
     private static ChunkPos virtualLightChunk(ClientboundLightUpdatePacket packet, ServerPlayer viewer) {
-        int canonicalChunkX = CoordUtil.wrapChunk(viewer.level(), packet.getX());
-        int canonicalChunkZ = CoordUtil.wrapChunk(viewer.level(), packet.getZ());
-        return virtualLightChunk(packet, viewer, canonicalChunkX, canonicalChunkZ);
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        return virtualLightChunk(packet, viewer, topology.canonicalChunk(packet.getX(), packet.getZ()));
     }
 
     private static ChunkPos virtualLightChunk(
             ClientboundLightUpdatePacket packet,
             ServerPlayer viewer,
-            int canonicalChunkX,
-            int canonicalChunkZ) {
-        ChunkPos playerChunk = viewer.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(viewer.level(), canonicalChunkX, playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(viewer.level(), canonicalChunkZ, playerChunk.z());
+            ChunkPos canonicalChunk) {
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        ChunkPos virtualChunk = topology.virtualChunkForViewer(canonicalChunk, viewer);
+        int virtualX = virtualChunk.x();
+        int virtualZ = virtualChunk.z();
         if (virtualX == packet.getX() && virtualZ == packet.getZ()) {
             return new ChunkPos(packet.getX(), packet.getZ());
         }
@@ -284,8 +266,7 @@ public class BlockPacketUtil {
     private static void logLightFallback(
             ClientboundLightUpdatePacket packet,
             ServerPlayer viewer,
-            int canonicalChunkX,
-            int canonicalChunkZ,
+            ChunkPos canonicalChunk,
             ChunkPos virtualChunk) {
         if (!DimensionTiling.forLevel(viewer.level()).enabled()
                 || (virtualChunk.x() == packet.getX() && virtualChunk.z() == packet.getZ())) {
@@ -297,7 +278,7 @@ public class BlockPacketUtil {
                 "GW_LIGHT_ALIAS_FANOUT fallback player={} original={} canonical={} virtual={}",
                 viewer.getScoreboardName(),
                 new ChunkPos(packet.getX(), packet.getZ()),
-                new ChunkPos(canonicalChunkX, canonicalChunkZ),
+                canonicalChunk,
                 virtualChunk
         );
     }

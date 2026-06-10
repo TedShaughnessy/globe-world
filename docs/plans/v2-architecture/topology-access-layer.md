@@ -49,6 +49,21 @@ from policy:
 
 V2 mixins should become adapters from vanilla entry points into this layer.
 
+## Implemented Subset
+
+The first runtime block/chunk helper migration is implemented. `TopologyContext`
+now exposes canonical block/chunk owner helpers, viewer-facing block/chunk
+placement helpers, canonical checks, loaded alias lookup, and wrapped chunk
+distances. Server chunk lookup, block mutation/block-entity access, canonical
+alias tickets, full chunk packet relabeling, block packet fanout, biome resend
+fanout, world-event block fanout, tick canonicalization, spawning chunk
+collection, chunk player provider checks, client mutation guards, and bulk
+section access call those names at their subsystem boundaries.
+
+`CoordUtil` remains the arithmetic source of truth, and `ChunkAliasTracker`
+remains the backing loaded-alias store. Broader entity, worldgen, and structure
+callers are intentionally left for their own migrations.
+
 ## Expected Benefits
 
 - Less duplicated wrapping logic.

@@ -2,6 +2,8 @@ package globe.world.util;
 
 import globe.world.diagnostics.DiagnosticsChannel;
 import globe.world.diagnostics.GlobeDiagnostics;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundChunksBiomesPacket;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,7 +21,8 @@ public final class ChunkPacketUtil {
     public static List<Packet<?>> virtualizeBiomeResendForLoadedAliases(
             ClientboundChunksBiomesPacket packet,
             ServerPlayer viewer) {
-        if (!DimensionTiling.forLevel(viewer.level()).enabled() || packet.chunkBiomeData().isEmpty()) {
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        if (!topology.enabled() || packet.chunkBiomeData().isEmpty()) {
             return List.of(packet);
         }
 
@@ -29,17 +32,11 @@ public final class ChunkPacketUtil {
 
         for (ClientboundChunksBiomesPacket.ChunkBiomeData data : packet.chunkBiomeData()) {
             ChunkPos sourcePos = data.pos();
-            int canonicalX = CoordUtil.wrapChunk(viewer.level(), sourcePos.x());
-            int canonicalZ = CoordUtil.wrapChunk(viewer.level(), sourcePos.z());
-            List<ChunkPos> aliases = ChunkAliasTracker.aliasesForCanonical(
-                    viewer,
-                    viewer.level().dimension(),
-                    canonicalX,
-                    canonicalZ
-            );
+            ChunkPos canonicalChunk = topology.canonicalChunk(sourcePos);
+            List<ChunkPos> aliases = topology.loadedAliasesFor(viewer, canonicalChunk);
 
             if (aliases.isEmpty()) {
-                ChunkPos virtualChunk = nearestVirtualChunk(viewer, canonicalX, canonicalZ);
+                ChunkPos virtualChunk = topology.virtualChunkForViewer(canonicalChunk, viewer);
                 fallbackCount++;
                 addBiomeData(virtualData, seenAliases, data, virtualChunk);
                 continue;
@@ -55,14 +52,6 @@ public final class ChunkPacketUtil {
             return List.of(packet);
         }
         return List.of(new ClientboundChunksBiomesPacket(virtualData));
-    }
-
-    private static ChunkPos nearestVirtualChunk(ServerPlayer viewer, int canonicalX, int canonicalZ) {
-        ChunkPos playerChunk = viewer.chunkPosition();
-        return new ChunkPos(
-                CoordUtil.virtualChunk(viewer.level(), canonicalX, playerChunk.x()),
-                CoordUtil.virtualChunk(viewer.level(), canonicalZ, playerChunk.z())
-        );
     }
 
     private static void addBiomeData(

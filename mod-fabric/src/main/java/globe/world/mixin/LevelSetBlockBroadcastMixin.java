@@ -4,7 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.diagnostics.DiagnosticsChannel;
 import globe.world.diagnostics.GlobeDiagnostics;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContexts;
 import java.util.ArrayDeque;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -44,22 +44,22 @@ public abstract class LevelSetBlockBroadcastMixin {
         ordinal = 0
     )
     private BlockPos canonicalizeServerSetBlockPos(BlockPos pos) {
-        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+        return isClientSide() ? pos : globeWorld$canonicalBlock(pos);
     }
 
     @ModifyVariable(method = "getBlockEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeServerGetBlockEntityPos(BlockPos pos) {
-        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+        return isClientSide() ? pos : globeWorld$canonicalBlock(pos);
     }
 
     @ModifyVariable(method = "removeBlockEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeServerRemoveBlockEntityPos(BlockPos pos) {
-        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+        return isClientSide() ? pos : globeWorld$canonicalBlock(pos);
     }
 
     @ModifyVariable(method = "blockEntityChanged", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeServerBlockEntityChangedPos(BlockPos pos) {
-        return isClientSide() ? pos : CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+        return isClientSide() ? pos : globeWorld$canonicalBlock(pos);
     }
 
     @Inject(
@@ -75,7 +75,7 @@ public abstract class LevelSetBlockBroadcastMixin {
             CallbackInfoReturnable<Boolean> cir) {
         GlobeWorldSetBlockFrame frame = new GlobeWorldSetBlockFrame();
         frame.originalPos = pos;
-        frame.canonicalPos = CoordUtil.wrapBlockPos((Level) (Object) this, pos);
+        frame.canonicalPos = globeWorld$canonicalBlock(pos);
         frame.targetState = state;
         frame.flags = flags;
         frame.caller = globeWorld$caller();
@@ -153,6 +153,11 @@ public abstract class LevelSetBlockBroadcastMixin {
     @Unique
     private GlobeWorldSetBlockFrame globeWorld$currentSetBlockFrame() {
         return globeWorld$setBlockFrames.peek();
+    }
+
+    @Unique
+    private BlockPos globeWorld$canonicalBlock(BlockPos pos) {
+        return TopologyContexts.forLevel((Level) (Object) this).canonicalBlock(pos);
     }
 
     @Unique

@@ -1,6 +1,7 @@
 package globe.world.mixin;
 
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -26,6 +27,7 @@ public abstract class ChunkMapBlockTickingMixin {
 
     @Inject(method = "forEachBlockTickingChunk", at = @At("HEAD"), cancellable = true)
     private void snapshotAndCanonicalizeBlockTickingChunks(Consumer<LevelChunk> tickingChunkConsumer, CallbackInfo ci) {
+        TopologyContext topology = TopologyContexts.forLevel(this.level);
         LongArrayList tickingChunkKeys = new LongArrayList();
         ((ChunkMap) (Object) this).getDistanceManager().forEachEntityTickingChunk(key -> tickingChunkKeys.add(key));
 
@@ -41,7 +43,7 @@ public abstract class ChunkMapBlockTickingMixin {
                 continue;
             }
 
-            ChunkPos canonicalPos = CoordUtil.wrapChunkPos(this.level, chunk.getPos());
+            ChunkPos canonicalPos = topology.canonicalChunk(chunk.getPos());
             if (!tickedCanonicalChunks.add(canonicalPos.pack())) {
                 continue;
             }

@@ -1,6 +1,6 @@
 package globe.world.mixin;
 
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.DimensionTilingAware;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
@@ -22,7 +22,7 @@ public class LevelTicksMixin<T> implements DimensionTilingAware {
     @SuppressWarnings("unchecked")
     @Inject(method = "schedule", at = @At("HEAD"), cancellable = true)
     private void scheduleCanonicalTick(ScheduledTick<T> tick, CallbackInfo ci) {
-        BlockPos wrapped = CoordUtil.wrapBlockPos(this.globeWorld$dimension, tick.pos());
+        BlockPos wrapped = TopologyContexts.forDimension(this.globeWorld$dimension).canonicalBlock(tick.pos());
         if (wrapped.equals(tick.pos())) {
             return;
         }
@@ -44,7 +44,7 @@ public class LevelTicksMixin<T> implements DimensionTilingAware {
         ordinal = 0
     )
     private BlockPos hasScheduledTickCanonicalPos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(this.globeWorld$dimension, pos);
+        return TopologyContexts.forDimension(this.globeWorld$dimension).canonicalBlock(pos);
     }
 
     @ModifyVariable(
@@ -54,7 +54,7 @@ public class LevelTicksMixin<T> implements DimensionTilingAware {
         ordinal = 0
     )
     private BlockPos willTickThisTickCanonicalPos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(this.globeWorld$dimension, pos);
+        return TopologyContexts.forDimension(this.globeWorld$dimension).canonicalBlock(pos);
     }
 
     @Override

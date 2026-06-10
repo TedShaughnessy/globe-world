@@ -2,6 +2,8 @@ package globe.world.util;
 
 import globe.world.diagnostics.DiagnosticsChannel;
 import globe.world.diagnostics.GlobeDiagnostics;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,15 +20,13 @@ public final class ClientActionDiagnostics {
     }
 
     public static boolean shouldRejectAliasMutation(ServerPlayer player, ServerLevel level, BlockPos rawPos, String action) {
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(level, rawPos);
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        BlockPos canonicalPos = topology.canonicalBlock(rawPos);
         if (canonicalPos.equals(rawPos)) {
             return false;
         }
 
-        ChunkPos canonicalChunk = new ChunkPos(
-                CoordUtil.wrapChunk(level, ChunkPos.containing(rawPos).x()),
-                CoordUtil.wrapChunk(level, ChunkPos.containing(rawPos).z())
-        );
+        ChunkPos canonicalChunk = topology.canonicalChunk(ChunkPos.containing(rawPos));
         if (level.shouldTickBlocksAt(canonicalChunk.pack())) {
             return false;
         }

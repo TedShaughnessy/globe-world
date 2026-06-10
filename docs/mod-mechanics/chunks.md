@@ -16,8 +16,10 @@ copy and would unload or ignore visible aliases.
 ## Implementation
 
 Server chunk lookup wraps requested X/Z to canonical chunk coordinates before
-loading or returning a chunk. Alias chunk lifecycle events keep the matching
-canonical chunk available through ref-counted mod tickets.
+loading or returning a chunk. Runtime lookup, packet relabeling, alias tracking,
+and canonical alias tickets resolve those owners through `TopologyContext`.
+Alias chunk lifecycle events keep the matching canonical chunk available through
+ref-counted mod tickets.
 
 Tiled dimensions cap the effective server simulation distance before
 `ServerChunkCache` forwards it to vanilla's `DistanceManager`. The saved server
@@ -58,6 +60,7 @@ safe to discard because new chunk sends repopulate them.
 - `mod-fabric/src/main/java/globe/world/util/CanonicalChunkTickets.java`
 - `mod-fabric/src/main/java/globe/world/util/ChunkAliasTracker.java`
 - `mod-fabric/src/main/java/globe/world/util/ChunkPacketUtil.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/GlobeDistanceCaps.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ChunkMapBiomeResendMixin.java`

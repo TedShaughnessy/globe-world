@@ -1,6 +1,8 @@
 package globe.world.util;
 
 import globe.world.GlobeWorld;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.FullChunkStatus;
 import net.minecraft.server.level.ServerLevel;
@@ -70,9 +72,9 @@ public final class CanonicalChunkTickets {
     }
 
     private static void updateAliasRadius(ServerLevel level, ChunkPos aliasPos, int newRadius) {
-        int wcx = CoordUtil.wrapChunk(level, aliasPos.x());
-        int wcz = CoordUtil.wrapChunk(level, aliasPos.z());
-        if (wcx == aliasPos.x() && wcz == aliasPos.z()) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        ChunkPos canonicalPos = topology.canonicalChunk(aliasPos);
+        if (canonicalPos.equals(aliasPos)) {
             return;
         }
 
@@ -85,15 +87,14 @@ public final class CanonicalChunkTickets {
             return;
         }
 
-        ChunkPos canonicalPos = new ChunkPos(wcx, wcz);
         acquire(level, canonicalPos, newRadius, GlobeWorld.CANONICAL_ALIAS_TICKET, CANONICAL_REFS);
         release(level, canonicalPos, previousRadius, GlobeWorld.CANONICAL_ALIAS_TICKET, CANONICAL_REFS);
     }
 
     private static void updateAliasSimulationRadius(ServerLevel level, ChunkPos aliasPos, int newRadius) {
-        int wcx = CoordUtil.wrapChunk(level, aliasPos.x());
-        int wcz = CoordUtil.wrapChunk(level, aliasPos.z());
-        if (wcx == aliasPos.x() && wcz == aliasPos.z()) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        ChunkPos canonicalPos = topology.canonicalChunk(aliasPos);
+        if (canonicalPos.equals(aliasPos)) {
             return;
         }
 
@@ -106,7 +107,6 @@ public final class CanonicalChunkTickets {
             return;
         }
 
-        ChunkPos canonicalPos = new ChunkPos(wcx, wcz);
         acquire(level, canonicalPos, newRadius, GlobeWorld.CANONICAL_ALIAS_SIMULATION_TICKET, CANONICAL_SIMULATION_REFS);
         release(level, canonicalPos, previousRadius, GlobeWorld.CANONICAL_ALIAS_SIMULATION_TICKET, CANONICAL_SIMULATION_REFS);
     }

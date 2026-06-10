@@ -2,7 +2,8 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,7 +45,8 @@ public class ChunkMapSpawningMixin {
             Object chunkObject,
             Operation<Boolean> original) {
         LevelChunk chunk = (LevelChunk) chunkObject;
-        ChunkPos canonicalPos = CoordUtil.wrapChunkPos(this.level, chunk.getPos());
+        TopologyContext topology = TopologyContexts.forLevel(this.level);
+        ChunkPos canonicalPos = topology.canonicalChunk(chunk.getPos());
         if (!globeWorld$spawningCanonicalChunks.add(canonicalPos.pack())) {
             return false;
         }
@@ -73,7 +75,7 @@ public class ChunkMapSpawningMixin {
         )
     )
     private double wrapSpawningChunkDistance(ChunkPos chunkPos, Vec3 playerPos, Operation<Double> original) {
-        return CoordUtil.wrappedChunkDistanceSqr(this.level, chunkPos, playerPos);
+        return TopologyContexts.forLevel(this.level).wrappedChunkDistanceSqr(chunkPos, playerPos);
     }
 
     @WrapOperation(
@@ -89,9 +91,10 @@ public class ChunkMapSpawningMixin {
             int chunkX,
             int chunkZ,
             Operation<Boolean> original) {
-        ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        ChunkPos virtualChunk = topology.virtualChunkForViewer(chunkX, chunkZ, player);
+        int virtualX = virtualChunk.x();
+        int virtualZ = virtualChunk.z();
         return original.call(chunkMap, player, virtualX, virtualZ);
     }
 
@@ -108,9 +111,10 @@ public class ChunkMapSpawningMixin {
             int chunkX,
             int chunkZ,
             Operation<Boolean> original) {
-        ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        ChunkPos virtualChunk = topology.virtualChunkForViewer(chunkX, chunkZ, player);
+        int virtualX = virtualChunk.x();
+        int virtualZ = virtualChunk.z();
         return original.call(chunkMap, player, virtualX, virtualZ);
     }
 }
