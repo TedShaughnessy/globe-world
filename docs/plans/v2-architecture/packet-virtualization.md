@@ -18,7 +18,9 @@ virtualization policy explicit and auditable.
 The policy table is implemented as `PacketVirtualizationPolicies` plus
 [Packet Policies](../../mod-mechanics/packet-policies.md). It is an audit
 registry, not a dispatcher rewrite; existing handwritten packet utilities still
-preserve packet-specific semantics.
+preserve packet-specific semantics. Entity and waypoint packet helpers now use
+`TopologyContext` at their receiver-frame boundaries while keeping handwritten
+packet copies.
 
 ## Packet Policy Categories
 

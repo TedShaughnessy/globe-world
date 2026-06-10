@@ -1,5 +1,9 @@
 package globe.world.util;
 
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
@@ -23,33 +27,44 @@ public final class WaypointPacketUtil {
                 source.getAttributeValue(Attributes.WAYPOINT_TRANSMIT_RANGE),
                 receiver.getAttributeValue(Attributes.WAYPOINT_RECEIVE_RANGE)
         );
-        return CoordUtil.wrappedDistanceSqr(source, receiver) >= broadcastRange * broadcastRange;
+        TopologyContext topology = topology(source);
+        return topology.wrappedDistanceSqr(source.position(), receiver.position())
+                >= broadcastRange * broadcastRange;
     }
 
     public static boolean isReallyFar(LivingEntity source, ServerPlayer receiver) {
-        return CoordUtil.wrappedDistanceSqr(source, receiver) > 332.0 * 332.0;
+        TopologyContext topology = topology(source);
+        return topology.wrappedDistanceSqr(source.position(), receiver.position()) > 332.0 * 332.0;
     }
 
     public static boolean isChunkVisible(ChunkPos chunkPos, ServerPlayer receiver) {
-        ChunkPos playerChunk = receiver.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(receiver.level(), CoordUtil.wrapChunk(receiver.level(), chunkPos.x()), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(receiver.level(), CoordUtil.wrapChunk(receiver.level(), chunkPos.z()), playerChunk.z());
-        return receiver.getChunkTrackingView().isInViewDistance(virtualX, virtualZ);
+        ChunkPos virtualChunk = virtualChunk(chunkPos, receiver);
+        return receiver.getChunkTrackingView().isInViewDistance(virtualChunk.x(), virtualChunk.z());
     }
 
     public static ChunkPos virtualChunk(ChunkPos chunkPos, ServerPlayer receiver) {
-        ChunkPos playerChunk = receiver.chunkPosition();
-        return new ChunkPos(
-                CoordUtil.virtualChunk(receiver.level(), CoordUtil.wrapChunk(receiver.level(), chunkPos.x()), playerChunk.x()),
-                CoordUtil.virtualChunk(receiver.level(), CoordUtil.wrapChunk(receiver.level(), chunkPos.z()), playerChunk.z())
-        );
+        TopologyContext topology = TopologyContexts.forLevel(receiver.level());
+        return topology.virtualChunkForViewer(topology.canonicalChunk(chunkPos), receiver);
+    }
+
+    public static BlockPos virtualBlockPos(Vec3i position, ServerPlayer receiver) {
+        TopologyContext topology = TopologyContexts.forLevel(receiver.level());
+        BlockPos pos = new BlockPos(position.getX(), position.getY(), position.getZ());
+        BlockPos canonical = topology.canonicalBlock(pos);
+        return topology.virtualBlockForViewer(canonical, receiver);
     }
 
     public static float azimuthAngle(LivingEntity source, ServerPlayer receiver) {
-        double x = CoordUtil.virtualBlock(receiver.level(), CoordUtil.wrapBlock(receiver.level(), source.getX()), receiver.getX());
-        double z = CoordUtil.virtualBlock(receiver.level(), CoordUtil.wrapBlock(receiver.level(), source.getZ()), receiver.getZ());
-        Vec3 sourcePos = new Vec3(x, source.getY(), z);
+        TopologyContext topology = TopologyContexts.forLevel(receiver.level());
+        Vec3 sourcePos = topology.virtualBlockForViewer(
+                topology.canonicalBlock(source.position()),
+                receiver.position()
+        );
         Vec3 direction = receiver.position().subtract(sourcePos).rotateClockwise90();
         return (float) Mth.atan2(direction.z(), direction.x());
+    }
+
+    private static TopologyContext topology(LivingEntity source) {
+        return TopologyContexts.forLevel(source.level());
     }
 }

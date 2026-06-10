@@ -21,6 +21,10 @@ durable behavior has been folded into the mod mechanics docs:
   [Topology](../../mod-mechanics/topology.md),
   [Chunks](../../mod-mechanics/chunks.md), and
   [Blocks And Ticks](../../mod-mechanics/blocks-and-ticks.md).
+- Entity/waypoint packet helper migration: implemented for receiver-nearest
+  entity packet aliases, waypoint block/chunk/azimuth aliases, wrapped waypoint
+  range checks, and waypoint chunk visibility. See
+  [Entities](../../mod-mechanics/entities.md).
 - Clean settings split: implemented as the saved/network settings model. See
   [Topology](../../mod-mechanics/topology.md#implemented-paths) and
   [Client](../../mod-mechanics/client.md#packet-and-cache-model).
@@ -83,6 +87,9 @@ Completed:
   resend fanout, world-event block fanout, tick canonicalization, spawning
   chunk collection, chunk player provider checks, client mutation guards, and
   bulk section access to those names.
+- Migrated entity and waypoint packet helpers to use `TopologyContext` names
+  for viewer-nearest aliases, canonicalization, wrapped range checks, and
+  waypoint visibility.
 - Kept `CoordUtil` as the arithmetic source of truth and `ChunkAliasTracker` as
   the backing loaded-alias store.
 
@@ -119,8 +126,6 @@ These facades are now available, but many older callers still correctly use
 `CoordUtil` and `AiAliasUtil` as internal adapters. Future cleanup can migrate
 them gradually when touching nearby behavior:
 
-- entity/waypoint packet helpers can use `TopologyContext` names when those
-  subsystems are touched;
 - AI/range/pathing mixins can consume `ActorLocalTargets`;
 - remaining config readers can move through `GlobeConfig` split accessors and
   direct split settings helpers as nearby code is touched.

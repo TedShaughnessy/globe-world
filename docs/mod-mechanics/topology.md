@@ -128,7 +128,8 @@ eight Nether blocks map to one Overworld block.
 
 ## Implemented Paths
 
-- Runtime chunk, block, and entity packet paths use dimension context.
+- Runtime chunk, block, entity packet, and waypoint packet paths use dimension
+  context.
 - Server chunk lookup, alias tickets, random ticks, spawning collection,
   tracking, block mutation, and worldgen region access use dimension-aware
   wrapping.

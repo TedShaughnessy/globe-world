@@ -43,8 +43,8 @@ instead of growing a second generation of isolated fixes.
    feature-complete v1 code and call out extraction opportunities, risks, and
    concrete implementation anchors.
 10. [Low-Risk Implementation Plan](low-risk-implementation-plan.md): concrete
-    status for the implemented low-risk primitives and the remaining settings
-    split follow-up.
+    status for implemented low-risk primitives and remaining migration
+    follow-ups.
 
 ## Implemented Low-Risk Primitives
 
@@ -55,6 +55,9 @@ The first low-risk v2 pass has been implemented and folded into
   [Topology](../../mod-mechanics/topology.md).
 - Packet policy registry/table: see
   [Packet Policies](../../mod-mechanics/packet-policies.md).
+- Entity and waypoint packet helper migration through `TopologyContext`: see
+  [Topology](../../mod-mechanics/topology.md) and
+  [Entities](../../mod-mechanics/entities.md).
 - Diagnostics channels and `/globeworld debug`: see
   [Client diagnostics](../../mod-mechanics/client.md#local-sky-and-diagnostics).
 - `ActorLocalTargetView` and `ActorLocalTargets`: see

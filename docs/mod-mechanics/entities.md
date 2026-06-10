@@ -36,6 +36,8 @@ stay relative. When an entity crosses the viewer-facing tile threshold, the
 server sends an absolute sync and the client snaps tile-sized rebases instead
 of interpolating across the tile. Standalone remote players use the same snap
 path for visual rebases; the local player and mounted player stacks are skipped.
+The entity packet helper uses `TopologyContext` for dimension-aware
+viewer-nearest alias coordinates.
 
 ## Tracking, Ticking, And Spawning
 
@@ -118,6 +120,11 @@ Player pickup and interaction reach checks use wrapped target boxes, so players
 near a seam interact with the visible alias while packets still refer to the
 canonical entity or block. Curved client picking is documented in
 [Client](client.md).
+
+Waypoint block, chunk, and azimuth packets use the receiver's nearest
+`TopologyContext` alias. Waypoint range checks use wrapped distances in the
+source dimension, and chunk visibility checks test the receiver-facing virtual
+chunk.
 
 Fishing bobbers remain canonical non-player entities, but owner-relative
 fishing logic uses wrapped X/Z math. `FishingHookMixin` keeps vanilla's held-rod

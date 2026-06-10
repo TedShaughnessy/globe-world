@@ -162,10 +162,10 @@ Current anchors:
   before sending (`PlayerListBroadcastMixin.java:28`).
 - Entity packets virtualize add, absolute sync, teleport, damage source,
   vehicle correction, minecart interpolation, and bundles in `EntityPacketUtil`
-  (`EntityPacketUtil.java:23`, `EntityPacketUtil.java:64`,
-  `EntityPacketUtil.java:84`, `EntityPacketUtil.java:93`,
-  `EntityPacketUtil.java:104`, `EntityPacketUtil.java:123`,
-  `EntityPacketUtil.java:131`).
+  (`EntityPacketUtil.java:25`, `EntityPacketUtil.java:66`,
+  `EntityPacketUtil.java:87`, `EntityPacketUtil.java:96`,
+  `EntityPacketUtil.java:107`, `EntityPacketUtil.java:126`,
+  `EntityPacketUtil.java:134`).
 - Entity tracking stores per-viewer virtual tile offsets and sends absolute sync
   packets when an entity crosses the viewer-facing tile threshold
   (`ChunkMapTrackedEntityMixin.java:43`, `ChunkMapTrackedEntityMixin.java:87`,
@@ -184,9 +184,9 @@ inventory with an explicit policy table. The table should distinguish:
 
 The challenge is that packet semantics matter more than field types. A codec or
 reflection-driven transformer would be tempting but unsafe: `EntityPacketUtil`
-must preserve relative X/Z flags (`EntityPacketUtil.java:93`), minecart steps
-(`EntityPacketUtil.java:131`), damage source meaning (`EntityPacketUtil.java:104`),
-and bundle shape (`EntityPacketUtil.java:50`). Handwritten policies remain the
+must preserve relative X/Z flags (`EntityPacketUtil.java:96`), minecart steps
+(`EntityPacketUtil.java:134`), damage source meaning (`EntityPacketUtil.java:107`),
+and bundle shape (`EntityPacketUtil.java:52`). Handwritten policies remain the
 safer default.
 
 ## Entities And AI
@@ -361,7 +361,9 @@ suggests a sharper order:
    Keep return types as vanilla positions at first.
 2. Move alias visibility and packet position decisions behind named services,
    using `ChunkAliasTracker`, `BlockPacketUtil`, `ChunkPacketUtil`,
-   `WorldEventPacketUtil`, and `EntityPacketUtil` as the source behavior.
+   `WorldEventPacketUtil`, `EntityPacketUtil`, and `WaypointPacketUtil` as the
+   source behavior. The first helper migrations now use `TopologyContext` while
+   preserving those source behaviors.
 3. Introduce `ActorLocalTargetView` and migrate AI mixins gradually. Keep
    class-specific ranged attack adapters where vanilla side effects are
    intertwined.
