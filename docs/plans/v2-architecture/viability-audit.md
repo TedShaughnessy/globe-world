@@ -38,9 +38,8 @@ gameplay hook changes:
   topology, presentation, and gameplay can become separate records/codecs
   without carrying old-field compatibility inside the new model. Diagnostics
   should remain session-only command state.
-- `ActorLocalTargetView` record: package existing `AiAliasUtil` results into
-  one object, then migrate one or two AI call sites as proof. The current helper
-  behavior can remain the source of truth.
+- `ActorLocalTargetView` record: package actor-local target calculations into
+  one object, then migrate one or two AI call sites as proof.
 
 Status: the first implementation pass for these low-risk slices is complete.
 Durable behavior has moved to the mod mechanics docs for
@@ -51,9 +50,9 @@ Durable behavior has moved to the mod mechanics docs for
 uses `GlobeSettings` as the actual saved/network schema.
 
 The less-low-risk slices are the ones that change vanilla execution semantics.
-General topological block clipping and projectile swept movement are now
-implemented through `TopologicalRaycasts`; broader entity query replacement and
-the worldgen `GenerationWindow` remain separate high-risk work.
+General topological block clipping, projectile swept movement, and broad entity
+queries are now implemented through v2 primitives; the worldgen
+`GenerationWindow` remains separate high-risk work.
 
 See [Low-Risk Implementation Plan](low-risk-implementation-plan.md) for the
 completed low-risk status and remaining follow-up.
@@ -195,16 +194,15 @@ safer default.
 Viability: high for shared target views, moderate for replacing vanilla entity
 queries.
 
-The v2 actor-local target concept already exists in `AiAliasUtil`:
+The v2 actor-local target concept is implemented in `ActorLocalTargets`:
 
 - `nearestAliasPosition`, `nearestAliasEyePosition`, and
   `nearestAliasBlockPos` calculate actor-local target coordinates
-  (`AiAliasUtil.java:31`, `AiAliasUtil.java:63`, `AiAliasUtil.java:99`).
+  (`ActorLocalTargets.java`).
 - `pathTargetBlockPositions` gives pathing several candidate aliases for small
-  tiles while leaving vanilla pathfinding intact (`AiAliasUtil.java:128`).
+  tiles while leaving vanilla pathfinding intact.
 - `distanceToSqr`, `horizontalDistanceToSqr`, `nearestAliasBoundingBox`, and
-  `aliasLineOfSight` centralize common AI decisions (`AiAliasUtil.java:141`,
-  `AiAliasUtil.java:163`, `AiAliasUtil.java:186`, `AiAliasUtil.java:200`).
+  `aliasLineOfSight` centralize common AI decisions.
 - `ServerEntityGetterMixin` already teaches vanilla nearest-entity selection to
   use alias distance when there is a source actor (`ServerEntityGetterMixin.java:19`,
   `ServerEntityGetterMixin.java:42`).
@@ -212,11 +210,10 @@ The v2 actor-local target concept already exists in `AiAliasUtil`:
   `PlayerInteractionRangeMixin` (`PlayerInteractionRangeMixin.java:17`,
   `PlayerInteractionRangeMixin.java:29`, `PlayerInteractionRangeMixin.java:41`).
 
-This strongly supports a v2 `ActorLocalTargetView` or similarly named record.
-It could package the real entity, canonical position, actor-local position,
-actor-local hitbox, wrapped distance, and alias line-of-sight result. That would
-let the many current AI/ranged attack mixins consume one shared object instead
-of asking for separate helper calls.
+`ActorLocalTargetView` packages the real entity, canonical position,
+actor-local position, actor-local hitbox, wrapped distance, and aliasing status
+so current AI/ranged attack mixins consume one shared service instead of a
+separate v1 adapter.
 
 The challenge is coverage. V1 has many targeted mixins because vanilla AI does
 not use one target abstraction consistently. Some hooks patch distances, some
@@ -224,11 +221,9 @@ patch look vectors, some patch path block targets, and ranged attacks often have
 class-specific projectile math. V2 can reduce duplicated math, but it should
 expect adapters to remain for custom vanilla control flow.
 
-Replacing raw `EntityGetter` behavior globally is also risky. `AiAliasUtil`
-canonicalizes query boxes (`AiAliasUtil.java:172`) and can add actor-local boxes
-(`AiAliasUtil.java:179`), but some vanilla callers expect raw spatial queries.
-V2 should prefer explicit actor-local query APIs over changing every entity
-query in the level.
+Replacing raw `EntityGetter` behavior globally is still risky. V2 now prefers
+explicit actor-local query APIs over changing every entity query in the level,
+because some vanilla callers expect raw spatial queries.
 
 ## Topological Raycasts
 
@@ -238,7 +233,8 @@ primitive rather than mostly reorganizing existing code.
 Current coverage now enters `TopologicalRaycasts`:
 
 - AI line of sight maps the target eye to an actor-local alias and then calls
-  `TopologicalRaycasts.topologicalLineOfSight(...)` through `AiAliasUtil`.
+  `TopologicalRaycasts.topologicalLineOfSight(...)` through
+  `ActorLocalTargets`.
 - Arrow entity collision keeps vanilla hits and adds wrapped entity hitboxes
   through `ProjectileAliasUtil.addWrappedEntityHits`. The result still
   references the real entity, which is exactly the canonical identity model v2
@@ -366,9 +362,9 @@ suggests a sharper order:
    `WorldEventPacketUtil`, `EntityPacketUtil`, and `WaypointPacketUtil` as the
    source behavior. The first helper migrations now use `TopologyContext` while
    preserving those source behaviors.
-3. Introduce `ActorLocalTargetView` and migrate AI mixins gradually. Keep
-   class-specific ranged attack adapters where vanilla side effects are
-   intertwined.
+3. Use `ActorLocalTargetView` / `ActorLocalTargets` as the shared AI target
+   boundary. Keep class-specific ranged attack mixins where vanilla side
+   effects are intertwined.
 4. Keep topological block clipping and projectile/raycast authority in the
    shared `TopologicalRaycasts` primitive, with client visual prediction and
    long-ray behavior covered by regression checks.
@@ -377,5 +373,6 @@ suggests a sharper order:
 6. Split saved settings into clean v2 schemas and keep diagnostics session-only.
    Reject v1 saved data clearly.
 
-Do not start v2 by deleting v1 utilities. Most of them are the proven behavior
-that v2 should name and contain.
+The old AI-facing v1 adapter has since been folded into `ActorLocalTargets`.
+`CoordUtil` remains the low-level arithmetic source behind `TopologyContext`,
+especially for worldgen and legacy coordinate hooks.

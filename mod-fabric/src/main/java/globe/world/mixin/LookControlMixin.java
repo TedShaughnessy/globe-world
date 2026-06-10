@@ -1,6 +1,6 @@
 package globe.world.mixin;
 
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.control.LookControl;
@@ -24,20 +24,20 @@ public abstract class LookControlMixin {
 
     @Inject(method = "setLookAt(Lnet/minecraft/world/entity/Entity;)V", at = @At("HEAD"), cancellable = true)
     private void setLookAtEntityAlias(Entity target, CallbackInfo ci) {
-        if (!AiAliasUtil.canAlias(this.mob, target)) {
+        if (!ActorLocalTargets.canAlias(this.mob, target)) {
             return;
         }
-        Vec3 alias = AiAliasUtil.nearestAliasEyePosition(this.mob, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasEyePosition(this.mob, target);
         this.setLookAt(alias.x, alias.y, alias.z);
         ci.cancel();
     }
 
     @Inject(method = "setLookAt(Lnet/minecraft/world/entity/Entity;FF)V", at = @At("HEAD"), cancellable = true)
     private void setLookAtEntityAlias(Entity target, float yMaxRotSpeed, float xMaxRotAngle, CallbackInfo ci) {
-        if (!AiAliasUtil.canAlias(this.mob, target)) {
+        if (!ActorLocalTargets.canAlias(this.mob, target)) {
             return;
         }
-        Vec3 alias = AiAliasUtil.nearestAliasEyePosition(this.mob, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasEyePosition(this.mob, target);
         this.setLookAt(alias.x, alias.y, alias.z, yMaxRotSpeed, xMaxRotAngle);
         ci.cancel();
     }

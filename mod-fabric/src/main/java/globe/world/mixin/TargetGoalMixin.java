@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -27,7 +27,7 @@ public class TargetGoalMixin {
             )
     )
     private double useAliasDistanceForTargetRetention(Mob mob, Entity target, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(mob, target);
+        return ActorLocalTargets.distanceToSqr(mob, target);
     }
 
     @WrapOperation(
@@ -38,7 +38,7 @@ public class TargetGoalMixin {
             )
     )
     private int comparePathEndToAliasTargetX(LivingEntity target, Operation<Integer> original) {
-        BlockPos alias = AiAliasUtil.nearestAliasBlockPos(this.mob, target);
+        BlockPos alias = ActorLocalTargets.nearestAliasBlockPos(this.mob, target);
         return alias.getX();
     }
 
@@ -50,7 +50,7 @@ public class TargetGoalMixin {
             )
     )
     private int comparePathEndToAliasTargetZ(LivingEntity target, Operation<Integer> original) {
-        BlockPos alias = AiAliasUtil.nearestAliasBlockPos(this.mob, target);
+        BlockPos alias = ActorLocalTargets.nearestAliasBlockPos(this.mob, target);
         return alias.getZ();
     }
 }

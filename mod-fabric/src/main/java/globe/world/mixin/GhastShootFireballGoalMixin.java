@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Ghast;
@@ -26,7 +26,7 @@ public class GhastShootFireballGoalMixin {
             )
     )
     private double useAliasDistance(LivingEntity target, Entity ghast, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(this.ghast, target);
+        return ActorLocalTargets.distanceToSqr(this.ghast, target);
     }
 
     @WrapOperation(
@@ -37,7 +37,7 @@ public class GhastShootFireballGoalMixin {
             )
     )
     private boolean useAliasLineOfSight(Ghast ghast, Entity target, Operation<Boolean> original) {
-        return original.call(ghast, target) || AiAliasUtil.aliasLineOfSight(ghast, target);
+        return original.call(ghast, target) || ActorLocalTargets.aliasLineOfSight(ghast, target);
     }
 
     @WrapOperation(
@@ -45,7 +45,7 @@ public class GhastShootFireballGoalMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getX()D")
     )
     private double aimAtAliasX(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition(this.ghast, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition(this.ghast, target);
         return alias.x;
     }
 
@@ -54,7 +54,7 @@ public class GhastShootFireballGoalMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getZ()D")
     )
     private double aimAtAliasZ(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition(this.ghast, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition(this.ghast, target);
         return alias.z;
     }
 }

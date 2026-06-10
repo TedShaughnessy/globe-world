@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.goal.RangedCrossbowAttackGoal;
 import net.minecraft.world.entity.monster.Monster;
@@ -19,6 +19,6 @@ public class RangedCrossbowAttackGoalMixin {
             )
     )
     private double useAliasDistanceForCrossbowAttack(Monster mob, Entity target, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(mob, target);
+        return ActorLocalTargets.distanceToSqr(mob, target);
     }
 }

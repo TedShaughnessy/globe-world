@@ -58,8 +58,8 @@ cancelled for non-canonical chunks.
 
 ## AI, Interaction, And Pathing
 
-`AiAliasUtil` maps targets, hitboxes, and query boxes into the acting mob's
-local tile frame. `ActorLocalTargets` packages the same calculations into an
+`ActorLocalTargets` maps targets, hitboxes, and query boxes into the acting
+mob's local tile frame. It can package those calculations into an
 `ActorLocalTargetView` containing the canonical position, actor-local position,
 actor-local hitbox, wrapped distances, same-level status, and aliasing status.
 Broad query helpers route through `TopologicalEntityQueries`, which splits
@@ -173,8 +173,8 @@ canonicalized but currently sit outside canonical X/Z.
   `NaturalSpawnerMixin`, `ChunkStatusTasksMixin`,
   `MobDespawnDistanceMixin`.
 - AI and pathing:
-  `AiAliasUtil`, `ActorLocalTargetView`, `ActorLocalTargets`,
-  `TopologicalEntityQueries`, `TopologicalRaycasts`,
+  `ActorLocalTargetView`, `ActorLocalTargets`, `TopologicalEntityQueries`,
+  `TopologicalRaycasts`,
   `MobNavigationAliasUtil`, `TargetingConditionsMixin`,
   `ServerEntityGetterMixin`, `NearestLivingEntitySensorMixin`, `SensingMixin`,
   `TargetGoalMixin`, `PathNavigationMixin`, `GroundPathNavigationMixin`,

@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Witch;
@@ -20,7 +20,7 @@ public class WitchRangedAttackMixin {
             )
     )
     private double useAliasDistanceForSpeedPotion(LivingEntity target, Entity witch, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(witch, target);
+        return ActorLocalTargets.distanceToSqr(witch, target);
     }
 
     @WrapOperation(
@@ -28,7 +28,7 @@ public class WitchRangedAttackMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getX()D")
     )
     private double aimAtAliasX(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition((Entity)(Object)this, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition((Entity)(Object)this, target);
         return alias.x;
     }
 
@@ -37,7 +37,7 @@ public class WitchRangedAttackMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getZ()D")
     )
     private double aimAtAliasZ(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition((Entity)(Object)this, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition((Entity)(Object)this, target);
         return alias.z;
     }
 }

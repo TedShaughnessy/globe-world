@@ -11,8 +11,8 @@ durable behavior has been folded into the mod mechanics docs:
   [Packet Policies](../../mod-mechanics/packet-policies.md).
 - Diagnostics channels: implemented as session-only command-gated channels. See
   [Client](../../mod-mechanics/client.md#local-sky-and-diagnostics).
-- `ActorLocalTargetView` / `ActorLocalTargets`: implemented as a facade over
-  existing AI alias helpers. See [Entities](../../mod-mechanics/entities.md).
+- `ActorLocalTargetView` / `ActorLocalTargets`: implemented as the actor-local
+  entity target boundary. See [Entities](../../mod-mechanics/entities.md).
 - Runtime block/chunk helper migration: implemented for server chunk lookup,
   block mutation/block-entity access, canonical alias tickets, chunk packet
   relabeling, block packet fanout, biome resend fanout, world-event block
@@ -40,7 +40,7 @@ Completed:
 - Added `TopologyContext` and `TopologyContexts`.
 - Kept `CoordUtil` as the arithmetic source of truth.
 - Migrated low-risk call sites in `GlobeDebugCommands`,
-  `WorldEventPacketUtil`, and `AiAliasUtil`.
+  `WorldEventPacketUtil`, and actor-local entity targeting.
 - Documented `TopologyContext` as the named coordinate-frame boundary.
 
 ### 2. Packet Policy Table
@@ -70,7 +70,7 @@ Completed:
 - Added `ActorLocalTargetView` and `ActorLocalTargets`.
 - Migrated `/globeworld entity`, `ServerEntityGetterMixin`, and
   `LookAtPlayerGoalMixin` to consume the new facade.
-- Kept `AiAliasUtil` as the source of behavior while callers migrate.
+- Folded the old AI alias adapter behavior into `ActorLocalTargets`.
 
 ### 5. Runtime Block/Chunk Helper Migration
 
@@ -122,11 +122,11 @@ Verification:
 
 ### Continue Caller Migration
 
-These facades are now available, but many older callers still correctly use
-`CoordUtil` and `AiAliasUtil` as internal adapters. Future cleanup can migrate
-them gradually when touching nearby behavior:
+These facades are now available, and the AI-facing v1 adapter has been retired.
+Future cleanup can still migrate raw coordinate math through named topology
+boundaries when touching nearby behavior:
 
-- AI/range/pathing mixins can consume `ActorLocalTargets`;
+- runtime coordinate helpers can consume `TopologyContext`;
 - remaining config readers can move through `GlobeConfig` split accessors and
   direct split settings helpers as nearby code is touched.
 

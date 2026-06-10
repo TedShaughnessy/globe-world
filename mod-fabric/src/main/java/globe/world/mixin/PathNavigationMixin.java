@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -26,9 +26,9 @@ public abstract class PathNavigationMixin {
     @WrapMethod(method = "createPath(Lnet/minecraft/world/entity/Entity;I)Lnet/minecraft/world/level/pathfinder/Path;")
     @Nullable
     private Path createPathToTargetAliases(Entity target, int reachRange, Operation<Path> original) {
-        if (!AiAliasUtil.canAlias(this.mob, target)) {
+        if (!ActorLocalTargets.canAlias(this.mob, target)) {
             return original.call(target, reachRange);
         }
-        return this.createPath(AiAliasUtil.pathTargetBlockPositions(this.mob, target), 16, true, reachRange);
+        return this.createPath(ActorLocalTargets.pathTargetBlockPositions(this.mob, target), 16, true, reachRange);
     }
 }

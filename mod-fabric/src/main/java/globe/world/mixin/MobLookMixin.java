@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -21,7 +21,7 @@ public class MobLookMixin {
             )
     )
     private double lookAtNearestAliasX(Entity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition((Mob) (Object) this, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition((Mob) (Object) this, target);
         return alias.x;
     }
 
@@ -33,7 +33,7 @@ public class MobLookMixin {
             )
     )
     private double lookAtNearestAliasZ(Entity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition((Mob) (Object) this, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition((Mob) (Object) this, target);
         return alias.z;
     }
 
@@ -45,6 +45,6 @@ public class MobLookMixin {
             )
     )
     private AABB useNearestAliasHitboxForMeleeReach(LivingEntity target, Operation<AABB> original) {
-        return AiAliasUtil.nearestAliasHitbox((Mob) (Object) this, target, original.call(target));
+        return ActorLocalTargets.nearestAliasHitbox((Mob) (Object) this, target, original.call(target));
     }
 }

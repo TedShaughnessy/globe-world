@@ -3,7 +3,7 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -26,7 +26,7 @@ public class GhastFacingMixin {
             Entity ghast,
             Operation<Double> original,
             @Local(argsOnly = true) Mob mob) {
-        return AiAliasUtil.distanceToSqr(mob, target);
+        return ActorLocalTargets.distanceToSqr(mob, target);
     }
 
     @WrapOperation(
@@ -34,7 +34,7 @@ public class GhastFacingMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getX()D")
     )
     private static double faceAliasTargetX(LivingEntity target, Operation<Double> original, @Local(argsOnly = true) Mob ghast) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition(ghast, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition(ghast, target);
         return alias.x;
     }
 
@@ -43,7 +43,7 @@ public class GhastFacingMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getZ()D")
     )
     private static double faceAliasTargetZ(LivingEntity target, Operation<Double> original, @Local(argsOnly = true) Mob ghast) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition(ghast, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition(ghast, target);
         return alias.z;
     }
 }

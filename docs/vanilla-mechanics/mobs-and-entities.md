@@ -313,9 +313,9 @@ Project hooks for entity storage and visibility:
 - `mod-fabric/src/main/java/globe/world/mixin/MobDespawnDistanceMixin.java` wraps
   `Mob.checkDespawn()`'s player-to-mob distance so canonical mobs near a player
   alias are not treated as raw-distance far away.
-- `mod-fabric/src/main/java/globe/world/util/AiAliasUtil.java` computes mob-local target
-  aliases, alias hitboxes, query boxes, and wrapped AI distances without moving
-  or cloning entities.
+- `mod-fabric/src/main/java/globe/world/entity/ActorLocalTargets.java` computes
+  mob-local target aliases, alias hitboxes, query boxes, and wrapped AI
+  distances without moving or cloning entities.
 - `mod-fabric/src/main/java/globe/world/mixin/SensingMixin.java` makes
   `Sensing.hasLineOfSight(...)` return alias sight results itself so vanilla's
   seen/unseen cache matches wrapped targeting.

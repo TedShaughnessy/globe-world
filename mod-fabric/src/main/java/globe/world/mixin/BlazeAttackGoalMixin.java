@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Blaze;
@@ -26,7 +26,7 @@ public class BlazeAttackGoalMixin {
             )
     )
     private double useAliasDistance(Blaze blaze, Entity target, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(blaze, target);
+        return ActorLocalTargets.distanceToSqr(blaze, target);
     }
 
     @WrapOperation(
@@ -34,7 +34,7 @@ public class BlazeAttackGoalMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getX()D")
     )
     private double useAliasTargetX(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition(this.blaze, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition(this.blaze, target);
         return alias.x;
     }
 
@@ -43,7 +43,7 @@ public class BlazeAttackGoalMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getZ()D")
     )
     private double useAliasTargetZ(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition(this.blaze, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition(this.blaze, target);
         return alias.z;
     }
 }

@@ -24,3 +24,6 @@ point for current behavior and modded code anchors.
   [Topology](../mod-mechanics/topology.md#topological-raycast-primitives):
   block clips, entity sweeps, line of sight, arrow-family hits, shared
   server-side projectile movement, view-vector rays, and attack-range sweeps.
+- The non-worldgen v2 migration is implemented; the remaining v2 architecture
+  work is the explicit
+  [GenerationWindow](v2-architecture/worldgen-window.md) worldgen model.

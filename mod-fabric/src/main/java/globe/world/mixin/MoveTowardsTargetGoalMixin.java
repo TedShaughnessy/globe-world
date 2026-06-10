@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
@@ -27,7 +27,7 @@ public class MoveTowardsTargetGoalMixin {
             )
     )
     private double useAliasDistanceForTargetProximity(LivingEntity target, Entity mob, Operation<Double> original) {
-        return AiAliasUtil.distanceToSqr(mob, target);
+        return ActorLocalTargets.distanceToSqr(mob, target);
     }
 
     @WrapOperation(
@@ -38,6 +38,6 @@ public class MoveTowardsTargetGoalMixin {
             )
     )
     private Vec3 moveTowardNearestAlias(LivingEntity target, Operation<Vec3> original) {
-        return AiAliasUtil.nearestAliasPosition(this.mob, target);
+        return ActorLocalTargets.nearestAliasPosition(this.mob, target);
     }
 }

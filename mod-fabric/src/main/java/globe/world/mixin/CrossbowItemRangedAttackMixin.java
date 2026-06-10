@@ -3,7 +3,7 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.phys.Vec3;
@@ -20,7 +20,7 @@ public class CrossbowItemRangedAttackMixin {
             LivingEntity target,
             Operation<Double> original,
             @Local(argsOnly = true, ordinal = 0) LivingEntity shooter) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition(shooter, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition(shooter, target);
         return alias.x;
     }
 
@@ -32,7 +32,7 @@ public class CrossbowItemRangedAttackMixin {
             LivingEntity target,
             Operation<Double> original,
             @Local(argsOnly = true, ordinal = 0) LivingEntity shooter) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition(shooter, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition(shooter, target);
         return alias.z;
     }
 }

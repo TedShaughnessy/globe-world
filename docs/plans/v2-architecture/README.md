@@ -7,8 +7,8 @@ viewer-facing virtual aliases. The rebuild goal is not a different feature; it
 is better encapsulation around the concepts v1 discovered through many targeted
 mixins.
 
-V1 can finish first. This plan exists so later work can consolidate behavior
-instead of growing a second generation of isolated fixes.
+Most non-worldgen v2 work has now landed. This plan remains as the index for
+the implemented boundaries and for the remaining worldgen-window rebuild work.
 
 ## Design Principles
 
@@ -77,7 +77,9 @@ The first low-risk v2 pass has been implemented and folded into
   [Client](../../mod-mechanics/client.md#packet-and-cache-model).
 
 Remaining architecture work should build from those mechanics docs rather than
-the original low-risk checklist. For a quick status map, see the
+the original low-risk checklist. The non-worldgen v2 migration work is now
+folded into code and durable mechanics docs; the remaining architecture item is
+the explicit toroidal worldgen window. For a quick status map, see the
 [Progress Tracker](progress.md).
 
 ## Non-Goals
@@ -90,6 +92,7 @@ the original low-risk checklist. For a quick status map, see the
 
 ## Completion Shape
 
-V2 is ready to begin when v1's feature set is stable enough that remaining work
-is mostly polish, mod-interop work, or bug fixing. The first v2 milestone
-should be an internal topology API and tests, not visible gameplay changes.
+V2's non-worldgen topology, packet, entity, raycast, settings, and diagnostics
+boundaries are implemented. The remaining rebuild-shaped work is the
+`GenerationWindow` worldgen model; until then, the existing worldgen spillover
+and structure-edge mechanics remain the implemented behavior.

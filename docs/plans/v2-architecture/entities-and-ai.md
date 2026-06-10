@@ -30,9 +30,9 @@ target model.
 
 The first shared target facade is implemented as `ActorLocalTargetView` and
 `ActorLocalTargets`, documented in
-[Entities](../../mod-mechanics/entities.md). It packages existing
-`AiAliasUtil` behavior and is used by `/globeworld entity`,
-`ServerEntityGetterMixin`, and `LookAtPlayerGoalMixin`.
+[Entities](../../mod-mechanics/entities.md). `ActorLocalTargets` owns the
+actor-local alias behavior directly and is used by debug commands, broad entity
+queries, line-of-sight hooks, look/pathing hooks, and melee/ranged AI mixins.
 
 Broad lookup boxes now have a first shared primitive:
 `TopologicalEntityQueries`. It splits visible-frame query boxes across
@@ -54,17 +54,18 @@ through their nearest visible alias. `ActorLocalTargets` exposes
 
 ## Implementation Sketch
 
-Partially implemented: `ActorLocalTargets` provides `actorLocalView`-style
-behavior, target position/eye/box helpers, wrapped distances, line of sight,
-path target helpers, nearest-target selection, and actor-range queries.
+Implemented outside worldgen: `ActorLocalTargets` provides
+`actorLocalView`-style behavior, target position/eye/box helpers, wrapped
+distances, line of sight, path target helpers, nearest-target selection, and
+actor-range queries.
 `ServerEntityGetter` nearest/nearby entity candidate collection, brain sensors,
 player pickup, container-open rechecks, splash-potion area candidates, and
 topological ray sweeps now use the shared broad-query helper.
 
-Continue migrating AI mixins to call the service rather than doing per-class
-wrapping math. Broader raw `EntityGetter` replacement remains an audit task,
-especially for collision-style queries where returning visible-frame boxes may
-have different vanilla side effects.
+AI mixins now call the shared service rather than the retired v1 AI adapter.
+Broader raw `EntityGetter` replacement remains an audit task, especially for
+collision-style queries where returning visible-frame boxes may have different
+vanilla side effects.
 
 ## Expected Benefits
 

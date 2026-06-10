@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.sensing.Sensing;
@@ -22,6 +22,6 @@ public class SensingMixin {
         if (original.call(mob, target)) {
             return true;
         }
-        return AiAliasUtil.aliasLineOfSight(mob, target);
+        return ActorLocalTargets.aliasLineOfSight(mob, target);
     }
 }

@@ -2,7 +2,7 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.AiAliasUtil;
+import globe.world.entity.ActorLocalTargets;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.zombie.Drowned;
@@ -17,7 +17,7 @@ public class DrownedRangedAttackMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getX()D")
     )
     private double aimAtAliasX(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition((Entity)(Object)this, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition((Entity)(Object)this, target);
         return alias.x;
     }
 
@@ -26,7 +26,7 @@ public class DrownedRangedAttackMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getZ()D")
     )
     private double aimAtAliasZ(LivingEntity target, Operation<Double> original) {
-        Vec3 alias = AiAliasUtil.nearestAliasPosition((Entity)(Object)this, target);
+        Vec3 alias = ActorLocalTargets.nearestAliasPosition((Entity)(Object)this, target);
         return alias.z;
     }
 }
