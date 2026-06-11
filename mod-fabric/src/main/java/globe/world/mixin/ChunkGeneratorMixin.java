@@ -107,6 +107,9 @@ public class ChunkGeneratorMixin {
             }
 
             starts.add(start);
+            // References may store a virtual source key. The durable start still
+            // belongs to its canonical chunk; the key only recovers the tile shift
+            // needed while placing into this canonical target chunk.
             StructurePlacementShifts.enqueue(
                     start,
                     virtualSource.x() - start.getChunkPos().x(),
@@ -148,6 +151,8 @@ public class ChunkGeneratorMixin {
                                     targetBlockX,
                                     targetBlockZ
                             )) {
+                        // Store the virtual source key so placement can replay the
+                        // whole-tile shift without making the alias a structure owner.
                         structureManager.addReferenceForStructure(
                                 sectionPos,
                                 start.getStructure(),
@@ -188,6 +193,8 @@ public class ChunkGeneratorMixin {
                 }
 
                 starts.add(start);
+                // Progression fallback uses the same transient shift contract as
+                // ordinary references; it does not persist alias-owned starts.
                 StructurePlacementShifts.enqueue(
                         start,
                         sourceX - start.getChunkPos().x(),

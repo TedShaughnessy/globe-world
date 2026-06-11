@@ -34,6 +34,8 @@ public class StructureStartMixin {
             return;
         }
 
+        // The shift is a transient worldgen view recovered from a reference key.
+        // The structure start itself remains owned by its canonical chunk.
         BoundingBox shiftedChunkBB = chunkBB.moved(shift.blockX(), 0, shift.blockZ());
         ChunkPos shiftedChunkPos = new ChunkPos(chunkPos.x() + shift.chunkX(), chunkPos.z() + shift.chunkZ());
 

@@ -86,7 +86,7 @@ Status keys:
 | Feature spillover | Generate features that write across an edge, such as trees or decorations. | Wrapped writes land in the canonical target once observable and do not replay forever. | Manual |
 | Structure edge behavior | Generate structures whose pieces cross a tile edge. | Canonical structure ownership is preserved; virtual edge pieces do not become independent owners. | Manual |
 | Nether fortress progression | Generate Nether fortresses near edges. | Progression-critical pieces remain available under the current structure edge policy. | Manual |
-| `GenerationWindow` replacement | Replace spillover behavior with an explicit toroidal generation window. | Reads, writes, deferred writes, and unsafe destinations have named policies. | [Worldgen improvements](worldgen-improvements.md) |
+| `GenerationWindow` hardening | Regression-check the explicit toroidal generation window. | Reads, writes, deferred writes, and unsafe destinations keep their named policies without adding alias-origin generation. | [Worldgen](../mod-mechanics/worldgen.md) |
 
 ## Diagnostics And Regression Notes
 

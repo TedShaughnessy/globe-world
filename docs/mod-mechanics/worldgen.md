@@ -83,22 +83,41 @@ Alias `LevelChunk.postProcessGeneration` is cancelled and queued
 post-processing offsets are cleared so alias neighbor-shape fixes do not write
 through wrapped `Level.setBlock` into canonical storage.
 
+`GenerationWindow` is the shared worldgen helper for bounded region access at
+tile edges. It gives `WorldGenRegionMixin` one vocabulary for canonical block
+reads, physical-cache alias chunk lookup, toroidal write-radius checks, physical
+cache availability, and write classification. It does not call live
+`ServerLevel.getChunk(...)`, mutate chunks directly, or replace the terrain and
+noise periodicity hooks. Manual seam testing after the extraction confirmed the
+helper preserves the existing ownership model and does not introduce durable
+alias-origin generation.
+
 Worldgen spillover handles block writes that wrap across X/Z tile edges during
-generation. `WorldGenRegion` write hooks enqueue the wrapped canonical block
-state into server-owned transient spillover state keyed by dimension and
-canonical chunk. Each queued write also records the block state observed when
-vanilla accepted the original write. Canonical chunks apply queued spillover
-during biome decoration, post-processing, and before chunk packet serialization,
-but replay a queued write only if the destination still matches the observed
-state. This prevents stale leaf, grass, or other decoration writes from
-overwriting trunks and other blocks placed by the destination chunk after the
-spillover write was queued. When an external worldgen provider such as Distant
-Horizons does not expose the opposite-edge chunk in the active
-`WorldGenRegion` cache, Globe World queues the wrapped write without directly
-touching the missing chunk; those writes replay later without an observed-state
-guard because the destination state could not be sampled safely. Level close and
-server stop discard any remaining queues and warn if writes were abandoned;
-spillover queues are runtime bookkeeping and are not saved world data.
+generation. `WorldGenRegion` write hooks classify each write through
+`GenerationWindow` and enqueue the wrapped canonical block state into
+server-owned transient spillover state keyed by dimension and canonical chunk.
+When the canonical destination is visible in the bounded `WorldGenRegion`
+cache, vanilla first accepts the canonical write and the queued spillover entry
+records the block state observed at the destination. Canonical chunks apply
+queued spillover during biome decoration, post-processing, and before chunk
+packet serialization, but replay a guarded queued write only if the destination
+still matches the observed state. This prevents stale leaf, grass, or other
+decoration writes from overwriting trunks and other blocks placed by the
+destination chunk after the spillover write was queued. When an external
+worldgen provider such as Distant Horizons does not expose the opposite-edge
+chunk in the active `WorldGenRegion` cache, Globe World queues the wrapped write
+without directly touching the missing chunk; those writes replay later without
+an observed-state guard because the destination state could not be sampled
+safely. Level close and server stop discard any remaining queues and warn if
+writes were abandoned; spillover queues are runtime bookkeeping and are not
+saved world data.
+
+Worldgen diagnostics on the `WORLDGEN` channel use `GW_WORLDGEN_WINDOW` for
+generation-window decisions and `GW_WORLDGEN_SPILLOVER` for queue lifecycle.
+Window logs distinguish wrapped visible writes, wrapped unobserved writes,
+radius-denied writes, and unavailable no-load chunk lookups. Spillover enqueue
+logs identify whether the queued write is guarded; existing apply, skip, stale,
+and cleanup events keep the same event names.
 
 Structure edge handling stores virtual source keys during reference generation,
 resolves them during biome decoration, and places vanilla starts with a
@@ -115,6 +134,18 @@ empty reference set: it scans the same nearby source-start radius and queues the
 same placement shift without making alias chunks durable owners. This catches
 already-missing progression references that would otherwise leave a hard chunk
 cutoff.
+
+Non-`setBlock` worldgen side effects are covered by separate hooks or documented
+limits. `BulkSectionAccessMixin` canonicalizes direct section lookup because
+some ore placement paths bypass `WorldGenRegion.setBlock(...)`. Block entity
+creation, POI updates, and post-processing marks are covered for visible writes
+because the canonical write still flows through vanilla `WorldGenRegion`
+`setBlock(...)`; unobserved spillover replays only the block state through
+`ChunkAccess.setBlockState(...)`, so attached block-entity NBT, scheduled block
+or fluid ticks, and POI side effects from the unobserved provider path are not
+fully reconstructed by this hardening pass. `WorldGenRegion` post-processing
+positions are canonicalized before chunk marking. `ServerLevelEntityMixin`
+canonicalizes worldgen chunk entities before server storage.
 
 Forced missing Overworld strongholds are created during `STRUCTURE_STARTS`,
 immediately after vanilla `ChunkGenerator.createStructures(...)` finishes for a
@@ -203,6 +234,7 @@ canonical candidate starts and warns that validation may load or generate
 - `mod-fabric/src/main/java/globe/world/config/GameplaySettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeConfig.java`
 - `mod-fabric/src/client/java/globe/world/client/GlobeWorldSettingsControls.java`
+- `mod-fabric/src/main/java/globe/world/util/GenerationWindow.java`
 - `mod-fabric/src/main/java/globe/world/util/WorldGenSpillover.java`
 - `mod-fabric/src/main/java/globe/world/util/StructurePlacementShifts.java`
 - `mod-fabric/src/main/java/globe/world/util/ForcedProgressionStructures.java`

@@ -79,6 +79,16 @@ public final class WorldGenSpillover {
             Key key = new Key(level.dimension(), chunkPos.pack());
             Queue queue = this.pendingWrites.computeIfAbsent(key, ignored -> new Queue(level.getGameTime()));
             queue.add(new Write(wrapped, expectedState, state, flags), level.getGameTime());
+            GlobeDiagnostics.debug(
+                    DiagnosticsChannel.WORLDGEN,
+                    "GW_WORLDGEN_SPILLOVER enqueue dimension={} canonical={} pos={} guarded={} expected={} queued={}",
+                    dimensionName(key.dimension()),
+                    format(chunkPos),
+                    wrapped.toShortString(),
+                    expectedState != null,
+                    expectedState,
+                    state
+            );
             warnIfStale(level, key, queue);
         }
 

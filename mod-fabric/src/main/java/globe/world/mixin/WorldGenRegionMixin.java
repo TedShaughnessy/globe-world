@@ -1,19 +1,16 @@
 package globe.world.mixin;
 
-import globe.world.util.CoordUtil;
-import globe.world.util.DimensionTiling;
+import globe.world.util.GenerationWindow;
 import globe.world.util.WorldGenSpillover;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.GenerationChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.StaticCache2D;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.status.ChunkStep;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -43,7 +40,7 @@ public class WorldGenRegionMixin {
 
     @ModifyVariable(method = "getBlockState", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetBlockStatePos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(this.level, pos);
+        return window().canonicalReadPos(pos);
     }
 
     @Inject(
@@ -54,88 +51,73 @@ public class WorldGenRegionMixin {
     private void virtualizeWorldgenChunkLookup(
             int chunkX,
             int chunkZ,
-            net.minecraft.world.level.chunk.status.ChunkStatus targetStatus,
+            ChunkStatus targetStatus,
             boolean loadOrGenerate,
             CallbackInfoReturnable<ChunkAccess> cir
     ) {
-        int virtualX = virtualCacheChunkX(chunkX);
-        int virtualZ = virtualCacheChunkZ(chunkZ);
-        if (virtualX != chunkX || virtualZ != chunkZ) {
-            if (this.cache.contains(virtualX, virtualZ)) {
-                cir.setReturnValue(((WorldGenRegion) (Object) this).getChunk(virtualX, virtualZ, targetStatus, loadOrGenerate));
-            } else if (!loadOrGenerate) {
-                cir.setReturnValue(null);
-            }
+        GenerationWindow window = window();
+        GenerationWindow.ChunkLookup lookup = window.resolveChunk(chunkX, chunkZ, targetStatus, loadOrGenerate);
+        window.logChunkLookup(lookup, targetStatus, loadOrGenerate);
+        if (lookup.kind() == GenerationWindow.ChunkLookup.Kind.CACHE_ALIAS) {
+            cir.setReturnValue(((WorldGenRegion) (Object) this).getChunk(
+                    lookup.virtualChunkX(),
+                    lookup.virtualChunkZ(),
+                    targetStatus,
+                    loadOrGenerate
+            ));
+        } else if (lookup.kind() == GenerationWindow.ChunkLookup.Kind.UNAVAILABLE_NO_LOAD) {
+            cir.setReturnValue(null);
         }
     }
 
     @Inject(method = "hasChunk", at = @At("HEAD"), cancellable = true)
     private void virtualizeWorldgenHasChunk(int chunkX, int chunkZ, CallbackInfoReturnable<Boolean> cir) {
-        int virtualX = virtualCacheChunkX(chunkX);
-        int virtualZ = virtualCacheChunkZ(chunkZ);
-        if (virtualX != chunkX || virtualZ != chunkZ) {
-            cir.setReturnValue(this.cache.contains(virtualX, virtualZ) && ((WorldGenRegion) (Object) this).hasChunk(virtualX, virtualZ));
+        GenerationWindow window = window();
+        GenerationWindow.ChunkLookup lookup = window.resolveChunk(chunkX, chunkZ, ChunkStatus.EMPTY, false);
+        if (lookup.kind() != GenerationWindow.ChunkLookup.Kind.VANILLA) {
+            cir.setReturnValue(window.hasChunk(chunkX, chunkZ));
         }
     }
 
     @ModifyVariable(method = "getFluidState", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetFluidStatePos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(this.level, pos);
+        return window().canonicalReadPos(pos);
     }
 
     @ModifyVariable(method = "getBlockEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetBlockEntityPos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(this.level, pos);
+        return window().canonicalReadPos(pos);
     }
 
     @Inject(method = "getBlockEntity", at = @At("HEAD"), cancellable = true)
     private void skipUnavailableCanonicalBlockEntity(BlockPos pos, CallbackInfoReturnable<BlockEntity> cir) {
-        BlockPos wrapped = CoordUtil.wrapBlockPos(this.level, pos);
-        if (!physicalCacheContains(wrapped)) {
+        GenerationWindow window = window();
+        BlockPos wrapped = window.canonicalReadPos(pos);
+        if (!window.physicalCacheContains(wrapped)) {
             cir.setReturnValue(null);
         }
     }
 
     @Inject(method = "ensureCanWrite", at = @At("HEAD"), cancellable = true)
     private void allowCanonicalWorldgenWrite(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-        BlockPos wrapped = CoordUtil.wrapBlockPos(this.level, pos);
-
-        int chunkX = SectionPos.blockToSectionCoord(wrapped.getX());
-        int chunkZ = SectionPos.blockToSectionCoord(wrapped.getZ());
-        ChunkPos centerPos = this.center.getPos();
-        int distanceX = canonicalChunkDistance(centerPos.x(), chunkX);
-        int distanceZ = canonicalChunkDistance(centerPos.z(), chunkZ);
-        if (distanceX > this.generatingStep.blockStateWriteRadius()
-                || distanceZ > this.generatingStep.blockStateWriteRadius()) {
+        GenerationWindow window = window();
+        BlockPos wrapped = window.canonicalReadPos(pos);
+        if (!window.withinWriteRadius(wrapped)) {
+            window.logWriteDecision(window.classifyWrite(pos));
             return;
         }
 
-        if (this.center.isUpgrading()) {
-            LevelHeightAccessor heightAccessor = this.center.getHeightAccessorForGeneration();
-            if (heightAccessor.isOutsideBuildHeight(wrapped.getY())) {
-                cir.setReturnValue(false);
-                return;
-            }
+        if (!window.canWriteCanonical(wrapped)) {
+            cir.setReturnValue(false);
+            return;
         }
 
         cir.setReturnValue(true);
     }
 
-    private int canonicalChunkDistance(int a, int b) {
-        return CoordUtil.wrappedChunkDistance(DimensionTiling.forLevel(this.level), a, b);
-    }
-
-    private int virtualCacheChunkX(int chunkX) {
-        return CoordUtil.virtualChunk(this.level, CoordUtil.wrapChunk(this.level, chunkX), this.center.getPos().x());
-    }
-
-    private int virtualCacheChunkZ(int chunkZ) {
-        return CoordUtil.virtualChunk(this.level, CoordUtil.wrapChunk(this.level, chunkZ), this.center.getPos().z());
-    }
-
     @ModifyVariable(method = "ensureCanWrite", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenEnsureCanWritePos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(this.level, pos);
+        return window().canonicalReadPos(pos);
     }
 
     @Inject(method = "setBlock", at = @At("HEAD"), cancellable = true)
@@ -146,42 +128,46 @@ public class WorldGenRegionMixin {
             int updateLimit,
             CallbackInfoReturnable<Boolean> cir
     ) {
-        BlockPos wrapped = CoordUtil.wrapBlockPos(this.level, pos);
-        if (wrapped != pos) {
-            WorldGenRegion region = (WorldGenRegion) (Object) this;
-            if (!region.ensureCanWrite(wrapped)) {
-                cir.setReturnValue(false);
-                return;
-            }
-
-            if (!physicalCacheContains(wrapped)) {
-                WorldGenSpillover.enqueue(this.level, wrapped, null, blockState, updateFlags);
-                cir.setReturnValue(true);
-                return;
-            }
-
-            BlockState expectedState = region.getBlockState(wrapped);
-            boolean placed = region.setBlock(wrapped, blockState, updateFlags, updateLimit);
-            if (placed) {
-                WorldGenSpillover.enqueue(this.level, wrapped, expectedState, blockState, updateFlags);
-            }
-            cir.setReturnValue(placed);
+        GenerationWindow window = window();
+        GenerationWindow.WriteDecision decision = window.classifyWrite(pos);
+        if (decision.kind() == GenerationWindow.WriteDecision.Kind.CANONICAL) {
+            return;
         }
+
+        if (decision.kind() != GenerationWindow.WriteDecision.Kind.DENIED_BY_RADIUS) {
+            window.logWriteDecision(decision);
+        }
+        WorldGenRegion region = (WorldGenRegion) (Object) this;
+        if (!region.ensureCanWrite(decision.canonicalPos())) {
+            cir.setReturnValue(false);
+            return;
+        }
+
+        if (decision.kind() == GenerationWindow.WriteDecision.Kind.WRAPPED_UNOBSERVED) {
+            WorldGenSpillover.enqueue(this.level, decision.canonicalPos(), null, blockState, updateFlags);
+            cir.setReturnValue(true);
+            return;
+        }
+
+        BlockState expectedState = region.getBlockState(decision.canonicalPos());
+        boolean placed = region.setBlock(decision.canonicalPos(), blockState, updateFlags, updateLimit);
+        if (placed) {
+            WorldGenSpillover.enqueue(this.level, decision.canonicalPos(), expectedState, blockState, updateFlags);
+        }
+        cir.setReturnValue(placed);
     }
 
     @ModifyVariable(method = "setBlock", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenSetBlockPos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(this.level, pos);
-    }
-
-    private boolean physicalCacheContains(BlockPos pos) {
-        int chunkX = SectionPos.blockToSectionCoord(pos.getX());
-        int chunkZ = SectionPos.blockToSectionCoord(pos.getZ());
-        return this.cache.contains(virtualCacheChunkX(chunkX), virtualCacheChunkZ(chunkZ));
+        return window().canonicalReadPos(pos);
     }
 
     @ModifyVariable(method = "markPosForPostprocessing", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenPostProcessingPos(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(this.level, pos);
+        return window().canonicalReadPos(pos);
+    }
+
+    private GenerationWindow window() {
+        return GenerationWindow.forRegion(this.level, this.center, this.cache, this.generatingStep);
     }
 }
