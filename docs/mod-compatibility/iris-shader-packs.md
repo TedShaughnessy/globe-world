@@ -66,6 +66,17 @@ Cloud paths should use a radius adjusted by cloud height:
 float cloudRadius = GLOBE_WORLD_CURVATURE_RADIUS + max(pos.y, 0.0);
 ```
 
+The reference `globe-world-curvature` pack keeps this in a dedicated
+`gbuffers_clouds` vertex helper.
+
+Line passes need their own vertex path. Iris maps vanilla's
+`POSITION_COLOR_NORMAL_LINE_WIDTH` line format to `gbuffers_line` and widens
+line segments from duplicated line vertices. The line shader should therefore
+curve both the start position and the endpoint encoded by `gl_Normal`, then
+apply vanilla-style screen-space widening. It should preserve color and should
+not share a terrain/entity helper that samples texture or lightmap coordinates
+the line vertex format does not provide. Fishing rod strings use this path.
+
 ## Limitations
 
 - The bridge bakes constants at Iris shader load time; it is not a live uniform
@@ -80,6 +91,8 @@ float cloudRadius = GLOBE_WORLD_CURVATURE_RADIUS + max(pos.y, 0.0);
 - `mod-fabric/src/client/java/globe/world/client/GlobeIrisShaderBridge.java`
 - `mod-fabric/src/client/java/globe/world/client/mixin/IrisProgramSourceMixin.java`
 - `mod-fabric/src/client/resources/globe-world.iris.mixins.json`
+- `shaderpacks/globe-world-curvature/shaders/lib/globe_world_cloud_vertex.glsl`
 - `shaderpacks/globe-world-curvature/shaders/lib/globe_world_curvature.glsl`
+- `shaderpacks/globe-world-curvature/shaders/lib/globe_world_line_vertex.glsl`
 - `shaderpacks/makeup-ultra-fast-globe-world/upstream.properties`
 - `shaderpacks/makeup-ultra-fast-globe-world/patches/0001-add-globe-world-curvature.patch`

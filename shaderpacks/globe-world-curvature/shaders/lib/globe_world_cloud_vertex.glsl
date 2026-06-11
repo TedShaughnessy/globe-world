@@ -14,9 +14,8 @@ void main() {
 
     vec4 viewPos = gl_ModelViewMatrix * gl_Vertex;
     vec4 playerPos = gbufferModelViewInverse * viewPos;
-
-    vec3 fogPos = globeWorld_fogPosition(playerPos.xyz);
-    vec3 curvedPos = globeWorld_applyCurvature(playerPos.xyz);
+    vec3 fogPos = globeWorld_cloudFogPosition(playerPos.xyz);
+    vec3 curvedPos = globeWorld_applyCloudCurvature(playerPos.xyz);
 
     vec4 curvedViewPos = gbufferModelView * vec4(curvedPos, 1.0);
     gl_Position = gl_ProjectionMatrix * curvedViewPos;
