@@ -22,7 +22,8 @@ This mod will likely not have ongoing support
 
 ## Mod compatibility:
 - Distant horizons should work fine, but it is not aware of this mod so it will do unnecessary work. for worlds where it is useful disable globe world curvature and use distant horizons curvature instead
-- Sodium will work fine but will break the curved terrain, either disable curvature or use the curvature shader pack below. for medium to large worlds curvature isn't important
+- Sodium will work fine but will break the curved terrain, either disable curvature or use the curvature shader pack below. for medium to large worlds curvature isn't important.
+    - Terrain is being culled by Sodium’s vertical render-distance limit when the camera is high above the world, there is a fix for this that will only apply to version 0.8.12+mc26.1.2 
 
 ## Shader packs:
 The shader packs provided will use the globe world curvature settings

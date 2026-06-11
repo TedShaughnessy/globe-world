@@ -70,6 +70,16 @@ camera-relative horizon offset so the sky better matches curved terrain.
 The shader helpers intentionally skip orthographic projections, keeping GUI
 previews such as inventory players and special item models flat.
 
+Globe World caps the effective client render distance for curved small-tile
+worlds so the shader does not spend distance budget beyond the useful curved
+horizon. Sodium uses that same distance as both its horizontal and vertical
+cylindrical section-culling limit, which can hide ground sections when the
+camera is high above terrain. For Sodium `0.8.12+mc26.1.2`, the optional
+Sodium compatibility mixins keep Globe's capped X/Z distance for the horizon
+illusion, but expand Sodium's vertical render-distance tests while curvature is
+active. The mixins are version-gated because Sodium's internal renderer classes
+are not a stable API.
+
 ## Settings UI
 
 `GlobeWorldSettingsControls` backs both the create-world Globe World tab and the
@@ -205,6 +215,9 @@ Client diagnostics are intentionally targeted:
   `GlobeIrisShaderBridge`, `IrisProgramSourceMixin`,
   `globe-world.iris.mixins.json`, `shaderpacks/globe-world-curvature/`,
   `shaderpacks/makeup-ultra-fast-globe-world/`.
+- Sodium compatibility:
+  `GlobeSodiumMixinPlugin`, `SodiumOcclusionCullerMixin`,
+  `SodiumTraversableTreeMixin`, `globe-world.sodium.mixins.json`.
 - Visual entity aliases:
   `GlobeEntityAliasing`, `GlobeEntityAliasMode`, `GlobeVisualAliasUtil`,
   `LevelRendererMixin`, `ClientPacketListenerMixin`,

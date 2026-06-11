@@ -13,6 +13,7 @@ import java.util.Locale;
 
 public final class GlobeCurvatureShader {
     private static final double RENDER_DISTANCE_SAFETY_MARGIN_BLOCKS = 16.0D;
+    private static final float SODIUM_VERTICAL_RENDER_DISTANCE_BLOCKS = 4096.0F;
     private static final int TINY_TILE_FOG_LIMIT_CHUNKS = 6;
     private static final float MIN_TINY_TILE_FOG_DISTANCE_SCALE = 0.65F;
     private static final String TERRAIN_POSITION_LINE = "    vec3 pos = Position + (ChunkPosition - CameraBlockPos) + CameraOffset;";
@@ -127,6 +128,10 @@ public final class GlobeCurvatureShader {
                 configuredEffectiveDistance,
                 curvatureRenderDistanceCapChunks()
         );
+    }
+
+    public static float sodiumVerticalRenderDistanceBlocks(float horizontalDistance) {
+        return curvatureRadius() > 0.0D ? Math.max(horizontalDistance, SODIUM_VERTICAL_RENDER_DISTANCE_BLOCKS) : horizontalDistance;
     }
 
     private static void reloadShadersWhenSettingsChange(Minecraft minecraft) {

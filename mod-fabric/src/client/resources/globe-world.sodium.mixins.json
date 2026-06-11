@@ -1,0 +1,13 @@
+{
+	"required": false,
+	"package": "globe.world.client.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"plugin": "globe.world.client.mixin.GlobeSodiumMixinPlugin",
+	"client": [
+		"SodiumOcclusionCullerMixin",
+		"SodiumTraversableTreeMixin"
+	],
+	"injectors": {
+		"defaultRequire": 0
+	}
+}
