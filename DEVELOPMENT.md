@@ -49,7 +49,8 @@ Runtime and metadata settings such as `loader_version`, `fabric_api_version`,
 
 Changing one of those versions makes the GitHub Actions workflow upload the
 corresponding artifact after the next push. GitHub Releases are published
-manually through workflow dispatch.
+manually through workflow dispatch with `publish_release`; that release attaches
+the Fabric mod jar and both shader pack zips together.
 
 ## Docs
 

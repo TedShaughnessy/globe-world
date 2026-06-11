@@ -5,20 +5,12 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
-      publish_mod_release:
-        description: Publish a GitHub Release for the Fabric mod
+      publish_release:
+        description: Publish one GitHub Release containing the Fabric mod and shader packs
         type: boolean
         default: false
       publish_mod_sources:
         description: Attach the Fabric mod sources jar to the GitHub Release
-        type: boolean
-        default: false
-      publish_globe_world_curvature_shaderpack_release:
-        description: Publish a GitHub Release for the minimal Globe World curvature shader pack
-        type: boolean
-        default: false
-      publish_makeup_ultra_fast_globe_world_shaderpack_release:
-        description: Publish a GitHub Release for the MakeUp Ultra Fast Globe World shader pack
         type: boolean
         default: false
 
@@ -163,10 +155,10 @@ jobs:
           set -euo pipefail
 
           tasks=(build)
-          if [[ "${{ steps.versions.outputs.globe_world_curvature_shaderpack_changed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.publish_globe_world_curvature_shaderpack_release) }}" == "true" ]]; then
+          if [[ "${{ steps.versions.outputs.globe_world_curvature_shaderpack_changed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}" == "true" ]]; then
             tasks+=(packageGlobeWorldCurvatureShaderpack)
           fi
-          if [[ "${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_changed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.publish_makeup_ultra_fast_globe_world_shaderpack_release) }}" == "true" ]]; then
+          if [[ "${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_changed == 'true' || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}" == "true" ]]; then
             tasks+=(packageMakeupUltraFastGlobeWorldShaderpack)
           fi
 
@@ -198,59 +190,40 @@ jobs:
           path: build/distributions/shaderpacks/makeup-ultra-fast-globe-world-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}.zip
           if-no-files-found: error
 
-      - name: publish mod release
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_mod_release
+      - name: publish release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.versions.outputs.mod_version }}
+          MOD_VERSION: ${{ steps.versions.outputs.mod_version }}
+          GLOBE_WORLD_CURVATURE_SHADERPACK_VERSION: ${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}
+          MAKEUP_ULTRA_FAST_GLOBE_WORLD_SHADERPACK_VERSION: ${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}
           MINECRAFT_VERSION: ${{ steps.versions.outputs.minecraft_version }}
+          INCLUDE_MOD_SOURCES: ${{ inputs.publish_mod_sources }}
         run: |
           set -euo pipefail
 
           release_assets=(
-            "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${VERSION}.jar"
+            "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${MOD_VERSION}.jar"
+            "build/distributions/shaderpacks/globe-world-curvature-mc${MINECRAFT_VERSION}-${GLOBE_WORLD_CURVATURE_SHADERPACK_VERSION}.zip"
+            "build/distributions/shaderpacks/makeup-ultra-fast-globe-world-mc${MINECRAFT_VERSION}-${MAKEUP_ULTRA_FAST_GLOBE_WORLD_SHADERPACK_VERSION}.zip"
           )
-          if [[ "${{ inputs.publish_mod_sources }}" == "true" ]]; then
+          if [[ "$INCLUDE_MOD_SOURCES" == "true" ]]; then
             release_assets+=(
-              "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${VERSION}-sources.jar"
+              "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${MOD_VERSION}-sources.jar"
             )
           fi
 
-          gh release create "mod-v${VERSION}" \
+          {
+            echo "Globe World release targeting Minecraft ${MINECRAFT_VERSION}."
+            echo
+            echo "- Fabric mod: v${MOD_VERSION}"
+            echo "- Globe World curvature shader pack: v${GLOBE_WORLD_CURVATURE_SHADERPACK_VERSION}"
+            echo "- MakeUp Ultra Fast Globe World shader pack: v${MAKEUP_ULTRA_FAST_GLOBE_WORLD_SHADERPACK_VERSION}"
+          } > release-notes.md
+
+          gh release create "v${MOD_VERSION}" \
             "${release_assets[@]}" \
             --target "$GITHUB_SHA" \
-            --title "Globe World Mod v${VERSION}" \
-            --notes "Fabric mod build for Globe World v${VERSION}, targeting Minecraft ${MINECRAFT_VERSION}." \
-            --prerelease
-
-      - name: publish Globe World curvature shaderpack release
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_globe_world_curvature_shaderpack_release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}
-          MINECRAFT_VERSION: ${{ steps.versions.outputs.minecraft_version }}
-        run: |
-          set -euo pipefail
-
-          gh release create "globe-world-curvature-shaderpack-v${VERSION}" \
-            "build/distributions/shaderpacks/globe-world-curvature-mc${MINECRAFT_VERSION}-${VERSION}.zip" \
-            --target "$GITHUB_SHA" \
-            --title "Globe World Curvature Shader Pack v${VERSION}" \
-            --notes "Minimal Iris shader pack for Globe World curvature v${VERSION}, targeting Minecraft ${MINECRAFT_VERSION}." \
-            --prerelease
-
-      - name: publish MakeUp Ultra Fast Globe World shaderpack release
-        if: github.event_name == 'workflow_dispatch' && inputs.publish_makeup_ultra_fast_globe_world_shaderpack_release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}
-          MINECRAFT_VERSION: ${{ steps.versions.outputs.minecraft_version }}
-        run: |
-          set -euo pipefail
-
-          gh release create "makeup-ultra-fast-globe-world-shaderpack-v${VERSION}" \
-            "build/distributions/shaderpacks/makeup-ultra-fast-globe-world-mc${MINECRAFT_VERSION}-${VERSION}.zip" \
-            --target "$GITHUB_SHA" \
-            --title "MakeUp Ultra Fast Globe World Shader Pack v${VERSION}" \
-            --notes "MakeUp Ultra Fast shader pack patched for Globe World curvature v${VERSION}, targeting Minecraft ${MINECRAFT_VERSION}." \
+            --title "Globe World v${MOD_VERSION}" \
+            --notes-file release-notes.md \
             --prerelease
