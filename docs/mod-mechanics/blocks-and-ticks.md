@@ -75,6 +75,25 @@ ticks canonicalize positions in `LevelTicks.schedule`, `hasScheduledTick`, and
 `willTickThisTick`. These runtime tick helpers now enter wrapping through
 `TopologyContext`.
 
+Vanilla fire spread and burnout run from scheduled fire block ticks, but
+Minecraft 26.1.2 also gates that logic on whether a non-spectator player is
+close enough to the fire block. `ChunkMapPlayerDistanceMixin` wraps that block
+proximity distance so a player standing in a visible alias counts as close to
+the canonical fire position.
+
+Other block and block-entity systems use generic player proximity helpers.
+Mob spawners call `EntityGetter.hasNearbyAlivePlayer`, enchanting tables and
+creaking hearts call `EntityGetter.getNearestPlayer`, and trial spawners and
+vaults use `PlayerDetector`. Globe wraps these checks so alias players count as
+near the canonical block entity. Trial/vault line-of-sight checks raycast from
+the detector's visible alias toward the player instead of from canonical storage
+coordinates.
+
+Additional vanilla proximity predicates that bypass those generic helpers are
+wrapped where they affect block-driven gameplay: beacon/conduit effect radius,
+warden warning players from sculk shriekers, beehive anger range, and lightning
+strike advancement range.
+
 Lodestone compass tracking validates the lodestone point of interest at the
 canonical target position in tiled dimensions. This keeps compasses bound to an
 alias lodestone from being cleared just because the stored `GlobalPos` is
@@ -89,7 +108,14 @@ outside the canonical tile.
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ChunkMapBlockTickingMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapPlayerDistanceMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/EntityGetterPlayerDistanceMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/MobEffectUtilMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PlayerDetectorMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/WardenSpawnTrackerMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/BeehiveBlockEntityMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/LightningBoltMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ContainerOpenersCounterMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ServerLevelWorldEventMixin.java`

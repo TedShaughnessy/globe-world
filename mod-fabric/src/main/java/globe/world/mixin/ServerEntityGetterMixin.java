@@ -3,6 +3,7 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.entity.ActorLocalTargets;
+import globe.world.util.CoordUtil;
 import net.minecraft.server.level.ServerEntityGetter;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
@@ -151,7 +152,10 @@ public interface ServerEntityGetterMixin {
             double sourceY,
             double sourceZ,
             AABB bb) {
-        return source == null ? original.call(candidate, x, y, z) : ActorLocalTargets.distanceToSqr(source, candidate);
+        if (source != null) {
+            return ActorLocalTargets.distanceToSqr(source, candidate);
+        }
+        return CoordUtil.wrappedDistanceSqr(candidate.level(), candidate.getX(), candidate.getY(), candidate.getZ(), x, y, z);
     }
 
     @WrapOperation(
@@ -173,6 +177,9 @@ public interface ServerEntityGetterMixin {
             double sourceX,
             double sourceY,
             double sourceZ) {
-        return source == null ? original.call(candidate, x, y, z) : ActorLocalTargets.distanceToSqr(source, candidate);
+        if (source != null) {
+            return ActorLocalTargets.distanceToSqr(source, candidate);
+        }
+        return CoordUtil.wrappedDistanceSqr(candidate.level(), candidate.getX(), candidate.getY(), candidate.getZ(), x, y, z);
     }
 }
