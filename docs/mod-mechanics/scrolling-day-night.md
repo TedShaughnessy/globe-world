@@ -96,10 +96,13 @@ terrain and cloud vertices downward in relevant world vertex shaders.
 offset to the sky disc, lower dark disc, sunrise/sunset fan, sun, and moon so
 the sky horizon better matches the curved terrain horizon. Sun and moon render
 on a larger effective sky sphere, preserving their apparent size while reducing
-the offset's midday and midnight angular distortion. Stars stay on the vanilla
-dome. Cloud curvature uses a larger radius than terrain so clouds fall away
-more gently. Orthographic GUI projections are exempt from shader curvature, so
-inventory entity previews and special item models stay flat.
+the offset's midday and midnight angular distortion. The mixin applies these
+offsets through copied uniforms or vanilla's existing model-view stack frame so
+shader-pack render hooks do not spend an extra global matrix-stack slot. Stars
+stay on the vanilla dome. Cloud curvature uses a larger radius than terrain so
+clouds fall away more gently. Orthographic GUI projections are exempt from
+shader curvature, so inventory entity previews and special item models stay
+flat.
 
 The vanilla directional sunrise/sunset fan is still rendered. This means dusk
 color can vary by whether the player faces the sun or moon; that behavior is

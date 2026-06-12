@@ -1,14 +1,19 @@
 package globe.world.client.mixin;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import globe.world.client.GlobeSkyHorizon;
 import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.DynamicUniforms;
 import net.minecraft.client.renderer.SkyRenderer;
 import net.minecraft.client.renderer.state.level.SkyRenderState;
-import net.minecraft.world.level.MoonPhase;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Matrix4fStack;
+import org.joml.Vector3fc;
+import org.joml.Vector4fc;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -30,62 +35,62 @@ public class SkyRendererMixin {
         GlobeSkyHorizon.update(level, camera);
     }
 
-    @Inject(method = "renderSkyDisc", at = @At("HEAD"))
-    private void globeWorld$pushSkyDiscHorizonOffset(int skyColor, CallbackInfo ci) {
-        globeWorld$pushHorizonOffset(GlobeSkyHorizon.skyDiscYOffset());
-    }
-
-    @Inject(method = "renderSkyDisc", at = @At("RETURN"))
-    private void globeWorld$popSkyDiscHorizonOffset(int skyColor, CallbackInfo ci) {
-        RenderSystem.getModelViewStack().popMatrix();
-    }
-
-    @Inject(method = "renderDarkDisc", at = @At("HEAD"))
-    private void globeWorld$pushDarkDiscHorizonOffset(CallbackInfo ci) {
-        globeWorld$pushHorizonOffset(GlobeSkyHorizon.skyDiscYOffset());
-    }
-
-    @Inject(method = "renderDarkDisc", at = @At("RETURN"))
-    private void globeWorld$popDarkDiscHorizonOffset(CallbackInfo ci) {
-        RenderSystem.getModelViewStack().popMatrix();
-    }
-
-    @Inject(method = "renderSun", at = @At("HEAD"))
-    private void globeWorld$pushSunHorizonOffset(
-            float rainBrightness,
-            PoseStack poseStack,
-            CallbackInfo ci
+    @WrapOperation(
+            method = "renderSkyDisc",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/DynamicUniforms;writeTransform(Lorg/joml/Matrix4fc;Lorg/joml/Vector4fc;Lorg/joml/Vector3fc;Lorg/joml/Matrix4fc;)Lcom/mojang/blaze3d/buffers/GpuBufferSlice;"
+            )
+    )
+    private GpuBufferSlice globeWorld$offsetSkyDiscTransform(
+            DynamicUniforms dynamicUniforms,
+            Matrix4fc modelView,
+            Vector4fc colorModulator,
+            Vector3fc modelOffset,
+            Matrix4fc textureMatrix,
+            Operation<GpuBufferSlice> original
     ) {
-        globeWorld$pushHorizonOffset(GlobeSkyHorizon.horizonEffectYOffset());
+        return original.call(
+                dynamicUniforms,
+                globeWorld$offsetModelViewCopy(modelView, GlobeSkyHorizon.skyDiscYOffset()),
+                colorModulator,
+                modelOffset,
+                textureMatrix
+        );
     }
 
-    @Inject(method = "renderSun", at = @At("RETURN"))
-    private void globeWorld$popSunHorizonOffset(
-            float rainBrightness,
-            PoseStack poseStack,
-            CallbackInfo ci
+    @WrapOperation(
+            method = "renderDarkDisc",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lorg/joml/Matrix4fStack;translate(FFF)Lorg/joml/Matrix4f;"
+            )
+    )
+    private Matrix4f globeWorld$offsetDarkDiscTransform(
+            Matrix4fStack modelViewStack,
+            float x,
+            float y,
+            float z,
+            Operation<Matrix4f> original
     ) {
-        RenderSystem.getModelViewStack().popMatrix();
+        globeWorld$translateHorizonOffset(modelViewStack, GlobeSkyHorizon.skyDiscYOffset());
+        return original.call(modelViewStack, x, y, z);
     }
 
-    @Inject(method = "renderMoon", at = @At("HEAD"))
-    private void globeWorld$pushMoonHorizonOffset(
-            MoonPhase moonPhase,
-            float rainBrightness,
-            PoseStack poseStack,
-            CallbackInfo ci
+    @WrapOperation(
+            method = {"renderSun", "renderMoon", "renderSunriseAndSunset"},
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lorg/joml/Matrix4fStack;mul(Lorg/joml/Matrix4fc;)Lorg/joml/Matrix4f;"
+            )
+    )
+    private Matrix4f globeWorld$offsetHorizonEffectTransform(
+            Matrix4fStack modelViewStack,
+            Matrix4fc pose,
+            Operation<Matrix4f> original
     ) {
-        globeWorld$pushHorizonOffset(GlobeSkyHorizon.horizonEffectYOffset());
-    }
-
-    @Inject(method = "renderMoon", at = @At("RETURN"))
-    private void globeWorld$popMoonHorizonOffset(
-            MoonPhase moonPhase,
-            float rainBrightness,
-            PoseStack poseStack,
-            CallbackInfo ci
-    ) {
-        RenderSystem.getModelViewStack().popMatrix();
+        globeWorld$translateHorizonOffset(modelViewStack, GlobeSkyHorizon.horizonEffectYOffset());
+        return original.call(modelViewStack, pose);
     }
 
     @ModifyConstant(method = {"renderSun", "renderMoon"}, constant = @Constant(floatValue = 100.0F))
@@ -103,22 +108,17 @@ public class SkyRendererMixin {
         return size * GlobeSkyHorizon.celestialScale();
     }
 
-    @Inject(method = "renderSunriseAndSunset", at = @At("HEAD"))
-    private void globeWorld$pushSunriseHorizonOffset(PoseStack poseStack, float sunAngle, int sunriseAndSunsetColor, CallbackInfo ci) {
-        globeWorld$pushHorizonOffset(GlobeSkyHorizon.horizonEffectYOffset());
-    }
-
-    @Inject(method = "renderSunriseAndSunset", at = @At("RETURN"))
-    private void globeWorld$popSunriseHorizonOffset(PoseStack poseStack, float sunAngle, int sunriseAndSunsetColor, CallbackInfo ci) {
-        RenderSystem.getModelViewStack().popMatrix();
+    @Unique
+    private static Matrix4f globeWorld$offsetModelViewCopy(Matrix4fc modelView, float yOffset) {
+        Matrix4f offsetModelView = new Matrix4f(modelView);
+        globeWorld$translateHorizonOffset(offsetModelView, yOffset);
+        return offsetModelView;
     }
 
     @Unique
-    private static void globeWorld$pushHorizonOffset(float yOffset) {
-        Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
-        modelViewStack.pushMatrix();
+    private static void globeWorld$translateHorizonOffset(Matrix4f modelView, float yOffset) {
         if (yOffset != 0.0F) {
-            modelViewStack.translate(0.0F, yOffset, 0.0F);
+            modelView.translate(0.0F, yOffset, 0.0F);
         }
     }
 }
