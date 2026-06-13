@@ -7,12 +7,6 @@ Implemented investigations have been folded into
 [Globe World Mod Mechanics](../mod-mechanics/README.md), which is the entry
 point for current behavior and modded code anchors.
 
-## Implemented Notes
-
-- [Topological spawn and respawn search](topological-spawn-and-respawn-search.md):
-  historical plan for the implemented player/world spawn lookup, respawn block
-  use, natural-spawn world-spawn exclusion, and trader/siege spawn search work.
-
 ## Future Improvements
 
 - [Minecraft coordinate coverage audit](minecraft-coordinate-coverage-audit.md):

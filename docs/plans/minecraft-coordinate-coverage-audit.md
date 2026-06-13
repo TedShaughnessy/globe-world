@@ -135,8 +135,10 @@ position:
 known villager golem, creaking-heart, and sculk-shrieker callers start from
 canonical storage owners in the current implementation.
 
-Historical plan:
-[Topological spawn and respawn search](topological-spawn-and-respawn-search.md).
+Current behavior is documented in
+[Entities](../mod-mechanics/entities.md),
+[POI And Villages](../mod-mechanics/poi-and-villages.md), and
+[Commands And Admin Coordinates](../mod-mechanics/commands.md).
 
 ### Block-Triggered Entity Queries
 
