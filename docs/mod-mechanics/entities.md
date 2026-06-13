@@ -182,6 +182,13 @@ near a seam interact with the visible alias while packets still refer to the
 canonical entity or block. Curved client picking is documented in
 [Client](client.md).
 
+Experience orbs use the same visible-frame convention. Player pickup scans can
+touch a canonical orb through the visible alias, and `ExperienceOrbAliasMixin`
+keeps orb attraction vectors, follow retention distance, and orb-to-orb merge
+queries in wrapped X/Z. Award-time merging also checks the visible alias frame
+before creating a new canonical orb, so XP dropped or granted near a seam does
+not accelerate toward a far raw coordinate or duplicate avoidable orb groups.
+
 Waypoint block, chunk, and azimuth packets use the receiver's nearest
 `TopologyContext` alias. Waypoint range checks use wrapped distances in the
 source dimension, and chunk visibility checks test the receiver-facing virtual
@@ -274,7 +281,7 @@ canonicalized but currently sit outside canonical X/Z.
   `TripWireBlockEntityQueryMixin`, `HopperBlockEntityQueryMixin`,
   `MinecartHopperEntityQueryMixin`, `ChestBlockCatQueryMixin`,
   `ShulkerBoxBlockEntityQueryMixin`, `ShulkerBoxBlockEntityCollisionMixin`,
-  `ItemEntityMergeMixin`,
+  `ItemEntityMergeMixin`, `ExperienceOrbAliasMixin`,
   `OldMinecartBehaviorCollisionMixin`, `NewMinecartBehaviorCollisionMixin`,
   `BoatItemPlacementMixin`, `MinecartItemPlacementMixin`,
   `ArmorStandItemPlacementMixin`, `EndCrystalItemPlacementMixin`,

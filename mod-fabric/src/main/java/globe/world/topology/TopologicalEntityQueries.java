@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -52,9 +53,17 @@ public final class TopologicalEntityQueries {
             Class<T> entityClass,
             AABB visibleBox,
             Predicate<? super T> selector) {
+        return entities(level, EntityTypeTest.forClass(entityClass), visibleBox, selector);
+    }
+
+    public static <T extends Entity> List<T> entities(
+            Level level,
+            EntityTypeTest<Entity, T> entityType,
+            AABB visibleBox,
+            Predicate<? super T> selector) {
         List<T> entities = new ArrayList<>();
         Set<Entity> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        addAll(entities, seen, level.getEntitiesOfClass(entityClass, visibleBox, selector));
+        addAll(entities, seen, level.getEntities(entityType, visibleBox, selector));
 
         TopologyContext context = TopologyContexts.forLevel(level);
         if (!context.enabled()) {
@@ -63,10 +72,10 @@ public final class TopologicalEntityQueries {
 
         for (AABB canonicalBox : canonicalQueryBoxes(context, visibleBox)) {
             if (canonicalBox != visibleBox) {
-                addAll(entities, seen, level.getEntitiesOfClass(entityClass, canonicalBox, selector));
+                addAll(entities, seen, level.getEntities(entityType, canonicalBox, selector));
             }
         }
-        addAliasPlayersOfClass(level, entityClass, visibleBox, selector, entities, seen);
+        addAliasPlayersOfType(level, entityType, visibleBox, selector, entities, seen);
         return entities;
     }
 
@@ -172,9 +181,9 @@ public final class TopologicalEntityQueries {
         }
     }
 
-    private static <T extends Entity> void addAliasPlayersOfClass(
+    private static <T extends Entity> void addAliasPlayersOfType(
             Level level,
-            Class<T> entityClass,
+            EntityTypeTest<Entity, T> entityType,
             AABB visibleBox,
             Predicate<? super T> selector,
             List<T> entities,
@@ -184,10 +193,13 @@ public final class TopologicalEntityQueries {
         }
 
         for (ServerPlayer player : serverLevel.players()) {
-            if (seen.contains(player) || !entityClass.isInstance(player)) {
+            if (seen.contains(player)) {
                 continue;
             }
-            T candidate = entityClass.cast(player);
+            T candidate = entityType.tryCast(player);
+            if (candidate == null) {
+                continue;
+            }
             if (!selector.test(candidate)) {
                 continue;
             }

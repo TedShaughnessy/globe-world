@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -37,7 +38,15 @@ public final class TopologicalCollisionQueries {
             Class<T> entityClass,
             AABB visibleBox,
             Predicate<? super T> selector) {
-        return TopologicalEntityQueries.entitiesOfClass(level, entityClass, visibleBox, selector)
+        return entities(level, EntityTypeTest.forClass(entityClass), visibleBox, selector);
+    }
+
+    public static <T extends Entity> List<T> entities(
+            Level level,
+            EntityTypeTest<Entity, T> entityType,
+            AABB visibleBox,
+            Predicate<? super T> selector) {
+        return TopologicalEntityQueries.entities(level, entityType, visibleBox, selector)
                 .stream()
                 .filter(entity -> TopologicalEntityQueries.intersectsVisible(level, visibleBox, entity))
                 .toList();

@@ -12,6 +12,7 @@ Common sources jar:
 - `net/minecraft/server/level/ServerEntity.java`
 - `net/minecraft/server/network/ServerGamePacketListenerImpl.java`
 - `net/minecraft/world/entity/Entity.java`
+- `net/minecraft/world/entity/ExperienceOrb.java`
 - `net/minecraft/world/entity/Mob.java`
 - `net/minecraft/world/entity/ai/targeting/TargetingConditions.java`
 - `net/minecraft/world/entity/ai/sensing/Sensing.java`
@@ -74,6 +75,17 @@ Important anchors:
 - `ServerLevel.java:1886` `areEntitiesLoaded`
 - `ServerLevel.java:1894` `isPositionEntityTicking`
 - `Player.java:439` `aiStep` pickup scan calls `Level.getEntities(player, pickupArea)`
+- `Player.java:490` `touch(Entity)` dispatches pickup effects through
+  `Entity.playerTouch(Player)`
+- `ExperienceOrb.java:153` `followNearbyPlayer` keeps or drops a following
+  player with raw `distanceToSqr`, then builds the attraction vector from raw
+  player X/Z
+- `ExperienceOrb.java:180` `scanForMerges` queries nearby XP orbs with
+  `Level.getEntities(EntityTypeTest, AABB, Predicate)`
+- `ExperienceOrb.java:202` `tryMergeToExisting` performs award-time XP orb
+  merging before a new orb is spawned
+- `ExperienceOrb.java:221` `playerTouch` grants XP and repair effects once the
+  player pickup scan touches the orb
 - `ItemEntity.java:329` `playerTouch` transfers the stack into the player's inventory
 
 Entity manager callbacks wire entities into chunk tracking:
@@ -330,6 +342,9 @@ Project hooks for entity storage and visibility:
 - `mod-fabric/src/main/java/globe/world/mixin/MobDespawnDistanceMixin.java` wraps
   `Mob.checkDespawn()`'s player-to-mob distance so canonical mobs near a player
   alias are not treated as raw-distance far away.
+- `mod-fabric/src/main/java/globe/world/mixin/ExperienceOrbAliasMixin.java`
+  wraps XP-orb follow retention, attraction vectors, and merge scans so orbs
+  use the visible seam relation while storage remains canonical.
 - `mod-fabric/src/main/java/globe/world/entity/ActorLocalTargets.java` computes
   mob-local target aliases, alias hitboxes, query boxes, and wrapped AI
   distances without moving or cloning entities.
@@ -385,6 +400,8 @@ Current status:
   alias coordinates before vanilla can store the vehicle in an alias section.
 - Good: player pickup scans query the player's canonical pickup box as well as
   the raw box.
+- Good: XP orb pickup, attraction, and merging use the visible wrapped frame
+  instead of raw X/Z across tile seams.
 - Good: debug commands can report selected entity storage state and count loaded
   non-player entities outside canonical X/Z.
 - Good: spawn position math and mob caps are mostly wrapped to canonical chunk identity.

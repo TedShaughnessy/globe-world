@@ -55,6 +55,7 @@
 		"EndermanFreezeWhenLookedAtMixin",
 		"EndermanLookForPlayerGoalMixin",
 		"EnvironmentAttributeSystemBuilderGameplayMixin",
+		"ExperienceOrbAliasMixin",
 		"FishingHookMixin",
 		"FlyingPathNavigationMixin",
 		"GhastFacingMixin",
