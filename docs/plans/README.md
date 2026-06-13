@@ -24,9 +24,6 @@ point for current behavior and modded code anchors.
 - [Entity query and collision resolution](entity-query-and-collision-resolution.md):
   plan for classifying raw entity query callers, block-trigger hooks, and the
   first physical collision policy.
-- [Command and admin coordinate policy](command-and-admin-coordinate-policy.md):
-  plan for vanilla command policy, `/globeworld` affordances, spawn protection,
-  and world-border behavior.
 - [Worldgen direct mutation and structure persistence audit](worldgen-direct-mutation-and-structure-persistence-audit.md):
   plan for remaining direct chunk/section mutation, unobserved spillover side
   effects, and structure query/persistence checks.

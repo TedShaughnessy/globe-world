@@ -3,6 +3,7 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.util.ClientActionDiagnostics;
+import globe.world.util.GlobeInteractionPermissions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,7 +26,11 @@ public class ServerPlayerGameModeMixin {
             Entity entity,
             BlockPos pos,
             Operation<Boolean> original) {
-        boolean mayInteract = original.call(level, entity, pos);
+        boolean mayInteract = GlobeInteractionPermissions.mayInteract(
+                level,
+                entity,
+                pos,
+                () -> original.call(level, entity, pos));
         if (!mayInteract) {
             return false;
         }

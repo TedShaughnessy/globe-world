@@ -7,6 +7,7 @@ import globe.world.util.ClientActionDiagnostics;
 import globe.world.util.CoordUtil;
 import globe.world.util.EntityCanonicalizer;
 import globe.world.util.EntityPacketUtil;
+import globe.world.util.GlobeInteractionPermissions;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.Packet;
@@ -117,7 +118,11 @@ public class ServerGamePacketListenerImplMixin {
             Entity entity,
             BlockPos pos,
             Operation<Boolean> original) {
-        boolean mayInteract = original.call(level, entity, pos);
+        boolean mayInteract = GlobeInteractionPermissions.mayInteract(
+                level,
+                entity,
+                pos,
+                () -> original.call(level, entity, pos));
         if (!mayInteract) {
             return false;
         }

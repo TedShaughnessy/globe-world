@@ -1,5 +1,9 @@
 # Command And Admin Coordinate Policy Plan
 
+Status: implemented. Durable behavior now lives in
+[Commands And Admin Coordinates](../mod-mechanics/commands.md). This note is
+retained as background for possible future canonical mutator commands.
+
 This plan resolves the command/admin coordinate gap raised in the
 [Minecraft coordinate coverage audit](minecraft-coordinate-coverage-audit.md).
 

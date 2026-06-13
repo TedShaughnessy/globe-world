@@ -42,6 +42,9 @@ World period:
    saved day-length multiplier, and gameplay across the canonical tile.
 10. [Local Solar Time](local-solar-time.md): shared longitude-based local time
    math for scrolling day/night rendering and gameplay hooks.
+11. [Commands And Admin Coordinates](commands.md): raw vanilla command policy,
+    topology-aware `/globeworld` helpers, and player interaction permission
+    boundaries.
 
 ## Status By Area
 
@@ -77,6 +80,8 @@ World period:
 | Scrolling sky/lightmap visuals | Implemented | [scrolling-day-night.md](scrolling-day-night.md) |
 | Core local day/night gameplay | Implemented for sleep, monster/phantom spawning, undead burning | [scrolling-day-night.md](scrolling-day-night.md) |
 | Secondary local day/night gameplay | Implemented for villager schedules, bees, turtle eggs, clocks, and patrol daylight gates | [scrolling-day-night.md](scrolling-day-night.md) |
+| Commands and admin coordinates | Implemented raw-command policy plus `/globeworld query_block` diagnostics | [commands.md](commands.md) |
+| Spawn protection and world border interaction policy | Implemented for ordinary player block break/use paths | [commands.md](commands.md) |
 
 ## Current High-Risk Audits
 

@@ -27,12 +27,14 @@ import globe.world.util.EndPortalProgressionState;
 import globe.world.util.EntityCanonicalizer;
 import globe.world.util.GlobeDayLength;
 import globe.world.util.GlobeDistanceCaps;
+import globe.world.util.GlobeInteractionPermissions;
 import globe.world.network.GlobeWorldNetworking;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -42,8 +44,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.List;
 import java.util.Locale;
 
 public final class GlobeDebugCommands {
@@ -79,6 +85,11 @@ public final class GlobeDebugCommands {
                                         EntityArgument.getEntity(context, "target")))))
                 .then(Commands.literal("entities")
                         .executes(context -> printEntitySummary(context.getSource())))
+                .then(Commands.literal("query_block")
+                        .then(Commands.argument("pos", BlockPosArgument.blockPos())
+                                .executes(context -> queryBlock(
+                                        context.getSource(),
+                                        BlockPosArgument.getBlockPos(context, "pos")))))
                 .then(Commands.literal("teleport_canon")
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(context -> teleportPlayerToCanonicalPosition(context.getSource())))
@@ -355,6 +366,72 @@ public final class GlobeDebugCommands {
             source.sendSuccess(() -> Component.literal("Outside canonical examples: " + examples), false);
         }
         return nonCanonical;
+    }
+
+    private static int queryBlock(CommandSourceStack source, BlockPos rawPos) {
+        ServerLevel level = source.getLevel();
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        BlockPos canonicalPos = topology.canonicalBlock(rawPos);
+        ChunkPos rawChunk = ChunkPos.containing(rawPos);
+        ChunkPos canonicalChunk = ChunkPos.containing(canonicalPos);
+        TopologyContext.AliasMutationAccess mutationAccess = topology.aliasMutationAccess(level, rawPos);
+        LevelChunk loadedCanonicalChunk = level.getChunkSource().getChunkNow(canonicalChunk.x(), canonicalChunk.z());
+
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Globe World block query: dimension=%s topology=%s",
+                level.dimension().identifier(),
+                topology.enabled() ? "enabled" : "disabled")), false);
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Raw block=%s chunk=%s",
+                formatBlock(rawPos),
+                formatChunk(rawChunk))), false);
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Canonical block=%s chunk=%s tile alias=%+d %+d",
+                formatBlock(canonicalPos),
+                formatChunk(canonicalChunk),
+                topology.tileAliasBlockX(rawPos.getX()),
+                topology.tileAliasBlockX(rawPos.getZ()))), false);
+
+        if (loadedCanonicalChunk == null) {
+            source.sendSuccess(() -> Component.literal("Canonical chunk is not loaded; block state and block entity were not read."), false);
+        } else {
+            BlockState state = loadedCanonicalChunk.getBlockState(canonicalPos);
+            BlockEntity blockEntity = loadedCanonicalChunk.getBlockEntity(canonicalPos);
+            source.sendSuccess(() -> Component.literal("Canonical block state=" + state), false);
+            source.sendSuccess(() -> Component.literal("Canonical block entity="
+                    + (blockEntity == null ? "none" : blockEntity.typeHolder().getRegisteredName())), false);
+        }
+
+        ServerPlayer player = source.getPlayer();
+        if (player != null) {
+            List<ChunkPos> aliases = topology.loadedAliasesFor(player, canonicalChunk);
+            source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                    "Loaded aliases for player=%s",
+                    aliases.isEmpty() ? "none" : formatChunks(aliases))), false);
+        }
+
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Alias mutation access: allowed=%s alias=%s canonicalBlock=%s canonicalChunk=%s canonicalChunkBlockTicking=%s",
+                yesNo(mutationAccess.allowed()),
+                yesNo(mutationAccess.alias()),
+                formatBlock(mutationAccess.canonicalBlock()),
+                formatChunk(mutationAccess.canonicalChunk()),
+                yesNo(level.shouldTickBlocksAt(mutationAccess.canonicalChunk().pack())))), false);
+
+        Entity sourceEntity = source.getEntity();
+        if (sourceEntity != null) {
+            GlobeInteractionPermissions.PermissionView permission =
+                    GlobeInteractionPermissions.inspect(level, sourceEntity, rawPos);
+            source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                    "Permission: allowed=%s rawWorldBorder=%s spawnProtectedRaw=%s spawnProtectedCanonical=%s canonicalOwner=%s",
+                    yesNo(permission.allowed()),
+                    yesNo(permission.rawInsideWorldBorder()),
+                    yesNo(permission.spawnProtectedAtRaw()),
+                    yesNo(permission.spawnProtectedAtCanonical()),
+                    formatBlock(permission.canonicalPos()))), false);
+        }
+
+        return 1;
     }
 
     private static int teleportPlayerToCanonicalPosition(CommandSourceStack source) throws CommandSyntaxException {
@@ -651,6 +728,21 @@ public final class GlobeDebugCommands {
 
     private static String formatBlock(BlockPos pos) {
         return String.format(Locale.ROOT, "%d %d %d", pos.getX(), pos.getY(), pos.getZ());
+    }
+
+    private static String formatChunk(ChunkPos pos) {
+        return String.format(Locale.ROOT, "%d %d", pos.x(), pos.z());
+    }
+
+    private static String formatChunks(List<ChunkPos> positions) {
+        StringBuilder result = new StringBuilder();
+        for (ChunkPos pos : positions) {
+            if (result.length() > 0) {
+                result.append(", ");
+            }
+            result.append(formatChunk(pos));
+        }
+        return result.toString();
     }
 
     private static String yesNo(boolean value) {
