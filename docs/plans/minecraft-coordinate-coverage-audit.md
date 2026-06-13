@@ -51,7 +51,7 @@ High-value vanilla files inspected during this pass:
 | World-event and cosmetic packets | Covered at packet layer | Sounds, particles, level events, block events, block destruction, and explosion packet centers are virtualized per viewer. |
 | Player block interaction from aliases | Covered for main paths | Item use, block breaking, sign edit, reach, and mutation permission checks have targeted hooks. |
 | Entity storage/canonicalization | Covered for non-player entities | Add, tick, same-dimension teleport, mounted stacks, and packet positions are canonicalized or virtualized. |
-| Entity tracking/ticking/spawning/despawn | Covered for main paths | Tracking distances, ticking range, natural spawn candidates, and despawn distance use wrapped logic. |
+| Entity tracking/ticking/spawning/despawn | Mostly covered | Tracking distances, ticking range, natural spawn candidates, and despawn distance use wrapped logic. Player/default spawn search, natural-spawn world-spawn exclusion, and some custom/event spawn searches remain open. |
 | Mob target selection, sensing, look, attack, and ranged aim | Broadly covered | Targeting conditions, nearest-entity selection, sensors, look controls, melee/ranged goals, and many mob-specific launch paths use actor-local aliases. |
 | Projectile server collision | Broadly covered | Shared `ProjectileUtil` paths, arrows/tridents, splash potions, fishing owner/pullback, and curved item validation use topological helpers. |
 | Generic entity broad queries | Partial by design | Important callers are wrapped one by one. A global `Level.getEntities(...)` replacement is intentionally avoided because many callers are side-effect-sensitive. |
@@ -111,6 +111,31 @@ receiver-local center relabeling.
 
 Current behavior is documented in
 [Explosions](../mod-mechanics/explosions.md).
+
+### Spawn And Respawn Position Search
+
+Several vanilla spawn paths choose or validate positions before existing
+canonicalization hooks see the final entity or player position:
+
+- `PlayerSpawnFinder.findSpawn(...)` and
+  `PlayerSpawnFinder.getSpawnPosInChunk(...)` search default player/world spawn
+  positions with raw candidate X/Z and raw `SPAWN_SEARCH` chunk tickets.
+- `ServerPlayer.findRespawnAndUseSpawnBlock(...)` reads and can mutate bed,
+  respawn-anchor, and forced respawn positions from raw saved
+  `RespawnConfig` metadata.
+- `NaturalSpawner.isRightDistanceToPlayerAndSpawnPoint(...)` still uses raw
+  distance between natural-spawn candidates and world spawn for the vanilla
+  24-block exclusion.
+- `WanderingTraderSpawner.findSpawnPositionNear(...)` and
+  `VillageSiege.findRandomSpawnPos(...)` run raw X/Z height/spawn checks around
+  a reference position after Globe's POI/village helpers may already have found
+  a topological target.
+- `SpawnUtil.trySpawnMob(...)` is a generic search helper used by villager iron
+  golems, creaking hearts, and sculk shriekers; each caller needs a
+  caller-specific decision rather than a broad global replacement.
+
+Resolution plan:
+[Topological spawn and respawn search](topological-spawn-and-respawn-search.md).
 
 ### Block-Triggered Entity Queries
 
@@ -225,10 +250,11 @@ or local effect appears to disagree with canonical state.
 
 ## Suggested Priority Order
 
-1. Command/admin coordinate policy.
-2. Entity collision policy and remaining narrow collision hooks.
-3. Direct chunk mutation and structure persistence upgrade audit.
-4. World border semantics for finite worlds.
+1. Spawn and respawn position search.
+2. Command/admin coordinate policy.
+3. Entity collision policy and remaining narrow collision hooks.
+4. Direct chunk mutation and structure persistence upgrade audit.
+5. World border semantics for finite worlds.
 
 ## Regression Ideas
 
@@ -240,6 +266,9 @@ or local effect appears to disagree with canonical state.
   knockback, block destruction, and duplicate drops against an interior control.
 - Test pressure plates, detector rails, hoppers, tripwire, conduits, beacons,
   shulker boxes, and piston pushes with entities only visible through an alias.
+- Test default spawn lookup, bed respawn, respawn-anchor depletion, wandering
+  trader placement, village sieges, and natural-spawn world-spawn exclusion near
+  each tile edge.
 - Use `fill`, `clone`, `place`, `locate`, `forceload`, `spawnpoint`, and
   `setworldspawn` near aliases and record whether raw behavior is acceptable or
   needs Globe-specific alternatives.
