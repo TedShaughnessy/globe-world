@@ -117,28 +117,14 @@ Resolution plan:
 
 ### Server-Side Explosions
 
-`ServerLevel.explode(...)` constructs `ServerExplosion` and only the outbound
-`ClientboundExplodePacket` is virtualized today.
+Implemented. `ServerExplosionMixin` canonical-dedupes the block target list
+after vanilla ray collection, and `TopologicalExplosions` replaces entity
+damage, exposure, and knockback geometry with visible-frame alias calculations
+when tiling is enabled. Outbound explosion packets continue to use
+receiver-local center relabeling.
 
-`ServerExplosion` performs its own server-authoritative geometry:
-
-- Block rays start from the raw explosion center and add raw `BlockPos` entries
-  to `toBlow`.
-- Entity damage scans a raw `AABB` around the center.
-- Entity damage distance uses `entity.distanceToSqr(center)`.
-- Exposure uses raw `Level.clip(...)` from entity sample points to the center.
-
-Block damage may often resolve through canonical chunk/block access, but the
-raw `toBlow` set can still contain multiple aliases of the same canonical block
-for larger or seam-crossing explosions. Entity damage and knockback are not
-generally topological.
-
-Recommended next step: add a `TopologicalExplosions` helper that canonical-dedupes
-affected blocks, gathers entities through `TopologicalEntityQueries`, measures
-distance against the nearest alias, and runs exposure clips in the visible
-frame while preserving canonical hit identity.
-
-Resolution plan: [Topological explosions](topological-explosions.md).
+Current behavior is documented in
+[Explosions](../mod-mechanics/explosions.md).
 
 ### Block-Triggered Entity Queries
 
@@ -254,11 +240,10 @@ or local effect appears to disagree with canonical state.
 
 1. POI/village/raid/lightning-rod queries.
 2. Game events and vibrations.
-3. Server-side explosion entity damage, knockback, exposure, and block dedupe.
-4. Block-trigger entity query caller matrix.
-5. Entity collision policy and first narrow collision hooks.
-6. Command/admin coordinate policy.
-7. Direct chunk mutation and structure persistence upgrade audit.
+3. Block-trigger entity query caller matrix.
+4. Entity collision policy and first narrow collision hooks.
+5. Command/admin coordinate policy.
+6. Direct chunk mutation and structure persistence upgrade audit.
 
 ## Regression Ideas
 

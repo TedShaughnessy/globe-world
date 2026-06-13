@@ -123,6 +123,7 @@
 		"ServerLevelTicksDimensionMixin",
 		"ServerEntityMixin",
 		"ServerChunkCacheMixin",
+		"ServerExplosionMixin",
 		"ServerGamePacketListenerImplMixin",
 		"SignBlockEntityFacingMixin",
 		"StructureGenerationContextMixin",

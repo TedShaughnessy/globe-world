@@ -18,9 +18,6 @@ point for current behavior and modded code anchors.
 - [Topological game events and vibrations](topological-game-events-and-vibrations.md):
   plan for sculk sensors, shriekers, wardens, allays, and other game-event
   listeners across tile seams.
-- [Topological explosions](topological-explosions.md): plan for server-side
-  explosion block dedupe, entity damage, knockback, and exposure across tile
-  seams.
 - [Worldgen direct mutation and structure persistence audit](worldgen-direct-mutation-and-structure-persistence-audit.md):
   plan for remaining direct chunk/section mutation, unobserved spillover side
   effects, and structure query/persistence checks.

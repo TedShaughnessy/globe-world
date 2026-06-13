@@ -138,6 +138,7 @@ eight Nether blocks map to one Overworld block.
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContexts.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologicalEntityQueries.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologicalRaycasts.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologicalExplosions.java`
 - `mod-fabric/src/main/java/globe/world/config/TopologySettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeSettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeConfig.java`

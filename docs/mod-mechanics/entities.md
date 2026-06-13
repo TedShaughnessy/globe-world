@@ -120,6 +120,13 @@ potion AABB using that entity's nearest alias box. This lets witch splash
 potions apply status effects to players and mobs visible in an alias tile while
 preserving vanilla duration scaling and instant-effect math.
 
+Explosions use the same visible-alias convention for entity damage, exposure,
+and knockback. `TopologicalExplosions` gathers entities through the shared
+query helper, maps each real entity into the explosion center's nearest alias
+frame, and applies vanilla-style damage and knockback from that visible frame.
+Block target dedupe and packet behavior are documented in
+[Explosions](explosions.md).
+
 Audited block-trigger and narrow physical collision callers use visible-frame
 entity boxes without duplicating entity identity. Pressure plates, weighted
 pressure plates, arrow-activated buttons, detector rails, tripwire, hopper and
@@ -211,6 +218,9 @@ canonicalized but currently sit outside canonical X/Z.
   `ProjectileAliasUtil`, `ProjectileUtilTopologicalMoveMixin`,
   `TopologicalEntityQueries`, `TopologicalCollisionQueries`,
   `TopologicalRaycasts`.
+- Explosions:
+  `ServerExplosionMixin`, `TopologicalExplosions`,
+  `TopologicalEntityQueries`.
 - Block-trigger and narrow collision callers:
   `PressurePlateBlockEntityQueryMixin`,
   `WeightedPressurePlateBlockEntityQueryMixin`,
