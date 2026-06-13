@@ -1,0 +1,287 @@
+# Minecraft Coordinate Coverage Audit
+
+This audit compares vanilla Minecraft 26.1.2 coordinate-sensitive systems
+against Globe World's current wrapping coverage.
+
+It is intentionally an investigation artifact. Durable explanations for
+implemented behavior should live in `docs/mod-mechanics/`; entries here should
+be removed or moved once the relevant gap is implemented or consciously
+declared out of scope.
+
+## Source Anchors
+
+Common/server source jar:
+
+`net/minecraft/minecraft-common-52430b475d/26.1.2/minecraft-common-52430b475d-26.1.2-sources.jar`
+
+Client-only source jar:
+
+`net/minecraft/minecraft-clientOnly-52430b475d/26.1.2/minecraft-clientOnly-52430b475d-26.1.2-sources.jar`
+
+High-value vanilla files inspected during this pass:
+
+- `net/minecraft/world/level/Level.java`
+- `net/minecraft/server/level/ServerLevel.java`
+- `net/minecraft/server/level/ServerChunkCache.java`
+- `net/minecraft/server/level/ChunkMap.java`
+- `net/minecraft/world/level/ServerExplosion.java`
+- `net/minecraft/world/entity/ai/village/poi/PoiManager.java`
+- `net/minecraft/world/level/gameevent/GameEventDispatcher.java`
+- `net/minecraft/world/level/gameevent/vibrations/VibrationSystem.java`
+- `net/minecraft/world/level/EntityGetter.java`
+- `net/minecraft/server/level/ServerEntityGetter.java`
+- `net/minecraft/world/level/CollisionGetter.java`
+- `net/minecraft/world/level/entity/EntitySectionStorage.java`
+- `net/minecraft/world/ticks/LevelTicks.java`
+- `net/minecraft/server/commands/*Command.java`
+
+## Coverage Summary
+
+| Vanilla coordinate family | Current coverage | Notes |
+| --- | --- | --- |
+| Topology arithmetic and dimension policy | Covered | `CoordUtil`, `DimensionTiling`, `TopologyContext`, and `TopologyContexts` are the shared boundary. |
+| Server chunk lookup | Covered for runtime lookups | `ServerChunkCacheMixin` canonicalizes `getChunk`, `getChunkNow`, and block-change chunk routing. |
+| Chunk packet identity | Covered | Full chunks are sourced from canonical data and sent under alias chunk coordinates; alias tickets keep canonical chunks alive. |
+| Block writes through `Level.setBlock(...)` | Covered for server runtime | `LevelSetBlockBroadcastMixin` canonicalizes server write positions before `LevelChunk.setBlockState(...)`. |
+| Block update, block entity, light, biome, and section packets | Covered | `BlockPacketUtil` and `ChunkPacketUtil` fan out to loaded aliases. |
+| Block entities | Mostly covered | Runtime lookup/removal/dirty marking canonicalize. Persistence and direct worldgen block-entity side effects still need edge-case audit. |
+| Scheduled ticks | Covered for main runtime path | `LevelTicksMixin` canonicalizes scheduled block/fluid tick positions. Clone/copy edge cases remain on the test list. |
+| Random ticks and precipitation lane | Covered | `ChunkMapRandomTickMixin` runs random ticks from canonical chunks once. |
+| Fluids | Mostly covered | Fluid spreading mostly flows through canonical block access and scheduled ticks. Direct or unusual fluid/worldgen side effects still need regression tests. |
+| World-event and cosmetic packets | Covered at packet layer | Sounds, particles, level events, block events, block destruction, and explosion packet centers are virtualized per viewer. |
+| Player block interaction from aliases | Covered for main paths | Item use, block breaking, sign edit, reach, and mutation permission checks have targeted hooks. |
+| Entity storage/canonicalization | Covered for non-player entities | Add, tick, same-dimension teleport, mounted stacks, and packet positions are canonicalized or virtualized. |
+| Entity tracking/ticking/spawning/despawn | Covered for main paths | Tracking distances, ticking range, natural spawn candidates, and despawn distance use wrapped logic. |
+| Mob target selection, sensing, look, attack, and ranged aim | Broadly covered | Targeting conditions, nearest-entity selection, sensors, look controls, melee/ranged goals, and many mob-specific launch paths use actor-local aliases. |
+| Projectile server collision | Broadly covered | Shared `ProjectileUtil` paths, arrows/tridents, splash potions, fishing owner/pullback, and curved item validation use topological helpers. |
+| Generic entity broad queries | Partial by design | Important callers are wrapped one by one. A global `Level.getEntities(...)` replacement is intentionally avoided because many callers are side-effect-sensitive. |
+| Entity collision and movement | Partial | Block collision usually benefits from chunk/block lookup wrapping. Entity-vs-entity collision across seams is not generally topological unless a caller has a targeted hook. |
+| World generation terrain/noise | Covered for known terrain modes | Density/noise/surface/biome hooks and scoped dimension tiling cover the main generator sample paths. |
+| Worldgen writes and spillover | Partial | `WorldGenRegionMixin`, `GenerationWindow`, and spillover cover direct block state writes. Unobserved replay does not fully reconstruct block entities, scheduled ticks, fluid ticks, or POI side effects. |
+| Structures and forced progression | Implemented with audit boundaries | Structure reference/placement shifts and forced stronghold/fortress starts are implemented. Structure query/persistence paths remain open. |
+| Nether portals | Covered for configured scale path | Source X/Z canonicalizes before scale conversion; target wraps in the destination dimension. Round-trip tests remain needed. |
+| End portal progression | Covered | Forced stronghold and fallback portal paths use canonical ownership. End dimension itself remains untiled. |
+| Maps | Covered for pixels and tracked player markers | Static markers keep stored map coordinates. |
+| Waypoints | Covered | Block/chunk/azimuth waypoint packets use receiver-nearest aliases and wrapped visibility/range checks. |
+| Lodestone compasses | Covered for validation | `LodestoneTrackerMixin` validates the canonical POI. General compass angle behavior is covered client-side. |
+| Client chunk/world cache | Covered through packet relabeling | The client remains vanilla-shaped; aliases are separate raw client chunks. |
+| Client picking and curvature | Covered for intended interactions | Curved block/entity/item picking feeds server validation. Physics/collision are not curved. |
+| Local sky/time gameplay | Covered for documented hooks | Sleep, monster/phantom spawning, undead burning, villager schedules, bees, turtle eggs, clocks, and patrol gates are documented. |
+| Commands and admin tools | Mostly raw vanilla policy | Lower-level hooks may canonicalize actual state mutation, but command selection, loaded checks, regions, and output coordinates are not generally topological. |
+
+## High-Risk Open Coordinate Families
+
+### POI, Villages, And Raids
+
+Vanilla `PoiManager` owns an independent coordinate index. Its range searches
+use raw chunk ranges and raw distance ordering:
+
+- `PoiManager.getInSquare(...)` scans `ChunkPos.rangeClosed(ChunkPos.containing(center), chunkRadius)`.
+- `PoiManager.getInRange(...)` filters with `r.getPos().distSqr(center)`.
+- `PoiManager.findClosest(...)` and related helpers sort by raw `distSqr`.
+- `PoiManager.sectionsToVillage(...)` uses a section-distance graph keyed by raw `SectionPos`.
+
+Globe World currently covers specific POI-facing cases such as lodestone
+validation, and block writes should register POIs at canonical positions.
+General POI discovery is not topological.
+
+Affected vanilla callers include villager beds/jobs, bee hive search, cat
+spawning, village navigation, golem village strolls, wandering trader meeting
+points, raid POI refresh, and lightning-rod target selection.
+
+Recommended next step: introduce a topology-aware POI query helper rather than
+globally rewriting `PoiManager`. Start with player-visible gameplay cases:
+villager bed/job discovery, bees near hive/flower targets, raids, and lightning
+rods.
+
+Resolution plan:
+[Topological POI and village queries](topological-poi-and-village-queries.md).
+
+### Game Events And Vibrations
+
+Vanilla `GameEventDispatcher.post(...)` scans listener sections from the raw
+event center and radius. `VibrationSystem.Listener` then uses raw source and
+listener positions for distance, occlusion, travel time, and particle origin.
+
+This means sculk sensors, calibrated sensors, shriekers, wardens, allays, and
+other listeners may miss or mis-rank events across tile edges even when the
+event is visually nearby.
+
+Recommended next step: build a topological game-event dispatch path that visits
+canonical listener sections touched by the visible event radius, delivers each
+real listener once, and passes a listener-local event source into vibration
+distance and occlusion checks.
+
+Resolution plan:
+[Topological game events and vibrations](topological-game-events-and-vibrations.md).
+
+### Server-Side Explosions
+
+`ServerLevel.explode(...)` constructs `ServerExplosion` and only the outbound
+`ClientboundExplodePacket` is virtualized today.
+
+`ServerExplosion` performs its own server-authoritative geometry:
+
+- Block rays start from the raw explosion center and add raw `BlockPos` entries
+  to `toBlow`.
+- Entity damage scans a raw `AABB` around the center.
+- Entity damage distance uses `entity.distanceToSqr(center)`.
+- Exposure uses raw `Level.clip(...)` from entity sample points to the center.
+
+Block damage may often resolve through canonical chunk/block access, but the
+raw `toBlow` set can still contain multiple aliases of the same canonical block
+for larger or seam-crossing explosions. Entity damage and knockback are not
+generally topological.
+
+Recommended next step: add a `TopologicalExplosions` helper that canonical-dedupes
+affected blocks, gathers entities through `TopologicalEntityQueries`, measures
+distance against the nearest alias, and runs exposure clips in the visible
+frame while preserving canonical hit identity.
+
+Resolution plan: [Topological explosions](topological-explosions.md).
+
+### Block-Triggered Entity Queries
+
+Many block/block-entity systems query entities from an `AABB` near a block:
+pressure plates, detector rails, tripwire, hoppers, conduits, beacons, shulker
+boxes, chests blocked by cats, beehives, piston moving blocks, and similar
+systems.
+
+Globe World has targeted hooks for several important cases, including container
+openers, beacon/conduit-style effect radius, warden warnings, beehive anger,
+trial/vault player detection, and some generic player proximity helpers.
+However, raw `Level.getEntities(...)` and `getEntitiesOfClass(...)` are not
+globally replaced. Any unwrapped block-trigger query near a seam can miss an
+entity visible through an alias, or can fail to interact with an alias-local
+entity box.
+
+Recommended next step: create a caller matrix from vanilla `level.getEntities`
+and `getEntitiesOfClass` call sites, classify each as one of:
+topological gameplay query, canonical-storage-only query, client/render-only
+query, or intentionally vanilla. Add focused hooks for the topological gameplay
+set.
+
+Resolution plan:
+[Entity query and collision resolution](entity-query-and-collision-resolution.md).
+
+### Generic Entity Collision
+
+Block collision checks usually benefit from chunk and block lookup wrapping, but
+entity collision broad-phase is keyed by vanilla entity sections and raw `AABB`
+queries. Globe World avoids a global replacement because collision callers have
+different side-effect and identity expectations.
+
+Known risk areas include minecart/entity pickup, item merging, mob/player
+pushes, vehicle placement, armor stand and crystal placement checks, dismount
+searches, and moving piston entity displacement across a tile edge.
+
+Recommended next step: decide whether seam-crossing physical entity collisions
+are a v1 goal. If yes, start with narrow, user-visible cases: item pickup/merge,
+minecart pickup/push, pressure plates/detector rails, and vehicle placement.
+
+Resolution plan:
+[Entity query and collision resolution](entity-query-and-collision-resolution.md).
+
+### Commands And Admin Coordinate Regions
+
+Command code uses raw vanilla coordinates heavily. Examples include `fill`,
+`clone`, `place`, `locate`, `forceload`, `spawnpoint`, `setworldspawn`,
+`teleport`, `summon`, and selectors. The lower-level block/entity hooks may
+canonicalize the final state access, but command region iteration, loaded
+checks, command success messages, and selected coordinates remain raw unless a
+specific command has a Globe World hook.
+
+Recommended next step: document an explicit command policy. Either keep vanilla
+commands raw and provide Globe-specific commands for canonical/alias operations,
+or implement a small set of topological command affordances where they are
+needed for testing.
+
+Resolution plan:
+[Command and admin coordinate policy](command-and-admin-coordinate-policy.md).
+
+## Medium-Risk Open Coordinate Families
+
+### Direct Chunk And Section Mutation
+
+Runtime gameplay mostly enters through `Level.setBlock(...)`, but vanilla has
+direct chunk/section mutations in worldgen and a few special paths:
+
+- `WorldGenRegion.setBlock(...)`
+- `NoiseBasedChunkGenerator`
+- carvers
+- ore placement
+- surface system
+- below-zero retrogen
+- flat generator spawn platform
+
+Several are already covered by worldgen hooks, periodic sampling, or
+`BulkSectionAccessMixin`. Keep this as an upgrade audit because direct writes
+are exactly where canonical ownership can be bypassed.
+
+Resolution plan:
+[Worldgen direct mutation and structure persistence audit](worldgen-direct-mutation-and-structure-persistence-audit.md).
+
+### Structure Query And Persistence
+
+Structure generation, reference placement, and forced progression starts are
+implemented, but saved alias starts and structure query/persistence behavior
+remain an explicit open boundary in the worldgen docs.
+
+Resolution plan:
+[Worldgen direct mutation and structure persistence audit](worldgen-direct-mutation-and-structure-persistence-audit.md).
+
+### World Border, Spawn Protection, And Respawn Metadata
+
+`ServerLevel.mayInteract(...)` still asks vanilla spawn protection and world
+border checks about the raw block position. Player lifecycle canonicalization
+covers login, respawn, and bed wake-up, but commands such as `spawnpoint` and
+`setworldspawn` store raw coordinates.
+
+These may be acceptable as vanilla/admin policy, but they should be named
+explicitly because they influence whether an alias-side interaction is allowed.
+
+Resolution plan:
+[Command and admin coordinate policy](command-and-admin-coordinate-policy.md).
+
+### Long Rays And Occlusion
+
+The shared topological ray helpers cover known item/projectile/AI paths, but
+long rays default to a nearest-alias entity radius unless the caller opts into a
+wider scan. Vibration occlusion is not yet routed through this system.
+
+Resolution plans:
+[Topological game events and vibrations](topological-game-events-and-vibrations.md)
+for vibration occlusion, and
+[Entity query and collision resolution](entity-query-and-collision-resolution.md)
+for caller-specific long entity queries.
+
+### Client-Only Debug And Local Effects
+
+Server packets are virtualized, but client-only debug subscribers, local
+particles, and purely local ambience may still use raw client coordinates. Most
+of this is presentation-only, but it can confuse testing if the debug overlay
+or local effect appears to disagree with canonical state.
+
+## Suggested Priority Order
+
+1. POI/village/raid/lightning-rod queries.
+2. Game events and vibrations.
+3. Server-side explosion entity damage, knockback, exposure, and block dedupe.
+4. Block-trigger entity query caller matrix.
+5. Entity collision policy and first narrow collision hooks.
+6. Command/admin coordinate policy.
+7. Direct chunk mutation and structure persistence upgrade audit.
+
+## Regression Ideas
+
+- Place a bed/job-site/hive/meeting point on one side of the tile and a villager,
+  bee, raider, or trader trigger on the opposite visible side.
+- Trigger a sculk sensor, shrieker, allay listener, and warden vibration across
+  each X/Z edge and across a corner.
+- Detonate TNT centered just inside a tile edge and compare entity damage,
+  knockback, block destruction, and duplicate drops against an interior control.
+- Test pressure plates, detector rails, hoppers, tripwire, conduits, beacons,
+  shulker boxes, and piston pushes with entities only visible through an alias.
+- Use `fill`, `clone`, `place`, `locate`, `forceload`, `spawnpoint`, and
+  `setworldspawn` near aliases and record whether raw behavior is acceptable or
+  needs Globe-specific alternatives.
