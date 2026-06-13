@@ -123,6 +123,10 @@ Important anchors:
 - `NaturalSpawner.java:366` chunk-generation creature spawning
 - `NaturalSpawner.java:532` global cap check
 - `NaturalSpawner.java:537` local cap check
+- `LocalMobCapCalculator.java:21` asks `ChunkMap.getPlayersCloseForSpawning(...)`
+  for per-player local cap owners.
+- `ChunkMap.java:982` prefilters local cap owner lookup with
+  `DistanceManager.hasPlayersNearby(...)` before scanning players.
 
 ## Mob Sensing, Targeting, And Path Requests
 
@@ -314,9 +318,12 @@ Project hooks for natural spawning:
 - `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:92` and `:114` wrap random spawn candidate chunk/block coordinates.
 - `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:103` wraps counted mob chunk positions during spawn-state creation.
 - `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java:150` uses wrapped player distance for spawn-point distance checks.
+- `mod-fabric/src/main/java/globe/world/mixin/NaturalSpawnerMixin.java` also wraps the `isRightDistanceToPlayerAndSpawnPoint(...)` neighboring-chunk `canSpawnEntitiesInChunk(...)` gate through `GlobeNaturalSpawning`, so pack members can remain valid when their canonical neighbor is justified by a player-visible alias.
 - `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:30` clears per-pass canonical spawn chunk tracking at the start of `ChunkMap.collectSpawningChunks(...)`.
 - `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:35` wraps the `List.add(...)` call in `collectSpawningChunks(...)`, swaps alias chunks for canonical chunks, and dedupes by canonical chunk key before `ServerChunkCache.tickSpawningChunk(...)` runs.
 - `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:68` uses wrapped chunk distance for `playerIsCloseEnoughForSpawning(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java` also opens `getPlayersCloseForSpawning(...)`'s raw `DistanceManager.hasPlayersNearby(...)` prefilter when the canonical chunk is near a player through wrapping; the existing wrapped player-distance check then builds the local mob-cap owner list.
+- `mod-fabric/src/main/java/globe/world/util/GlobeNaturalSpawning.java` centralizes alias-aware `canSpawnEntitiesInChunk(...)` and wrapped spawning-player proximity checks.
 - `mod-fabric/src/main/java/globe/world/mixin/ServerChunkCacheNaturalSpawningMixin.java` lets `ServerChunkCache.tickSpawningChunk(...)` pass its final `canSpawnEntitiesInChunk(...)` gate when the canonical chunk's viewer-nearest alias is entity-spawnable for a non-spectator player.
 
 Project hooks for entity storage and visibility:
@@ -405,8 +412,9 @@ Current status:
 - Good: debug commands can report selected entity storage state and count loaded
   non-player entities outside canonical X/Z.
 - Good: spawn position math and mob caps are mostly wrapped to canonical chunk identity.
+- Good: local mob caps can now find alias-frame players for canonical chunks instead of being short-circuited by vanilla's raw `DistanceManager.hasPlayersNearby(...)` cache.
 - Good: `ServerChunkCache.tickSpawningChunk(...)` now receives each canonical chunk at most once per `collectSpawningChunks(...)` pass, avoiding duplicate spawn attempts, inhabited-time increments, and thunder work from aliases.
-- Good: the final natural-spawn chunk eligibility gate accepts a player-visible alias of the canonical chunk, so alias-tile players can drive hostile spawns instead of requiring the canonical chunk itself to satisfy vanilla's raw entity-spawnability check.
+- Good: both natural-spawn chunk eligibility gates accept a player-visible alias of the canonical chunk, so alias-tile players can drive hostile spawns instead of requiring the canonical chunk itself to satisfy vanilla's raw entity-spawnability check.
 - Partial: mob AI now uses nearest-alias distance, sight cache, look, melee
   reach, ranged launch vectors for common ranged mobs, and a small-tile
   multi-alias entity path target set. The underlying pathfinder/node evaluator

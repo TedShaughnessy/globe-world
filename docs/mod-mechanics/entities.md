@@ -54,12 +54,16 @@ duplicate entity ticks. Despawn checks use wrapped player distance.
 Natural spawning stores candidates in canonical chunks, wraps candidate
 positions and player-distance checks, counts mob caps by canonical chunk, and
 dedupes spawning chunks by canonical key. Chunk-generation mob spawns are
-cancelled for non-canonical chunks. The final vanilla "can spawn entities in
-this chunk" gate also accepts the viewer-nearest alias of the canonical chunk,
-so standing in an alias tile can still drive hostile natural spawning around
-the visible player. The vanilla 24-block exclusion around the world spawn also
-uses wrapped X/Z distance, so natural mobs cannot spawn just across a tile seam
-from spawn.
+cancelled for non-canonical chunks. Local mob-cap player lookup opens vanilla's
+raw `DistanceManager.hasPlayersNearby(...)` prefilter when a canonical chunk is
+near a player through wrapping, then lets the wrapped per-player distance filter
+build the cap owner list. The final vanilla "can spawn entities in this chunk"
+gates also accept the viewer-nearest alias of the canonical chunk, both for the
+top-level spawning chunk and for pack members that jitter into a neighboring
+chunk. That lets standing in an alias tile drive hostile natural spawning around
+the visible player without duplicating real mob storage. The vanilla 24-block
+exclusion around the world spawn also uses wrapped X/Z distance, so natural mobs
+cannot spawn just across a tile seam from spawn.
 
 Player and world spawn search is tile-bounded in tiled dimensions.
 `GlobeSpawnFinder` replaces `PlayerSpawnFinder`'s raw radius search with a
@@ -235,7 +239,8 @@ canonicalized but currently sit outside canonical X/Z.
   `ChunkMapPlayerProviderMixin`, `ChunkMapSpawningMixin`,
   `NaturalSpawnerMixin`, `PlayerSpawnFinderMixin`,
   `ServerPlayerRespawnBlockMixin`, `MinecraftServerMixin`,
-  `GlobeSpawnFinder`, `ChunkStatusTasksMixin`, `MobDespawnDistanceMixin`.
+  `GlobeSpawnFinder`, `GlobeNaturalSpawning`, `ChunkStatusTasksMixin`,
+  `MobDespawnDistanceMixin`.
 - AI and pathing:
   `ActorLocalTargetView`, `ActorLocalTargets`, `TopologicalEntityQueries`,
   `TopologicalRaycasts`,

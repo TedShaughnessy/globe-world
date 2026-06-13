@@ -4,12 +4,15 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.topology.TopologyContext;
 import globe.world.topology.TopologyContexts;
+import globe.world.util.GlobeNaturalSpawning;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.server.level.ChunkMap;
+import net.minecraft.server.level.DistanceManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.TriState;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
@@ -76,6 +79,28 @@ public class ChunkMapSpawningMixin {
     )
     private double wrapSpawningChunkDistance(ChunkPos chunkPos, Vec3 playerPos, Operation<Double> original) {
         return TopologyContexts.forLevel(this.level).wrappedChunkDistanceSqr(chunkPos, playerPos);
+    }
+
+    @WrapOperation(
+        method = "getPlayersCloseForSpawning",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/server/level/DistanceManager;hasPlayersNearby(J)Lnet/minecraft/util/TriState;"
+        )
+    )
+    private TriState useWrappedPlayerProximityForLocalMobCaps(
+            DistanceManager distanceManager,
+            long pos,
+            Operation<TriState> original) {
+        TriState vanillaResult = original.call(distanceManager, pos);
+        if (vanillaResult.toBoolean(true)) {
+            return vanillaResult;
+        }
+
+        ChunkPos chunkPos = ChunkPos.unpack(pos);
+        return GlobeNaturalSpawning.hasWrappedPlayerCloseForSpawning(this.level, chunkPos)
+                ? TriState.DEFAULT
+                : vanillaResult;
     }
 
     @WrapOperation(

@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.sugar.Local;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
+import globe.world.util.GlobeNaturalSpawning;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Position;
 import net.minecraft.world.entity.player.Player;
@@ -208,6 +209,23 @@ public class NaturalSpawnerMixin {
                 candidate.x(),
                 candidate.y(),
                 candidate.z()) < distance * distance;
+    }
+
+    @WrapOperation(
+        method = "isRightDistanceToPlayerAndSpawnPoint",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/server/level/ServerLevel;canSpawnEntitiesInChunk(Lnet/minecraft/world/level/ChunkPos;)Z"
+        )
+    )
+    private static boolean canSpawnPackMemberInViewerAliasChunk(
+            ServerLevel level,
+            ChunkPos pos,
+            Operation<Boolean> original) {
+        return GlobeNaturalSpawning.canSpawnEntitiesInChunkOrViewerAlias(
+                level,
+                pos,
+                candidate -> original.call(level, candidate));
     }
 
     private static LevelChunk canonicalChunk(ServerLevel level, ChunkAccess chunk) {
