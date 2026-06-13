@@ -53,6 +53,7 @@
 		"FlyingPathNavigationMixin",
 		"GhastFacingMixin",
 		"GhastShootFireballGoalMixin",
+		"GameEventDispatcherMixin",
 		"GroundPathNavigationMixin",
 		"GuardianAttackGoalMixin",
 		"GuardianAttackSelectorMixin",

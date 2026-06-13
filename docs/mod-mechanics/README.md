@@ -36,18 +36,20 @@ World period:
    wrapped boxes.
 6. [Explosions](explosions.md): topological block dedupe, entity damage,
    knockback, exposure, and explosion packet relabeling.
-7. [Worldgen](worldgen.md): periodic terrain modes, feature spillover,
+7. [Game Events And Vibrations](game-events-and-vibrations.md): topology-aware
+   game-event listener dispatch and listener-local vibration sources.
+8. [Worldgen](worldgen.md): periodic terrain modes, feature spillover,
    structure edge handling, and generation risks.
-8. [Packet Policies](packet-policies.md): auditable packet virtualization
+9. [Packet Policies](packet-policies.md): auditable packet virtualization
    policy table for Minecraft 26.1.2.
-9. [Client](client.md): client-facing packet/render behavior, curvature,
+10. [Client](client.md): client-facing packet/render behavior, curvature,
    shader-pack compatibility, diagnostics, and explicit client-cache boundary.
-10. [Maps](maps.md): filled-map pixel updates and player marker aliasing.
-11. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
+11. [Maps](maps.md): filled-map pixel updates and player marker aliasing.
+12. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
    saved day-length multiplier, and gameplay across the canonical tile.
-12. [Local Solar Time](local-solar-time.md): shared longitude-based local time
+13. [Local Solar Time](local-solar-time.md): shared longitude-based local time
    math for scrolling day/night rendering and gameplay hooks.
-13. [Commands And Admin Coordinates](commands.md): raw vanilla command policy,
+14. [Commands And Admin Coordinates](commands.md): raw vanilla command policy,
     topology-aware `/globeworld` helpers, and player interaction permission
     boundaries.
 
@@ -73,6 +75,7 @@ World period:
 | Entity query and narrow collision callers | Implemented for audited block triggers, item merge, minecart/placement obstruction, and piston movement | [entity-query-caller-matrix.md](entity-query-caller-matrix.md) |
 | Mob despawn, sensing, pathfinding | Implemented with bounded pathfinding limitations | [entities.md](entities.md) |
 | Server-side explosions | Implemented for block dedupe, entity damage, knockback, and exposure | [explosions.md](explosions.md) |
+| Game events and vibrations | Implemented for topological listener-section dispatch and listener-local vibration sources | [game-events-and-vibrations.md](game-events-and-vibrations.md) |
 | Periodic terrain/noise | Implemented | [worldgen.md](worldgen.md) |
 | Structures and feature edge generation | Implemented with open audit boundaries | [worldgen.md](worldgen.md) |
 | Forced progression structures | Implemented | [worldgen.md](worldgen.md) |
@@ -101,9 +104,11 @@ World period:
    blocks need focused testing over tile boundaries.
 4. Seam-crossing explosions: manually test TNT, beds, respawn anchors, creepers,
    and wind charges near X/Z/corner seams for block parity and knockback feel.
-5. Structures and feature origins: alias starts are transient worldgen data and
+5. Seam-crossing game events: manually test sculk sensors, shriekers, wardens,
+   allays, and occluding wool blocks near X/Z/corner seams.
+6. Structures and feature origins: alias starts are transient worldgen data and
    structure query/persistence paths still need audit.
-6. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
+7. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
    tiles need the right balance between seamlessness and vanilla-looking noise.
-7. Scrolling day/night weather interaction: manually verify weather, lightning,
+8. Scrolling day/night weather interaction: manually verify weather, lightning,
    night vision, and gamma with local sky/lightmap visuals.

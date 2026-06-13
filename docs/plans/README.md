@@ -15,9 +15,6 @@ point for current behavior and modded code anchors.
 - [Topological POI and village queries](topological-poi-and-village-queries.md):
   plan for POI search, villager bed/job discovery, bees, raids, and
   lightning-rod targeting across tile seams.
-- [Topological game events and vibrations](topological-game-events-and-vibrations.md):
-  plan for sculk sensors, shriekers, wardens, allays, and other game-event
-  listeners across tile seams.
 - [Worldgen direct mutation and structure persistence audit](worldgen-direct-mutation-and-structure-persistence-audit.md):
   plan for remaining direct chunk/section mutation, unobserved spillover side
   effects, and structure query/persistence checks.

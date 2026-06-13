@@ -33,7 +33,8 @@ Source references below use jar-internal paths such as:
 9. [World Generation](world-generation.md): chunk status pipeline, biomes, noise, features, structures. Deep dive: [Structure Edge Generation](structure-edge-generation.md).
 10. [Client World](client-world.md): client chunk cache, chunk/light/block packet application, render-facing storage.
 11. [Position-Bearing Packets](position-bearing-packets.md): clientbound game packets with block, chunk, entity, sound, particle, waypoint, or player coordinates.
-12. [Time And Sky](time-and-sky.md): environment attributes, timelines, camera sampling, sky, and lightmap extraction.
+12. [Game Events And Vibrations](game-events-and-vibrations.md): dispatcher section scans, listener registry filtering, and vibration accept/travel flow.
+13. [Time And Sky](time-and-sky.md): environment attributes, timelines, camera sampling, sky, and lightmap extraction.
 
 ## Reading Pattern
 

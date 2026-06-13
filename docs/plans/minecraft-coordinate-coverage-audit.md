@@ -99,21 +99,12 @@ Resolution plan:
 
 ### Game Events And Vibrations
 
-Vanilla `GameEventDispatcher.post(...)` scans listener sections from the raw
-event center and radius. `VibrationSystem.Listener` then uses raw source and
-listener positions for distance, occlusion, travel time, and particle origin.
-
-This means sculk sensors, calibrated sensors, shriekers, wardens, allays, and
-other listeners may miss or mis-rank events across tile edges even when the
-event is visually nearby.
-
-Recommended next step: build a topological game-event dispatch path that visits
-canonical listener sections touched by the visible event radius, delivers each
-real listener once, and passes a listener-local event source into vibration
-distance and occlusion checks.
-
-Resolution plan:
-[Topological game events and vibrations](topological-game-events-and-vibrations.md).
+Implemented. `GameEventDispatcherMixin` routes enabled dimensions through
+`TopologicalGameEvents`, which visits canonical listener sections touched by
+the visible event radius, delivers each real listener once, and passes a
+listener-local event source into vanilla listener handling. Vibration listeners
+therefore use visible-frame distance, occlusion, travel time, and particle
+origins while keeping the original `GameEvent.Context` identity.
 
 ### Server-Side Explosions
 
@@ -221,11 +212,12 @@ Implemented policy:
 
 The shared topological ray helpers cover known item/projectile/AI paths, but
 long rays default to a nearest-alias entity radius unless the caller opts into a
-wider scan. Vibration occlusion is not yet routed through this system.
+wider scan. Vibration occlusion is covered by game-event dispatch passing
+listener-local source positions into vanilla vibration handling.
 
-Resolution plans:
-[Topological game events and vibrations](topological-game-events-and-vibrations.md)
-for vibration occlusion, and
+Reference:
+[Game Events And Vibrations](../mod-mechanics/game-events-and-vibrations.md)
+for vibration source frames, and
 [Entity Query Caller Matrix](../mod-mechanics/entity-query-caller-matrix.md)
 for caller-specific entity query policy.
 
