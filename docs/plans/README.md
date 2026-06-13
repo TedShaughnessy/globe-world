@@ -12,9 +12,6 @@ point for current behavior and modded code anchors.
 - [Minecraft coordinate coverage audit](minecraft-coordinate-coverage-audit.md):
   investigation matrix for vanilla coordinate systems, current Globe World
   coverage, and remaining coordinate-index/geometry risks.
-- [Topological POI and village queries](topological-poi-and-village-queries.md):
-  plan for POI search, villager bed/job discovery, bees, raids, and
-  lightning-rod targeting across tile seams.
 - [Worldgen direct mutation and structure persistence audit](worldgen-direct-mutation-and-structure-persistence-audit.md):
   plan for remaining direct chunk/section mutation, unobserved spillover side
   effects, and structure query/persistence checks.

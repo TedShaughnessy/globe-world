@@ -81,21 +81,16 @@ use raw chunk ranges and raw distance ordering:
 - `PoiManager.findClosest(...)` and related helpers sort by raw `distSqr`.
 - `PoiManager.sectionsToVillage(...)` uses a section-distance graph keyed by raw `SectionPos`.
 
-Globe World currently covers specific POI-facing cases such as lodestone
-validation, and block writes should register POIs at canonical positions.
-General POI discovery is not topological.
+Implemented for targeted user-visible gameplay. `TopologicalPoiQueries` scans
+canonical POI chunks, dedupes canonical POI identity, and sorts/filters results
+by wrapped X/Z distance. Caller mixins cover villager beds/jobs, bee hives, cat
+spawning, village navigation, wandering trader meeting points, raid POI refresh,
+raider village movement, and lightning-rod targeting while keeping canonical POI
+storage and occupancy records.
 
-Affected vanilla callers include villager beds/jobs, bee hive search, cat
-spawning, village navigation, golem village strolls, wandering trader meeting
-points, raid POI refresh, and lightning-rod target selection.
-
-Recommended next step: introduce a topology-aware POI query helper rather than
-globally rewriting `PoiManager`. Start with player-visible gameplay cases:
-villager bed/job discovery, bees near hive/flower targets, raids, and lightning
-rods.
-
-Resolution plan:
-[Topological POI and village queries](topological-poi-and-village-queries.md).
+Current behavior is documented in
+[POI And Villages](../mod-mechanics/poi-and-villages.md). Admin/debug POI
+output remains raw unless a future command policy explicitly changes it.
 
 ### Game Events And Vibrations
 
@@ -230,12 +225,10 @@ or local effect appears to disagree with canonical state.
 
 ## Suggested Priority Order
 
-1. POI/village/raid/lightning-rod queries.
-2. Game events and vibrations.
-3. Block-trigger entity query caller matrix.
-4. Entity collision policy and first narrow collision hooks.
-5. Command/admin coordinate policy.
-6. Direct chunk mutation and structure persistence upgrade audit.
+1. Command/admin coordinate policy.
+2. Entity collision policy and remaining narrow collision hooks.
+3. Direct chunk mutation and structure persistence upgrade audit.
+4. World border semantics for finite worlds.
 
 ## Regression Ideas
 

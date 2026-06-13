@@ -247,6 +247,29 @@ public final class ActorLocalTargets {
         return aliasBlockPositions(actor, target, ENTITY_TARGET_ALIAS_RADIUS);
     }
 
+    public static Set<BlockPos> pathTargetBlockPositions(Mob actor, BlockPos target) {
+        if (!enabled(actor.level())) {
+            return Set.of(target);
+        }
+
+        TopologyContext topology = TopologyContexts.forLevel(actor.level());
+        BlockPos canonical = topology.canonicalBlock(target);
+        BlockPos nearest = topology.virtualBlockForViewer(canonical, actor.getX(), actor.getZ());
+        double followRange = actor.getAttributeValue(Attributes.FOLLOW_RANGE);
+        if (topology.tileSizeBlocks() >= followRange) {
+            return Set.of(nearest);
+        }
+
+        int tileSize = topology.tileSizeBlocks();
+        Set<BlockPos> positions = new LinkedHashSet<>();
+        for (int tileX = -ENTITY_TARGET_ALIAS_RADIUS; tileX <= ENTITY_TARGET_ALIAS_RADIUS; tileX++) {
+            for (int tileZ = -ENTITY_TARGET_ALIAS_RADIUS; tileZ <= ENTITY_TARGET_ALIAS_RADIUS; tileZ++) {
+                positions.add(nearest.offset(tileX * tileSize, 0, tileZ * tileSize));
+            }
+        }
+        return positions;
+    }
+
     public static double horizontalDistanceToSqr(Entity actor, Entity target) {
         if (!canAlias(actor, target)) {
             double dx = actor.getX() - target.getX();

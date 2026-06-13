@@ -46,8 +46,37 @@ public abstract class GroundPathNavigationMixin extends PathNavigation {
         return this.createPath(targets, 8, false, reachRange);
     }
 
+    @WrapMethod(method = "createPath(Lnet/minecraft/core/BlockPos;I)Lnet/minecraft/world/level/pathfinder/Path;")
+    @Nullable
+    private Path createPathToBlockAliases(BlockPos target, int reachRange, Operation<Path> original) {
+        if (!ActorLocalTargets.enabled(this.mob.level())) {
+            return original.call(target, reachRange);
+        }
+
+        Set<BlockPos> targets = this.globeWorld$surfaceAdjustedAliasTargets(target, reachRange);
+        if (targets.isEmpty()) {
+            return null;
+        }
+        return this.createPath(targets, 8, false, reachRange);
+    }
+
     @Unique
     private Set<BlockPos> globeWorld$surfaceAdjustedAliasTargets(Entity target, int reachRange) {
+        Set<BlockPos> adjusted = new LinkedHashSet<>();
+        for (BlockPos pos : ActorLocalTargets.pathTargetBlockPositions(this.mob, target)) {
+            LevelChunk chunk = this.level.getChunkSource().getChunkNow(
+                    SectionPos.blockToSectionCoord(pos.getX()),
+                    SectionPos.blockToSectionCoord(pos.getZ()));
+            if (chunk == null) {
+                continue;
+            }
+            adjusted.add(this.canPathToTargetsBelowSurface ? pos : this.findSurfacePosition(chunk, pos, reachRange));
+        }
+        return adjusted;
+    }
+
+    @Unique
+    private Set<BlockPos> globeWorld$surfaceAdjustedAliasTargets(BlockPos target, int reachRange) {
         Set<BlockPos> adjusted = new LinkedHashSet<>();
         for (BlockPos pos : ActorLocalTargets.pathTargetBlockPositions(this.mob, target)) {
             LevelChunk chunk = this.level.getChunkSource().getChunkNow(

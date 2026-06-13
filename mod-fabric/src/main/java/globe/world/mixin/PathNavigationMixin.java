@@ -31,4 +31,13 @@ public abstract class PathNavigationMixin {
         }
         return this.createPath(ActorLocalTargets.pathTargetBlockPositions(this.mob, target), 16, true, reachRange);
     }
+
+    @WrapMethod(method = "createPath(Lnet/minecraft/core/BlockPos;I)Lnet/minecraft/world/level/pathfinder/Path;")
+    @Nullable
+    private Path createPathToBlockAliases(BlockPos target, int reachRange, Operation<Path> original) {
+        if (!ActorLocalTargets.enabled(this.mob.level())) {
+            return original.call(target, reachRange);
+        }
+        return this.createPath(ActorLocalTargets.pathTargetBlockPositions(this.mob, target), 8, false, reachRange);
+    }
 }

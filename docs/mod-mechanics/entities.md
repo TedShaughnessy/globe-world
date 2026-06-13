@@ -137,9 +137,10 @@ displacement now query through the topological helpers. Resulting side effects
 still mutate the one canonical entity. The maintained caller table is
 in [Entity Query Caller Matrix](entity-query-caller-matrix.md).
 
-Entity-derived path requests target the nearest alias block position. Small
-tiles expand the request to nearby whole-tile target aliases so vanilla's
-multi-target path search can choose a usable route. The pathfinder and node
+Entity-derived and block-derived path requests target the nearest alias block
+position. Small tiles expand the request to nearby whole-tile target aliases so
+vanilla's multi-target path search can choose a usable route. This is used by
+canonical POI memories as well as entity targets. The pathfinder and node
 evaluator themselves are still vanilla and not fully toroidal.
 
 Player pickup and interaction reach checks use wrapped target boxes, so players
@@ -211,6 +212,13 @@ canonicalized but currently sit outside canonical X/Z.
   `WitherBossRangedAttackMixin`, `BreezeShootMixin`,
   `SwellGoalMixin`, `GuardianAttackGoalMixin`,
   `GuardianAttackSelectorMixin`, `ShulkerAttackGoalMixin`.
+- POI and village path targets:
+  `TopologicalPoiQueries`, `AcquirePoiMixin`, `NearestBedSensorPoiMixin`,
+  `SetClosestHomeAsWalkTargetPoiMixin`, `LocateHidingPlacePoiMixin`,
+  `GoToClosestVillagePoiMixin`, `MoveThroughVillageGoalPoiMixin`,
+  `BeePoiSearchMixin`, `ServerLevelPoiMixin`, `RaidsPoiMixin`,
+  `RaiderPoiMixin`, `CatSpawnerPoiMixin`,
+  `WanderingTraderSpawnerPoiMixin`.
 - Damage direction:
   `LivingEntityDamageSourceAliasMixin`, `DamageAliasUtil`.
 - Projectile collision:

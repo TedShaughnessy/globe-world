@@ -34,22 +34,24 @@ World period:
 5. [Entity Query Caller Matrix](entity-query-caller-matrix.md): audited
    entity-query and narrow collision callers that intentionally use visible
    wrapped boxes.
-6. [Explosions](explosions.md): topological block dedupe, entity damage,
+6. [POI And Villages](poi-and-villages.md): topology-aware POI discovery,
+   village distance, reservations, and path targets.
+7. [Explosions](explosions.md): topological block dedupe, entity damage,
    knockback, exposure, and explosion packet relabeling.
-7. [Game Events And Vibrations](game-events-and-vibrations.md): topology-aware
+8. [Game Events And Vibrations](game-events-and-vibrations.md): topology-aware
    game-event listener dispatch and listener-local vibration sources.
-8. [Worldgen](worldgen.md): periodic terrain modes, feature spillover,
+9. [Worldgen](worldgen.md): periodic terrain modes, feature spillover,
    structure edge handling, and generation risks.
-9. [Packet Policies](packet-policies.md): auditable packet virtualization
+10. [Packet Policies](packet-policies.md): auditable packet virtualization
    policy table for Minecraft 26.1.2.
-10. [Client](client.md): client-facing packet/render behavior, curvature,
+11. [Client](client.md): client-facing packet/render behavior, curvature,
    shader-pack compatibility, diagnostics, and explicit client-cache boundary.
-11. [Maps](maps.md): filled-map pixel updates and player marker aliasing.
-12. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
+12. [Maps](maps.md): filled-map pixel updates and player marker aliasing.
+13. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
    saved day-length multiplier, and gameplay across the canonical tile.
-13. [Local Solar Time](local-solar-time.md): shared longitude-based local time
+14. [Local Solar Time](local-solar-time.md): shared longitude-based local time
    math for scrolling day/night rendering and gameplay hooks.
-14. [Commands And Admin Coordinates](commands.md): raw vanilla command policy,
+15. [Commands And Admin Coordinates](commands.md): raw vanilla command policy,
     topology-aware `/globeworld` helpers, and player interaction permission
     boundaries.
 
@@ -74,6 +76,7 @@ World period:
 | Entity visual aliases | Implemented for non-player, not-leashed entities and standalone remote players | [entities.md](entities.md) |
 | Entity query and narrow collision callers | Implemented for audited block triggers, item merge, minecart/placement obstruction, and piston movement | [entity-query-caller-matrix.md](entity-query-caller-matrix.md) |
 | Mob despawn, sensing, pathfinding | Implemented with bounded pathfinding limitations | [entities.md](entities.md) |
+| POI, villages, raids, and lightning rods | Implemented for targeted user-visible discovery and canonical occupancy | [poi-and-villages.md](poi-and-villages.md) |
 | Server-side explosions | Implemented for block dedupe, entity damage, knockback, and exposure | [explosions.md](explosions.md) |
 | Game events and vibrations | Implemented for topological listener-section dispatch and listener-local vibration sources | [game-events-and-vibrations.md](game-events-and-vibrations.md) |
 | Periodic terrain/noise | Implemented | [worldgen.md](worldgen.md) |
@@ -112,3 +115,6 @@ World period:
    tiles need the right balance between seamlessness and vanilla-looking noise.
 8. Scrolling day/night weather interaction: manually verify weather, lightning,
    night vision, and gamma with local sky/lightmap visuals.
+9. POI and village gameplay: manually test seam beds, jobs, hives, raids,
+   lightning rods, cat spawning, and wandering traders for pathing and
+   duplicate-reservation regressions.
