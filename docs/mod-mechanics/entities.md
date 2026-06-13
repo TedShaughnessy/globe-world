@@ -54,9 +54,12 @@ duplicate entity ticks. Despawn checks use wrapped player distance.
 Natural spawning stores candidates in canonical chunks, wraps candidate
 positions and player-distance checks, counts mob caps by canonical chunk, and
 dedupes spawning chunks by canonical key. Chunk-generation mob spawns are
-cancelled for non-canonical chunks. The vanilla 24-block exclusion around the
-world spawn also uses wrapped X/Z distance, so natural mobs cannot spawn just
-across a tile seam from spawn.
+cancelled for non-canonical chunks. The final vanilla "can spawn entities in
+this chunk" gate also accepts the viewer-nearest alias of the canonical chunk,
+so standing in an alias tile can still drive hostile natural spawning around
+the visible player. The vanilla 24-block exclusion around the world spawn also
+uses wrapped X/Z distance, so natural mobs cannot spawn just across a tile seam
+from spawn.
 
 Player and world spawn search is tile-bounded in tiled dimensions.
 `GlobeSpawnFinder` replaces `PlayerSpawnFinder`'s raw radius search with a
@@ -99,13 +102,22 @@ move-toward-target goals use the nearest topological alias instead of raw
 coordinates. Alias line of sight must be proven by a wrapped ray; wrapped
 horizontal distance alone is not treated as visibility.
 
+Endermen have additional alias-sensitive stare and teleport hooks. The shared
+`LivingEntity.isLookingAtMe(...)` gaze vector and its line-of-sight check use
+the looked-at entity's viewer-nearest alias, so staring at an enderman rendered
+in an alias tile can start aggro. Enderman freeze and post-aggro teleport
+distance checks use wrapped distance, and `teleportTowards(...)` aims at the
+target's nearest alias instead of the raw canonical position so an angry
+enderman does not repeatedly teleport visually farther away across a seam.
+
 Ranged mob launch math uses the same target-alias convention before calculating
 projectile X/Z vectors. Skeletons, illusioners, drowned, snow golems, llamas,
 witches, crossbow mobs, blazes, ghasts, withers, and breezes aim at the nearest
 target alias while preserving vanilla Y calculations, leading, potion choice,
 charge timing, and inaccuracy. Creeper swelling, guardian beam attack gates,
-and shulker attack range also use alias distance so a mob that has already
-pathfound to a wrapped-near target can start and continue its attack.
+phantom attack anchors and swoop targets, and shulker attack range also use
+alias coordinates so a mob that has already pathfound to a wrapped-near target
+can start and continue its attack.
 
 Damage-source direction uses the same nearest-alias convention. Vanilla
 `LivingEntity.hurtServer(...)` derives hurt knockback and damage indicators from
@@ -224,6 +236,8 @@ canonicalized but currently sit outside canonical X/Z.
   `ServerEntityGetterMixin`, `NearestLivingEntitySensorMixin`, `SensingMixin`,
   `TargetGoalMixin`, `PathNavigationMixin`, `GroundPathNavigationMixin`,
   `FlyingPathNavigationMixin`, `LookControlMixin`, `MobLookMixin`,
+  `LivingEntityLookAtMeMixin`, `EnderManMixin`,
+  `EndermanFreezeWhenLookedAtMixin`, `EndermanLookForPlayerGoalMixin`,
   `MeleeAttackGoalMixin`, `RangedAttackGoalMixin`,
   `RangedBowAttackGoalMixin`, `RangedCrossbowAttackGoalMixin`,
   `LookAtPlayerGoalMixin`, `MoveTowardsTargetGoalMixin`,
@@ -231,6 +245,7 @@ canonicalized but currently sit outside canonical X/Z.
   `DrownedRangedAttackMixin`, `SnowGolemRangedAttackMixin`,
   `LlamaRangedAttackMixin`, `WitchRangedAttackMixin`,
   `CrossbowItemRangedAttackMixin`, `BlazeAttackGoalMixin`,
+  `PhantomAttackStrategyGoalMixin`, `PhantomSweepAttackGoalMixin`,
   `GhastFacingMixin`, `GhastShootFireballGoalMixin`,
   `WitherBossRangedAttackMixin`, `BreezeShootMixin`,
   `SwellGoalMixin`, `GuardianAttackGoalMixin`,

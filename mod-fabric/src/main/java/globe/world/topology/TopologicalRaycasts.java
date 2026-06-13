@@ -68,6 +68,15 @@ public final class TopologicalRaycasts {
     }
 
     public static boolean topologicalLineOfSight(LivingEntity actor, Entity target) {
+        return topologicalLineOfSight(actor, target, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, target.getEyeY());
+    }
+
+    public static boolean topologicalLineOfSight(
+            LivingEntity actor,
+            Entity target,
+            ClipContext.Block blockClipType,
+            ClipContext.Fluid fluidClipType,
+            double targetY) {
         if (actor.level() != target.level()) {
             return false;
         }
@@ -77,7 +86,7 @@ public final class TopologicalRaycasts {
         Vec3 from = new Vec3(actor.getX(), actor.getEyeY(), actor.getZ());
         Vec3 canonicalTarget = new Vec3(
                 context.canonicalBlockX(target.getX()),
-                target.getEyeY(),
+                targetY,
                 context.canonicalBlockX(target.getZ())
         );
         Vec3 to = context.virtualBlockForViewer(canonicalTarget, from);
@@ -89,7 +98,7 @@ public final class TopologicalRaycasts {
                 level,
                 from,
                 to,
-                new BlockTraceOptions(ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, actor, false)
+                new BlockTraceOptions(blockClipType, fluidClipType, actor, false)
         ).visibleHit().getType() == HitResult.Type.MISS;
     }
 

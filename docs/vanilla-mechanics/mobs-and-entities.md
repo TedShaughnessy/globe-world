@@ -27,6 +27,7 @@ Common sources jar:
 - `net/minecraft/world/entity/ai/goal/MoveTowardsTargetGoal.java`
 - `net/minecraft/world/entity/ai/control/LookControl.java`
 - `net/minecraft/world/entity/ai/navigation/PathNavigation.java`
+- `net/minecraft/world/entity/monster/EnderMan.java`
 - `net/minecraft/world/entity/monster/Creeper.java`
 - `net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java`
 - `net/minecraft/world/entity/monster/illager/Illusioner.java`
@@ -36,6 +37,7 @@ Common sources jar:
 - `net/minecraft/world/entity/monster/Witch.java`
 - `net/minecraft/world/item/CrossbowItem.java`
 - `net/minecraft/world/entity/monster/Blaze.java`
+- `net/minecraft/world/entity/monster/Phantom.java`
 - `net/minecraft/world/entity/monster/Ghast.java`
 - `net/minecraft/world/entity/monster/Guardian.java`
 - `net/minecraft/world/entity/monster/Shulker.java`
@@ -133,9 +135,23 @@ has already been accepted as a candidate:
   Examples include skeleton/illusioner arrows, drowned tridents, snow golem
   snowballs, llama spit, witch splash potions, crossbow target overrides, blaze
   fireballs, ghast fireballs, wither skulls, and breeze wind charges.
+- Phantoms are not projectile mobs, but their attack strategy has the same
+  coordinate hazard: target acquisition can accept an alias-near player while
+  `PhantomAttackStrategyGoal` and `PhantomSweepAttackGoal` still store raw
+  target block/position coordinates for the anchor and swoop.
 - `SwellGoal` is separate from `MeleeAttackGoal`: it starts creeper swelling
   with raw `creeper.distanceToSqr(target) < 9.0`, then keeps or cancels swelling
   with raw 7-block distance and cached line-of-sight checks.
+- Endermen use a bespoke stare path. `EnderMan.isBeingStaredBy(...)` delegates
+  to `LivingEntity.isLookingAtMe(...)`, which builds a gaze vector from raw X/Z
+  and then calls `target.hasLineOfSight(this, ...)`. The
+  `EndermanLookForPlayerGoal` selector runs that stare check before target
+  acquisition, keeps a pending target during the aggro delay, uses raw
+  `distanceToSqr(...)` for close/far teleport decisions, and calls
+  `teleportTowards(target)` when the target is far. `teleportTowards(...)`
+  computes its approach direction from raw enderman-to-target X/Z. The
+  `EndermanFreezeWhenLookedAt` goal separately uses raw distance to decide
+  whether to freeze, then looks at the raw target position.
 - `PathNavigation.createPath(Entity, int)` converts the entity to
   `target.blockPosition()` before the pathfinder searches raw nodes. Ground and
   flying navigation override that entity method and do the same conversion in
@@ -289,6 +305,7 @@ Project hooks for natural spawning:
 - `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:30` clears per-pass canonical spawn chunk tracking at the start of `ChunkMap.collectSpawningChunks(...)`.
 - `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:35` wraps the `List.add(...)` call in `collectSpawningChunks(...)`, swaps alias chunks for canonical chunks, and dedupes by canonical chunk key before `ServerChunkCache.tickSpawningChunk(...)` runs.
 - `mod-fabric/src/main/java/globe/world/mixin/ChunkMapSpawningMixin.java:68` uses wrapped chunk distance for `playerIsCloseEnoughForSpawning(...)`.
+- `mod-fabric/src/main/java/globe/world/mixin/ServerChunkCacheNaturalSpawningMixin.java` lets `ServerChunkCache.tickSpawningChunk(...)` pass its final `canSpawnEntitiesInChunk(...)` gate when the canonical chunk's viewer-nearest alias is entity-spawnable for a non-spectator player.
 
 Project hooks for entity storage and visibility:
 
@@ -339,6 +356,9 @@ Project hooks for entity storage and visibility:
 - `mod-fabric/src/main/java/globe/world/mixin/LookControlMixin.java` and
   `MobLookMixin.java` turn mobs toward nearest target aliases and use alias
   hitboxes for melee reach.
+- `mod-fabric/src/main/java/globe/world/mixin/PhantomAttackStrategyGoalMixin.java`
+  and `PhantomSweepAttackGoalMixin.java` move phantom attack anchors, swoop
+  targets, and target-box hit checks into the phantom-local alias frame.
 - `mod-fabric/src/main/java/globe/world/util/MobNavigationAliasUtil.java` marks mobs after
   a canonicalization snap so melee goals immediately clear stale path target
   coordinates and recompute.
@@ -369,6 +389,7 @@ Current status:
   non-player entities outside canonical X/Z.
 - Good: spawn position math and mob caps are mostly wrapped to canonical chunk identity.
 - Good: `ServerChunkCache.tickSpawningChunk(...)` now receives each canonical chunk at most once per `collectSpawningChunks(...)` pass, avoiding duplicate spawn attempts, inhabited-time increments, and thunder work from aliases.
+- Good: the final natural-spawn chunk eligibility gate accepts a player-visible alias of the canonical chunk, so alias-tile players can drive hostile spawns instead of requiring the canonical chunk itself to satisfy vanilla's raw entity-spawnability check.
 - Partial: mob AI now uses nearest-alias distance, sight cache, look, melee
   reach, ranged launch vectors for common ranged mobs, and a small-tile
   multi-alias entity path target set. The underlying pathfinder/node evaluator
