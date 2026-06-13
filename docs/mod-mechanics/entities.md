@@ -65,6 +65,10 @@ actor-local hitbox, wrapped distances, same-level status, and aliasing status.
 Broad query helpers route through `TopologicalEntityQueries`, which splits
 visible-frame lookup boxes across canonical tile edges, dedupes canonical
 entity identity, and adds alias-frame server players.
+`TopologicalCollisionQueries` is the narrower collision adapter for audited
+block triggers and placement/collision callers. It filters those deduped
+candidates against the entity's nearest visible alias box instead of changing
+global entity section storage.
 Alias line of sight now delegates to the shared `TopologicalRaycasts` primitive,
 which returns visible-frame block hits with canonical hit identity.
 Targeting conditions, nearest-entity selection, brain sensors, target retention,
@@ -115,6 +119,16 @@ shared topological entity query, then measures each candidate against the hit
 potion AABB using that entity's nearest alias box. This lets witch splash
 potions apply status effects to players and mobs visible in an alias tile while
 preserving vanilla duration scaling and instant-effect math.
+
+Audited block-trigger and narrow physical collision callers use visible-frame
+entity boxes without duplicating entity identity. Pressure plates, weighted
+pressure plates, arrow-activated buttons, detector rails, tripwire, hopper and
+hopper-minecart item/container pickup, chest cat blocking, shulker lid
+obstruction and lid pushing, item merge, old/new minecart push and pickup,
+boat/minecart/armor-stand/end-crystal placement obstruction, and moving piston
+displacement now query through the topological helpers. Resulting side effects
+still mutate the one canonical entity. The maintained caller table is
+in [Entity Query Caller Matrix](entity-query-caller-matrix.md).
 
 Entity-derived path requests target the nearest alias block position. Small
 tiles expand the request to nearby whole-tile target aliases so vanilla's
@@ -195,7 +209,20 @@ canonicalized but currently sit outside canonical X/Z.
 - Projectile collision:
   `AbstractArrowAliasCollisionMixin`, `ThrownSplashPotionAliasEffectMixin`,
   `ProjectileAliasUtil`, `ProjectileUtilTopologicalMoveMixin`,
-  `TopologicalEntityQueries`, `TopologicalRaycasts`.
+  `TopologicalEntityQueries`, `TopologicalCollisionQueries`,
+  `TopologicalRaycasts`.
+- Block-trigger and narrow collision callers:
+  `PressurePlateBlockEntityQueryMixin`,
+  `WeightedPressurePlateBlockEntityQueryMixin`,
+  `ButtonBlockEntityQueryMixin`, `DetectorRailBlockEntityQueryMixin`,
+  `TripWireBlockEntityQueryMixin`, `HopperBlockEntityQueryMixin`,
+  `MinecartHopperEntityQueryMixin`, `ChestBlockCatQueryMixin`,
+  `ShulkerBoxBlockEntityQueryMixin`, `ShulkerBoxBlockEntityCollisionMixin`,
+  `ItemEntityMergeMixin`,
+  `OldMinecartBehaviorCollisionMixin`, `NewMinecartBehaviorCollisionMixin`,
+  `BoatItemPlacementMixin`, `MinecartItemPlacementMixin`,
+  `ArmorStandItemPlacementMixin`, `EndCrystalItemPlacementMixin`,
+  `PistonMovingBlockEntityQueryMixin`.
 - Player interaction and presentation:
   `PlayerInteractionRangeMixin`, `PlayerItemPickupMixin`,
   `FishingHookMixin`,
@@ -219,9 +246,10 @@ canonicalized but currently sit outside canonical X/Z.
 
 - Stress-test canonical entity ticking from alias simulation chunks under heavy
   death/despawn cases.
-- Raw vanilla `EntityGetter` replacement is intentionally not global. Collision
-  and other side-effect-sensitive query paths need caller-specific audit before
-  they use visible-frame boxes.
+- Raw vanilla `EntityGetter` replacement is intentionally not global. New
+  collision and other side-effect-sensitive query paths need a row in
+  [Entity Query Caller Matrix](entity-query-caller-matrix.md) before they use
+  visible-frame boxes.
 - Full toroidal pathfinding remains deferred; current path requests target
   useful aliases but vanilla node search does not wrap every neighbor relation.
 - General projectile physics across tile seams remains separate from ranged mob

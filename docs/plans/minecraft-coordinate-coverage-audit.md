@@ -155,14 +155,8 @@ globally replaced. Any unwrapped block-trigger query near a seam can miss an
 entity visible through an alias, or can fail to interact with an alias-local
 entity box.
 
-Recommended next step: create a caller matrix from vanilla `level.getEntities`
-and `getEntitiesOfClass` call sites, classify each as one of:
-topological gameplay query, canonical-storage-only query, client/render-only
-query, or intentionally vanilla. Add focused hooks for the topological gameplay
-set.
-
-Resolution plan:
-[Entity query and collision resolution](entity-query-and-collision-resolution.md).
+Current coverage and remaining caller policy:
+[Entity Query Caller Matrix](../mod-mechanics/entity-query-caller-matrix.md).
 
 ### Generic Entity Collision
 
@@ -175,12 +169,10 @@ Known risk areas include minecart/entity pickup, item merging, mob/player
 pushes, vehicle placement, armor stand and crystal placement checks, dismount
 searches, and moving piston entity displacement across a tile edge.
 
-Recommended next step: decide whether seam-crossing physical entity collisions
-are a v1 goal. If yes, start with narrow, user-visible cases: item pickup/merge,
-minecart pickup/push, pressure plates/detector rails, and vehicle placement.
-
-Resolution plan:
-[Entity query and collision resolution](entity-query-and-collision-resolution.md).
+Current coverage starts with narrow, user-visible cases: item pickup/merge,
+minecart pickup/push, pressure plates/detector rails, vehicle placement, and
+moving piston displacement. Caller policy and intentionally vanilla cases live
+in [Entity Query Caller Matrix](../mod-mechanics/entity-query-caller-matrix.md).
 
 ### Commands And Admin Coordinate Regions
 
@@ -248,8 +240,8 @@ wider scan. Vibration occlusion is not yet routed through this system.
 Resolution plans:
 [Topological game events and vibrations](topological-game-events-and-vibrations.md)
 for vibration occlusion, and
-[Entity query and collision resolution](entity-query-and-collision-resolution.md)
-for caller-specific long entity queries.
+[Entity Query Caller Matrix](../mod-mechanics/entity-query-caller-matrix.md)
+for caller-specific entity query policy.
 
 ### Client-Only Debug And Local Effects
 

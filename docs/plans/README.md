@@ -21,9 +21,6 @@ point for current behavior and modded code anchors.
 - [Topological explosions](topological-explosions.md): plan for server-side
   explosion block dedupe, entity damage, knockback, and exposure across tile
   seams.
-- [Entity query and collision resolution](entity-query-and-collision-resolution.md):
-  plan for classifying raw entity query callers, block-trigger hooks, and the
-  first physical collision policy.
 - [Worldgen direct mutation and structure persistence audit](worldgen-direct-mutation-and-structure-persistence-audit.md):
   plan for remaining direct chunk/section mutation, unobserved spillover side
   effects, and structure query/persistence checks.

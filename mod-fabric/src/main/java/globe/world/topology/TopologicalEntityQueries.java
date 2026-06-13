@@ -2,6 +2,7 @@ package globe.world.topology;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.level.Level;
@@ -77,6 +78,30 @@ public final class TopologicalEntityQueries {
 
         Vec3 sourceCenter = sourceBox.getCenter();
         return context.virtualBoxForViewer(context.canonicalBox(targetBox), sourceCenter);
+    }
+
+    public static AABB nearestAliasBox(Level level, BlockPos actorBlock, AABB targetBox) {
+        TopologyContext context = TopologyContexts.forLevel(level);
+        if (!context.enabled()) {
+            return targetBox;
+        }
+
+        return context.virtualBoxForViewer(context.canonicalBox(targetBox), actorBlock.getCenter());
+    }
+
+    public static boolean intersectsVisible(Level level, AABB visibleQueryBox, Entity entity) {
+        return visibleQueryBox.intersects(nearestAliasBox(level, visibleQueryBox, entity.getBoundingBox()));
+    }
+
+    public static double distanceSqrToVisibleBox(Level level, Vec3 visibleOrigin, Entity entity) {
+        AABB originBox = new AABB(
+                visibleOrigin.x,
+                visibleOrigin.y,
+                visibleOrigin.z,
+                visibleOrigin.x,
+                visibleOrigin.y,
+                visibleOrigin.z);
+        return nearestAliasBox(level, originBox, entity.getBoundingBox()).distanceToSqr(visibleOrigin);
     }
 
     public static List<AABB> canonicalQueryBoxes(Level level, AABB visibleBox) {

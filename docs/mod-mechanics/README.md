@@ -31,18 +31,21 @@ World period:
    fanout, block entities, random ticks, and scheduled ticks.
 4. [Entities](entities.md): canonical entity storage, virtualized entity
    packets, tracking, spawning, despawning, sensing, and pathfinding risks.
-5. [Worldgen](worldgen.md): periodic terrain modes, feature spillover,
+5. [Entity Query Caller Matrix](entity-query-caller-matrix.md): audited
+   entity-query and narrow collision callers that intentionally use visible
+   wrapped boxes.
+6. [Worldgen](worldgen.md): periodic terrain modes, feature spillover,
    structure edge handling, and generation risks.
-6. [Packet Policies](packet-policies.md): auditable packet virtualization
+7. [Packet Policies](packet-policies.md): auditable packet virtualization
    policy table for Minecraft 26.1.2.
-7. [Client](client.md): client-facing packet/render behavior, curvature,
+8. [Client](client.md): client-facing packet/render behavior, curvature,
    shader-pack compatibility, diagnostics, and explicit client-cache boundary.
-8. [Maps](maps.md): filled-map pixel updates and player marker aliasing.
-9. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
+9. [Maps](maps.md): filled-map pixel updates and player marker aliasing.
+10. [Scrolling Day/Night](scrolling-day-night.md): local day/night presentation,
    saved day-length multiplier, and gameplay across the canonical tile.
-10. [Local Solar Time](local-solar-time.md): shared longitude-based local time
+11. [Local Solar Time](local-solar-time.md): shared longitude-based local time
    math for scrolling day/night rendering and gameplay hooks.
-11. [Commands And Admin Coordinates](commands.md): raw vanilla command policy,
+12. [Commands And Admin Coordinates](commands.md): raw vanilla command policy,
     topology-aware `/globeworld` helpers, and player interaction permission
     boundaries.
 
@@ -65,6 +68,7 @@ World period:
 | Player lifecycle canonicalization | Done for login, wake-up, and respawn | [entities.md](entities.md) |
 | Entity tracking and spawning | Done for main paths | [entities.md](entities.md) |
 | Entity visual aliases | Implemented for non-player, not-leashed entities and standalone remote players | [entities.md](entities.md) |
+| Entity query and narrow collision callers | Implemented for audited block triggers, item merge, minecart/placement obstruction, and piston movement | [entity-query-caller-matrix.md](entity-query-caller-matrix.md) |
 | Mob despawn, sensing, pathfinding | Implemented with bounded pathfinding limitations | [entities.md](entities.md) |
 | Periodic terrain/noise | Implemented | [worldgen.md](worldgen.md) |
 | Structures and feature edge generation | Implemented with open audit boundaries | [worldgen.md](worldgen.md) |
@@ -87,11 +91,14 @@ World period:
 
 1. Entity ticking: manually stress-test canonical mobs when only an alias is in
    entity-ticking range, especially death and despawn cleanup.
-2. Cross-edge neighbor updates: redstone, pistons, observers, doors, and similar
+2. Entity collision side effects: manually stress-test seam pistons, item
+   merging, vehicle placement, and old/new minecart push behavior for duplicate
+   movement or ordering surprises.
+3. Cross-edge neighbor updates: redstone, pistons, observers, doors, and similar
    blocks need focused testing over tile boundaries.
-3. Structures and feature origins: alias starts are transient worldgen data and
+4. Structures and feature origins: alias starts are transient worldgen data and
    structure query/persistence paths still need audit.
-4. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
+5. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
    tiles need the right balance between seamlessness and vanilla-looking noise.
-5. Scrolling day/night weather interaction: manually verify weather, lightning,
+6. Scrolling day/night weather interaction: manually verify weather, lightning,
    night vision, and gamma with local sky/lightmap visuals.

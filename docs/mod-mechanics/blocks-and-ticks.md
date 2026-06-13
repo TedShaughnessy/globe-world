@@ -94,6 +94,15 @@ wrapped where they affect block-driven gameplay: beacon/conduit effect radius,
 warden warning players from sculk shriekers, beehive anger range, and lightning
 strike advancement range.
 
+Entity-sensitive block triggers now use audited visible-frame query hooks rather
+than a global `EntityGetter` replacement. Pressure plates, weighted pressure
+plates, arrow-activated buttons, detector rails, tripwire, hopper and
+hopper-minecart item/container pickup, chest cat blocking, shulker lid
+obstruction and lid pushing, and moving piston displacement query
+canonical entities through wrapped alias boxes and dedupe by real entity
+identity. The per-caller policy and regression cases live in
+[Entity Query Caller Matrix](entity-query-caller-matrix.md).
+
 Lodestone compass tracking validates the lodestone point of interest at the
 canonical target position in tiled dimensions. This keeps compasses bound to an
 alias lodestone from being cleared just because the stored `GlobalPos` is
@@ -113,6 +122,17 @@ outside the canonical tile.
 - `mod-fabric/src/main/java/globe/world/mixin/MobEffectUtilMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/PlayerDetectorMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PressurePlateBlockEntityQueryMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/WeightedPressurePlateBlockEntityQueryMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ButtonBlockEntityQueryMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/DetectorRailBlockEntityQueryMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/TripWireBlockEntityQueryMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/HopperBlockEntityQueryMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/MinecartHopperEntityQueryMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ChestBlockCatQueryMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ShulkerBoxBlockEntityQueryMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/ShulkerBoxBlockEntityCollisionMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PistonMovingBlockEntityQueryMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/WardenSpawnTrackerMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/BeehiveBlockEntityMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/LightningBoltMixin.java`
@@ -147,7 +167,10 @@ outside the canonical tile.
   packet fanout.
 - Scheduled tick clone/copy operations and cross-edge simulation reach need
   edge-case testing.
-- Redstone, pistons, observers, doors, and similar neighbor-sensitive blocks
-  need focused cross-edge testing.
+- Redstone, observers, doors, and similar neighbor-sensitive blocks need focused
+  cross-edge testing.
+- Piston entity displacement is implemented for visible alias boxes, but needs
+  focused manual testing with slime, honey, passengers, and entities overlapping
+  both canonical and alias frames.
 - Server-side light propagation across canonical tile edges needs investigation
   if visible seams remain after incremental light packet fanout.
