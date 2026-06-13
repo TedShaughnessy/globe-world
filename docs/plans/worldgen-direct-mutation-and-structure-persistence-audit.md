@@ -191,8 +191,9 @@ Action rules:
 
 - If alias starts persist, fix the structure mixin that writes starts or
   references.
-- If only `locate` reports raw/alias-surprising output, leave it to
-  [Command and admin coordinate policy](command-and-admin-coordinate-policy.md).
+- If only `locate` reports raw/alias-surprising output, leave it to the raw
+  vanilla command policy in
+  [Commands And Admin Coordinates](../mod-mechanics/commands.md).
 - If forced progression starts fail after reload, fix
   `ForcedProgressionStructures` or its reference generation path.
 

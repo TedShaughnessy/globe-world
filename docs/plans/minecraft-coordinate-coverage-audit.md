@@ -191,13 +191,8 @@ canonicalize the final state access, but command region iteration, loaded
 checks, command success messages, and selected coordinates remain raw unless a
 specific command has a Globe World hook.
 
-Recommended next step: document an explicit command policy. Either keep vanilla
-commands raw and provide Globe-specific commands for canonical/alias operations,
-or implement a small set of topological command affordances where they are
-needed for testing.
-
-Resolution plan:
-[Command and admin coordinate policy](command-and-admin-coordinate-policy.md).
+Implemented policy:
+[Commands And Admin Coordinates](../mod-mechanics/commands.md).
 
 ## Medium-Risk Open Coordinate Families
 
@@ -237,11 +232,12 @@ border checks about the raw block position. Player lifecycle canonicalization
 covers login, respawn, and bed wake-up, but commands such as `spawnpoint` and
 `setworldspawn` store raw coordinates.
 
-These may be acceptable as vanilla/admin policy, but they should be named
-explicitly because they influence whether an alias-side interaction is allowed.
+These are now explicit vanilla/admin policy boundaries. Ordinary player block
+interaction tests the raw world border and the canonical spawn-protection owner
+in tiled dimensions.
 
-Resolution plan:
-[Command and admin coordinate policy](command-and-admin-coordinate-policy.md).
+Implemented policy:
+[Commands And Admin Coordinates](../mod-mechanics/commands.md).
 
 ### Long Rays And Occlusion
 
