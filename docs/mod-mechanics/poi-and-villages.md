@@ -58,6 +58,18 @@ rewriting `PoiManager` globally:
 - Cat and wandering trader POI gates:
   `CatSpawnerPoiMixin`, `WanderingTraderSpawnerPoiMixin`.
 
+Wandering trader placement also wraps the event spawn search itself. Meeting
+point lookup returns the canonical POI, trader and llama placement samples
+around that reference in the nearest player-visible tile frame, and candidate
+height/spawn checks run against the canonical owner block position. Trader
+wander/home memories remain canonical.
+
+Village sieges use the topological village-section distance supplied by
+`ServerLevelPoiMixin` when choosing an eligible player village, then wrap the
+zombie spawn search's height, village, and monster spawn-rule checks to
+canonical owner positions. The spawned zombies continue through normal
+canonical entity storage.
+
 `PathNavigationMixin` and `GroundPathNavigationMixin` also expand canonical
 block targets into actor-local aliases. That lets canonical POI memories remain
 stable while vanilla path search can choose a visible wrapped target near the
@@ -86,6 +98,7 @@ ordinary block/pathing topology boundaries.
 - `RaiderPoiMixin`
 - `CatSpawnerPoiMixin`
 - `WanderingTraderSpawnerPoiMixin`
+- `VillageSiegeMixin`
 - `PathNavigationMixin`
 - `GroundPathNavigationMixin`
 
@@ -99,3 +112,5 @@ ordinary block/pathing topology boundaries.
 - `net/minecraft/server/level/ServerLevel.java`
 - `net/minecraft/world/entity/raid/Raids.java`
 - `net/minecraft/world/entity/raid/Raider.java`
+- `net/minecraft/world/entity/npc/wanderingtrader/WanderingTraderSpawner.java`
+- `net/minecraft/world/entity/ai/village/VillageSiege.java`

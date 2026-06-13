@@ -71,8 +71,9 @@ World period:
 | Random ticks | Done | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Scheduled ticks | Done for gameplay path | [blocks-and-ticks.md](blocks-and-ticks.md) |
 | Entity storage and packets | Implemented | [entities.md](entities.md) |
-| Player lifecycle canonicalization | Done for login, wake-up, and respawn | [entities.md](entities.md) |
-| Entity tracking and spawning | Done for main paths | [entities.md](entities.md) |
+| Player lifecycle canonicalization | Done for login, wake-up, respawn, and spawn-block lookup | [entities.md](entities.md) |
+| Player/world spawn search | Implemented with canonical tile-bounded search and fallbacks | [entities.md](entities.md) |
+| Entity tracking and spawning | Done for main paths, natural world-spawn exclusion, and audited event spawners | [entities.md](entities.md) |
 | Entity visual aliases | Implemented for non-player, not-leashed entities and standalone remote players | [entities.md](entities.md) |
 | Entity query and narrow collision callers | Implemented for audited block triggers, item merge, minecart/placement obstruction, and piston movement | [entity-query-caller-matrix.md](entity-query-caller-matrix.md) |
 | Mob despawn, sensing, pathfinding | Implemented with bounded pathfinding limitations | [entities.md](entities.md) |
@@ -116,5 +117,5 @@ World period:
 8. Scrolling day/night weather interaction: manually verify weather, lightning,
    night vision, and gamma with local sky/lightmap visuals.
 9. POI and village gameplay: manually test seam beds, jobs, hives, raids,
-   lightning rods, cat spawning, and wandering traders for pathing and
-   duplicate-reservation regressions.
+   lightning rods, cat spawning, wandering traders, and village sieges for
+   pathing and duplicate-reservation regressions.

@@ -54,7 +54,29 @@ duplicate entity ticks. Despawn checks use wrapped player distance.
 Natural spawning stores candidates in canonical chunks, wraps candidate
 positions and player-distance checks, counts mob caps by canonical chunk, and
 dedupes spawning chunks by canonical key. Chunk-generation mob spawns are
-cancelled for non-canonical chunks.
+cancelled for non-canonical chunks. The vanilla 24-block exclusion around the
+world spawn also uses wrapped X/Z distance, so natural mobs cannot spawn just
+across a tile seam from spawn.
+
+Player and world spawn search is tile-bounded in tiled dimensions.
+`GlobeSpawnFinder` replaces `PlayerSpawnFinder`'s raw radius search with a
+deterministic scan over canonical chunks, preserving vanilla-style dry-land,
+fluid, heightmap, and player-collision checks. If no dry land exists in the
+canonical tile, it falls back to a collision-free surface, then a vertical fixup
+of the canonical spawn suggestion, then a logged generator-height tile-center
+last resort. Initial world-spawn metadata is canonicalized before it is saved.
+
+Bed, respawn-anchor, and forced respawn validation canonicalize the saved
+`RespawnConfig` position at use time. The saved command metadata can remain raw,
+but block lookup, forced free-space checks, and respawn-anchor charge
+decrementing touch the canonical owner block and return canonical stand-up
+positions.
+
+Generic `SpawnUtil.trySpawnMob(...)` is not globally wrapped. Its audited
+Minecraft 26.1.2 callers start from canonical storage owners: villager golem
+spawns begin from the canonical villager, creaking protectors from the canonical
+creaking-heart block entity, and wardens from the canonical sculk-shrieker block
+entity. Entity storage canonicalization still owns the resulting mob.
 
 ## AI, Interaction, And Pathing
 
@@ -192,8 +214,9 @@ canonicalized but currently sit outside canonical X/Z.
   `ServerGamePacketListenerImplMixin`.
 - Tracking, ticking, spawning, and despawn:
   `ChunkMapPlayerProviderMixin`, `ChunkMapSpawningMixin`,
-  `NaturalSpawnerMixin`, `ChunkStatusTasksMixin`,
-  `MobDespawnDistanceMixin`.
+  `NaturalSpawnerMixin`, `PlayerSpawnFinderMixin`,
+  `ServerPlayerRespawnBlockMixin`, `MinecraftServerMixin`,
+  `GlobeSpawnFinder`, `ChunkStatusTasksMixin`, `MobDespawnDistanceMixin`.
 - AI and pathing:
   `ActorLocalTargetView`, `ActorLocalTargets`, `TopologicalEntityQueries`,
   `TopologicalRaycasts`,

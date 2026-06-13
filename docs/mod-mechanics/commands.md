@@ -26,9 +26,12 @@ Vanilla command families keep their raw command-level behavior:
 - `summon` accepts raw vanilla coordinates. Entity storage canonicalization may
   move eligible non-player entities into the canonical tile afterward; see
   [Entities](entities.md).
-- `spawnpoint` and `setworldspawn` store raw vanilla metadata. Player lifecycle
-  hooks canonicalize at selected login, wake-up, respawn, and entity-storage
-  boundaries.
+- `spawnpoint` stores raw vanilla metadata. Respawn-block lookup canonicalizes
+  that metadata at use time before validating beds, respawn anchors, or forced
+  free-space positions.
+- `setworldspawn` remains a raw command interface, but initial/default world
+  spawn search and saved world-spawn metadata are canonicalized in tiled
+  dimensions before player fallback spawn uses them.
 - `worldborder` remains raw. The vanilla world border is not the Globe tile
   border.
 - `raid`, `debug`, `data`, `loot`, and similar admin tools remain raw unless a

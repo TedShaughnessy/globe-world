@@ -3,9 +3,11 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.sugar.Local;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Position;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.server.level.ServerLevel;
@@ -180,6 +182,32 @@ public class NaturalSpawnerMixin {
     )
     private static double wrapSpawnPointDistance(Player player, double x, double y, double z, Operation<Double> original) {
         return CoordUtil.wrappedDistanceSqr(player.level(), player.getX(), player.getY(), player.getZ(), x, y, z);
+    }
+
+    @WrapOperation(
+        method = "isRightDistanceToPlayerAndSpawnPoint",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/core/BlockPos;closerToCenterThan(Lnet/minecraft/core/Position;D)Z"
+        )
+    )
+    private static boolean useWrappedDistanceToWorldSpawn(
+            BlockPos spawnPos,
+            Position candidate,
+            double distance,
+            Operation<Boolean> original,
+            @Local(argsOnly = true) ServerLevel level) {
+        if (!DimensionTiling.forLevel(level).enabled()) {
+            return original.call(spawnPos, candidate, distance);
+        }
+        return CoordUtil.wrappedDistanceSqr(
+                level,
+                spawnPos.getX() + 0.5,
+                spawnPos.getY() + 0.5,
+                spawnPos.getZ() + 0.5,
+                candidate.x(),
+                candidate.y(),
+                candidate.z()) < distance * distance;
     }
 
     private static LevelChunk canonicalChunk(ServerLevel level, ChunkAccess chunk) {

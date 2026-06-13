@@ -7,6 +7,12 @@ Implemented investigations have been folded into
 [Globe World Mod Mechanics](../mod-mechanics/README.md), which is the entry
 point for current behavior and modded code anchors.
 
+## Implemented Notes
+
+- [Topological spawn and respawn search](topological-spawn-and-respawn-search.md):
+  historical plan for the implemented player/world spawn lookup, respawn block
+  use, natural-spawn world-spawn exclusion, and trader/siege spawn search work.
+
 ## Future Improvements
 
 - [Minecraft coordinate coverage audit](minecraft-coordinate-coverage-audit.md):
@@ -15,9 +21,6 @@ point for current behavior and modded code anchors.
 - [Worldgen direct mutation and structure persistence audit](worldgen-direct-mutation-and-structure-persistence-audit.md):
   plan for remaining direct chunk/section mutation, unobserved spillover side
   effects, and structure query/persistence checks.
-- [Topological spawn and respawn search](topological-spawn-and-respawn-search.md):
-  plan for player/world spawn lookup, respawn block use, natural-spawn
-  world-spawn exclusion, and custom/event spawn search gaps.
 - [Seam-behavior checklist](seam-behavior-checklist.md): manual regression
   matrix and automation candidates for preserving seam behavior during future
   work.

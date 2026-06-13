@@ -1,5 +1,11 @@
 # Topological Spawn And Respawn Search Plan
 
+Status: implemented. Durable behavior is documented in
+[Entities](../mod-mechanics/entities.md),
+[POI And Villages](../mod-mechanics/poi-and-villages.md), and
+[Commands And Admin Coordinates](../mod-mechanics/commands.md). This file is
+kept as historical implementation context and regression-test inspiration.
+
 This plan resolves spawn-position search gaps raised in the
 [Minecraft coordinate coverage audit](minecraft-coordinate-coverage-audit.md).
 It covers vanilla code that chooses, validates, or mutates spawn/respawn
@@ -29,8 +35,11 @@ visible spawn locations, or mutate the wrong raw respawn-anchor coordinate.
 ## Goals
 
 - Keep canonical chunks and canonical block positions as the durable owners.
-- Make player/world spawn lookup operate in canonical storage while preserving
-  vanilla respawn radius, height, collision, and fallback behavior.
+- Make player/world spawn lookup operate inside the canonical tile while
+  preserving vanilla height, collision, and safety checks where they still make
+  sense.
+- Prefer real land for player spawn, but handle all-water or no-land tiles with
+  explicit best-effort fallbacks.
 - Make bed, respawn-anchor, and forced respawn metadata resolve through the
   canonical block owner before validation or mutation.
 - Apply wrapped distance to the natural-spawn world-spawn exclusion.
@@ -46,6 +55,8 @@ visible spawn locations, or mutate the wrong raw respawn-anchor coordinate.
 - Replacing every generic entity spawn helper globally without caller review.
 - Changing vanilla spawn rules, group sizes, cooldowns, biome filters, or mob
   cap semantics except where raw coordinate space leaks through.
+- Guaranteeing a dry-land spawn when the configured canonical tile contains no
+  dry land.
 
 ## Vanilla Source Anchors
 
@@ -94,39 +105,83 @@ visible spawn locations, or mutate the wrong raw respawn-anchor coordinate.
 
 ## Implementation Phases
 
-### 1. PlayerSpawnFinder And Default Spawn
+### 1. Tile-Bounded Player And World Spawn Finder
 
-Add a focused mixin for `PlayerSpawnFinder`.
+Add custom Globe spawn-search code for tiled dimensions rather than relying on
+vanilla `PlayerSpawnFinder`'s raw candidate area.
+
+Vanilla `PlayerSpawnFinder` is useful as a source model for column safety
+checks, but its search area is not a good fit for Globe World: it starts from a
+raw spawn suggestion, applies raw world-border/radius logic, and loads raw
+candidate chunks. For Globe World, the meaningful search domain is the finite
+canonical tile itself.
 
 Required behavior:
 
-- Canonicalize the `spawnSuggestion` X/Z before candidate search when tiling is
-  enabled for the level.
-- Canonicalize candidate X/Z before creating `SPAWN_SEARCH` tickets so alias
-  chunks are not loaded as durable search owners.
-- Run heightmap, block-state, fluid, and collision checks against the canonical
-  candidate position.
+- For disabled dimensions, let vanilla `PlayerSpawnFinder` run unchanged.
+- For tiled dimensions, search only canonical X/Z columns and canonical chunks.
+- Prefer a dry-land spawn position inside the canonical tile using vanilla-style
+  heightmap, fluid, solid-ground, and player-collision checks.
+- Do not let vanilla respawn radius or raw world-border distance expand the
+  search outside the canonical tile.
+- Load only canonical candidate chunks for spawn search.
 - Return a canonical spawn position to the server. Existing player lifecycle
   packet paths can keep sending canonical local-player coordinates.
-- Keep world-border radius behavior conservative: use vanilla raw border
-  limiting unless a finite-world border policy explicitly changes it.
+- If the tile has no dry land, fall back through explicit lower-quality choices
+  instead of silently escaping the tile.
+
+Suggested helper:
+
+- `GlobeSpawnFinder.findSpawn(ServerLevel level, BlockPos suggestion)` returns a
+  `CompletableFuture<Vec3>` like vanilla for easy call-site replacement.
+- `GlobeSpawnFinder.findSpawnPosInChunk(ServerLevel level, ChunkPos chunkPos)`
+  searches only canonical chunk columns and can replace initial world-spawn
+  chunk probing.
+- `GlobeSpawnFinder.findLandInCanonicalTile(...)` scans deterministic candidate
+  columns within the canonical tile.
+- `GlobeSpawnFinder.fixupSpawnHeightInTile(...)` provides the emergency fallback
+  without changing X/Z ownership.
+
+Candidate ordering:
+
+- Start near the canonicalized `spawnSuggestion` when one exists.
+- Use a deterministic spiral or shuffled permutation over canonical chunks so
+  repeated world loads choose the same spawn for the same world seed/settings.
+- Prefer columns closer to the canonical suggestion, but allow the search to
+  cover the whole tile before declaring that there is no land.
+- Keep the full-tile scan bounded by the finite tile size; for very large tiles,
+  consider chunk-first sampling with a hard cap and a second broader pass.
+
+Fallback order:
+
+1. Dry land: vanilla-style overworld respawn column with no liquid and no player
+   collision.
+2. Safe non-land surface: collision-free position at or above the best available
+   surface column, allowing water if no dry land exists.
+3. Canonical suggestion fixup: scan vertically at the canonicalized suggestion
+   using vanilla-style collision checks.
+4. Last resort: tile-center/generator-height position in canonical X/Z, with a
+   warning or diagnostic if the position is not proven safe.
 
 Potential hook points:
 
-- wrap `PlayerSpawnFinder.findSpawn(...)` to pass a canonical
-  `spawnSuggestion`;
-- wrap `new ChunkPos(chunkX, chunkZ)` or `addTicketAndLoadWithRadius(...)` in
-  `scheduleCandidate(...)` to use canonical chunk coordinates;
-- modify X/Z arguments in `getOverworldRespawnPos(...)` and
-  `getSpawnPosInChunk(...)` to canonical block/chunk coordinates.
+- wrap `PlayerSpawnFinder.findSpawn(...)` to dispatch to `GlobeSpawnFinder`
+  when tiling is enabled;
+- wrap `PlayerSpawnFinder.getSpawnPosInChunk(...)` or the
+  `MinecraftServer.setInitialSpawn(...)` call site so initial world spawn
+  probing uses canonical chunks only;
+- optionally wrap `ServerPlayer.adjustSpawnLocation(...)` if replacing
+  `PlayerSpawnFinder.findSpawn(...)` directly proves awkward.
 
 Risk mitigation:
 
-- Avoid changing Y search semantics.
+- Reuse vanilla safety predicates where possible so "safe land" means the same
+  kind of block/collision result vanilla accepts.
 - Avoid introducing alias-space return positions; player lifecycle hooks already
   canonicalize login and respawn.
-- Add manual tests for first login, missing bed respawn fallback, and initial
-  world spawn near both X and Z seams.
+- Do not write spawn metadata outside the canonical tile.
+- Add manual tests for first login, missing bed respawn fallback, all-ocean
+  tiles, no-land tiles, and initial world spawn near both X and Z seams.
 
 ### 2. Bed, Anchor, And Forced Respawn Blocks
 
