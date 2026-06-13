@@ -81,7 +81,7 @@ World period:
 | Server-side explosions | Implemented for block dedupe, entity damage, knockback, and exposure | [explosions.md](explosions.md) |
 | Game events and vibrations | Implemented for topological listener-section dispatch and listener-local vibration sources | [game-events-and-vibrations.md](game-events-and-vibrations.md) |
 | Periodic terrain/noise | Implemented | [worldgen.md](worldgen.md) |
-| Structures and feature edge generation | Implemented with open audit boundaries | [worldgen.md](worldgen.md) |
+| Structures and feature edge generation | Implemented with audited vanilla mutation boundaries | [worldgen.md](worldgen.md) |
 | Forced progression structures | Implemented | [worldgen.md](worldgen.md) |
 | Small-world End portal fallback | Implemented | [worldgen.md](worldgen.md) |
 | Client chunk/world rendering | Implemented for server-relabeled aliases | [client.md](client.md) |
@@ -110,8 +110,9 @@ World period:
    and wind charges near X/Z/corner seams for block parity and knockback feel.
 5. Seam-crossing game events: manually test sculk sensors, shriekers, wardens,
    allays, and occluding wool blocks near X/Z/corner seams.
-6. Structures and feature origins: alias starts are transient worldgen data and
-   structure query/persistence paths still need audit.
+6. Structures and feature origins: manually test villages, dungeons, and other
+   feature bodies near X/Z/corner seams for visual cutoffs or missing
+   block-entity side effects.
 7. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
    tiles need the right balance between seamlessness and vanilla-looking noise.
 8. Scrolling day/night weather interaction: manually verify weather, lightning,

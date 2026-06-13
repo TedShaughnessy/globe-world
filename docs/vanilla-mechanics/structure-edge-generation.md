@@ -1,6 +1,9 @@
 # Structure Edge Generation
 
-This note documents why villages and other vanilla structures can cut off at the canonical tile boundary, what the current high-level fix preserves, and what still needs validation.
+This note documents why villages and other vanilla structures can cut off at the
+canonical tile boundary, and what the current high-level fix preserves. The
+direct mutation and persistence audit result is summarized in
+[Worldgen Direct Mutation Matrix](worldgen-direct-mutation-matrix.md).
 
 The short version: structure generation is not just block placement. Vanilla splits structures into placement decisions, saved starts, saved references, piece bounding boxes, and later per-chunk placement. Globe World must carry the coordinate-frame identity needed to say "place the east-side virtual slice of this village into the west edge of the tile."
 
@@ -267,21 +270,30 @@ That allows vanilla's existing checks to work:
 
 ### 4. Saved Data Policy
 
-Canonical chunks should remain the only intended saved owners of starts. Alias chunks currently need transient starts for bounded worldgen placement, so persistence of alias starts still needs an explicit save/load audit.
+Canonical chunks remain the only intended saved owners of starts. Alias starts
+are transient worldgen data and must not become durable independent structure
+state.
 
-Virtual reference keys are acceptable only if all reference readers understand how to resolve them:
+Bounded virtual reference keys may be saved on canonical target chunks as
+placement metadata. They are acceptable only because the generation placement
+path understands how to resolve them:
 
 - During generation placement, they must resolve to starts plus a shift.
-- During later structure queries, mob spawn override checks, or locate-style reads, they must not cause duplicate persistent starts or raw alias chunk loads.
+- During later structure queries, mob spawn override checks, or locate-style
+  reads, they are treated under the raw vanilla/query policy unless a caller has
+  a targeted Globe hook.
 
-If that becomes too invasive, use a transient side table for generation-time shifts and normalize saved references back to canonical keys. That is less crash/restart robust for half-generated chunks, so persisted virtual reference keys are preferable if the read path can be made consistent.
+If this becomes too invasive for a future Minecraft version, use a transient
+side table for generation-time shifts and normalize saved references back to
+canonical keys. That is less crash/restart robust for half-generated chunks, so
+persisted virtual reference keys are currently preferable.
 
 ### 5. Follow-Up Cleanup
 
 After broader validation:
 
 - Keep alias `createStructures(...)` deterministic by canonicalizing placement decisions and generation random seeds while preserving virtual start positions.
-- Audit alias chunk saving so transient alias starts do not become durable independent structure state.
+- Keep canonical chunks as the only durable start owners.
 - Keep `WorldGenRegion` write/read wrapping, because it is still needed after placement reaches block writes.
 
 ## Alternatives Considered
@@ -329,7 +341,9 @@ Cons:
 
 - Vanilla `StructureManager.fillStartsForStructure(...)` currently throws the key away after loading the source chunk.
 - Returning the canonical start alone is not enough; the shift still needs to be attached to placement somehow.
-- Saved chunk data should not persist arbitrary alias references unless they are normalized or treated as transient generation-only data.
+- Saved chunk data must not persist arbitrary alias references; Globe only keeps
+  bounded virtual reference keys on canonical target chunks as placement
+  metadata.
 
 ### Option C: Direct Edge Placement Pass
 

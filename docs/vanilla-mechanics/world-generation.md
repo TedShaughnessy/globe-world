@@ -18,6 +18,9 @@ Common sources jar:
 - `net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java`
 - `net/minecraft/server/level/WorldGenRegion.java`
 
+Source-backed direct mutation and structure persistence classification:
+[Worldgen Direct Mutation Matrix](worldgen-direct-mutation-matrix.md).
+
 ## Chunk Status Pipeline
 
 `ChunkStatus` defines the ordered pipeline:
@@ -193,6 +196,8 @@ Current project hooks:
 - `mod-fabric/src/main/java/globe/world/mixin/StructureGenerationContextMixin.java` canonicalizes structure-generation random seeds while keeping alias start positions virtual.
 - `mod-fabric/src/main/java/globe/world/mixin/StructureStartMixin.java` consumes the queued shift and calls vanilla placement with a shifted chunk bounding box.
 - This needs in-game validation: the implementation is designed to preserve coherent virtual structure-start identity, but villages crossing all four edges/corners still need testing.
+- The direct mutation and persistence audit is recorded in
+  [Worldgen Direct Mutation Matrix](worldgen-direct-mutation-matrix.md).
 
 Important constraint:
 
@@ -200,10 +205,10 @@ Important constraint:
 
 Implemented design:
 
-- Keep canonical chunks as the intended saved structure-start owners; alias starts are transient worldgen data and still need a save/load audit.
-- During structure reference generation, store virtual source reference keys so the exact whole-tile shift survives lookup.
+- Keep canonical chunks as the saved structure-start owners; alias starts are transient worldgen data.
+- During structure reference generation, store bounded virtual source reference keys on canonical target chunks so the exact whole-tile shift survives lookup. These keys are placement metadata, not alias start ownership.
 - During structure placement, resolve each virtual reference to a start and move the chunk bounding box by the stored shift instead of guessing from bounding-box centers.
-- Route all structure block writes through `WorldGenRegion`/spillover wrapping, and separately audit block entities, loot tables, scheduled ticks, and post-processing writes.
+- Route all structure block writes through `WorldGenRegion`/spillover wrapping. Visible block entity, POI, tick, and post-processing side effects use vanilla region behavior; unobserved spillover intentionally remains block-state-only unless a vanilla seam reproduction proves a richer guarded payload is necessary.
 
 ### Dungeons / Monster Rooms
 
@@ -223,7 +228,7 @@ Associated systems:
 - `BiomeFilterMixin` wraps biome checks, but does not create alias feature centers.
 - `WorldGenRegionMixin` wraps direct block/fluid/entity lookups and writes.
 - `WorldGenSpillover` replays wrapped block-state writes into canonical storage.
-- Block entity creation/initialization paths such as `RandomizableContainer.setBlockEntityLootTable(...)` and `SpawnerBlockEntity.setEntityId(...)` still need an explicit audit for wrapped positions and delayed canonical replay.
+- Block entity creation/initialization paths such as `RandomizableContainer.setBlockEntityLootTable(...)` and `SpawnerBlockEntity.setEntityId(...)` are covered for visible wrapped writes through `WorldGenRegion`; delayed unobserved spillover replays block state only.
 
 Possible next design:
 
@@ -235,15 +240,13 @@ Possible next design:
 
 - Good: alias chunk post-processing no longer writes neighbor-shape fixes into canonical chunks.
 - Good: alias chunks no longer run biome decoration or structure references.
-- Needs validation: structure starts, references, and placement now carry virtual source keys and explicit shifts, but villages still need edge/corner testing.
+- Good: structure starts, references, and placement now carry virtual source keys and explicit shifts while keeping canonical chunks as durable start owners.
 - Good: `WorldGenRegion` reads/writes now use canonical block positions for direct block/fluid/entity lookups, toroidal write-radius checks, `setBlock`, and queued postprocessing positions.
 - Good: ore placement's `BulkSectionAccess` path now resolves sections from canonical positions after `ensureCanWrite(...)` accepts a wrapped write.
 - Good: alias chunk packets are only allowed to serialize canonical chunk data; if the canonical source is unavailable, `PlayerChunkSenderMixin` requeues the alias send instead of falling back to alias-local terrain.
 - Done: tree/foliage spillover now has a queued canonical replay path, and
   delayed replay is conditional on the destination still matching the state
   observed when the write was queued.
-- Needs validation: villages/structures crossing tile boundaries.
-- Open: dungeons/monster rooms crossing tile boundaries still cut off.
-- Needs audit: worldgen APIs that bypass `WorldGenRegion.getBlockState` / `setBlock`, direct `ChunkAccess.setBlockState` calls, block entity writes, tick scheduling in `WorldGenRegion`, carvers, surface building, and noise/biome sampling.
-- Planned: make biome/noise/feature placement periodic by wrapping coordinate inputs at the generator/biome-source/noise layer, not only by wrapping block mutations after features choose positions.
-- Planned: remove or gate noisy chunk/client logs before packaging.
+- Done: vanilla direct mutation paths that bypass `WorldGenRegion.setBlock(...)` are classified in [Worldgen Direct Mutation Matrix](worldgen-direct-mutation-matrix.md). No broad `ChunkAccess` or `LevelChunkSection` hook is currently justified.
+- Boundary: dungeons/monster rooms whose feature origin is only in an alias chunk remain out of scope; canonical-origin dungeons can spill visible writes, but unobserved spillover does not reconstruct chest/spawner block entity data.
+- Boundary: `/locate` and generic structure queries remain raw vanilla policy unless a specific Globe command or gameplay caller wraps them.

@@ -119,33 +119,39 @@ radius-denied writes, and unavailable no-load chunk lookups. Spillover enqueue
 logs identify whether the queued write is guarded; existing apply, skip, stale,
 and cleanup events keep the same event names.
 
-Structure edge handling stores virtual source keys during reference generation,
-resolves them during biome decoration, and places vanilla starts with a
-whole-tile chunk-box shift. Alias starts are treated as transient worldgen data.
-Alias biome decoration and reference generation are skipped without leaking
-their tiling context into surrounding generation work. Reference generation
-checks both the shifted start bounding box and individual shifted piece boxes
-before saving a source key. This matters for forced composite starts such as the
-tiny Nether fortress: vanilla structure pieces clip themselves to the target
-chunk box, so every ordinary chunk overlapped by a forced piece needs a
-reference even when the structure does not cross a tile boundary. During biome
-decoration, fortress and stronghold placement also has a bounded fallback for an
-empty reference set: it scans the same nearby source-start radius and queues the
-same placement shift without making alias chunks durable owners. This catches
-already-missing progression references that would otherwise leave a hard chunk
-cutoff.
+Structure edge handling stores bounded virtual source keys on canonical target
+chunks during reference generation, resolves them during biome decoration, and
+places vanilla starts with a whole-tile chunk-box shift. Alias starts are
+transient worldgen data and are not durable owners; the saved start remains on
+the canonical source chunk. The virtual reference key is placement metadata used
+to recover the required shift, not an alias-owned start. Alias biome decoration
+and reference generation are skipped without leaking their tiling context into
+surrounding generation work. Reference generation checks both the shifted start
+bounding box and individual shifted piece boxes before saving a source key. This
+matters for forced composite starts such as the tiny Nether fortress: vanilla
+structure pieces clip themselves to the target chunk box, so every ordinary
+chunk overlapped by a forced piece needs a reference even when the structure
+does not cross a tile boundary. During biome decoration, fortress and stronghold
+placement also has a bounded fallback for an empty reference set: it scans the
+same nearby source-start radius and queues the same placement shift without
+making alias chunks durable owners. This catches already-missing progression
+references that would otherwise leave a hard chunk cutoff.
 
 Non-`setBlock` worldgen side effects are covered by separate hooks or documented
-limits. `BulkSectionAccessMixin` canonicalizes direct section lookup because
-some ore placement paths bypass `WorldGenRegion.setBlock(...)`. Block entity
-creation, POI updates, and post-processing marks are covered for visible writes
-because the canonical write still flows through vanilla `WorldGenRegion`
-`setBlock(...)`; unobserved spillover replays only the block state through
+limits. The source-backed vanilla classification lives in
+[Worldgen Direct Mutation Matrix](../vanilla-mechanics/worldgen-direct-mutation-matrix.md).
+`BulkSectionAccessMixin` canonicalizes direct section lookup because ore
+placement bypasses `WorldGenRegion.setBlock(...)`. Same-chunk terrain, surface,
+carver, and retrogen writes remain canonical-owner operations and do not need a
+global `ChunkAccess` or `LevelChunkSection` hook. Block entity creation, POI
+updates, and post-processing marks are covered for visible writes because the
+canonical write still flows through vanilla `WorldGenRegion.setBlock(...)`;
+unobserved spillover replays only the block state through
 `ChunkAccess.setBlockState(...)`, so attached block-entity NBT, scheduled block
 or fluid ticks, and POI side effects from the unobserved provider path are not
-fully reconstructed by this hardening pass. `WorldGenRegion` post-processing
-positions are canonicalized before chunk marking. `ServerLevelEntityMixin`
-canonicalizes worldgen chunk entities before server storage.
+fully reconstructed. `WorldGenRegion` post-processing positions are
+canonicalized before chunk marking. `ServerLevelEntityMixin` canonicalizes
+worldgen chunk entities before server storage.
 
 Forced missing Overworld strongholds are created during `STRUCTURE_STARTS`,
 immediately after vanilla `ChunkGenerator.createStructures(...)` finishes for a
