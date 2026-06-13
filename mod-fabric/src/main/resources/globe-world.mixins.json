@@ -36,6 +36,7 @@
 		"ClientboundSectionBlocksUpdatePacketAccessor",
 		"ChunkMapPlayerProviderMixin",
 		"ContainerOpenersCounterMixin",
+		"CropBlockLightMixin",
 		"CrossbowItemRangedAttackMixin",
 		"DensityFunctionsNoiseMixin",
 		"DensityFunctionsShiftAMixin",

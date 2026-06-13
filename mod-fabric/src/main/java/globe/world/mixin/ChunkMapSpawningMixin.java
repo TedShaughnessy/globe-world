@@ -83,6 +83,7 @@ public class ChunkMapSpawningMixin {
 
     @WrapOperation(
         method = "getPlayersCloseForSpawning",
+        require = 0,
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/server/level/DistanceManager;hasPlayersNearby(J)Lnet/minecraft/util/TriState;"

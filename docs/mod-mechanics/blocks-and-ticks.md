@@ -37,6 +37,11 @@ Client block actions that originate from alias coordinates are allowed to mutate
 the canonical block only while the matching canonical chunk is in block-ticking
 range. `TopologyContext.shouldAllowAliasMutation` owns this policy; block
 breaking, item use on blocks, and sign text saves use this guard.
+Crop survival checks read canonical server light before accepting placement.
+Block state lookup for alias crop placement already resolves through canonical
+chunks, but vanilla `LevelLightEngine` indexes raw light sections; using the
+canonical crop position keeps generated terrain's old alias light data from
+making valid air-above-farmland positions look too dark.
 Sign text packets also canonicalize the client-sent sign position before vanilla
 checks chunk availability and fetches the `SignBlockEntity`, so editing a sign
 through a visible alias writes the canonical sign text. Player block-interaction
@@ -125,6 +130,7 @@ outside the canonical tile.
 - `mod-fabric/src/main/java/globe/world/mixin/PressurePlateBlockEntityQueryMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/WeightedPressurePlateBlockEntityQueryMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ButtonBlockEntityQueryMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/CropBlockLightMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/DetectorRailBlockEntityQueryMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/TripWireBlockEntityQueryMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/HopperBlockEntityQueryMixin.java`

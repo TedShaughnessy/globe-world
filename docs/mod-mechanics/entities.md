@@ -57,11 +57,12 @@ dedupes spawning chunks by canonical key. Chunk-generation mob spawns are
 cancelled for non-canonical chunks. Local mob-cap player lookup opens vanilla's
 raw `DistanceManager.hasPlayersNearby(...)` prefilter when a canonical chunk is
 near a player through wrapping, then lets the wrapped per-player distance filter
-build the cap owner list. The final vanilla "can spawn entities in this chunk"
-gates also accept the viewer-nearest alias of the canonical chunk, both for the
-top-level spawning chunk and for pack members that jitter into a neighboring
-chunk. That lets standing in an alias tile drive hostile natural spawning around
-the visible player without duplicating real mob storage. The vanilla 24-block
+build the cap owner list; that prefilter hook is non-critical so bytecode drift
+does not prevent a world from loading. The final vanilla "can spawn entities in
+this chunk" gates also accept the viewer-nearest alias of the canonical chunk,
+both for the top-level spawning chunk and for pack members that jitter into a
+neighboring chunk. That lets standing in an alias tile drive hostile natural
+spawning around the visible player without duplicating real mob storage. The vanilla 24-block
 exclusion around the world spawn also uses wrapped X/Z distance, so natural mobs
 cannot spawn just across a tile seam from spawn.
 
