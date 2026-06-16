@@ -62,9 +62,16 @@ does not prevent a world from loading. The final vanilla "can spawn entities in
 this chunk" gates also accept the viewer-nearest alias of the canonical chunk,
 both for the top-level spawning chunk and for pack members that jitter into a
 neighboring chunk. That lets standing in an alias tile drive hostile natural
-spawning around the visible player without duplicating real mob storage. The vanilla 24-block
-exclusion around the world spawn also uses wrapped X/Z distance, so natural mobs
-cannot spawn just across a tile seam from spawn.
+spawning around the visible player without duplicating real mob storage.
+
+Natural spawning uses two gameplay settings for tiny wrapped worlds.
+`GameplaySettings.allowMobsAtWorldSpawn` disables vanilla's 24-block exclusion
+around the saved world-spawn position when true. When the exclusion remains
+active, it uses wrapped X/Z distance so natural mobs cannot spawn just across a
+tile seam from spawn. `GameplaySettings.playerMobSpawnExclusionBlocks` replaces
+vanilla's hard-coded 24-block minimum distance from the nearest non-spectator
+player, clamped to `4..24` blocks. The later vanilla too-far/despawn-distance
+checks are unchanged.
 
 Player and world spawn search is tile-bounded in tiled dimensions.
 `GlobeSpawnFinder` replaces `PlayerSpawnFinder`'s raw radius search with a

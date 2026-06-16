@@ -117,6 +117,14 @@ public class GlobeConfig {
         return globeSettings.gameplay().dayLengthMultiplier();
     }
 
+    public static boolean allowMobsAtWorldSpawn() {
+        return globeSettings.gameplay().allowMobsAtWorldSpawn();
+    }
+
+    public static int playerMobSpawnExclusionBlocks() {
+        return globeSettings.gameplay().playerMobSpawnExclusionBlocks();
+    }
+
     public static boolean forceMissingStronghold() {
         return globeSettings.topology().forceMissingStronghold();
     }

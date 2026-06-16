@@ -73,7 +73,7 @@ World period:
 | Entity storage and packets | Implemented | [entities.md](entities.md) |
 | Player lifecycle canonicalization | Done for login, wake-up, respawn, and spawn-block lookup | [entities.md](entities.md) |
 | Player/world spawn search | Implemented with canonical tile-bounded search and fallbacks | [entities.md](entities.md) |
-| Entity tracking and spawning | Done for main paths, natural world-spawn exclusion, and audited event spawners | [entities.md](entities.md) |
+| Entity tracking and spawning | Done for main paths, configurable natural-spawn exclusions, and audited event spawners | [entities.md](entities.md) |
 | Entity visual aliases | Implemented for non-player, not-leashed entities and standalone remote players | [entities.md](entities.md) |
 | Entity query and narrow collision callers | Implemented for audited block triggers, item merge, minecart/placement obstruction, and piston movement | [entity-query-caller-matrix.md](entity-query-caller-matrix.md) |
 | Mob despawn, sensing, pathfinding | Implemented with bounded pathfinding limitations | [entities.md](entities.md) |

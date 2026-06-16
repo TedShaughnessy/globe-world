@@ -32,6 +32,7 @@ import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
+import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
 public class GlobeWorldSettingsControls implements Layout {
@@ -42,12 +43,15 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final int SECTION_SPACING = 12;
     private static final int INFO_WIDTH = CONTROL_WIDTH;
     private static final int SIMPLE_MIN_TILE_SIZE_CHUNKS = 8;
+    private static final int SIMPLE_ALLOW_MOBS_AT_WORLD_SPAWN_MAX_TILE_CHUNKS = 16;
     private static final int SIMPLE_SCROLLING_DAY_MIN_TILE_BLOCKS = 7_000;
     private static final int ITALY_TILE_SIZE_CHUNKS = 65_536;
     private static final String DISTANT_HORIZONS_MOD_ID = "distanthorizons";
     private static final String CURVATURE_TOOLTIP = "Curves the terrain. Comfortable is a gentler curve; "
             + "Realistic uses the full globe curve for the tile.";
     private static final String DAY_LENGTH_TOOLTIP = "Scales the length of the Minecraft day night cycle";
+    private static final String ALLOW_MOBS_AT_WORLD_SPAWN_TOOLTIP = "Allows natural mobs to spawn inside vanilla's 24-block world-spawn exclusion.";
+    private static final String PLAYER_MOB_SPAWN_EXCLUSION_TOOLTIP = "Minimum natural-spawn distance from the nearest non-spectator player.";
     private static final String FORCE_MISSING_STRONGHOLD_TOOLTIP = "Adds a canonical stronghold if the wrapped Overworld has no canonical stronghold. "
             + "if no stronghold exists throwing an Eye of Ender will create a portal where you stand";
     private static final String FORCE_MISSING_FORTRESS_TOOLTIP = "Adds a canonical fortress if the wrapped Nether has no canonical fortress.";
@@ -163,6 +167,8 @@ public class GlobeWorldSettingsControls implements Layout {
     private StringWidget progressionStructuresLabel;
     private Checkbox forceMissingStrongholdCheckbox;
     private Checkbox forceMissingNetherFortressCheckbox;
+    private Checkbox allowMobsAtWorldSpawnCheckbox;
+    private PlayerMobSpawnExclusionSlider playerMobSpawnExclusionSlider;
     private CycleButton<DayNightCycleMode> dayNightCycleButton;
     private DayLengthMultiplierSlider dayLengthSlider;
     private MultiLineTextWidget multiplayerReadOnlyInfo;
@@ -426,6 +432,25 @@ public class GlobeWorldSettingsControls implements Layout {
         );
         addRow(forceMissingNetherFortressCheckbox, () -> createWorld && currentTopology().netherEnabled());
 
+        allowMobsAtWorldSpawnCheckbox = progressionCheckbox(
+                "Allow Mobs At World Spawn",
+                ALLOW_MOBS_AT_WORLD_SPAWN_TOOLTIP,
+                currentGameplay().allowMobsAtWorldSpawn(),
+                selected -> setGameplay(currentGameplay().withAllowMobsAtWorldSpawn(selected))
+        );
+        addSectionRow(allowMobsAtWorldSpawnCheckbox, () -> customGameplayControlsVisible());
+
+        playerMobSpawnExclusionSlider = new PlayerMobSpawnExclusionSlider(
+                0,
+                0,
+                CONTROL_WIDTH,
+                20,
+                currentGameplay().playerMobSpawnExclusionBlocks(),
+                blocks -> setGameplay(currentGameplay().withPlayerMobSpawnExclusionBlocks(blocks))
+        );
+        playerMobSpawnExclusionSlider.setTooltip(tooltip(PLAYER_MOB_SPAWN_EXCLUSION_TOOLTIP));
+        addRow(playerMobSpawnExclusionSlider, () -> customGameplayControlsVisible());
+
         dayLengthSlider = new DayLengthMultiplierSlider(
                 0,
                 0,
@@ -601,6 +626,11 @@ public class GlobeWorldSettingsControls implements Layout {
                 .withNetherTileSize(simpleDefaultNetherTileSize(tileSize));
         topology = withPortalScaleMatchingTileRatio(topology);
         globeSettings = globeSettings.withTopology(topology);
+        boolean preserveCustomWorldSpawnSpawning = currentGameplay().allowMobsAtWorldSpawn()
+                && !simpleAllowMobsAtWorldSpawn(currentTopology().tileSize());
+        globeSettings = globeSettings.withGameplay(globeSettings.gameplay()
+                .withPlayerMobSpawnExclusionBlocks(GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_DEFAULT_BLOCKS)
+                .withAllowMobsAtWorldSpawn(simpleAllowMobsAtWorldSpawn(tileSize) || preserveCustomWorldSpawnSpawning));
         if (!simpleScrollingDayCycleSupported(topology)) {
             globeSettings = globeSettings.withGameplay(globeSettings.gameplay().withDayNightCycleMode(DayNightCycleMode.VANILLA));
         }
@@ -624,15 +654,23 @@ public class GlobeWorldSettingsControls implements Layout {
         TopologySettings topology = globeSettings.topology();
         PresentationSettings presentation = globeSettings.presentation();
         GameplaySettings gameplay = globeSettings.gameplay();
-        if (createWorld
-                && createMode == CreateMode.SIMPLE
-                && !simpleScrollingDayCycleSupported(topology)
-                && gameplay.dayNightCycleMode() == DayNightCycleMode.SCROLLING) {
-            globeSettings = globeSettings.withGameplay(gameplay.withDayNightCycleMode(DayNightCycleMode.VANILLA));
-            settingsSetter.accept(globeSettings);
-            topology = globeSettings.topology();
-            presentation = globeSettings.presentation();
-            gameplay = globeSettings.gameplay();
+        if (createWorld && createMode == CreateMode.SIMPLE) {
+            GameplaySettings simpleGameplay = gameplay
+                    .withPlayerMobSpawnExclusionBlocks(GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_DEFAULT_BLOCKS);
+            if (simpleAllowMobsAtWorldSpawn(topology.tileSize())) {
+                simpleGameplay = simpleGameplay.withAllowMobsAtWorldSpawn(true);
+            }
+            if (!simpleScrollingDayCycleSupported(topology)
+                    && simpleGameplay.dayNightCycleMode() == DayNightCycleMode.SCROLLING) {
+                simpleGameplay = simpleGameplay.withDayNightCycleMode(DayNightCycleMode.VANILLA);
+            }
+            if (!simpleGameplay.equals(gameplay)) {
+                globeSettings = globeSettings.withGameplay(simpleGameplay);
+                settingsSetter.accept(globeSettings);
+                topology = globeSettings.topology();
+                presentation = globeSettings.presentation();
+                gameplay = globeSettings.gameplay();
+            }
         }
 
         if (createWorld && topology.enabled() && createMode == CreateMode.DISABLED) {
@@ -677,6 +715,10 @@ public class GlobeWorldSettingsControls implements Layout {
         syncCheckbox(forceMissingNetherFortressCheckbox, topology.forceMissingNetherFortress());
         forceMissingStrongholdCheckbox.active = createWorld && editable && topology.enabled();
         forceMissingNetherFortressCheckbox.active = createWorld && editable && topology.netherEnabled();
+        syncCheckbox(allowMobsAtWorldSpawnCheckbox, gameplay.allowMobsAtWorldSpawn());
+        allowMobsAtWorldSpawnCheckbox.active = editable && topology.enabled();
+        playerMobSpawnExclusionSlider.setBlocks(gameplay.playerMobSpawnExclusionBlocks());
+        playerMobSpawnExclusionSlider.active = editable && topology.enabled();
         dayNightCycleButton.setValue(gameplay.dayNightCycleMode());
         boolean dayNightCycleSelectable = topology.enabled() && simpleScrollingDayCycleSupported(topology);
         dayNightCycleButton.active = dayNightCycleSelectable;
@@ -721,6 +763,8 @@ public class GlobeWorldSettingsControls implements Layout {
         netherCurvatureSlider.active = false;
         forceMissingStrongholdCheckbox.active = false;
         forceMissingNetherFortressCheckbox.active = false;
+        allowMobsAtWorldSpawnCheckbox.active = false;
+        playerMobSpawnExclusionSlider.active = false;
         dayNightCycleButton.active = false;
         dayLengthSlider.active = false;
     }
@@ -739,6 +783,10 @@ public class GlobeWorldSettingsControls implements Layout {
 
     private boolean progressionStructuresVisible(TopologySettings topology) {
         return topology.enabled() || topology.netherEnabled();
+    }
+
+    private boolean customGameplayControlsVisible() {
+        return currentTopology().enabled() && (!createWorld || createMode == CreateMode.CUSTOM);
     }
 
     private Component overworldInfo(TopologySettings topology) {
@@ -799,6 +847,10 @@ public class GlobeWorldSettingsControls implements Layout {
         return !createWorld
                 || createMode != CreateMode.SIMPLE
                 || (long) topology.tileSize() * 16L >= SIMPLE_SCROLLING_DAY_MIN_TILE_BLOCKS;
+    }
+
+    private static boolean simpleAllowMobsAtWorldSpawn(int tileSizeChunks) {
+        return tileSizeChunks <= SIMPLE_ALLOW_MOBS_AT_WORLD_SPAWN_MAX_TILE_CHUNKS;
     }
 
     private static long distantHorizonsCurveRatio(int tileSizeChunks) {
@@ -1258,6 +1310,82 @@ public class GlobeWorldSettingsControls implements Layout {
         private static double multiplierFromValue(double value) {
             int index = (int) Math.round(Math.clamp(value, 0.0D, 1.0D) * (DAY_LENGTH_PRESETS.size() - 1));
             return DAY_LENGTH_PRESETS.get(index);
+        }
+    }
+
+    private static class PlayerMobSpawnExclusionSlider extends AbstractSliderButton {
+        private final IntConsumer onValueChanged;
+        private boolean changingWithMouse;
+        private int pendingBlocks;
+
+        private PlayerMobSpawnExclusionSlider(
+                int x,
+                int y,
+                int width,
+                int height,
+                int initialBlocks,
+                IntConsumer onValueChanged) {
+            super(x, y, width, height, Component.empty(), valueFromBlocks(initialBlocks));
+            this.onValueChanged = onValueChanged;
+            this.pendingBlocks = blocksFromValue(this.value);
+            updateMessage();
+        }
+
+        private void setBlocks(int blocks) {
+            this.value = valueFromBlocks(blocks);
+            this.pendingBlocks = blocksFromValue(this.value);
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            this.setMessage(Component.literal("Player Mob Exclusion: ")
+                    .append(Component.literal(blocksFromValue(this.value) + " m")));
+        }
+
+        @Override
+        protected void applyValue() {
+            int blocks = blocksFromValue(this.value);
+            this.value = valueFromBlocks(blocks);
+            if (this.changingWithMouse) {
+                this.pendingBlocks = blocks;
+            } else {
+                this.onValueChanged.accept(blocks);
+            }
+        }
+
+        @Override
+        public void onClick(MouseButtonEvent event, boolean doubleClick) {
+            this.changingWithMouse = true;
+            this.pendingBlocks = blocksFromValue(this.value);
+            super.onClick(event, doubleClick);
+        }
+
+        @Override
+        public void onRelease(MouseButtonEvent event) {
+            super.onRelease(event);
+            this.changingWithMouse = false;
+            int blocks = blocksFromValue(this.value);
+            this.pendingBlocks = blocks;
+            this.onValueChanged.accept(blocks);
+        }
+
+        private static double valueFromBlocks(int blocks) {
+            int sanitized = GameplaySettings.sanitizePlayerMobSpawnExclusionBlocks(blocks);
+            int range = GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_MAX_BLOCKS
+                    - GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_MIN_BLOCKS;
+            if (range <= 0) {
+                return 0.0D;
+            }
+            return (double) (sanitized - GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_MIN_BLOCKS) / (double) range;
+        }
+
+        private static int blocksFromValue(double value) {
+            int range = GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_MAX_BLOCKS
+                    - GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_MIN_BLOCKS;
+            int blocks = GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_MIN_BLOCKS
+                    + (int) Math.round(Math.clamp(value, 0.0D, 1.0D) * range);
+            return GameplaySettings.sanitizePlayerMobSpawnExclusionBlocks(blocks);
         }
     }
 

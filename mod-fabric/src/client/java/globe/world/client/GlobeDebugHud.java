@@ -77,6 +77,7 @@ public final class GlobeDebugHud {
                 formatOffset(CoordUtil.longitudeOffsetTicks(currentTiling, cameraEntity.getX())),
                 (int) Math.floor(localDayTicks)));
         leftLines.add("Day Cycle: " + dayCycleSummary());
+        leftLines.add("Natural spawns: " + naturalSpawnSummary());
         leftLines.add("");
         leftLines.add("Facing: " + directionSummary(cameraEntity.getDirection()));
         leftLines.add("Local light level: " + lightSummary(level, pos));
@@ -186,6 +187,16 @@ public final class GlobeDebugHud {
                 settings.netherPortalScaleLabel(),
                 settings.netherPortalScaleNumerator(),
                 settings.netherPortalScaleDenominator()
+        );
+    }
+
+    private static String naturalSpawnSummary() {
+        GameplaySettings settings = GlobeConfig.gameplaySettings();
+        return String.format(
+                Locale.ROOT,
+                "world spawn %s, player >= %d m",
+                settings.allowMobsAtWorldSpawn() ? "allowed" : "blocked",
+                settings.playerMobSpawnExclusionBlocks()
         );
     }
 

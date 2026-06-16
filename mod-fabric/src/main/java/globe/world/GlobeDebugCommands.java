@@ -1,5 +1,6 @@
 package globe.world;
 
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -179,7 +180,25 @@ public final class GlobeDebugCommands {
                                                 settings -> settings.withGameplay(
                                                         settings.gameplay().withDayLengthMultiplier(
                                                                 DoubleArgumentType.getDouble(context, "multiplier"))),
-                                                "Updated day length")))));
+                                                "Updated day length"))))
+                        .then(Commands.literal("allow_mobs_at_world_spawn")
+                                .then(Commands.argument("enabled", BoolArgumentType.bool())
+                                        .executes(context -> updateSettings(
+                                                context.getSource(),
+                                                settings -> settings.withGameplay(
+                                                        settings.gameplay().withAllowMobsAtWorldSpawn(
+                                                                BoolArgumentType.getBool(context, "enabled"))),
+                                                "Updated world-spawn mob spawning"))))
+                        .then(Commands.literal("player_mob_spawn_exclusion")
+                                .then(Commands.argument("blocks", IntegerArgumentType.integer(
+                                                GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_MIN_BLOCKS,
+                                                GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_MAX_BLOCKS))
+                                        .executes(context -> updateSettings(
+                                                context.getSource(),
+                                                settings -> settings.withGameplay(
+                                                        settings.gameplay().withPlayerMobSpawnExclusionBlocks(
+                                                                IntegerArgumentType.getInteger(context, "blocks"))),
+                                                "Updated player mob-spawn exclusion")))));
     }
 
     private static int printPos(CommandSourceStack source) throws CommandSyntaxException {
@@ -619,6 +638,10 @@ public final class GlobeDebugCommands {
                 "Day/night: mode=%s day_length_multiplier=%.1f",
                 gameplay.dayNightCycleMode().getSerializedName(),
                 gameplay.dayLengthMultiplier())), false);
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Natural spawning: allow_mobs_at_world_spawn=%s player_mob_spawn_exclusion_blocks=%d",
+                Boolean.toString(gameplay.allowMobsAtWorldSpawn()),
+                gameplay.playerMobSpawnExclusionBlocks())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Forced progression structures: stronghold=%s nether_fortress=%s",
                 yesNo(topology.forceMissingStronghold()),

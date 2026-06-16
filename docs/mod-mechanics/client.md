@@ -85,7 +85,8 @@ are not a stable API.
 `GlobeWorldSettingsControls` backs both the create-world Globe World tab and the
 in-world options screen. Its interactive controls include hover tooltips for
 custom topology methods, Overworld and Nether curvature, day-length multiplier,
-day/night behavior, and forced progression-structure toggles.
+day/night behavior, natural-spawn exclusions, and forced progression-structure
+toggles.
 The controls mutate the split `GlobeSettings` sections directly: topology
 controls update `TopologySettings`, curvature controls update
 `PresentationSettings`, and day/night controls update `GameplaySettings`.
@@ -105,7 +106,10 @@ Earth-curvature advice is shown only for tile sizes whose recommended DH
 curvature ratio is within the supported `50..5000` range. Simple mode disables
 scrolling day cycle below a 7,000-block Overworld tile and resets that setting
 to Vanilla, because that tile is small enough for a running player to keep pace
-with the sun.
+with the sun. Simple mode does not expose extra natural-spawn controls: it keeps
+the player mob-spawn exclusion at vanilla `24` blocks, and for Overworld tiles
+of `16` chunks / `256` m or smaller it silently allows natural mobs inside the
+saved world-spawn exclusion. Custom mode exposes both natural-spawn settings.
 The create-world Nether controls split tile size from portal travel ratio.
 In simple mode, Nether size can be disabled or chosen from relative presets such
 as `1/8 size`, `Same size`, and `4x size`. The portal ratio is implied by the
@@ -180,7 +184,10 @@ color, and lightmap sky brightness. See
 Client diagnostics are intentionally targeted:
 
 - `F3+Y`: Globe debug overlay and tile-border renderer, including current
-  Overworld/Nether tile widths and Nether portal ratio.
+  Overworld/Nether tile widths, Nether portal ratio, natural-spawn settings,
+  and the saved world-spawn marker plus active exclusion radius. The marker uses
+  the client level's respawn data, which vanilla updates from the server's
+  default-spawn packet.
 - `/globeworld debug list`: show server diagnostic channels and whether each
   channel is enabled for this session.
 - `/globeworld debug enable <channel>` and `/globeworld debug disable <channel>`:

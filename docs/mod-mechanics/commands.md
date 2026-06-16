@@ -54,6 +54,12 @@ The supported topology-aware admin helpers are implemented in
   owner, tile alias, canonical block state and block entity if the canonical
   chunk is already loaded, loaded aliases for the executing player, alias
   mutation access, and the interaction permission view for the executing entity.
+- `/globeworld config` shows saved topology, presentation, day/night,
+  natural-spawn, and forced-progression settings.
+- `/globeworld config set allow_mobs_at_world_spawn <true|false>` toggles
+  whether natural spawning ignores vanilla's saved world-spawn exclusion.
+- `/globeworld config set player_mob_spawn_exclusion <4-24>` changes the
+  natural-spawn minimum distance from the nearest non-spectator player.
 
 `query_block` is read-only and avoids loading or generating canonical chunks
 just to answer diagnostics. If the canonical chunk is absent, it reports that

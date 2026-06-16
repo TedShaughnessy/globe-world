@@ -1,21 +1,34 @@
 package globe.world.client;
 
+import globe.world.config.GlobeConfig;
+import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gizmos.Gizmos;
+import net.minecraft.gizmos.GizmoStyle;
+import net.minecraft.gizmos.TextGizmo;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.debug.DebugValueAccess;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.Vec3;
+
+import java.util.Locale;
 
 public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.debug.DebugRenderer.SimpleDebugRenderer {
     private static final int CANONICAL_COLOR = ARGB.color(255, 0, 220, 180);
     private static final int CURRENT_ALIAS_COLOR = ARGB.color(255, 255, 220, 0);
     private static final int OTHER_ALIAS_COLOR = ARGB.color(150, 120, 160, 255);
+    private static final int WORLD_SPAWN_COLOR = ARGB.color(255, 255, 70, 70);
+    private static final int WORLD_SPAWN_ALLOWED_COLOR = ARGB.color(170, 255, 150, 80);
+    private static final int WORLD_SPAWN_RADIUS_FILL = ARGB.color(35, 255, 70, 70);
     private static final float CURRENT_TILE_WIDTH = 10.0F;
     private static final float OTHER_TILE_WIDTH = 5.0F;
     private static final float CHUNK_GRID_WIDTH = 2.5F;
+    private static final float WORLD_SPAWN_MARKER_WIDTH = 6.0F;
+    private static final int WORLD_SPAWN_EXCLUSION_BLOCKS = 24;
 
     private final Minecraft minecraft;
 
@@ -57,6 +70,8 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
                 drawTile(x0, z0, x1, z1, minY, maxY, color, width);
             }
         }
+
+        drawWorldSpawnMarker(cameraEntity, tiling, tileBlocks, minY, maxY);
     }
 
     private static int colorFor(int tileX, int tileZ, int currentTileX, int currentTileZ) {
@@ -94,6 +109,38 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
             line(x0, minY, z, x0, maxY, z, color, CHUNK_GRID_WIDTH);
             line(x1, minY, z, x1, maxY, z, color, CHUNK_GRID_WIDTH);
         }
+    }
+
+    private void drawWorldSpawnMarker(Entity cameraEntity, DimensionTiling tiling, int tileBlocks, int minY, int maxY) {
+        LevelData.RespawnData respawnData = this.minecraft.level.getRespawnData();
+        if (!respawnData.dimension().equals(this.minecraft.level.dimension())) {
+            return;
+        }
+
+        BlockPos spawn = respawnData.pos();
+        double canonicalX = CoordUtil.wrapBlock(tiling, spawn.getX()) + 0.5D;
+        double canonicalZ = CoordUtil.wrapBlock(tiling, spawn.getZ()) + 0.5D;
+        double aliasX = nearestAlias(canonicalX, cameraEntity.getX(), tileBlocks);
+        double aliasZ = nearestAlias(canonicalZ, cameraEntity.getZ(), tileBlocks);
+        int color = GlobeConfig.allowMobsAtWorldSpawn() ? WORLD_SPAWN_ALLOWED_COLOR : WORLD_SPAWN_COLOR;
+        line(aliasX, minY, aliasZ, aliasX, maxY, aliasZ, color, WORLD_SPAWN_MARKER_WIDTH);
+
+        double markerY = Math.clamp(spawn.getY() + 0.05D, minY + 0.05D, maxY - 0.05D);
+        if (!GlobeConfig.allowMobsAtWorldSpawn()) {
+            Gizmos.circle(
+                    new Vec3(aliasX, markerY, aliasZ),
+                    WORLD_SPAWN_EXCLUSION_BLOCKS,
+                    GizmoStyle.strokeAndFill(WORLD_SPAWN_COLOR, 3.0F, WORLD_SPAWN_RADIUS_FILL));
+        }
+
+        Gizmos.billboardText(
+                String.format(Locale.ROOT, "World spawn %d %d %d", spawn.getX(), spawn.getY(), spawn.getZ()),
+                new Vec3(aliasX, Math.min(maxY - 1.0D, markerY + 2.0D), aliasZ),
+                TextGizmo.Style.forColorAndCentered(color).withScale(0.28F)).setAlwaysOnTop();
+    }
+
+    private static double nearestAlias(double canonicalCoordinate, double cameraCoordinate, int tileBlocks) {
+        return canonicalCoordinate + (double) Math.round((cameraCoordinate - canonicalCoordinate) / (double) tileBlocks) * (double) tileBlocks;
     }
 
     private static void line(double x0, double y0, double z0, double x1, double y1, double z1, int color, float width) {

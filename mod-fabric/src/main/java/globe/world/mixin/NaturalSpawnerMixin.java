@@ -4,6 +4,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.sugar.Local;
+import globe.world.config.GameplaySettings;
+import globe.world.config.GlobeConfig;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.GlobeNaturalSpawning;
@@ -18,7 +20,9 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -185,6 +189,18 @@ public class NaturalSpawnerMixin {
         return CoordUtil.wrappedDistanceSqr(player.level(), player.getX(), player.getY(), player.getZ(), x, y, z);
     }
 
+    @ModifyConstant(
+            method = "isRightDistanceToPlayerAndSpawnPoint",
+            constant = @Constant(doubleValue = 576.0D)
+    )
+    private static double useConfiguredPlayerMobSpawnExclusion(double vanillaDistanceSqr) {
+        int exclusionBlocks = GlobeConfig.playerMobSpawnExclusionBlocks();
+        if (exclusionBlocks == GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_DEFAULT_BLOCKS) {
+            return vanillaDistanceSqr;
+        }
+        return (double) exclusionBlocks * (double) exclusionBlocks;
+    }
+
     @WrapOperation(
         method = "isRightDistanceToPlayerAndSpawnPoint",
         at = @At(
@@ -198,6 +214,9 @@ public class NaturalSpawnerMixin {
             double distance,
             Operation<Boolean> original,
             @Local(argsOnly = true) ServerLevel level) {
+        if (GlobeConfig.allowMobsAtWorldSpawn()) {
+            return false;
+        }
         if (!DimensionTiling.forLevel(level).enabled()) {
             return original.call(spawnPos, candidate, distance);
         }
