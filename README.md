@@ -3,22 +3,26 @@
 <p align="center">
   <img src="docs/assets/screenshots/globe-world-wrap.png" alt="Globe World seamless wrapped terrain screenshot" width="49%">
   <img src="docs/assets/screenshots/globe-world-curvature.png" alt="Globe World curved terrain screenshot" width="49%">
+  <img src="docs/assets/screenshots/small-tile-world-low-aerial.png" alt="Globe World repeated small tile from a low aerial view" width="49%">
+  <img src="docs/assets/screenshots/small-tile-world-high-aerial.png" alt="Globe World repeated small tile from a high aerial view" width="49%">
 </p>
 
 
 Globe World is a Fabric mod for **Minecraft 26.1.2**
 
-This mod adds a finite world that seamlessly tiles giving the illusion of a globe world
+This mod adds a finite world that seamlessly tiles, giving the illusion of a globe. Gameplay systems work across tile borders, mob tracking, redstone, seamless terrain, generated structures and more.
+
+You'll find a globe settings tab when creating a world and settings can be adjusted in the pause menu options. The shader packs are not required.
 
 
 ## Features:
-- A finite oveworld tile size from as small as 2 chunks 
-- a nether tile size to match with configurable portal distance ratio
-- a built in shader that allows you to add curvature to your world
-- adjustable day length and realistic day night cycles
+- A finite Overworld from as small as two chunks 
+- A Nether to match with configurable portal distance ratio
+- A built-in shader that allows you to add curvature to your world
+- Adjustable day length and realistic day night cycles
 
 
-## Mod compatibility:
+## Compatibility:
 - Distant horizons should work fine, but it is not aware of this mod so it will do unnecessary work. For worlds where it is useful disable globe world curvature and use distant horizons curvature instead
 - Sodium will work fine but breaks the built-in curved-terrain shader. If you use Sodium and want Globe World curvature, install Iris and one optional curvature shader pack below.
     - Terrain is being culled by Sodium’s vertical render-distance limit when the camera is high above the world, there is a fix for this that will only apply to version 0.8.12+mc26.1.2 
