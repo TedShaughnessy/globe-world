@@ -13,19 +13,22 @@ public final class GlobeClientDebugCommands {
     }
 
     public static void register() {
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, buildContext) ->
-                dispatcher.register(ClientCommands.literal("globeworld")
-                        .then(clientCommands())));
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, buildContext) -> {
+            dispatcher.register(ClientCommands.literal("globeworld")
+                    .then(ClientCommands.literal("client")
+                            .then(entityAliasCommands())));
+            dispatcher.register(ClientCommands.literal("globeworld_client")
+                    .then(entityAliasCommands()));
+        });
     }
 
-    private static LiteralArgumentBuilder<FabricClientCommandSource> clientCommands() {
-        return ClientCommands.literal("client")
-                .then(ClientCommands.literal("entity_aliases")
-                        .executes(context -> printEntityAliasState(context.getSource()))
-                        .then(ClientCommands.literal("mode")
-                                .executes(context -> cycleEntityAliasMode(context.getSource())))
-                        .then(ClientCommands.literal("rings")
-                                .executes(context -> cycleEntityAliasRingLimit(context.getSource()))));
+    private static LiteralArgumentBuilder<FabricClientCommandSource> entityAliasCommands() {
+        return ClientCommands.literal("entity_aliases")
+                .executes(context -> printEntityAliasState(context.getSource()))
+                .then(ClientCommands.literal("mode")
+                        .executes(context -> cycleEntityAliasMode(context.getSource())))
+                .then(ClientCommands.literal("rings")
+                        .executes(context -> cycleEntityAliasRingLimit(context.getSource())));
     }
 
     private static int printEntityAliasState(FabricClientCommandSource source) {

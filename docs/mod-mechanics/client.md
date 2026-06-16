@@ -206,7 +206,15 @@ Client diagnostics are intentionally targeted:
 - `/globeworld debug clear`: turn all server diagnostic channels off.
 - `/globeworld client entity_aliases`: show local entity visual alias settings.
 - `/globeworld client entity_aliases mode`: cycle local entity visual alias mode.
-- `/globeworld client entity_aliases rings`: cycle local entity visual alias ring limit.
+- `/globeworld client entity_aliases rings`: cycle local entity visual alias ring
+  limit.
+  These are registered on the server command tree for reliable tab completion,
+  then sent back to the issuing client as local visual-setting actions.
+- `/globeworld_client entity_aliases`: client-only alias for the same local
+  entity visual alias commands, useful when the shared `/globeworld` root does
+  not tab-complete client subcommands cleanly.
+- `/globeworld_client entity_aliases rings`: tab-complete-friendly spelling for
+  cycling the local entity visual alias ring limit.
 
 ## Key Files
 

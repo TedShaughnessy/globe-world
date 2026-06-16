@@ -30,6 +30,8 @@ import globe.world.util.GlobeDayLength;
 import globe.world.util.GlobeDistanceCaps;
 import globe.world.util.GlobeInteractionPermissions;
 import globe.world.network.GlobeWorldNetworking;
+import globe.world.network.GlobeEntityAliasCommandPayload;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -115,8 +117,38 @@ public final class GlobeDebugCommands {
                                 .executes(context -> printEndPortal(context.getSource(), true))))
                 .then(Commands.literal("portal_scale")
                         .executes(context -> printPortalScale(context.getSource())))
+                .then(clientCommands())
                 .then(debugCommands())
                 .then(configCommands());
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> clientCommands() {
+        return Commands.literal("client")
+                .then(Commands.literal("entity_aliases")
+                        .executes(context -> sendEntityAliasClientCommand(
+                                context.getSource(),
+                                GlobeEntityAliasCommandPayload.Action.SHOW))
+                        .then(Commands.literal("mode")
+                                .executes(context -> sendEntityAliasClientCommand(
+                                        context.getSource(),
+                                        GlobeEntityAliasCommandPayload.Action.CYCLE_MODE)))
+                        .then(Commands.literal("rings")
+                                .executes(context -> sendEntityAliasClientCommand(
+                                        context.getSource(),
+                                        GlobeEntityAliasCommandPayload.Action.CYCLE_RINGS))));
+    }
+
+    private static int sendEntityAliasClientCommand(
+            CommandSourceStack source,
+            GlobeEntityAliasCommandPayload.Action action) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!ServerPlayNetworking.canSend(player, GlobeEntityAliasCommandPayload.TYPE)) {
+            source.sendFailure(Component.literal("This client does not support Globe World entity alias commands."));
+            return 0;
+        }
+
+        ServerPlayNetworking.send(player, new GlobeEntityAliasCommandPayload(action));
+        return 1;
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> debugCommands() {
