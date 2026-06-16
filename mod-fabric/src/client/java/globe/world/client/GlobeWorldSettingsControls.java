@@ -42,6 +42,7 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final int ROW_SPACING = 4;
     private static final int SECTION_SPACING = 12;
     private static final int INFO_WIDTH = CONTROL_WIDTH;
+    private static final int CUSTOM_MIN_TILE_SIZE_CHUNKS = TopologySettings.MIN_TILE_SIZE_CHUNKS;
     private static final int SIMPLE_MIN_TILE_SIZE_CHUNKS = 8;
     private static final int SIMPLE_ALLOW_MOBS_AT_WORLD_SPAWN_MAX_TILE_CHUNKS = 16;
     private static final int SIMPLE_SCROLLING_DAY_MIN_TILE_BLOCKS = 7_000;
@@ -233,7 +234,7 @@ public class GlobeWorldSettingsControls implements Layout {
                 return;
             }
             try {
-                int tileSize = Math.max(1, Integer.parseInt(text));
+                int tileSize = sanitizeCustomTileInput(text);
                 setTopology(currentTopology()
                         .withTileSize(tileSize)
                         .withNetherTileSize(simpleDefaultNetherTileSize(tileSize)));
@@ -328,7 +329,7 @@ public class GlobeWorldSettingsControls implements Layout {
                 return;
             }
             try {
-                int tileSize = Math.max(1, Integer.parseInt(text));
+                int tileSize = sanitizeCustomTileInput(text);
                 setTopology(currentTopology()
                         .withNetherMode(TilingMode.SQUARE)
                         .withNetherTileSize(tileSize));
@@ -635,9 +636,7 @@ public class GlobeWorldSettingsControls implements Layout {
             simpleTileSlider.setPreset(currentTilePreset());
         }
         if (customTileField != null) {
-            updatingText = true;
-            customTileField.setValue(Integer.toString(topology.tileSize()));
-            updatingText = false;
+            setTileFieldValue(customTileField, topology.tileSize());
         }
         overworldTopologyButton.setValue(topology.terrainMode());
         overworldInfo.setMessage(overworldInfo(topology));
@@ -647,9 +646,7 @@ public class GlobeWorldSettingsControls implements Layout {
         netherSizeButton.setValue(netherSizePreset(topology));
         syncCheckbox(tileNetherCheckbox, topology.netherEnabled());
         if (customNetherTileField != null) {
-            updatingText = true;
-            customNetherTileField.setValue(Integer.toString(topology.netherTileSize()));
-            updatingText = false;
+            setTileFieldValue(customNetherTileField, topology.netherTileSize());
             customNetherTileField.setEditable(editable && topology.netherEnabled());
             customNetherTileField.active = topology.netherEnabled();
         }
@@ -828,6 +825,26 @@ public class GlobeWorldSettingsControls implements Layout {
         return NumberFormat.getIntegerInstance(Locale.US).format(value);
     }
 
+    private static int sanitizeCustomTileInput(String text) {
+        return TopologySettings.sanitizeTileSize(Integer.parseInt(text));
+    }
+
+    private void setTileFieldValue(EditBox field, int tileSize) {
+        String sanitizedValue = Integer.toString(tileSize);
+        if (field.isFocused() && !field.getValue().isBlank()) {
+            return;
+        }
+        if (field.getValue().equals(sanitizedValue)) {
+            return;
+        }
+        updatingText = true;
+        try {
+            field.setValue(sanitizedValue);
+        } finally {
+            updatingText = false;
+        }
+    }
+
     private static String multiplierLabel(double multiplier) {
         double sanitized = GameplaySettings.sanitizeDayLengthMultiplier(multiplier);
         if (sanitized == GameplaySettings.DAY_LENGTH_HALF_MULTIPLIER) {
@@ -870,7 +887,7 @@ public class GlobeWorldSettingsControls implements Layout {
     private List<NetherSizePreset> validNetherSizePresets(TopologySettings topology) {
         List<NetherSizePreset> presets = new ArrayList<>();
         presets.add(NetherSizePreset.DISABLED);
-        int minTileSize = createMode == CreateMode.SIMPLE ? SIMPLE_MIN_TILE_SIZE_CHUNKS : 1;
+        int minTileSize = createMode == CreateMode.SIMPLE ? SIMPLE_MIN_TILE_SIZE_CHUNKS : CUSTOM_MIN_TILE_SIZE_CHUNKS;
         for (NetherSizePreset preset : NetherSizePreset.values()) {
             if (preset == NetherSizePreset.DISABLED || preset == NetherSizePreset.CUSTOM) {
                 continue;

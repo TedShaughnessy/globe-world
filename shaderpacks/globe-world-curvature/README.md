@@ -1,6 +1,8 @@
-# Globe World Curvature Shader
+# Globe World Optional Curvature Shader Pack
 
-Minimal Iris shader pack version of `GlobeCurvatureShader`.
+Minimal Iris shader pack version of `GlobeCurvatureShader`. This is an optional
+compatibility pack for Sodium/Iris users who want Globe World curvature; it is
+not the Fabric mod and is not needed for seamless wrapping or flat rendering.
 
 It only applies the same camera-relative X/Z curvature drop, cloud drop, and
 fog-position behavior as the mod's vanilla shader override. Terrain, block,

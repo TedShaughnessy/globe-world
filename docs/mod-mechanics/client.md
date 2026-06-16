@@ -129,19 +129,25 @@ ratio does not alter Nether tile size or terrain mode.
 In custom create-world mode, explicit Overworld and Nether topology methods are
 available next to the corresponding size controls; changing the Overworld tile
 size resets only the Overworld topology method, while changing the Nether tile
-size resets the Nether topology method back to `Auto`. Tile sizes up to 256
-chunks default forced progression structures on for the matching dimension;
-larger effective tile sizes default them off.
+size resets the Nether topology method back to `Auto`. Custom tile-size inputs
+normalize to the supported minimum of 2 chunks before settings are saved, so
+world creation never receives a one-chunk tile. Tile sizes up to 256 chunks
+default forced progression structures on for the matching dimension; larger
+effective tile sizes default them off.
 
 ## Shader Packs
 
 Sodium/Iris shader packs bypass vanilla shader rewriting, so Globe World ships
-an Iris bridge and two shader-pack assets:
+an Iris bridge and two optional curvature shader-pack assets. The Fabric mod
+works without these ZIPs; they are only for players using Sodium/Iris who want
+Globe World's curvature effect.
 
 - `shaderpacks/globe-world-curvature/`: minimal reference pack that applies
-  Globe curvature and fog behavior.
+  Globe curvature and fog behavior. Release asset:
+  `globe-world-optional-curvature-shaderpack-mcVERSION-VERSION.zip`.
 - `shaderpacks/makeup-ultra-fast-globe-world/`: pinned MakeUp Ultra Fast
-  upstream metadata plus a small Globe curvature patch stack.
+  upstream metadata plus a small Globe curvature patch stack. Release asset:
+  `makeup-ultra-fast-globe-world-optional-curvature-shaderpack-mcVERSION-VERSION.zip`.
 
 `IrisProgramSourceMixin` bakes Globe World's current curvature constants into
 shader sources containing the documented placeholders. `GlobeIrisShaderBridge`

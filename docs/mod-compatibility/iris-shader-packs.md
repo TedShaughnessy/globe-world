@@ -4,12 +4,18 @@ Sodium and Iris are compatible with Globe World's wrapping, but they can bypass
 Globe World's vanilla terrain curvature shader path. Terrain will render flat
 unless the active shader pack opts into Globe World's curvature bridge.
 
+The shader-pack ZIPs published with Globe World are optional compatibility
+assets. Install the Fabric mod JAR for Globe World itself; download one shader
+pack only when using Sodium/Iris and wanting Globe World's curvature effect.
+
 Globe World provides two Iris examples:
 
 - `shaderpacks/globe-world-curvature/`: a small compatibility shader pack that
-  only applies Globe World's curvature and fog behavior.
+  only applies Globe World's curvature and fog behavior. Published as
+  `globe-world-optional-curvature-shaderpack-mcVERSION-VERSION.zip`.
 - `shaderpacks/makeup-ultra-fast-globe-world/`: a patched MakeUp Ultra Fast
-  setup using the same bridge.
+  setup using the same bridge. Published as
+  `makeup-ultra-fast-globe-world-optional-curvature-shaderpack-mcVERSION-VERSION.zip`.
 
 ## Bridge Pattern
 

@@ -17,8 +17,12 @@ public record TopologySettings(
         int netherPortalScaleDenominator,
         boolean forceMissingStronghold,
         boolean forceMissingNetherFortress) {
+    public static final int MIN_TILE_SIZE_CHUNKS = 2;
     public static final int FORCED_STRUCTURE_SMALL_TILE_MAX_CHUNKS = 256;
-    public static final int DEFAULT_NETHER_TILE_SIZE_CHUNKS = Math.max(1, GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS / 8);
+    public static final int DEFAULT_NETHER_TILE_SIZE_CHUNKS = Math.max(
+            MIN_TILE_SIZE_CHUNKS,
+            GlobeConfig.DEFAULT_TILE_SIZE_CHUNKS / 8
+    );
     public static final int DEFAULT_NETHER_PORTAL_SCALE_NUMERATOR = 8;
     public static final int DEFAULT_NETHER_PORTAL_SCALE_DENOMINATOR = 1;
 
@@ -270,7 +274,7 @@ public record TopologySettings(
     public static int defaultNetherTileSize(int overworldTileSize) {
         int sanitizedTileSize = sanitizeTileSize(overworldTileSize);
         return sanitizedTileSize >= 8 && sanitizedTileSize % 8 == 0
-                ? Math.max(1, sanitizedTileSize / 8)
+                ? Math.max(MIN_TILE_SIZE_CHUNKS, sanitizedTileSize / 8)
                 : sanitizedTileSize;
     }
 
@@ -281,8 +285,8 @@ public record TopologySettings(
         return terrainMode;
     }
 
-    private static int sanitizeTileSize(int tileSize) {
-        return Math.max(1, tileSize);
+    public static int sanitizeTileSize(int tileSize) {
+        return Math.max(MIN_TILE_SIZE_CHUNKS, tileSize);
     }
 
     private static PortalScale sanitizeNetherPortalScale(int numerator, int denominator) {

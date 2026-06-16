@@ -168,26 +168,26 @@ jobs:
         if: github.event_name == 'push' && steps.versions.outputs.mod_changed == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: globe-world-mod-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.mod_version }}
+          name: globe-world-fabric-mod-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.mod_version }}
           path: |
-            mod-fabric/build/libs/globe-world-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.mod_version }}.jar
-            mod-fabric/build/libs/globe-world-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.mod_version }}-sources.jar
+            mod-fabric/build/libs/globe-world-fabric-mod-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.mod_version }}.jar
+            mod-fabric/build/libs/globe-world-fabric-mod-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.mod_version }}-sources.jar
           if-no-files-found: error
 
       - name: upload Globe World curvature shaderpack artifact
         if: github.event_name == 'push' && steps.versions.outputs.globe_world_curvature_shaderpack_changed == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: globe-world-curvature-shaderpack-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}
-          path: build/distributions/shaderpacks/globe-world-curvature-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}.zip
+          name: globe-world-optional-curvature-shaderpack-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}
+          path: build/distributions/shaderpacks/globe-world-optional-curvature-shaderpack-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.globe_world_curvature_shaderpack_version }}.zip
           if-no-files-found: error
 
       - name: upload MakeUp Ultra Fast Globe World shaderpack artifact
         if: github.event_name == 'push' && steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_changed == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: makeup-ultra-fast-globe-world-shaderpack-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}
-          path: build/distributions/shaderpacks/makeup-ultra-fast-globe-world-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}.zip
+          name: makeup-ultra-fast-globe-world-optional-curvature-shaderpack-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}
+          path: build/distributions/shaderpacks/makeup-ultra-fast-globe-world-optional-curvature-shaderpack-mc${{ steps.versions.outputs.minecraft_version }}-${{ steps.versions.outputs.makeup_ultra_fast_globe_world_shaderpack_version }}.zip
           if-no-files-found: error
 
       - name: publish release
@@ -203,22 +203,24 @@ jobs:
           set -euo pipefail
 
           release_assets=(
-            "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${MOD_VERSION}.jar"
-            "build/distributions/shaderpacks/globe-world-curvature-mc${MINECRAFT_VERSION}-${GLOBE_WORLD_CURVATURE_SHADERPACK_VERSION}.zip"
-            "build/distributions/shaderpacks/makeup-ultra-fast-globe-world-mc${MINECRAFT_VERSION}-${MAKEUP_ULTRA_FAST_GLOBE_WORLD_SHADERPACK_VERSION}.zip"
+            "mod-fabric/build/libs/globe-world-fabric-mod-mc${MINECRAFT_VERSION}-${MOD_VERSION}.jar"
+            "build/distributions/shaderpacks/globe-world-optional-curvature-shaderpack-mc${MINECRAFT_VERSION}-${GLOBE_WORLD_CURVATURE_SHADERPACK_VERSION}.zip"
+            "build/distributions/shaderpacks/makeup-ultra-fast-globe-world-optional-curvature-shaderpack-mc${MINECRAFT_VERSION}-${MAKEUP_ULTRA_FAST_GLOBE_WORLD_SHADERPACK_VERSION}.zip"
           )
           if [[ "$INCLUDE_MOD_SOURCES" == "true" ]]; then
             release_assets+=(
-              "mod-fabric/build/libs/globe-world-mc${MINECRAFT_VERSION}-${MOD_VERSION}-sources.jar"
+              "mod-fabric/build/libs/globe-world-fabric-mod-mc${MINECRAFT_VERSION}-${MOD_VERSION}-sources.jar"
             )
           fi
 
           {
             echo "Globe World release targeting Minecraft ${MINECRAFT_VERSION}."
             echo
-            echo "- Fabric mod: v${MOD_VERSION}"
-            echo "- Globe World curvature shader pack: v${GLOBE_WORLD_CURVATURE_SHADERPACK_VERSION}"
-            echo "- MakeUp Ultra Fast Globe World shader pack: v${MAKEUP_ULTRA_FAST_GLOBE_WORLD_SHADERPACK_VERSION}"
+            echo "- Required Fabric mod: globe-world-fabric-mod-mc${MINECRAFT_VERSION}-${MOD_VERSION}.jar"
+            echo "- Optional Sodium/Iris curvature shader pack: globe-world-optional-curvature-shaderpack-mc${MINECRAFT_VERSION}-${GLOBE_WORLD_CURVATURE_SHADERPACK_VERSION}.zip"
+            echo "- Optional Sodium/Iris MakeUp Ultra Fast curvature shader pack: makeup-ultra-fast-globe-world-optional-curvature-shaderpack-mc${MINECRAFT_VERSION}-${MAKEUP_ULTRA_FAST_GLOBE_WORLD_SHADERPACK_VERSION}.zip"
+            echo
+            echo "Download a shader pack only if you use Sodium/Iris and want Globe World's curvature effect. The Fabric mod works without them."
           } > release-notes.md
 
           gh release create "v${MOD_VERSION}" \

@@ -13,7 +13,9 @@ public record DimensionTiling(boolean enabled, int tileSizeChunks, TerrainMode t
     private static final ThreadLocal<DimensionTiling> CURRENT = new ThreadLocal<>();
 
     public DimensionTiling {
-        tileSizeChunks = Math.max(1, tileSizeChunks);
+        tileSizeChunks = enabled
+                ? TopologySettings.sanitizeTileSize(tileSizeChunks)
+                : Math.max(1, tileSizeChunks);
         if (!enabled) {
             terrainMode = TerrainMode.DISABLED;
         } else if (terrainMode == null || terrainMode == TerrainMode.AUTO || terrainMode == TerrainMode.DISABLED) {

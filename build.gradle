@@ -43,7 +43,7 @@ tasks.register("runClient") {
 tasks.register("packageGlobeWorldCurvatureShaderpack", Zip) {
 	group = "shaderpacks"
 	description = "Packages the minimal Globe World curvature Iris shader pack."
-	archiveFileName = "globe-world-curvature-${minecraftArtifactSuffix}-${project.globe_world_curvature_shaderpack_version}.zip"
+	archiveFileName = "globe-world-optional-curvature-shaderpack-${minecraftArtifactSuffix}-${project.globe_world_curvature_shaderpack_version}.zip"
 	destinationDirectory = shaderpackDistDir
 	from(simpleShaderpackDir) {
 		exclude("**/.git/**")
@@ -132,7 +132,7 @@ tasks.register("packageMakeupUltraFastGlobeWorldShaderpack", Zip) {
 	description = "Packages MakeUp Ultra Fast with Globe World curvature patches applied."
 	dependsOn("applyMakeupGlobePatches")
 
-	archiveFileName = "makeup-ultra-fast-globe-world-${minecraftArtifactSuffix}-${project.makeup_ultra_fast_globe_world_shaderpack_version}.zip"
+	archiveFileName = "makeup-ultra-fast-globe-world-optional-curvature-shaderpack-${minecraftArtifactSuffix}-${project.makeup_ultra_fast_globe_world_shaderpack_version}.zip"
 	destinationDirectory = shaderpackDistDir
 	from(shaderpackBuildDir.map { it.dir("makeup-ultra-fast-globe-world") }) {
 		exclude("**/.git/**")
@@ -150,7 +150,7 @@ tasks.register("stageDevMod", Copy) {
 	description = "Copies the remapped Fabric mod jar into mod-fabric/run/mods for local testing."
 	dependsOn(":mod-fabric:build")
 
-	from(project(":mod-fabric").layout.buildDirectory.file("libs/globe-world-${minecraftArtifactSuffix}-${project.mod_version}.jar"))
+	from(project(":mod-fabric").layout.buildDirectory.file("libs/globe-world-fabric-mod-${minecraftArtifactSuffix}-${project.mod_version}.jar"))
 	into(devModsDir)
 
 	doFirst {
@@ -173,7 +173,9 @@ tasks.register("stageDevShaderpacks", Copy) {
 				dir: devShaderpacksDir.asFile,
 				include: [
 						"globe-world-curvature-*.zip",
-						"makeup-ultra-fast-globe-world-*.zip"
+						"globe-world-optional-curvature-shaderpack-*.zip",
+						"makeup-ultra-fast-globe-world-*.zip",
+						"makeup-ultra-fast-globe-world-optional-curvature-shaderpack-*.zip"
 				]
 		))
 	}

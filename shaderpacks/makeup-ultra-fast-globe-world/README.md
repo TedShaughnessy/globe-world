@@ -1,7 +1,9 @@
-# MakeUp Ultra Fast - Globe World Patch
+# MakeUp Ultra Fast - Globe World Optional Curvature Shader Pack
 
 This directory stores Globe World's reproducible MakeUp Ultra Fast shader-pack
-patch setup.
+patch setup. The packaged ZIP is an optional Sodium/Iris curvature shader pack,
+not the Fabric mod; players only need it if they want MakeUp Ultra Fast with
+Globe World curvature support.
 
 The MakeUp source is not vendored here. Gradle fetches the pinned upstream
 commit listed in `upstream.properties`, applies the patches in `patches/`, and
