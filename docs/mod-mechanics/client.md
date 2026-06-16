@@ -97,23 +97,28 @@ creation because they describe world-generation policy. They remain visible but
 disabled in the in-world options screen.
 In simple create-world mode, changing the Overworld tile-size preset resets the
 dependent settings below it to simple defaults, including a valid default Nether
-tile size. Simple presets start at 8 chunks / 128 m so both Overworld and Nether
-simple choices stay above the smallest realistically playable world size.
-Presets larger than the Italy-size tile also default Overworld curvature to off
-because the curve is no longer visually useful at that scale. When Distant
-Horizons is loaded, its
-Earth-curvature advice is shown only for tile sizes whose recommended DH
-curvature ratio is within the supported `50..5000` range. Simple mode disables
-scrolling day cycle below a 7,000-block Overworld tile and resets that setting
-to Vanilla, because that tile is small enough for a running player to keep pace
-with the sun. Simple mode does not expose extra natural-spawn controls: it keeps
-the player mob-spawn exclusion at vanilla `24` blocks, and for Overworld tiles
-of `16` chunks / `256` m or smaller it silently allows natural mobs inside the
-saved world-spawn exclusion. Custom mode exposes both natural-spawn settings.
+tile size. Simple create-world mode only exposes Overworld tile size and Nether
+size; topology, curvature, day/night, progression-structure, and natural-spawn
+controls are hidden there but continue to use the same simple defaults. Simple
+presets start at 8 chunks / 128 m so both Overworld and Nether simple choices
+stay above the smallest realistically playable world size. Simple presets
+default Overworld and Nether curvature to off; curvature remains available from
+the in-world options screen and from custom create-world mode. When Distant
+Horizons is loaded, its Earth-curvature advice is shown only outside simple
+create-world mode and only for tile sizes whose recommended DH curvature ratio
+is within the supported `50..5000` range. Simple mode disables scrolling day
+cycle below a 7,000-block Overworld tile and resets that setting to Vanilla,
+because that tile is small enough for a running player to keep pace with the
+sun. Simple mode keeps the player mob-spawn exclusion at vanilla `24` blocks,
+and for Overworld tiles of `16` chunks / `256` m or smaller it silently allows
+natural mobs inside the saved world-spawn exclusion. Custom mode exposes both
+natural-spawn settings and groups later create-world controls under Progression
+Structures, Mob Spawning, and Day/Night headings. The pause menu also uses
+headings for the runtime Mob Spawning and Day/Night controls.
 The create-world Nether controls split tile size from portal travel ratio.
-In simple mode, Nether size can be disabled or chosen from relative presets such
-as `1/8 size`, `Same size`, and `4x size`. The portal ratio is implied by the
-selected Nether size: a `1/8 size` Nether uses vanilla-style `1:8` travel,
+In simple mode, Nether size can be left infinite or chosen from relative presets
+such as `1/8 size`, `Same size`, and `4x size`. The portal ratio is implied by
+the selected Nether size: a `1/8 size` Nether uses vanilla-style `1:8` travel,
 `Same size` uses `1:1`, and larger-than-Overworld Nether sizes use reverse
 ratios. In custom mode,
 Nether size is entered as a direct chunk count and portal ratio is a separate

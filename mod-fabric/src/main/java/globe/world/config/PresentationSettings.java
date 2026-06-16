@@ -10,7 +10,7 @@ public record PresentationSettings(int curvaturePercent, int netherCurvaturePerc
     public static final float CURVATURE_REALISTIC_SCALE = 12.0F;
 
     public static final PresentationSettings DEFAULT = new PresentationSettings(
-            CURVATURE_COMFORTABLE_PERCENT,
+            CURVATURE_DISABLED_PERCENT,
             CURVATURE_DISABLED_PERCENT
     );
     public static final PresentationSettings DISABLED = new PresentationSettings(
