@@ -10,9 +10,9 @@
 
 Globe World is a Fabric mod for **Minecraft 26.1.2**
 
-This mod adds a finite world that seamlessly tiles, giving the illusion of a globe. Gameplay systems work across tile borders, mob tracking, redstone, seamless terrain, generated structures and more.
+This mod adds a finite world that seamlessly tiles, giving the illusion of a globe. Gameplay systems work across tile borders, including mob tracking, redstone, seamless terrain, generated structures, and more.
 
-You'll find a globe settings tab when creating a world and settings can be adjusted in the pause menu options. The shader packs are not required.
+You'll find a Globe settings tab when creating a world, and settings can be adjusted from the pause menu options. Shader packs are optional.
 
 
 ## Features:
