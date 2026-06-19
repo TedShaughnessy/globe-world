@@ -88,8 +88,9 @@ custom topology methods, Overworld and Nether curvature, day-length multiplier,
 day/night behavior, natural-spawn exclusions, and forced progression-structure
 toggles.
 The controls mutate the split `GlobeSettings` sections directly: topology
-controls update `TopologySettings`, curvature controls update
-`PresentationSettings`, and day/night controls update `GameplaySettings`.
+controls update `TopologySettings`, including even-chunk normalization for
+custom Overworld and Nether tile sizes; curvature controls update
+`PresentationSettings`; and day/night controls update `GameplaySettings`.
 In remote multiplayer, the in-world screen shows the synced server settings as
 read-only; local clients cannot silently edit only their own `GlobeConfig`.
 The forced progression-structure toggles are editable only during world

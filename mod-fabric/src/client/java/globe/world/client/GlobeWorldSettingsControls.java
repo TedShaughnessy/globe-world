@@ -247,7 +247,7 @@ public class GlobeWorldSettingsControls implements Layout {
         StringWidget customTileLabel = new StringWidget(
                 CONTROL_WIDTH - customTileField.getWidth() - ROW_SPACING,
                 customTileField.getHeight(),
-                Component.literal("Overworld Tile Size (chunks)"),
+                Component.literal("Overworld Tile Size (even chunks)"),
                 minecraft.font
         );
         addRow(
@@ -350,7 +350,7 @@ public class GlobeWorldSettingsControls implements Layout {
         StringWidget customNetherTileLabel = new StringWidget(
                 CONTROL_WIDTH - customNetherTileField.getWidth() - ROW_SPACING,
                 customNetherTileField.getHeight(),
-                Component.literal("Nether Tile Size (chunks)"),
+                Component.literal("Nether Tile Size (even chunks)"),
                 minecraft.font
         );
         addRow(

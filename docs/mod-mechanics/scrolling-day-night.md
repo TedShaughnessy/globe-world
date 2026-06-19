@@ -29,9 +29,8 @@ The saved setting is `GlobeSettings.gameplay().dayNightCycleMode()`:
 - `SCROLLING`: local solar time is derived from canonical X.
 
 The setting is serialized as `day_night_cycle` inside the saved
-`globe_world.gameplay` group; legacy saved `"realistic"` values decode as
-`SCROLLING`. The world-creation UI and pause/options Globe World settings page
-expose the setting as `Day/Night Cycle`.
+`globe_world.gameplay` group. The world-creation UI and pause/options Globe
+World settings page expose the setting as `Day/Night Cycle`.
 In simple world-creation mode, scrolling day cycle is disabled and reset to
 `VANILLA` when the Overworld tile is below 7,000 blocks wide. At that scale a
 running player can approximately keep pace with the sun, so the simple preset UI

@@ -34,10 +34,10 @@ tile size resets saved explicit terrain methods back to `AUTO`.
 
 `TopologySettings.avoid_water_only_seeds` is a create-time heuristic for random
 small wrapped Overworlds. When Overworld wrapping is enabled, the setting
-defaults on; when wrapping is disabled, it defaults off. Existing saves that
-lack the field decode through the same rule. Changing Overworld wrapping mode or
-tile size refreshes the default alongside the forced progression-structure
-defaults.
+defaults on; when wrapping is disabled, it defaults off. The field is optional
+in the saved schema and falls back through that same rule if omitted. Changing
+Overworld wrapping mode or tile size refreshes the default alongside the forced
+progression-structure defaults.
 
 During client world creation, `CreateWorldScreenMixin` gives
 `GlobeSeedPreflight` the final baked registry layers and the vanilla
@@ -95,8 +95,7 @@ shifted-reference handling can let pieces cross tile borders, then supplement
 the forced start if needed. The upgrade chest prefers the space behind a
 `CastleStalkRoom` staircase and falls back to the start chunk if no stalk room is
 present. The settings default on for matching dimensions whose effective tile
-size is at most 256 chunks and off for larger tiles. Existing worlds decode
-missing fields with those tile-size-derived defaults.
+size is at most 256 chunks and off for larger tiles.
 
 ## Implementation
 

@@ -118,6 +118,10 @@ does not accidentally inherit the Overworld fallback.
 size. This permits a smaller Nether tile, same-size Nether tile, larger Nether
 tile, or no Nether tiling when `nether_mode` is disabled.
 
+Saved tile sizes are normalized to even chunk counts. This keeps the canonical
+chunk interval and canonical block interval aligned at tile edges; odd custom
+inputs round up to the next even size.
+
 Nether portal scale is also independent from tile size. The saved numerator and
 denominator describe Nether-to-Overworld coordinate scaling:
 
@@ -186,15 +190,14 @@ config`, but intentionally are not mutable through runtime commands.
 `GlobeSettings` is the saved server model under the `globe_world` field in
 vanilla `WorldGenSettings`. It serializes durable topology, presentation, and
 gameplay groups. Diagnostics remain session-local command state and are not part
-of saved settings. The codec only accepts the split schema; older flat
-`TilingSettings` saved data is not imported. `GlobeSettingsHolder` is the
-world-creation and saved-settings boundary. `TopologySettings`,
-`PresentationSettings`, and `GameplaySettings` now own their normalization and
-update helpers directly. `DimensionTiling` reads topology through
-`TopologySettings`, and the settings UI edits topology, presentation, and
-gameplay as separate `GlobeSettings` sections. Runtime commands still mutate
-only presentation/gameplay fields such as curvature, day/night mode, and
-day-length multiplier.
+of saved settings. The codec accepts the current split schema; pre-release
+scratch schemas are not imported. `GlobeSettingsHolder` is the world-creation
+and saved-settings boundary. `TopologySettings`, `PresentationSettings`, and
+`GameplaySettings` own their normalization and update helpers directly.
+`DimensionTiling` reads topology through `TopologySettings`, and the settings UI
+edits topology, presentation, and gameplay as separate `GlobeSettings` sections.
+Runtime commands still mutate only presentation/gameplay fields such as
+curvature, day/night mode, and day-length multiplier.
 
 ## Related Vanilla Mechanics
 

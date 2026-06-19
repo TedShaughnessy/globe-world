@@ -338,7 +338,11 @@ public record TopologySettings(
     }
 
     public static int sanitizeTileSize(int tileSize) {
-        return Math.max(MIN_TILE_SIZE_CHUNKS, tileSize);
+        int sanitized = Math.max(MIN_TILE_SIZE_CHUNKS, tileSize);
+        if (sanitized % 2 == 0) {
+            return sanitized;
+        }
+        return sanitized == Integer.MAX_VALUE ? sanitized - 1 : sanitized + 1;
     }
 
     private static PortalScale sanitizeNetherPortalScale(int numerator, int denominator) {

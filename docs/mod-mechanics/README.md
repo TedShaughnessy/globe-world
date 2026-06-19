@@ -17,7 +17,7 @@ ordinary world coordinates they are tracking.
 
 World period:
 
-- `W_CHUNKS`: configured tile width in chunks.
+- `W_CHUNKS`: configured tile width in chunks, normalized to an even number.
 - `W_BLOCKS = W_CHUNKS * 16`.
 - Canonical zone: centered on origin, `[-W/2, W/2)` in chunk/block X/Z.
 
