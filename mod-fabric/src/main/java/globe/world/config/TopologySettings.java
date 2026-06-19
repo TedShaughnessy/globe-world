@@ -5,6 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import globe.world.util.TerrainMode;
 
 import java.util.List;
+import java.util.Optional;
 
 public record TopologySettings(
         TilingMode mode,
@@ -16,7 +17,8 @@ public record TopologySettings(
         int netherPortalScaleNumerator,
         int netherPortalScaleDenominator,
         boolean forceMissingStronghold,
-        boolean forceMissingNetherFortress) {
+        boolean forceMissingNetherFortress,
+        boolean avoidWaterOnlySeeds) {
     public static final int MIN_TILE_SIZE_CHUNKS = 2;
     public static final int FORCED_STRUCTURE_SMALL_TILE_MAX_CHUNKS = 256;
     public static final int DEFAULT_NETHER_TILE_SIZE_CHUNKS = Math.max(
@@ -54,6 +56,7 @@ public record TopologySettings(
             DEFAULT_NETHER_PORTAL_SCALE_NUMERATOR,
             DEFAULT_NETHER_PORTAL_SCALE_DENOMINATOR,
             false,
+            false,
             false
     );
     public static final Codec<TopologySettings> CODEC =
@@ -68,8 +71,31 @@ public record TopologySettings(
                             Codec.INT.fieldOf("nether_portal_scale_numerator").forGetter(TopologySettings::netherPortalScaleNumerator),
                             Codec.INT.fieldOf("nether_portal_scale_denominator").forGetter(TopologySettings::netherPortalScaleDenominator),
                             Codec.BOOL.fieldOf("force_missing_stronghold").forGetter(TopologySettings::forceMissingStronghold),
-                            Codec.BOOL.fieldOf("force_missing_nether_fortress").forGetter(TopologySettings::forceMissingNetherFortress)
-                    ).apply(instance, TopologySettings::new)
+                            Codec.BOOL.fieldOf("force_missing_nether_fortress").forGetter(TopologySettings::forceMissingNetherFortress),
+                            Codec.BOOL.optionalFieldOf("avoid_water_only_seeds").forGetter(settings -> Optional.of(settings.avoidWaterOnlySeeds()))
+                    ).apply(instance, (mode,
+                                       tileSize,
+                                       terrainMode,
+                                       netherMode,
+                                       netherTerrainMode,
+                                       netherTileSize,
+                                       netherPortalScaleNumerator,
+                                       netherPortalScaleDenominator,
+                                       forceMissingStronghold,
+                                       forceMissingNetherFortress,
+                                       avoidWaterOnlySeeds) -> new TopologySettings(
+                            mode,
+                            tileSize,
+                            terrainMode,
+                            netherMode,
+                            netherTerrainMode,
+                            netherTileSize,
+                            netherPortalScaleNumerator,
+                            netherPortalScaleDenominator,
+                            forceMissingStronghold,
+                            forceMissingNetherFortress,
+                            avoidWaterOnlySeeds.orElse(defaultAvoidWaterOnlySeeds(mode))
+                    ))
             );
 
     public TopologySettings {
@@ -99,7 +125,8 @@ public record TopologySettings(
                 DEFAULT_NETHER_PORTAL_SCALE_NUMERATOR,
                 DEFAULT_NETHER_PORTAL_SCALE_DENOMINATOR,
                 defaultForceMissingStronghold(TilingMode.SQUARE, tileSize),
-                false
+                false,
+                defaultAvoidWaterOnlySeeds(TilingMode.SQUARE)
         );
     }
 
@@ -145,7 +172,8 @@ public record TopologySettings(
                 netherPortalScaleNumerator,
                 netherPortalScaleDenominator,
                 defaultForceMissingStronghold(newMode, tileSize),
-                forceMissingNetherFortress
+                forceMissingNetherFortress,
+                defaultAvoidWaterOnlySeeds(newMode)
         );
     }
 
@@ -160,7 +188,8 @@ public record TopologySettings(
                 netherPortalScaleNumerator,
                 netherPortalScaleDenominator,
                 defaultForceMissingStronghold(mode, newTileSize),
-                forceMissingNetherFortress
+                forceMissingNetherFortress,
+                defaultAvoidWaterOnlySeeds(mode)
         );
     }
 
@@ -175,7 +204,8 @@ public record TopologySettings(
                 netherPortalScaleNumerator,
                 netherPortalScaleDenominator,
                 forceMissingStronghold,
-                forceMissingNetherFortress
+                forceMissingNetherFortress,
+                avoidWaterOnlySeeds
         );
     }
 
@@ -190,7 +220,8 @@ public record TopologySettings(
                 netherPortalScaleNumerator,
                 netherPortalScaleDenominator,
                 forceMissingStronghold,
-                defaultForceMissingNetherStructure(newNetherMode, netherTileSize)
+                defaultForceMissingNetherStructure(newNetherMode, netherTileSize),
+                avoidWaterOnlySeeds
         );
     }
 
@@ -205,7 +236,8 @@ public record TopologySettings(
                 netherPortalScaleNumerator,
                 netherPortalScaleDenominator,
                 forceMissingStronghold,
-                forceMissingNetherFortress
+                forceMissingNetherFortress,
+                avoidWaterOnlySeeds
         );
     }
 
@@ -221,7 +253,8 @@ public record TopologySettings(
                 netherPortalScaleNumerator,
                 netherPortalScaleDenominator,
                 forceMissingStronghold,
-                defaultForceMissingNetherStructure(netherMode, sanitizedNetherTileSize)
+                defaultForceMissingNetherStructure(netherMode, sanitizedNetherTileSize),
+                avoidWaterOnlySeeds
         );
     }
 
@@ -237,7 +270,8 @@ public record TopologySettings(
                 scale.numerator(),
                 scale.denominator(),
                 forceMissingStronghold,
-                forceMissingNetherFortress
+                forceMissingNetherFortress,
+                avoidWaterOnlySeeds
         );
     }
 
@@ -252,7 +286,8 @@ public record TopologySettings(
                 netherPortalScaleNumerator,
                 netherPortalScaleDenominator,
                 newForceMissingStronghold,
-                forceMissingNetherFortress
+                forceMissingNetherFortress,
+                avoidWaterOnlySeeds
         );
     }
 
@@ -267,7 +302,24 @@ public record TopologySettings(
                 netherPortalScaleNumerator,
                 netherPortalScaleDenominator,
                 forceMissingStronghold,
-                newForceMissingNetherFortress
+                newForceMissingNetherFortress,
+                avoidWaterOnlySeeds
+        );
+    }
+
+    public TopologySettings withAvoidWaterOnlySeeds(boolean newAvoidWaterOnlySeeds) {
+        return new TopologySettings(
+                mode,
+                tileSize,
+                terrainMode,
+                netherMode,
+                netherTerrainMode,
+                netherTileSize,
+                netherPortalScaleNumerator,
+                netherPortalScaleDenominator,
+                forceMissingStronghold,
+                forceMissingNetherFortress,
+                newAvoidWaterOnlySeeds
         );
     }
 
@@ -300,6 +352,10 @@ public record TopologySettings(
 
     private static boolean defaultForceMissingNetherStructure(TilingMode mode, int tileSize) {
         return mode == TilingMode.SQUARE && isSmallProgressionTile(tileSize);
+    }
+
+    private static boolean defaultAvoidWaterOnlySeeds(TilingMode mode) {
+        return mode == TilingMode.SQUARE;
     }
 
     private static boolean isSmallProgressionTile(int tileSize) {

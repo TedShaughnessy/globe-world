@@ -1,5 +1,6 @@
 package globe.world.client.mixin;
 
+import globe.world.client.GlobeSeedPreflight;
 import globe.world.client.GlobeWorldTab;
 import globe.world.client.GlobeWorldCreateState;
 import globe.world.config.GlobeSettingsHolder;
@@ -13,6 +14,7 @@ import net.minecraft.world.level.storage.LevelDataAndDimensions;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -42,5 +44,19 @@ public class CreateWorldScreenMixin {
         CallbackInfo ci) {
         ((GlobeSettingsHolder) (Object) dataAndGenSettings.genSettings())
                 .globeWorld$setGlobeSettings(GlobeWorldCreateState.get());
+    }
+
+    @ModifyVariable(method = "createWorldAndCleanup", at = @At("HEAD"), argsOnly = true, index = 2)
+    private LevelDataAndDimensions.WorldDataAndGenSettings globeWorld$rerollWaterOnlySeed(
+            LevelDataAndDimensions.WorldDataAndGenSettings dataAndGenSettings,
+            LayeredRegistryAccess<RegistryLayer> registries) {
+        LevelDataAndDimensions.WorldDataAndGenSettings result = GlobeSeedPreflight.rerollWaterOnlySeedIfNeeded(
+                (CreateWorldScreen) (Object) this,
+                registries,
+                dataAndGenSettings
+        );
+        ((GlobeSettingsHolder) (Object) result.genSettings())
+                .globeWorld$setGlobeSettings(GlobeWorldCreateState.get());
+        return result;
     }
 }

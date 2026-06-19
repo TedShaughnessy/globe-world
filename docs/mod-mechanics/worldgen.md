@@ -30,6 +30,34 @@ The automatic policy uses compact torus for small tiles, periodic lattice for
 clean large multiples, and edge blend for awkward medium/large sizes. Changing
 tile size resets saved explicit terrain methods back to `AUTO`.
 
+## Seed Preflight
+
+`TopologySettings.avoid_water_only_seeds` is a create-time heuristic for random
+small wrapped Overworlds. When Overworld wrapping is enabled, the setting
+defaults on; when wrapping is disabled, it defaults off. Existing saves that
+lack the field decode through the same rule. Changing Overworld wrapping mode or
+tile size refreshes the default alongside the forced progression-structure
+defaults.
+
+During client world creation, `CreateWorldScreenMixin` gives
+`GlobeSeedPreflight` the final baked registry layers and the vanilla
+`WorldDataAndGenSettings` before the `CreateWorldCallback` opens a world folder
+or starts a server. The preflight only runs when the saved topology enables it
+and the vanilla seed text is empty. If the player types any seed text, including
+a numeric seed or a named seed, Globe World leaves the parsed vanilla seed
+unchanged.
+
+For each candidate seed, the preflight resolves the final Overworld
+`LevelStem`, skips debug and flat generators, builds a biome climate sampler for
+noise-based generators, and samples the canonical tile bounds at a coarse block
+grid. Ocean, deep ocean, and river biomes count as water-like; beaches count as
+land-adjacent and accept the seed. The first candidate is the vanilla random
+seed already present in `WorldOptions`; later candidates use
+`WorldOptions.randomSeed()`. If all 32 attempts still appear water-only, Globe
+World logs a warning and creates the world with the last tested seed. Large
+tiles whose sample grid would exceed the hard cap skip the heuristic and keep
+the original seed.
+
 ## Forced Progression Structures
 
 `GlobeSettings.topology()` saves two world-generation policy toggles:
@@ -118,6 +146,9 @@ Window logs distinguish wrapped visible writes, wrapped unobserved writes,
 radius-denied writes, and unavailable no-load chunk lookups. Spillover enqueue
 logs identify whether the queued write is guarded; existing apply, skip, stale,
 and cleanup events keep the same event names.
+The same channel uses `GW_SEED_PREFLIGHT` for water-only seed sampling details,
+including sample counts, rejected seeds, and the first non-water biome found for
+accepted candidates.
 
 Structure edge handling stores bounded virtual source keys on canonical target
 chunks during reference generation, resolves them during biome decoration, and
@@ -239,6 +270,7 @@ canonical candidate starts and warns that validation may load or generate
 - `mod-fabric/src/main/java/globe/world/config/PresentationSettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GameplaySettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeConfig.java`
+- `mod-fabric/src/client/java/globe/world/client/GlobeSeedPreflight.java`
 - `mod-fabric/src/client/java/globe/world/client/GlobeWorldSettingsControls.java`
 - `mod-fabric/src/main/java/globe/world/util/GenerationWindow.java`
 - `mod-fabric/src/main/java/globe/world/util/WorldGenSpillover.java`

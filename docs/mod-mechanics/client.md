@@ -95,6 +95,12 @@ read-only; local clients cannot silently edit only their own `GlobeConfig`.
 The forced progression-structure toggles are editable only during world
 creation because they describe world-generation policy. They remain visible but
 disabled in the in-world options screen.
+The create-world `Avoid Water-Only Seeds` policy is also saved in
+`TopologySettings`. Simple mode enables it silently for wrapped Overworlds.
+Custom mode shows a create-only checkbox near the Overworld tile controls; it
+defaults on for wrapped Overworlds and is hidden when Overworld wrapping is
+disabled. The policy only affects an empty vanilla seed field, so typed numeric
+or named seed text remains deterministic.
 In simple create-world mode, changing the Overworld tile-size preset resets the
 dependent settings below it to simple defaults, including a valid default Nether
 tile size. Simple create-world mode only exposes Overworld tile size and Nether
@@ -230,6 +236,8 @@ Client diagnostics are intentionally targeted:
   `GlobeWorldSettingsAckPayload`, `GlobeClientNetworking`,
   `GlobeClientSettings`, `GlobeWorldSettingsScreen`,
   `GlobeWorldSettingsControls`.
+- Create-world seed preflight:
+  `GlobeSeedPreflight`, `CreateWorldScreenMixin`.
 - Curvature and picking:
   `GlobeCurvature`, `GlobeCurvatureShader`, `GlobeCurvedRaycast`,
   `GlobeWorldSettingsControls`, `ShaderManagerMixin`, `LocalPlayerMixin`,

@@ -227,5 +227,4 @@ jobs:
             "${release_assets[@]}" \
             --target "$GITHUB_SHA" \
             --title "Globe World v${MOD_VERSION}" \
-            --notes-file release-notes.md \
-            --prerelease
+            --notes-file release-notes.md

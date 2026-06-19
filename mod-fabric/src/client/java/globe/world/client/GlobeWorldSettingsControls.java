@@ -52,6 +52,8 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final String DAY_LENGTH_TOOLTIP = "Scales the length of the Minecraft day night cycle";
     private static final String ALLOW_MOBS_AT_WORLD_SPAWN_TOOLTIP = "Allows natural mobs to spawn inside vanilla's 24-block world-spawn exclusion.";
     private static final String PLAYER_MOB_SPAWN_EXCLUSION_TOOLTIP = "Minimum natural-spawn distance from the nearest non-spectator player.";
+    private static final String AVOID_WATER_ONLY_SEEDS_TOOLTIP = "Rerolls random seeds whose wrapped Overworld tile appears to be all ocean. "
+            + "Explicit seed text is never changed.";
     private static final String FORCE_MISSING_STRONGHOLD_TOOLTIP = "Adds a canonical stronghold if the wrapped Overworld has no canonical stronghold. "
             + "if no stronghold exists throwing an Eye of Ender will create a portal where you stand";
     private static final String FORCE_MISSING_FORTRESS_TOOLTIP = "Adds a canonical fortress if the wrapped Nether has no canonical fortress.";
@@ -158,6 +160,7 @@ public class GlobeWorldSettingsControls implements Layout {
     private MultiLineTextWidget netherInfo;
     private GlobeCurvatureSlider netherCurvatureSlider;
     private StringWidget progressionStructuresLabel;
+    private Checkbox avoidWaterOnlySeedsCheckbox;
     private Checkbox forceMissingStrongholdCheckbox;
     private Checkbox forceMissingNetherFortressCheckbox;
     private StringWidget naturalSpawningLabel;
@@ -272,6 +275,14 @@ public class GlobeWorldSettingsControls implements Layout {
 
         overworldInfo = infoText(Component.empty());
         addRow(overworldInfo, () -> !createWorld || currentTopology().enabled() && createMode == CreateMode.CUSTOM);
+
+        avoidWaterOnlySeedsCheckbox = progressionCheckbox(
+                "Avoid Water-Only Seeds",
+                AVOID_WATER_ONLY_SEEDS_TOOLTIP,
+                currentTopology().avoidWaterOnlySeeds(),
+                selected -> setTopology(currentTopology().withAvoidWaterOnlySeeds(selected))
+        );
+        addRow(avoidWaterOnlySeedsCheckbox, () -> createWorld && createMode == CreateMode.CUSTOM && currentTopology().enabled());
 
         overworldCurvatureSlider = new GlobeCurvatureSlider(
                 0,
@@ -607,17 +618,22 @@ public class GlobeWorldSettingsControls implements Layout {
         PresentationSettings presentation = globeSettings.presentation();
         GameplaySettings gameplay = globeSettings.gameplay();
         if (createWorld && createMode == CreateMode.SIMPLE) {
+            TopologySettings simpleTopology = topology.enabled() && !topology.avoidWaterOnlySeeds()
+                    ? topology.withAvoidWaterOnlySeeds(true)
+                    : topology;
             GameplaySettings simpleGameplay = gameplay
                     .withPlayerMobSpawnExclusionBlocks(GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_DEFAULT_BLOCKS);
-            if (simpleAllowMobsAtWorldSpawn(topology.tileSize())) {
+            if (simpleAllowMobsAtWorldSpawn(simpleTopology.tileSize())) {
                 simpleGameplay = simpleGameplay.withAllowMobsAtWorldSpawn(true);
             }
-            if (!simpleScrollingDayCycleSupported(topology)
+            if (!simpleScrollingDayCycleSupported(simpleTopology)
                     && simpleGameplay.dayNightCycleMode() == DayNightCycleMode.SCROLLING) {
                 simpleGameplay = simpleGameplay.withDayNightCycleMode(DayNightCycleMode.VANILLA);
             }
-            if (!simpleGameplay.equals(gameplay)) {
-                globeSettings = globeSettings.withGameplay(simpleGameplay);
+            if (!simpleTopology.equals(topology) || !simpleGameplay.equals(gameplay)) {
+                globeSettings = globeSettings
+                        .withTopology(simpleTopology)
+                        .withGameplay(simpleGameplay);
                 settingsSetter.accept(globeSettings);
                 topology = globeSettings.topology();
                 presentation = globeSettings.presentation();
@@ -656,6 +672,8 @@ public class GlobeWorldSettingsControls implements Layout {
         netherInfo.setMessage(netherInfo(topology));
         netherCurvatureSlider.setPercent(presentation.netherCurvaturePercent());
         netherCurvatureSlider.active = topology.netherEnabled();
+        syncCheckbox(avoidWaterOnlySeedsCheckbox, topology.avoidWaterOnlySeeds());
+        avoidWaterOnlySeedsCheckbox.active = createWorld && editable && topology.enabled();
         syncCheckbox(forceMissingStrongholdCheckbox, topology.forceMissingStronghold());
         syncCheckbox(forceMissingNetherFortressCheckbox, topology.forceMissingNetherFortress());
         forceMissingStrongholdCheckbox.active = createWorld && editable && topology.enabled();
@@ -704,6 +722,7 @@ public class GlobeWorldSettingsControls implements Layout {
         portalRatioSlider.active = false;
         netherTopologyButton.active = false;
         netherCurvatureSlider.active = false;
+        avoidWaterOnlySeedsCheckbox.active = false;
         forceMissingStrongholdCheckbox.active = false;
         forceMissingNetherFortressCheckbox.active = false;
         allowMobsAtWorldSpawnCheckbox.active = false;
