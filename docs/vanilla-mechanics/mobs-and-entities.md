@@ -26,6 +26,8 @@ Common sources jar:
 - `net/minecraft/world/entity/ai/goal/RangedCrossbowAttackGoal.java`
 - `net/minecraft/world/entity/ai/goal/LookAtPlayerGoal.java`
 - `net/minecraft/world/entity/ai/goal/MoveTowardsTargetGoal.java`
+- `net/minecraft/world/entity/ai/goal/FollowOwnerGoal.java`
+- `net/minecraft/world/entity/TamableAnimal.java`
 - `net/minecraft/world/entity/ai/control/LookControl.java`
 - `net/minecraft/world/entity/ai/navigation/PathNavigation.java`
 - `net/minecraft/world/entity/monster/EnderMan.java`
@@ -173,6 +175,11 @@ has already been accepted as a candidate:
   flying navigation override that entity method and do the same conversion in
   the subclass; ground navigation also adjusts a block target to a surface
   position before delegating to the raw path search.
+- `FollowOwnerGoal` uses raw `TamableAnimal.distanceToSqr(owner)` for the
+  start and stop distances, then calls `TamableAnimal.shouldTryTeleportToOwner`
+  or `PathNavigation.moveTo(owner, ...)` during ticks. `TamableAnimal` uses raw
+  owner distance for the 12-block teleport threshold and samples teleport
+  positions around `owner.blockPosition()`.
 - `LookControl.setLookAt(Entity, ...)` and `Mob.lookAt(Entity, ...)` turn toward
   raw target X/Z.
 

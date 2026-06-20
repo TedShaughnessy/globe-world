@@ -189,6 +189,15 @@ vanilla's multi-target path search can choose a usable route. This is used by
 canonical POI memories as well as entity targets. The pathfinder and node
 evaluator themselves are still vanilla and not fully toroidal.
 
+Tamed animal owner-follow logic uses the same actor-local owner distance.
+`FollowOwnerGoal` starts and stops from wrapped distance, and
+`TamableAnimal.shouldTryTeleportToOwner()` uses wrapped distance before the
+pet decides to teleport. When teleporting is actually needed, the owner block
+is projected into the pet's nearest visible alias before vanilla samples nearby
+landing positions. This keeps wolves and other follow-owner pets from
+teleporting around a player who is raw-far but visibly close through a tile
+seam.
+
 Player pickup and interaction reach checks use wrapped target boxes, so players
 near a seam interact with the visible alias while packets still refer to the
 canonical entity or block. Curved client picking is documented in
@@ -255,7 +264,8 @@ canonicalized but currently sit outside canonical X/Z.
   `MobNavigationAliasUtil`, `TargetingConditionsMixin`,
   `ServerEntityGetterMixin`, `NearestLivingEntitySensorMixin`, `SensingMixin`,
   `TargetGoalMixin`, `PathNavigationMixin`, `GroundPathNavigationMixin`,
-  `FlyingPathNavigationMixin`, `LookControlMixin`, `MobLookMixin`,
+  `FlyingPathNavigationMixin`, `FollowOwnerGoalMixin`,
+  `TamableAnimalOwnerTeleportMixin`, `LookControlMixin`, `MobLookMixin`,
   `LivingEntityLookAtMeMixin`, `EnderManMixin`,
   `EndermanFreezeWhenLookedAtMixin`, `EndermanLookForPlayerGoalMixin`,
   `MeleeAttackGoalMixin`, `RangedAttackGoalMixin`,
