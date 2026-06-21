@@ -154,10 +154,12 @@ Arrows and tridents have separate vanilla arrow-family paths, so
 `AbstractArrowAliasCollisionMixin` also wraps their direct block clip. It keeps
 vanilla arrow entity hits, then uses `ProjectileAliasUtil` and the shared entity
 sweep primitive to test candidate entities in the nearest alias frame to the
-projectile's movement segment. Damage, pierce tracking, pickup, trident return,
-and enchantment behavior stay on vanilla's entity identity while a skeleton
-arrow or thrown trident can hit a player or mob through the visible wrapped
-copy.
+projectile's movement segment. Arrow hit ordering uses the visible impact
+location instead of the target entity's raw stored position, so alias hits are
+not deprioritized behind canonical-tile entities. Damage, pierce tracking,
+pickup, trident return, and enchantment behavior stay on vanilla's entity
+identity while a skeleton arrow or thrown trident can hit a player or mob
+through the visible wrapped copy.
 
 Splash-potion area effects use wrapped entity candidates and wrapped falloff
 distance. `ThrownSplashPotionAliasEffectMixin` gathers candidates through the

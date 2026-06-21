@@ -54,6 +54,7 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public final class GlobeDebugCommands {
     private static final DynamicCommandExceptionType INVALID_DAY_NIGHT_MODE = new DynamicCommandExceptionType(
@@ -488,6 +489,11 @@ public final class GlobeDebugCommands {
     private static int teleportPlayerToCanonicalPosition(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         DimensionTiling tiling = DimensionTiling.forLevel(player.level());
+        if (!tiling.enabled()) {
+            source.sendFailure(Component.literal("Current dimension is not tiled."));
+            return 0;
+        }
+
         double canonicalX = CoordUtil.wrapBlock(tiling, player.getX());
         double canonicalZ = CoordUtil.wrapBlock(tiling, player.getZ());
         double oldX = player.getX();
@@ -500,7 +506,10 @@ public final class GlobeDebugCommands {
             return 0;
         }
 
-        player.connection.teleport(canonicalX, player.getY(), canonicalZ, player.getYRot(), player.getXRot());
+        if (!teleportPlayer(player, canonicalX, player.getY(), canonicalZ)) {
+            source.sendFailure(Component.literal("Canonical position is outside valid teleport bounds."));
+            return 0;
+        }
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Teleported to canonical position %.3f %.3f %.3f from X/Z %.3f %.3f",
                 canonicalX, player.getY(), canonicalZ, oldX, oldZ)), false);
@@ -530,7 +539,10 @@ public final class GlobeDebugCommands {
             }
         }
 
-        player.connection.teleport(targetX, player.getY(), targetZ, player.getYRot(), player.getXRot());
+        if (!teleportPlayer(player, targetX, player.getY(), targetZ)) {
+            source.sendFailure(Component.literal("Border test position is outside valid teleport bounds."));
+            return 0;
+        }
         double finalTargetX = targetX;
         double finalTargetZ = targetZ;
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
@@ -556,7 +568,10 @@ public final class GlobeDebugCommands {
         double canonicalZ = CoordUtil.wrapBlock(tiling, player.getZ());
         double targetX = canonicalX + (double) tileX * period;
         double targetZ = canonicalZ + (double) tileZ * period;
-        player.connection.teleport(targetX, player.getY(), targetZ, player.getYRot(), player.getXRot());
+        if (!teleportPlayer(player, targetX, player.getY(), targetZ)) {
+            source.sendFailure(Component.literal("Alias position is outside valid teleport bounds."));
+            return 0;
+        }
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Teleported to tile alias %+d %+d at %.3f %.3f %.3f",
                 tileX,
@@ -565,6 +580,23 @@ public final class GlobeDebugCommands {
                 player.getY(),
                 targetZ)), false);
         return 1;
+    }
+
+    private static boolean teleportPlayer(ServerPlayer player, double x, double y, double z) {
+        boolean success = player.teleportTo(
+                player.level(),
+                x,
+                y,
+                z,
+                Set.of(),
+                player.getYRot(),
+                player.getXRot(),
+                true);
+        if (success && !player.isFallFlying()) {
+            player.setDeltaMovement(player.getDeltaMovement().multiply(1.0, 0.0, 1.0));
+            player.setOnGround(true);
+        }
+        return success;
     }
 
     private static int printEndPortal(CommandSourceStack source, boolean validate) {

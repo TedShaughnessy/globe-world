@@ -203,9 +203,13 @@ Client diagnostics are intentionally targeted:
 
 - `F3+Y`: Globe debug overlay and tile-border renderer, including current
   Overworld/Nether tile widths, Nether portal ratio, natural-spawn settings,
-  and the saved world-spawn marker plus active exclusion radius. The marker uses
-  the client level's respawn data, which vanilla updates from the server's
-  default-spawn packet.
+  and a one-ring alias tile-border renderer around the camera plus the
+  canonical tile even when it is outside that ring. The renderer draws one
+  vertical line at each tile corner plus a horizontal border around each tile at
+  the player's nearest block height. Canonical tile borders are green; alias tile
+  borders are blue. It also shows the saved world-spawn marker plus active
+  exclusion radius. The marker uses the client level's respawn data, which
+  vanilla updates from the server's default-spawn packet.
 - `/globeworld debug list`: show server diagnostic channels and whether each
   channel is enabled for this session.
 - `/globeworld debug enable <channel>` and `/globeworld debug disable <channel>`:

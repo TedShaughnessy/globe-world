@@ -18,15 +18,13 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Locale;
 
 public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.debug.DebugRenderer.SimpleDebugRenderer {
-    private static final int CANONICAL_COLOR = ARGB.color(255, 0, 220, 180);
-    private static final int CURRENT_ALIAS_COLOR = ARGB.color(255, 255, 220, 0);
-    private static final int OTHER_ALIAS_COLOR = ARGB.color(150, 120, 160, 255);
+    private static final int CANONICAL_TILE_COLOR = ARGB.color(255, 40, 230, 80);
+    private static final int ALIAS_TILE_COLOR = ARGB.color(210, 80, 170, 255);
     private static final int WORLD_SPAWN_COLOR = ARGB.color(255, 255, 70, 70);
     private static final int WORLD_SPAWN_ALLOWED_COLOR = ARGB.color(170, 255, 150, 80);
     private static final int WORLD_SPAWN_RADIUS_FILL = ARGB.color(35, 255, 70, 70);
-    private static final float CURRENT_TILE_WIDTH = 10.0F;
-    private static final float OTHER_TILE_WIDTH = 5.0F;
-    private static final float CHUNK_GRID_WIDTH = 2.5F;
+    private static final float CORNER_POST_WIDTH = 10.0F;
+    private static final float PLAYER_HEIGHT_BORDER_WIDTH = 8.0F;
     private static final float WORLD_SPAWN_MARKER_WIDTH = 6.0F;
     private static final int WORLD_SPAWN_EXCLUSION_BLOCKS = 24;
 
@@ -58,57 +56,94 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
         int currentTileZ = Math.floorDiv(cameraEntity.blockPosition().getZ() - canonicalMin, tileBlocks);
         int minY = this.minecraft.level.getMinY();
         int maxY = this.minecraft.level.getMaxY() + 1;
+        double borderY = Math.clamp(Math.round(cameraEntity.getY()), minY + 0.05D, maxY - 0.05D);
 
-        for (int tileX = currentTileX - 2; tileX <= currentTileX + 2; tileX++) {
-            for (int tileZ = currentTileZ - 2; tileZ <= currentTileZ + 2; tileZ++) {
-                int x0 = canonicalMin + tileX * tileBlocks;
-                int z0 = canonicalMin + tileZ * tileBlocks;
-                int x1 = x0 + tileBlocks;
-                int z1 = z0 + tileBlocks;
-                int color = colorFor(tileX, tileZ, currentTileX, currentTileZ);
-                float width = tileX == currentTileX && tileZ == currentTileZ ? CURRENT_TILE_WIDTH : OTHER_TILE_WIDTH;
-                drawTile(x0, z0, x1, z1, minY, maxY, color, width);
+        for (int tileX = currentTileX - 1; tileX <= currentTileX + 1; tileX++) {
+            for (int tileZ = currentTileZ - 1; tileZ <= currentTileZ + 1; tileZ++) {
+                if (tileX != 0 || tileZ != 0) {
+                    drawTile(canonicalMin, tileBlocks, tileX, tileZ, minY, maxY, borderY, ALIAS_TILE_COLOR, true);
+                }
             }
         }
+        drawTile(canonicalMin, tileBlocks, 0, 0, minY, maxY, borderY, CANONICAL_TILE_COLOR, false);
 
         drawWorldSpawnMarker(cameraEntity, tiling, tileBlocks, minY, maxY);
     }
 
-    private static int colorFor(int tileX, int tileZ, int currentTileX, int currentTileZ) {
-        if (tileX == 0 && tileZ == 0) {
-            return CANONICAL_COLOR;
-        }
-        if (tileX == currentTileX && tileZ == currentTileZ) {
-            return CURRENT_ALIAS_COLOR;
-        }
-        return OTHER_ALIAS_COLOR;
+    private static void drawTile(
+            int canonicalMin,
+            int tileBlocks,
+            int tileX,
+            int tileZ,
+            int minY,
+            int maxY,
+            double borderY,
+            int color,
+            boolean skipCanonicalOverlap) {
+        int x0 = canonicalMin + tileX * tileBlocks;
+        int z0 = canonicalMin + tileZ * tileBlocks;
+        int x1 = x0 + tileBlocks;
+        int z1 = z0 + tileBlocks;
+        int canonicalMax = canonicalMin + tileBlocks;
+
+        cornerPost(x0, z0, minY, maxY, color, skipCanonicalOverlap, canonicalMin, canonicalMax);
+        cornerPost(x1, z0, minY, maxY, color, skipCanonicalOverlap, canonicalMin, canonicalMax);
+        cornerPost(x1, z1, minY, maxY, color, skipCanonicalOverlap, canonicalMin, canonicalMax);
+        cornerPost(x0, z1, minY, maxY, color, skipCanonicalOverlap, canonicalMin, canonicalMax);
+
+        borderLine(x0, z0, x1, z0, borderY, color, skipCanonicalOverlap, canonicalMin, canonicalMax);
+        borderLine(x1, z0, x1, z1, borderY, color, skipCanonicalOverlap, canonicalMin, canonicalMax);
+        borderLine(x1, z1, x0, z1, borderY, color, skipCanonicalOverlap, canonicalMin, canonicalMax);
+        borderLine(x0, z1, x0, z0, borderY, color, skipCanonicalOverlap, canonicalMin, canonicalMax);
     }
 
-    private static void drawTile(int x0, int z0, int x1, int z1, int minY, int maxY, int color, float width) {
-        line(x0, minY, z0, x1, minY, z0, color, width);
-        line(x1, minY, z0, x1, minY, z1, color, width);
-        line(x1, minY, z1, x0, minY, z1, color, width);
-        line(x0, minY, z1, x0, minY, z0, color, width);
-
-        line(x0, maxY, z0, x1, maxY, z0, color, width);
-        line(x1, maxY, z0, x1, maxY, z1, color, width);
-        line(x1, maxY, z1, x0, maxY, z1, color, width);
-        line(x0, maxY, z1, x0, maxY, z0, color, width);
-
-        line(x0, minY, z0, x0, maxY, z0, color, width);
-        line(x1, minY, z0, x1, maxY, z0, color, width);
-        line(x1, minY, z1, x1, maxY, z1, color, width);
-        line(x0, minY, z1, x0, maxY, z1, color, width);
-
-        for (int x = x0 + 16; x < x1; x += 16) {
-            line(x, minY, z0, x, maxY, z0, color, CHUNK_GRID_WIDTH);
-            line(x, minY, z1, x, maxY, z1, color, CHUNK_GRID_WIDTH);
+    private static void cornerPost(
+            int x,
+            int z,
+            int minY,
+            int maxY,
+            int color,
+            boolean skipCanonicalOverlap,
+            int canonicalMin,
+            int canonicalMax) {
+        if (skipCanonicalOverlap && isCanonicalCorner(x, z, canonicalMin, canonicalMax)) {
+            return;
         }
+        line(x, minY, z, x, maxY, z, color, CORNER_POST_WIDTH);
+    }
 
-        for (int z = z0 + 16; z < z1; z += 16) {
-            line(x0, minY, z, x0, maxY, z, color, CHUNK_GRID_WIDTH);
-            line(x1, minY, z, x1, maxY, z, color, CHUNK_GRID_WIDTH);
+    private static void borderLine(
+            int x0,
+            int z0,
+            int x1,
+            int z1,
+            double y,
+            int color,
+            boolean skipCanonicalOverlap,
+            int canonicalMin,
+            int canonicalMax) {
+        if (skipCanonicalOverlap && isCanonicalBorder(x0, z0, x1, z1, canonicalMin, canonicalMax)) {
+            return;
         }
+        line(x0, y, z0, x1, y, z1, color, PLAYER_HEIGHT_BORDER_WIDTH);
+    }
+
+    private static boolean isCanonicalCorner(int x, int z, int canonicalMin, int canonicalMax) {
+        return (x == canonicalMin || x == canonicalMax) && (z == canonicalMin || z == canonicalMax);
+    }
+
+    private static boolean isCanonicalBorder(int x0, int z0, int x1, int z1, int canonicalMin, int canonicalMax) {
+        if (z0 == z1 && (z0 == canonicalMin || z0 == canonicalMax)) {
+            return spansCanonicalRange(x0, x1, canonicalMin, canonicalMax);
+        }
+        if (x0 == x1 && (x0 == canonicalMin || x0 == canonicalMax)) {
+            return spansCanonicalRange(z0, z1, canonicalMin, canonicalMax);
+        }
+        return false;
+    }
+
+    private static boolean spansCanonicalRange(int a, int b, int canonicalMin, int canonicalMax) {
+        return Math.min(a, b) == canonicalMin && Math.max(a, b) == canonicalMax;
     }
 
     private void drawWorldSpawnMarker(Entity cameraEntity, DimensionTiling tiling, int tileBlocks, int minY, int maxY) {
