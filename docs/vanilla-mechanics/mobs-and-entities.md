@@ -27,6 +27,10 @@ Common sources jar:
 - `net/minecraft/world/entity/ai/goal/LookAtPlayerGoal.java`
 - `net/minecraft/world/entity/ai/goal/MoveTowardsTargetGoal.java`
 - `net/minecraft/world/entity/ai/goal/FollowOwnerGoal.java`
+- `net/minecraft/world/entity/ai/goal/SitWhenOrderedToGoal.java`
+- `net/minecraft/world/entity/ai/goal/LandOnOwnersShoulderGoal.java`
+- `net/minecraft/world/entity/animal/feline/Cat.java`
+  (`Cat.CatRelaxOnOwnerGoal`)
 - `net/minecraft/world/entity/TamableAnimal.java`
 - `net/minecraft/world/entity/ai/control/LookControl.java`
 - `net/minecraft/world/entity/ai/navigation/PathNavigation.java`
@@ -187,6 +191,14 @@ has already been accepted as a candidate:
   or `PathNavigation.moveTo(owner, ...)` during ticks. `TamableAnimal` uses raw
   owner distance for the 12-block teleport threshold and samples teleport
   positions around `owner.blockPosition()`.
+- `SitWhenOrderedToGoal.canUse()` uses raw
+  `TamableAnimal.distanceToSqr(owner)` for the nearby attacked-owner sitting
+  gate.
+- `LandOnOwnersShoulderGoal.tick()` tests raw bounding-box overlap between a
+  shoulder-riding pet and its owner before mounting.
+- `Cat.CatRelaxOnOwnerGoal` uses raw owner distance, the raw sleeping-player
+  `blockPosition()`, and a raw cat query around the bed-adjacent goal position
+  before navigating and lying down near the owner.
 - `LookControl.setLookAt(Entity, ...)` and `Mob.lookAt(Entity, ...)` turn toward
   raw target X/Z.
 

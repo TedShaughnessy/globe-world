@@ -23,8 +23,8 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
     private static final int WORLD_SPAWN_COLOR = ARGB.color(255, 255, 70, 70);
     private static final int WORLD_SPAWN_ALLOWED_COLOR = ARGB.color(170, 255, 150, 80);
     private static final int WORLD_SPAWN_RADIUS_FILL = ARGB.color(35, 255, 70, 70);
-    private static final float CORNER_POST_WIDTH = 10.0F;
-    private static final float PLAYER_HEIGHT_BORDER_WIDTH = 8.0F;
+    private static final float CORNER_POST_WIDTH = 5.0F;
+    private static final float PLAYER_HEIGHT_BORDER_WIDTH = 4.0F;
     private static final float WORLD_SPAWN_MARKER_WIDTH = 6.0F;
     private static final int WORLD_SPAWN_EXCLUSION_BLOCKS = 24;
 

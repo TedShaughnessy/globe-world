@@ -54,6 +54,9 @@ Status keys:
 | Look and line of sight | Use mobs that track a player across a seam. | Look control and line-of-sight checks use the actor-local target frame. | Manual |
 | Melee reach and knockback | Fight a mob or player across a seam. | Reach checks, hit position, and knockback direction match the visible alias relation. | Manual |
 | Path target candidates | Put a target just across a seam with a reachable route. | Pathing can choose useful alias target blocks without claiming full toroidal pathfinding. | Manual |
+| Sitting pet owner attacked | Ordered-sitting tame mob near owner through seam; owner is hit. | Pet uses visible distance for the attacked-owner sitting gate and may stand/respond like vanilla raw-near space. | Implemented; manual regression |
+| Cat owner bed | Tame cat and sleeping owner/bed visible-near across seam. | Cat uses the visible bed side, avoids occupied visible bed space, and can lie down. | Implemented; manual regression |
+| Parrot shoulder | Tame parrot overlaps owner through seam. | Parrot can mount the owner's shoulder from the visible alias overlap. | Implemented; manual regression |
 | Mounted stacks | Move non-player mounts/passengers across a seam. | The mounted stack remains canonical and shifts together. | Manual |
 | Player interaction reach | Interact with entities or pickups visible across a seam. | Reach and pickup checks use wrapped target boxes while packets keep canonical identity. | Manual |
 

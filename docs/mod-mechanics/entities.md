@@ -203,6 +203,18 @@ landing positions. This keeps wolves and other follow-owner pets from
 teleporting around a player who is raw-far but visibly close through a tile
 seam.
 
+Owner-adjacent tameable behaviors use the same visible-frame convention.
+`SitWhenOrderedToGoalMixin` applies actor-local owner distance to the
+attacked-owner sitting gate, so ordered-sitting pets near their owner through a
+seam can leave sitting as they would in raw-near vanilla space.
+`LandOnOwnersShoulderGoalMixin` tests the owner's actor-local box for shoulder
+mounting, letting a parrot mount when it visibly overlaps the player through an
+alias. `CatRelaxOnOwnerGoalMixin` projects a sleeping owner's bed position into
+the cat-local alias before choosing the bed-adjacent navigation target, uses
+wrapped owner distance for the start and lie-down gates, and checks occupied
+cat bed space through the topological entity query. Cat morning gifts still use
+the cat's canonical post-sleep position.
+
 Player pickup and interaction reach checks use wrapped target boxes, so players
 near a seam interact with the visible alias while packets still refer to the
 canonical entity or block. Curved client picking is documented in
@@ -270,7 +282,9 @@ canonicalized but currently sit outside canonical X/Z.
   `ServerEntityGetterMixin`, `NearestLivingEntitySensorMixin`, `SensingMixin`,
   `TargetGoalMixin`, `PathNavigationMixin`, `GroundPathNavigationMixin`,
   `FlyingPathNavigationMixin`, `FollowOwnerGoalMixin`,
-  `TamableAnimalOwnerTeleportMixin`, `LookControlMixin`, `MobLookMixin`,
+  `TamableAnimalOwnerTeleportMixin`, `SitWhenOrderedToGoalMixin`,
+  `LandOnOwnersShoulderGoalMixin`, `CatRelaxOnOwnerGoalMixin`,
+  `LookControlMixin`, `MobLookMixin`,
   `LivingEntityLookAtMeMixin`, `EnderManMixin`,
   `EndermanFreezeWhenLookedAtMixin`, `EndermanLookForPlayerGoalMixin`,
   `MeleeAttackGoalMixin`, `RangedAttackGoalMixin`,

@@ -2,185 +2,320 @@
 
 ## Status
 
-Investigative plan. The owner-follow teleport fix is covered by
-`FollowOwnerGoalMixin` and `TamableAnimalOwnerTeleportMixin`; this plan tracks
-nearby vanilla AI paths that still use raw X/Z distance, raw block positions, or
-raw bounding-box overlap after entity storage and generic path requests have
-already been made alias-aware.
+Partially implemented plan. The owner-follow teleport fix is already covered by
+`FollowOwnerGoalMixin` and `TamableAnimalOwnerTeleportMixin`, and Batch 1 is now
+implemented by `SitWhenOrderedToGoalMixin`, `LandOnOwnersShoulderGoalMixin`,
+and `CatRelaxOnOwnerGoalMixin`. This plan tracks the remaining nearby audited
+vanilla AI hazards as small, reviewable batches.
 
-## Problem
+The first implementation pass should cover goal-based AI only. Brain/memory
+behaviors remain a separate audit batch because some memory positions are
+canonical by design and should not be wrapped blindly.
 
-Minecraft AI contains many local follow, sit, social, and short-range movement
-checks outside the common targeting and path-navigation APIs. In a wrapped
-world, those checks can see two entities as raw-far even when they are visibly
-near through a tile seam, or can aim a short movement at the raw canonical copy
-instead of the actor-local alias.
+## Review Findings
 
-The existing generic hooks reduce the blast radius:
+Existing alias infrastructure is sufficient for most of this work:
 
-- `ActorLocalTargets` provides actor-local target positions, hitboxes, and
-  wrapped distances.
-- `PathNavigationMixin`, `GroundPathNavigationMixin`, and
-  `FlyingPathNavigationMixin` make `moveTo(entity, ...)` and
-  `createPath(entity, ...)` target useful aliases.
-- `LookControlMixin` and `MobLookMixin` handle common entity-looking paths.
-- Combat targeting, sensing, melee, ranged goals, POI path targets, projectiles,
-  pickup, and interactions already have narrower documented hooks.
+- `ActorLocalTargets.distanceToSqr(...)` covers actor-to-entity and
+  actor-to-coordinate gates.
+- `ActorLocalTargets.nearestAliasPosition(...)`,
+  `nearestAliasEyePosition(...)`, and `nearestAliasBlockPos(...)` cover manual
+  movement vectors and entity-derived block targets.
+- `ActorLocalTargets.box(...)` and `TopologicalEntityQueries.nearestAliasBox(...)`
+  cover actor-local hitbox overlap checks.
+- `TopologicalEntityQueries.entities(...)` and `entitiesOfClass(...)` cover
+  local broad-phase queries when vanilla's raw `getEntities*` scan is too small
+  near a seam.
+- Existing mixins use narrow `@WrapOperation` hooks and are registered in
+  `mod-fabric/src/main/resources/globe-world.mixins.json`; follow that style.
 
-The remaining hazards are mostly bespoke goal gates, manually computed deltas,
-and block-position choices.
+Important corrections from the source review:
 
-## Audited Vanilla Sources
+- `SitWhenOrderedToGoal` only needs the owner distance in `canUse()`;
+  `canContinueToUse()` only checks the ordered-sit flag.
+- `Cat.CatRelaxOnOwnerGoal` needs more than distance wrapping: the sleeping
+  player's bed block position, the bed-adjacent `goalPos`, and the occupied-cat
+  query all need to stay in the cat-local visible frame while block reads still
+  resolve to the canonical bed.
+- `FollowMobGoal`, `LlamaFollowCaravanGoal`, `FollowPlayerRiddenEntityGoal`,
+  `TemptGoal.ForNonPathfinders`, and `LeapAtTargetGoal` contain hand-written
+  X/Z vectors. These are higher risk than simple distance wrappers and should
+  be implemented after the direct owner-adjacent hooks.
 
-Common source anchors in Minecraft 26.1.2:
+## Implementation Order
 
-- `net/minecraft/world/entity/ai/goal/SitWhenOrderedToGoal.java`
-- `net/minecraft/world/entity/animal/feline/Cat.java`
-  (`CatRelaxOnOwnerGoal`)
-- `net/minecraft/world/entity/ai/goal/LandOnOwnersShoulderGoal.java`
-- `net/minecraft/world/entity/ai/goal/TemptGoal.java`
-- `net/minecraft/world/entity/ai/goal/FollowParentGoal.java`
-- `net/minecraft/world/entity/ai/goal/FollowMobGoal.java`
-- `net/minecraft/world/entity/ai/goal/LlamaFollowCaravanGoal.java`
-- `net/minecraft/world/entity/ai/goal/FollowPlayerRiddenEntityGoal.java`
-- `net/minecraft/world/entity/ai/goal/LeapAtTargetGoal.java`
-- `net/minecraft/world/entity/ai/goal/OcelotAttackGoal.java`
-- Brain/social behavior candidates:
-  `AnimalMakeLove`, `BabyFollowAdult`, `BehaviorUtils`, `FollowTemptation`,
-  `InteractWith`, `SetEntityLookTarget`, `SetLookAndInteract`,
-  `LookAndFollowTradingPlayerSink`, `ShowTradesToPlayer`, and
-  `SocializeAtBell`.
+### Batch 1: Owner-adjacent Tameable Behavior
 
-## Fix Plan
+Status: implemented, pending user-run build and manual seam regression.
 
-### Phase 1: Tameable Owner-adjacent Behavior
+Goal: finish the tameable owner cases closest to the fixed owner-follow bug.
 
-Goal: finish tameable owner behavior that is close to the wolf teleport bug.
+Deliverables:
 
-1. Add `SitWhenOrderedToGoalMixin`.
-   - Wrap `TamableAnimal.distanceToSqr(owner)` in `canUse()`.
-   - Use `ActorLocalTargets.distanceToSqr(mob, owner)`.
-   - Expected behavior: an ordered-sitting pet visibly near an attacked owner
-     can leave sitting just as it would in vanilla raw-near space.
+1. `SitWhenOrderedToGoalMixin`.
+   - Target: `net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal`.
+   - Hook: wrap `TamableAnimal.distanceToSqr(Entity)` in `canUse()`.
+   - Replacement: `ActorLocalTargets.distanceToSqr(tamable, owner)`.
+   - Register the mixin in `globe-world.mixins.json`.
+   - Expected behavior: an ordered-sitting tame mob visibly near an attacked
+     owner through a seam uses the same stand/respond decision as vanilla
+     raw-near space.
 
-2. Add a cat owner-bed hook for `Cat.CatRelaxOnOwnerGoal`.
-   - Wrap the owner distance gate in `canUse()` and the close-enough gate in
-     `tick()`.
-   - Project `ownerPlayer.blockPosition()` into the cat's nearest alias before
-     resolving the bed-adjacent goal position.
-   - Keep gift generation based on the cat's canonical post-sleep position.
-   - Expected behavior: a tame cat can find and lie near the owner's visible bed
-     across a seam.
-
-3. Add `LandOnOwnersShoulderGoalMixin`.
-   - Replace raw `entity.getBoundingBox().intersects(owner.getBoundingBox())`
-     with an actor-local owner box check.
-   - Use `ActorLocalTargets.box(entity, owner)` or
-     `TopologicalEntityQueries.nearestAliasBox(...)`.
+2. `LandOnOwnersShoulderGoalMixin`.
+   - Target: `net.minecraft.world.entity.ai.goal.LandOnOwnersShoulderGoal`.
+   - Shadow `ShoulderRidingEntity entity`.
+   - Hook: wrap the owner `getBoundingBox()` call in `tick()`, or wrap the
+     `AABB.intersects(...)` call if that gives a cleaner operand order.
+   - Replacement: compare the entity box to `ActorLocalTargets.box(entity,
+     owner)`.
+   - Register the mixin in `globe-world.mixins.json`.
    - Expected behavior: a parrot that visibly overlaps its owner through an
      alias can mount the shoulder.
 
-### Phase 2: Passive Follow And Spacing Goals
+3. `CatRelaxOnOwnerGoalMixin`.
+   - Target: inner class
+     `net.minecraft.world.entity.animal.feline.Cat$CatRelaxOnOwnerGoal`.
+   - Shadow `Cat cat`.
+   - Hook the `canUse()` owner distance gate:
+     `Cat.distanceToSqr(Entity)` -> `ActorLocalTargets.distanceToSqr(cat,
+     ownerPlayer)`.
+   - Hook the `tick()` close-enough gate:
+     `Cat.distanceToSqr(Entity)` -> `ActorLocalTargets.distanceToSqr(cat,
+     ownerPlayer)`.
+   - Hook owner bed lookup in `canUse()`:
+     `ownerPlayer.blockPosition()` should become
+     `ActorLocalTargets.nearestAliasBlockPos(cat, ownerPlayer)`.
+   - Ensure the resulting `goalPos` is used as a visible-frame navigation
+     target. Vanilla block reads at that alias should already canonicalize
+     through the block lookup layer.
+   - Replace `spaceIsOccupied()`'s raw cat query with
+     `TopologicalEntityQueries.entitiesOfClass(cat.level(), Cat.class, new
+     AABB(goalPos).inflate(2.0), predicate)` and filter overlap/lying state in
+     the same visible frame.
+   - Do not alter `giveMorningGift()` in the first pass; gift generation should
+     remain based on the cat's canonical post-sleep position.
+   - Register the mixin in `globe-world.mixins.json`.
+   - Expected behavior: a tame cat can find the owner's visible bed side across
+     a seam, navigate to the bed-adjacent position, and lie down.
 
-Goal: fix social follow goals whose path requests may already target aliases,
-but whose start, stop, and spacing decisions still use raw distance.
+Validation after Batch 1:
+
+- Ask the user to run `./gradlew build`.
+- Manual seam tests:
+  sitting tame mob near attacked owner, parrot shoulder mounting, sleeping
+  owner with cat and bed across X seam, Z seam, and corner seam.
+
+Docs after Batch 1:
+
+- Update `docs/mod-mechanics/entities.md` under tamed animal owner behavior.
+- Add the three source anchors to `docs/vanilla-mechanics/mobs-and-entities.md`.
+- Add or update rows in `docs/plans/seam-behavior-checklist.md`.
+
+### Batch 2: Passive Follow And Spacing Goals
+
+Goal: make social follow goals choose and maintain visible-near companions.
+
+Deliverables:
 
 1. Add `FollowParentGoalMixin`.
-   - Gather parent candidates through topological entity queries or keep the raw
-     query and rank with `ActorLocalTargets.distanceToSqr(...)`.
-   - Wrap `canContinueToUse()` distance gates.
-   - `moveTo(parent, ...)` can remain on the existing navigation hooks.
+   - Target: `net.minecraft.world.entity.ai.goal.FollowParentGoal`.
+   - Shadow `Animal animal` and `Animal parent`.
+   - Replace the parent candidate query in `canUse()` with
+     `ActorLocalTargets.targetsInActorRange(animal, animal.getClass(),
+     animal.getBoundingBox().inflate(8.0, 4.0, 8.0), predicate)`.
+   - Rank parent candidates with `ActorLocalTargets.distanceToSqr(animal,
+     candidate)`.
+   - Wrap the `canContinueToUse()` distance gate with
+     `ActorLocalTargets.distanceToSqr(animal, parent)`.
+   - Leave `moveTo(parent, ...)` on existing navigation hooks.
 
 2. Add `FollowMobGoalMixin`.
-   - Gather nearby mobs through topological queries, deduping canonical entity
-     identity.
-   - Wrap `canContinueToUse()` and the tick-time manually computed distance.
-   - Replace the "back away from followed mob" X/Z delta with wrapped deltas or
-     the followed mob's nearest alias position.
+   - Target: `net.minecraft.world.entity.ai.goal.FollowMobGoal`.
+   - Shadow `Mob mob`, `Mob followingMob`, `PathNavigation navigation`, and
+     `float stopDistance`.
+   - Replace `canUse()`'s raw `getEntitiesOfClass(Mob.class, ...)` scan with
+     `ActorLocalTargets.targetsInActorRange(...)`, preserving the vanilla
+     class-difference predicate and invisible-mob skip.
+   - Wrap `canContinueToUse()` distance with actor-local distance.
+   - In `tick()`, replace raw `mob - followingMob` distance math with the
+     following mob's actor-local alias position.
+   - Replace the back-away vector with a vector from the mob to that alias, then
+     move to the mirrored local position.
+   - Keep look control and `moveTo(followingMob, ...)` on existing hooks.
 
 3. Add `LlamaFollowCaravanGoalMixin`.
-   - Rank caravan head candidates with wrapped distance.
-   - Wrap the far-distance acceleration/dropout gate.
-   - Replace tick-time `distanceTo(...)` and `Vec3(follows - llama)` with an
-     actor-local alias vector.
+   - Target: `net.minecraft.world.entity.ai.goal.LlamaFollowCaravanGoal`.
+   - Shadow `Llama llama`, `double speedModifier`, and `int distCheckCounter`.
+   - Replace `canUse()`'s raw query with
+     `TopologicalEntityQueries.entities(...)` over
+     `llama.getBoundingBox().inflate(9.0, 4.0, 9.0)`, preserving the llama and
+     trader-llama filter.
+   - Rank caravan candidates with `ActorLocalTargets.distanceToSqr(llama,
+     candidate)`.
+   - Wrap the `canContinueToUse()` far-distance gate with actor-local distance.
+   - In `tick()`, compute the caravan-head alias position with
+     `ActorLocalTargets.nearestAliasPosition(llama, follows)` and build the
+     normalized delta toward that alias.
 
 4. Add `FollowPlayerRiddenEntityGoalMixin`.
-   - Query nearby ridden entities through topological entity queries.
-   - Project `following.blockPosition()` to the follower-local alias before
-     building behind/in-front block targets.
-   - Wrap the 4-block and 12-block distance mode switches.
+   - Target: `net.minecraft.world.entity.ai.goal.FollowPlayerRiddenEntityGoal`.
+   - Shadow `PathfinderMob mob`, `Class<? extends Entity> entityTypeToFollow`,
+     and `Player following`.
+   - Replace the raw ridden-entity scans in `canUse()` and `start()` with
+     `TopologicalEntityQueries.entitiesOfClass(...)` over the mob-local
+     5-block box.
+   - In `tick()`, replace `following.blockPosition()` with
+     `ActorLocalTargets.nearestAliasBlockPos(mob, following)` before building
+     behind/ahead positions.
+   - Wrap the 4-block and 12-block `mob.distanceTo(following)` mode switches
+     with `Math.sqrt(ActorLocalTargets.distanceToSqr(mob, following))` or
+     squared threshold comparisons if the bytecode hook permits it cleanly.
 
-### Phase 3: Temptation And Short-range Animal Movement
+Validation after Batch 2:
 
-Goal: make held-food and short leap/attack decisions match visible seam
-geometry.
+- Ask the user to run `./gradlew build`.
+- Manual tests:
+  baby/adult follow across seams, parrot or similar `FollowMobGoal` user
+  spacing across seams, llama caravan crossing an X seam and a corner seam, and
+  ridden-follow mobs choosing behind/ahead targets in the visible frame.
+
+Docs after Batch 2:
+
+- Move the durable behavior summary into `docs/mod-mechanics/entities.md`.
+- Add vanilla anchors for `FollowParentGoal`, `FollowMobGoal`,
+  `LlamaFollowCaravanGoal`, and `FollowPlayerRiddenEntityGoal`.
+
+### Batch 3: Temptation And Short-range Animal Movement
+
+Goal: make held-food, leap, and ocelot-style attack decisions match visible
+seam geometry after target acquisition has already accepted an entity.
+
+Deliverables:
 
 1. Add `TemptGoalMixin`.
-   - `getNearestPlayer(...)` may already benefit from wrapped player lookup, but
-     the goal's own stop/scare distances need `ActorLocalTargets.distanceToSqr`.
-   - Store the player's actor-local X/Z when recording scare reference
-     positions.
-   - For `TemptGoal.ForNonPathfinders`, aim move control at the player's
-     nearest alias eye position before random interpolation.
+   - Target: `net.minecraft.world.entity.ai.goal.TemptGoal`.
+   - Shadow `Mob mob`, `Player player`, and scare-reference fields `px`, `py`,
+     `pz`.
+   - Wrap `mob.distanceToSqr(player)` in `canContinueToUse()` and `tick()` with
+     `ActorLocalTargets.distanceToSqr(mob, player)`.
+   - When vanilla stores scare reference coordinates in `start()` and in the
+     far branch of `canContinueToUse()`, store the player's mob-local alias X/Z
+     and vanilla Y.
+   - When vanilla checks `player.distanceToSqr(px, py, pz)`, compare the current
+     player alias in the same mob-local frame against the stored alias
+     reference.
+   - Leave `navigateTowards(player)` on the existing path-navigation hooks for
+     pathfinding mobs.
 
-2. Add `LeapAtTargetGoalMixin`.
-   - Wrap the 2-to-4-block launch-distance gate.
-   - Build the launch vector toward `ActorLocalTargets.position(mob, target)`
-     instead of raw target X/Z.
+2. Add `TemptGoalForNonPathfindersMixin`.
+   - Target: inner class
+     `net.minecraft.world.entity.ai.goal.TemptGoal$ForNonPathfinders`.
+   - Hook `navigateTowards(Player)`.
+   - Replace `player.getEyePosition()` in the interpolation target with
+     `ActorLocalTargets.nearestAliasEyePosition(mob, player)`.
+   - Preserve vanilla random interpolation and move-control speed.
 
-3. Add `OcelotAttackGoalMixin`.
-   - Wrap continue and tick attack-distance gates.
-   - Use the target's nearest alias position for speed choice and melee reach.
-   - Keep `moveTo(target, ...)` on the existing path-navigation hooks.
+3. Add `LeapAtTargetGoalMixin`.
+   - Target: `net.minecraft.world.entity.ai.goal.LeapAtTargetGoal`.
+   - Shadow `Mob mob` and `LivingEntity target`.
+   - Wrap the `canUse()` 2-to-4-block distance gate with
+     `ActorLocalTargets.distanceToSqr(mob, target)`.
+   - In `start()`, replace target X/Z with
+     `ActorLocalTargets.nearestAliasPosition(mob, target)` while preserving the
+     vanilla Y impulse.
 
-### Phase 4: Brain/social Behaviors
+4. Add `OcelotAttackGoalMixin`.
+   - Target: `net.minecraft.world.entity.ai.goal.OcelotAttackGoal`.
+   - Shadow `Mob mob` and `LivingEntity target`.
+   - Wrap `canContinueToUse()`'s 15-block distance gate.
+   - In `tick()`, replace
+     `mob.distanceToSqr(target.getX(), target.getY(), target.getZ())` with a
+     distance to the target alias.
+   - Keep look control and `moveTo(target, ...)` on existing hooks.
+   - Keep melee reach and attack timing unchanged except for the alias-aware
+     distance value.
 
-Goal: audit memory-driven behaviors separately because they use a different
-framework and some memory positions intentionally remain canonical.
+Validation after Batch 3:
 
-1. Build a caller table for brain behaviors that compare two entities or an
-   entity and `EntityTracker`, including `AnimalMakeLove`,
-   `BabyFollowAdult`, `FollowTemptation`, `InteractWith`,
-   `SetEntityLookTarget`, `SetLookAndInteract`,
-   `LookAndFollowTradingPlayerSink`, `ShowTradesToPlayer`, and
-   `SocializeAtBell`.
-2. Classify each as:
-   - entity-to-entity and safe to wrap;
-   - entity-to-block/POI and already covered by POI helpers;
-   - memory-position logic that should remain canonical.
-3. Implement only the entity-to-entity paths first, using
-   `ActorLocalTargets.distanceToSqr(...)` and actor-local `EntityTracker`
-   positions where needed.
+- Ask the user to run `./gradlew build`.
+- Manual tests:
+  food temptation across X/Z/corner seams, non-pathfinder temptation if a
+  vanilla user can be set up, cat leap across a seam, and ocelot/cat attack
+  distance and speed bands across a seam.
+
+Docs after Batch 3:
+
+- Update `docs/mod-mechanics/entities.md` with temptation, leap, and ocelot
+  attack behavior.
+- Add source anchors to `docs/vanilla-mechanics/mobs-and-entities.md`.
+- Mark the corresponding seam checklist rows as implemented/manual regression
+  candidates.
+
+### Batch 4: Brain And Memory-driven Social Behaviors
+
+Goal: audit brain behaviors after the goal-based work is stable. Do not
+implement this batch until the caller table is written.
+
+Deliverables:
+
+1. Create a caller table covering:
+   - `AnimalMakeLove`
+   - `BabyFollowAdult`
+   - `BehaviorUtils`
+   - `FollowTemptation`
+   - `InteractWith`
+   - `SetEntityLookTarget`
+   - `SetLookAndInteract`
+   - `LookAndFollowTradingPlayerSink`
+   - `ShowTradesToPlayer`
+   - `SocializeAtBell`
+2. For each caller, classify every coordinate/distance use as one of:
+   - entity-to-entity and safe to wrap with actor-local aliases;
+   - entity-to-block or POI and already covered by POI helpers;
+   - memory-position logic that should remain canonical;
+   - uncertain and requiring a source-level note before implementation.
+3. Implement only the entity-to-entity paths after classification.
+4. Keep block/POI memories canonical unless the audit proves the memory is
+   render-facing or actor-local.
+
+Validation after Batch 4:
+
+- Ask the user to run `./gradlew build`.
+- Manual tests:
+  breeding partner choice across seams, baby-brain following across seams,
+  villager/trader look and interaction behavior across seams, and bell/social
+  behavior near a seam if a crisp setup is practical.
+
+## General Implementation Rules
+
+- Prefer one mixin per vanilla goal or inner goal class.
+- Prefer `@WrapOperation` at exact vanilla distance, position, hitbox, and query
+  calls. Use `@Inject` only when the desired replacement cannot be expressed as
+  a local operand wrapper.
+- Preserve vanilla Y coordinates unless the vanilla code explicitly uses an
+  entity eye position.
+- Preserve canonical entity identity; only distances, positions, boxes, and
+  broad-phase query boxes should move into the actor-local frame.
+- Use `TopologicalEntityQueries` only for local broad-phase scans whose side
+  effects operate on deduped canonical entities.
+- Do not change global `Entity.distanceTo*` behavior.
+- Do not claim full toroidal pathfinding; the pathfinder remains vanilla with
+  alias target candidates.
 
 ## Regression Matrix
 
 Manual tests should use a small tile so each case can be set up on opposite
 visible sides of an X seam, a Z seam, and a corner seam.
 
-| Case | Setup | Expected Result |
-| --- | --- | --- |
-| Sitting pet owner attacked | Ordered-sitting wolf/cat/parrot near owner through seam; owner is hit. | Pet behaves like vanilla raw-near space and may stand/respond. |
-| Cat owner bed | Tame cat and sleeping owner/bed visible-near across seam. | Cat navigates to visible bed side and lies down. |
-| Parrot shoulder | Tame parrot overlaps owner through seam. | Parrot can mount shoulder. |
-| Baby follows adult | Baby and adult same species visible-near/far across seam. | Baby chooses nearest visible adult and stops at vanilla distance. |
-| Parrot follows mob | Parrot near different mob through seam. | Follow/spacing does not jitter or back away in raw direction. |
-| Llama caravan | Leashed/caravan llamas cross a seam. | Chain spacing and speed gates use visible distance. |
-| Food temptation | Animal follows a player holding food across a seam. | It approaches and stops using visible distance. |
-| Leap/ocelot attack | Cat-like leap/ocelot target across seam. | Leap and melee decisions aim at visible target alias. |
-| Ridden-follow mob | Mob with `FollowPlayerRiddenEntityGoal` follows a player-controlled mount through seam. | Behind/ahead target blocks are in follower-local alias frame. |
-
-## Implementation Notes
-
-- Prefer narrow mixins at audited call sites over changing global entity
-  distance behavior.
-- Use `ActorLocalTargets.distanceToSqr(...)` for actor-to-entity gates.
-- Use `ActorLocalTargets.position(...)` or `nearestAliasPosition(...)` for
-  manually computed movement vectors.
-- Use `ActorLocalTargets.nearestAliasBlockPos(...)` or
-  `TopologyContext.virtualBlockForViewer(...)` when vanilla converts a target
-  entity to `blockPosition()`.
-- Use `TopologicalEntityQueries` only for local broad-phase queries whose side
-  effects are safe with deduped canonical identity.
-- Update `docs/mod-mechanics/entities.md`,
-  `docs/vanilla-mechanics/mobs-and-entities.md`, and the seam behavior
-  checklist as phases land.
+| Case | Setup | Expected Result | Batch |
+| --- | --- | --- | --- |
+| Sitting pet owner attacked | Ordered-sitting wolf/cat/parrot near owner through seam; owner is hit. | Pet behaves like vanilla raw-near space and may stand/respond. | 1 |
+| Cat owner bed | Tame cat and sleeping owner/bed visible-near across seam. | Cat navigates to visible bed side and lies down. | 1 |
+| Parrot shoulder | Tame parrot overlaps owner through seam. | Parrot can mount shoulder. | 1 |
+| Baby follows adult | Baby and adult same species visible-near/far across seam. | Baby chooses nearest visible adult and stops at vanilla distance. | 2 |
+| Mob follows mob | A `FollowMobGoal` user near a different mob through seam. | Follow/spacing does not jitter or back away in raw direction. | 2 |
+| Llama caravan | Leashed/caravan llamas cross a seam. | Chain spacing and speed gates use visible distance. | 2 |
+| Ridden-follow mob | Mob with `FollowPlayerRiddenEntityGoal` follows a player-controlled mount through seam. | Behind/ahead target blocks are in follower-local alias frame. | 2 |
+| Food temptation | Animal follows a player holding food across a seam. | It approaches and stops using visible distance. | 3 |
+| Leap/ocelot attack | Cat-like leap/ocelot target across seam. | Leap and melee decisions aim at visible target alias. | 3 |
+| Brain social behavior | Breeding, baby-brain follow, villager/trader interaction, and bell social setups near seams. | Only audited entity-to-entity paths use actor-local aliases; canonical memories stay canonical. | 4 |
