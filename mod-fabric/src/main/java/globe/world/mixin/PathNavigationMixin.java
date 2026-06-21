@@ -3,6 +3,7 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import globe.world.entity.ActorLocalTargets;
+import globe.world.util.MobNavigationAliasUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -29,7 +30,10 @@ public abstract class PathNavigationMixin {
         if (!ActorLocalTargets.canAlias(this.mob, target)) {
             return original.call(target, reachRange);
         }
-        return this.createPath(ActorLocalTargets.pathTargetBlockPositions(this.mob, target), 16, true, reachRange);
+        Set<BlockPos> targets = MobNavigationAliasUtil.dedupePathTargetsByNodeHash(
+                this.mob,
+                ActorLocalTargets.pathTargetBlockPositions(this.mob, target));
+        return this.createPath(targets, 16, true, reachRange);
     }
 
     @WrapMethod(method = "createPath(Lnet/minecraft/core/BlockPos;I)Lnet/minecraft/world/level/pathfinder/Path;")
@@ -38,6 +42,9 @@ public abstract class PathNavigationMixin {
         if (!ActorLocalTargets.enabled(this.mob.level())) {
             return original.call(target, reachRange);
         }
-        return this.createPath(ActorLocalTargets.pathTargetBlockPositions(this.mob, target), 8, false, reachRange);
+        Set<BlockPos> targets = MobNavigationAliasUtil.dedupePathTargetsByNodeHash(
+                this.mob,
+                ActorLocalTargets.pathTargetBlockPositions(this.mob, target));
+        return this.createPath(targets, 8, false, reachRange);
     }
 }

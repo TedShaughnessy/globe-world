@@ -73,7 +73,9 @@ canonical entity storage.
 `PathNavigationMixin` and `GroundPathNavigationMixin` also expand canonical
 block targets into actor-local aliases. That lets canonical POI memories remain
 stable while vanilla path search can choose a visible wrapped target near the
-actor.
+actor. The expanded target set is filtered by vanilla path-node hash before it
+is handed to the pathfinder, keeping the actor-nearest alias when small-tile
+periodicity would otherwise produce duplicate internal targets.
 
 ## Boundaries
 

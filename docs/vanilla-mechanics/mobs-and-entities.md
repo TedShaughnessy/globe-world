@@ -30,6 +30,9 @@ Common sources jar:
 - `net/minecraft/world/entity/TamableAnimal.java`
 - `net/minecraft/world/entity/ai/control/LookControl.java`
 - `net/minecraft/world/entity/ai/navigation/PathNavigation.java`
+- `net/minecraft/world/level/pathfinder/PathFinder.java`
+- `net/minecraft/world/level/pathfinder/NodeEvaluator.java`
+- `net/minecraft/world/level/pathfinder/Node.java`
 - `net/minecraft/world/entity/monster/EnderMan.java`
 - `net/minecraft/world/entity/monster/Creeper.java`
 - `net/minecraft/world/entity/monster/skeleton/AbstractSkeleton.java`
@@ -175,6 +178,10 @@ has already been accepted as a candidate:
   flying navigation override that entity method and do the same conversion in
   the subclass; ground navigation also adjusts a block target to a surface
   position before delegating to the raw path search.
+- `PathFinder.findPath(...)` collects target block positions into a map keyed
+  by `NodeEvaluator.getTarget(...)`. `NodeEvaluator` caches raw nodes by
+  `Node.createHash(...)`, so distinct target positions that collide in that
+  hash can become the same `Target` key before vanilla's collector runs.
 - `FollowOwnerGoal` uses raw `TamableAnimal.distanceToSqr(owner)` for the
   start and stop distances, then calls `TamableAnimal.shouldTryTeleportToOwner`
   or `PathNavigation.moveTo(owner, ...)` during ticks. `TamableAnimal` uses raw
@@ -381,16 +388,19 @@ Project hooks for entity storage and visibility:
   the tile is smaller than the mob's follow range, they instead offer a
   one-tile-radius set of nearby target alias block positions, preserving each
   vanilla navigation class's entity-path search settings while letting vanilla
-  choose the best reachable alias.
+  choose the best reachable alias. `MobNavigationAliasUtil.java` filters that
+  set by vanilla node hash and keeps the actor-nearest target when aliases
+  collide.
 - `mod-fabric/src/main/java/globe/world/mixin/LookControlMixin.java` and
   `MobLookMixin.java` turn mobs toward nearest target aliases and use alias
   hitboxes for melee reach.
 - `mod-fabric/src/main/java/globe/world/mixin/PhantomAttackStrategyGoalMixin.java`
   and `PhantomSweepAttackGoalMixin.java` move phantom attack anchors, swoop
   targets, and target-box hit checks into the phantom-local alias frame.
-- `mod-fabric/src/main/java/globe/world/util/MobNavigationAliasUtil.java` marks mobs after
-  a canonicalization snap so melee goals immediately clear stale path target
-  coordinates and recompute.
+- `mod-fabric/src/main/java/globe/world/util/MobNavigationAliasUtil.java` marks
+  mobs after a canonicalization snap so melee goals immediately clear stale
+  path target coordinates and recompute. It also filters expanded alias path
+  target sets before they enter vanilla's raw node cache.
 - `mod-fabric/src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java:38`
   maps client vehicle movement packets from the visible alias frame to the
   nearest storage frame before vanilla movement validation, then canonicalizes
@@ -424,9 +434,9 @@ Current status:
 - Good: both natural-spawn chunk eligibility gates accept a player-visible alias of the canonical chunk, so alias-tile players can drive hostile spawns instead of requiring the canonical chunk itself to satisfy vanilla's raw entity-spawnability check.
 - Partial: mob AI now uses nearest-alias distance, sight cache, look, melee
   reach, ranged launch vectors for common ranged mobs, and a small-tile
-  multi-alias entity path target set. The underlying pathfinder/node evaluator
-  is still raw rather than fully toroidal, and projectile physics across seams
-  are not part of this AI pass.
+  multi-alias entity path target set filtered for vanilla node-hash collisions.
+  The underlying pathfinder/node evaluator is still raw rather than fully
+  toroidal, and projectile physics across seams are not part of this AI pass.
 
 Best rule of thumb:
 

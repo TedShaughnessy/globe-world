@@ -187,9 +187,12 @@ in [Entity Query Caller Matrix](entity-query-caller-matrix.md).
 
 Entity-derived and block-derived path requests target the nearest alias block
 position. Small tiles expand the request to nearby whole-tile target aliases so
-vanilla's multi-target path search can choose a usable route. This is used by
-canonical POI memories as well as entity targets. The pathfinder and node
-evaluator themselves are still vanilla and not fully toroidal.
+vanilla's multi-target path search can choose a usable route. Before calling
+vanilla, `MobNavigationAliasUtil` filters those aliases by vanilla
+`Node.createHash(...)` and keeps the actor-nearest candidate for each hash.
+This prevents small periodic target sets from tripping the pathfinder's
+target-map collector when two aliases collide in the node cache. The pathfinder
+and node evaluator themselves are still vanilla and not fully toroidal.
 
 Tamed animal owner-follow logic uses the same actor-local owner distance.
 `FollowOwnerGoal` starts and stops from wrapped distance, and

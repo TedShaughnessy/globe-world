@@ -3,6 +3,7 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import globe.world.entity.ActorLocalTargets;
+import globe.world.util.MobNavigationAliasUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.entity.Entity;
@@ -72,7 +73,7 @@ public abstract class GroundPathNavigationMixin extends PathNavigation {
             }
             adjusted.add(this.canPathToTargetsBelowSurface ? pos : this.findSurfacePosition(chunk, pos, reachRange));
         }
-        return adjusted;
+        return MobNavigationAliasUtil.dedupePathTargetsByNodeHash(this.mob, adjusted);
     }
 
     @Unique
@@ -87,6 +88,6 @@ public abstract class GroundPathNavigationMixin extends PathNavigation {
             }
             adjusted.add(this.canPathToTargetsBelowSurface ? pos : this.findSurfacePosition(chunk, pos, reachRange));
         }
-        return adjusted;
+        return MobNavigationAliasUtil.dedupePathTargetsByNodeHash(this.mob, adjusted);
     }
 }
