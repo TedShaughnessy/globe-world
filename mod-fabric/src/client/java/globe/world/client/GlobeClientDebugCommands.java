@@ -14,9 +14,6 @@ public final class GlobeClientDebugCommands {
 
     public static void register() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, buildContext) -> {
-            dispatcher.register(ClientCommands.literal("globeworld")
-                    .then(ClientCommands.literal("client")
-                            .then(entityAliasCommands())));
             dispatcher.register(ClientCommands.literal("globeworld_client")
                     .then(entityAliasCommands()));
         });

@@ -222,8 +222,9 @@ Client diagnostics are intentionally targeted:
   These are registered on the server command tree for reliable tab completion,
   then sent back to the issuing client as local visual-setting actions.
 - `/globeworld_client entity_aliases`: client-only alias for the same local
-  entity visual alias commands, useful when the shared `/globeworld` root does
-  not tab-complete client subcommands cleanly.
+  entity visual alias commands. The client deliberately does not register a
+  `/globeworld` root because that shadows the server command tree and causes
+  ordinary `/globeworld` commands to fail client-side parsing.
 - `/globeworld_client entity_aliases rings`: tab-complete-friendly spelling for
   cycling the local entity visual alias ring limit.
 
