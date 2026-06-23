@@ -170,8 +170,13 @@ references that would otherwise leave a hard chunk cutoff.
 Non-`setBlock` worldgen side effects are covered by separate hooks or documented
 limits. The source-backed vanilla classification lives in
 [Worldgen Direct Mutation Matrix](../vanilla-mechanics/worldgen-direct-mutation-matrix.md).
-`BulkSectionAccessMixin` canonicalizes direct section lookup because ore
-placement bypasses `WorldGenRegion.setBlock(...)`. Same-chunk terrain, surface,
+`WorldGenRegionMixin` and `BulkSectionAccessMixin` apply the canonical
+generation window only to exact vanilla `WorldGenRegion` instances. Synthetic
+worldgen regions from external providers are left in their own coordinate space:
+Distant Horizons, for example, builds a finite raw-position batch map and can
+crash if an edge-neighbor read is rewritten to the canonical opposite edge.
+`BulkSectionAccessMixin` is still needed for vanilla ore placement because that
+path bypasses `WorldGenRegion.setBlock(...)`. Same-chunk terrain, surface,
 carver, and retrogen writes remain canonical-owner operations and do not need a
 global `ChunkAccess` or `LevelChunkSection` hook. Block entity creation, POI
 updates, and post-processing marks are covered for visible writes because the

@@ -15,5 +15,10 @@ currently optimized for Globe World's wrapped coordinate model.
 
 ## Expected Caveats
 
+- DH's synthetic worldgen region keeps its own raw chunk batch during LOD
+  generation. Globe World does not apply its vanilla `WorldGenRegion` canonical
+  generation window or direct `BulkSectionAccess` section canonicalization to
+  that synthetic region, because rewriting an edge-neighbor read to the opposite
+  canonical edge can address a chunk missing from DH's batch map.
 - DH may cache the same wrapped terrain under multiple alias coordinates.
 - Canonical chunk updates may not invalidate every alias LOD copy.

@@ -40,7 +40,7 @@ public class WorldGenRegionMixin {
 
     @ModifyVariable(method = "getBlockState", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetBlockStatePos(BlockPos pos) {
-        return window().canonicalReadPos(pos);
+        return usesVanillaRegionWindow() ? window().canonicalReadPos(pos) : pos;
     }
 
     @Inject(
@@ -55,6 +55,10 @@ public class WorldGenRegionMixin {
             boolean loadOrGenerate,
             CallbackInfoReturnable<ChunkAccess> cir
     ) {
+        if (!usesVanillaRegionWindow()) {
+            return;
+        }
+
         GenerationWindow window = window();
         GenerationWindow.ChunkLookup lookup = window.resolveChunk(chunkX, chunkZ, targetStatus, loadOrGenerate);
         window.logChunkLookup(lookup, targetStatus, loadOrGenerate);
@@ -72,6 +76,10 @@ public class WorldGenRegionMixin {
 
     @Inject(method = "hasChunk", at = @At("HEAD"), cancellable = true)
     private void virtualizeWorldgenHasChunk(int chunkX, int chunkZ, CallbackInfoReturnable<Boolean> cir) {
+        if (!usesVanillaRegionWindow()) {
+            return;
+        }
+
         GenerationWindow window = window();
         GenerationWindow.ChunkLookup lookup = window.resolveChunk(chunkX, chunkZ, ChunkStatus.EMPTY, false);
         if (lookup.kind() != GenerationWindow.ChunkLookup.Kind.VANILLA) {
@@ -81,16 +89,20 @@ public class WorldGenRegionMixin {
 
     @ModifyVariable(method = "getFluidState", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetFluidStatePos(BlockPos pos) {
-        return window().canonicalReadPos(pos);
+        return usesVanillaRegionWindow() ? window().canonicalReadPos(pos) : pos;
     }
 
     @ModifyVariable(method = "getBlockEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenGetBlockEntityPos(BlockPos pos) {
-        return window().canonicalReadPos(pos);
+        return usesVanillaRegionWindow() ? window().canonicalReadPos(pos) : pos;
     }
 
     @Inject(method = "getBlockEntity", at = @At("HEAD"), cancellable = true)
     private void skipUnavailableCanonicalBlockEntity(BlockPos pos, CallbackInfoReturnable<BlockEntity> cir) {
+        if (!usesVanillaRegionWindow()) {
+            return;
+        }
+
         GenerationWindow window = window();
         BlockPos wrapped = window.canonicalReadPos(pos);
         if (!window.physicalCacheContains(wrapped)) {
@@ -100,6 +112,10 @@ public class WorldGenRegionMixin {
 
     @Inject(method = "ensureCanWrite", at = @At("HEAD"), cancellable = true)
     private void allowCanonicalWorldgenWrite(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
+        if (!usesVanillaRegionWindow()) {
+            return;
+        }
+
         GenerationWindow window = window();
         BlockPos wrapped = window.canonicalReadPos(pos);
         if (!window.withinWriteRadius(wrapped)) {
@@ -117,7 +133,7 @@ public class WorldGenRegionMixin {
 
     @ModifyVariable(method = "ensureCanWrite", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenEnsureCanWritePos(BlockPos pos) {
-        return window().canonicalReadPos(pos);
+        return usesVanillaRegionWindow() ? window().canonicalReadPos(pos) : pos;
     }
 
     @Inject(method = "setBlock", at = @At("HEAD"), cancellable = true)
@@ -128,6 +144,10 @@ public class WorldGenRegionMixin {
             int updateLimit,
             CallbackInfoReturnable<Boolean> cir
     ) {
+        if (!usesVanillaRegionWindow()) {
+            return;
+        }
+
         GenerationWindow window = window();
         GenerationWindow.WriteDecision decision = window.classifyWrite(pos);
         if (decision.kind() == GenerationWindow.WriteDecision.Kind.CANONICAL) {
@@ -159,12 +179,16 @@ public class WorldGenRegionMixin {
 
     @ModifyVariable(method = "setBlock", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenSetBlockPos(BlockPos pos) {
-        return window().canonicalReadPos(pos);
+        return usesVanillaRegionWindow() ? window().canonicalReadPos(pos) : pos;
     }
 
     @ModifyVariable(method = "markPosForPostprocessing", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private BlockPos canonicalizeWorldgenPostProcessingPos(BlockPos pos) {
-        return window().canonicalReadPos(pos);
+        return usesVanillaRegionWindow() ? window().canonicalReadPos(pos) : pos;
+    }
+
+    private boolean usesVanillaRegionWindow() {
+        return ((Object) this).getClass() == WorldGenRegion.class;
     }
 
     private GenerationWindow window() {

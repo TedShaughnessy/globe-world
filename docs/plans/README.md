@@ -13,6 +13,9 @@ point for current behavior and modded code anchors.
   social follow, temptation, short-range movement, and brain/social behaviors
   that still need actor-local alias handling after the owner-adjacent tameable
   fixes.
+- [Minecraft 26.2 upgrade plan](minecraft-26-2-upgrade.md): dependency bump,
+  Loom source regeneration, mixin audit, packet policy refresh, and runtime
+  validation plan for the next Minecraft target.
 - [Seam-behavior checklist](seam-behavior-checklist.md): manual regression
   matrix and automation candidates for preserving seam behavior during future
   work.
