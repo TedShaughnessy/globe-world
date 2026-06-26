@@ -60,6 +60,20 @@ world/dimension curvature setting, so buckets, boats, fluids, signs, entities,
 and block interactions resolve to the visually selected target while vanilla
 reach, permissions, and final state checks remain authoritative. Entity physics
 and collision boxes are not curved; only picking and presentation are.
+Player-fired projectiles also compensate their initial launch vector through
+`GlobeCurvedProjectileAim`, so ordinary curved-visual shots do not inherit the
+raw downward pitch needed to put the crosshair on visually lowered terrain or
+mobs. `ProjectileCurvedAimMixin` covers player launches that use
+`Projectile.shootFromRotation`, including bows, thrown tridents, snowballs,
+eggs, ender pearls, splash and lingering potions, experience bottles, and wind
+charges. Crossbows use their own vector path, so `CrossbowItemRangedAttackMixin`
+applies the same correction to player-fired arrows, multishot arrows, and
+fireworks. `FishingHookCurvedAimMixin` preserves the vanilla cast speed while
+tilting the bobber toward the curved visual aim. When the curved visual ray hits
+a block or entity within 20 blocks, that hit distance becomes the launch focus
+so close shots are not over-corrected. Otherwise projectiles use a conservative
+fallback focus distance. Projectiles still fly with vanilla physics after
+launch, so long-range lob shots remain player-aimed rather than target-inferred.
 
 Curvature also reaches selected-block outlines, block-breaking progress
 overlays, item entities, third-person held items such as skeleton bows,
@@ -246,7 +260,9 @@ Client diagnostics are intentionally targeted:
   `GlobeSeedPreflight`, `CreateWorldScreenMixin`.
 - Curvature and picking:
   `GlobeCurvature`, `GlobeCurvatureShader`, `GlobeCurvedRaycast`,
-  `GlobeWorldSettingsControls`, `ShaderManagerMixin`, `LocalPlayerMixin`,
+  `GlobeCurvedProjectileAim`, `GlobeWorldSettingsControls`,
+  `ProjectileCurvedAimMixin`, `CrossbowItemRangedAttackMixin`,
+  `FishingHookCurvedAimMixin`, `ShaderManagerMixin`, `LocalPlayerMixin`,
   `ItemMixin`, `OptionsMixin`, `FrustumMixin`, `CloudRendererMixin`,
   `SkyRendererMixin`, `ItemEntityRendererMixin`, `ItemInHandLayerMixin`,
   `FoxHeldItemLayerMixin`, `ThrownItemRendererMixin`,

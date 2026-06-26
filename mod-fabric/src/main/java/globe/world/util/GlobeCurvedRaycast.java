@@ -23,6 +23,10 @@ public final class GlobeCurvedRaycast {
     }
 
     public static HitResult pick(Entity cameraEntity, double blockInteractionRange, double entityInteractionRange, float partialTicks) {
+        return pickWithDistance(cameraEntity, blockInteractionRange, entityInteractionRange, partialTicks).hit();
+    }
+
+    public static Pick pickWithDistance(Entity cameraEntity, double blockInteractionRange, double entityInteractionRange, float partialTicks) {
         double maxDistance = Math.max(blockInteractionRange, entityInteractionRange);
         BlockPick blockPick = pickBlockWithDistance(cameraEntity.level(), cameraEntity, maxDistance, partialTicks, ClipContext.Fluid.NONE);
         double entityLimit = blockPick.hit().getType() == HitResult.Type.MISS
@@ -30,10 +34,10 @@ public final class GlobeCurvedRaycast {
                 : Math.min(maxDistance, blockPick.distance());
         EntityPick entityPick = pickEntity(cameraEntity, entityLimit, partialTicks);
         if (entityPick != null && entityPick.distance() <= entityInteractionRange && entityPick.distance() < blockPick.distance()) {
-            return entityPick.hit();
+            return new Pick(entityPick.hit(), entityPick.distance());
         }
         if (blockPick.distance() <= blockInteractionRange) {
-            return blockPick.hit();
+            return new Pick(blockPick.hit(), blockPick.distance());
         }
 
         Vec3 location = blockPick.hit().getLocation();
@@ -42,7 +46,7 @@ public final class GlobeCurvedRaycast {
                 location.y - cameraEntity.getEyePosition(partialTicks).y,
                 location.z - cameraEntity.getEyePosition(partialTicks).z
         );
-        return BlockHitResult.miss(location, direction, BlockPos.containing(location));
+        return new Pick(BlockHitResult.miss(location, direction, BlockPos.containing(location)), maxDistance);
     }
 
     public static BlockHitResult pickBlock(Entity cameraEntity, double range, float partialTicks, boolean withLiquids) {
@@ -57,7 +61,7 @@ public final class GlobeCurvedRaycast {
         return pickBlockWithDistance(level, cameraEntity, range, partialTicks, fluid).hit();
     }
 
-    private static BlockPick pickBlockWithDistance(Level level, Entity cameraEntity, double range, float partialTicks, ClipContext.Fluid fluid) {
+    public static BlockPick pickBlockWithDistance(Level level, Entity cameraEntity, double range, float partialTicks, ClipContext.Fluid fluid) {
         DimensionTiling tiling = DimensionTiling.forLevel(level);
         double curvatureRadius = GlobeCurvature.curvatureRadius(tiling, level.dimension());
         Vec3 from = cameraEntity.getEyePosition(partialTicks);
@@ -201,7 +205,10 @@ public final class GlobeCurvedRaycast {
         return fromDistance + (toDistance - fromDistance) * progress;
     }
 
-    private record BlockPick(BlockHitResult hit, double distance) {
+    public record BlockPick(BlockHitResult hit, double distance) {
+    }
+
+    public record Pick(HitResult hit, double distance) {
     }
 
     private record EntityPick(EntityHitResult hit, double distance) {
