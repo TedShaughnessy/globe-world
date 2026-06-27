@@ -36,13 +36,13 @@ public class GlobeSpecialRenderer implements NoDataSpecialModelRenderer {
 
         Identifier texture = GlobeMapTextureCache.textureForCurrentDimension();
         if (texture == null) {
-            TextureAtlasSprite sprite = this.sprites.get(GlobeSphereMesh.BLANK_TEXTURE);
-            GlobeSphereMesh.submit(poseStack, submitNodeCollector, sprite, lightCoords, overlayCoords);
+            TextureAtlasSprite sprite = this.sprites.get(GlobeToroidMesh.BLANK_TEXTURE);
+            GlobeToroidMesh.submit(poseStack, submitNodeCollector, sprite, lightCoords, overlayCoords);
             poseStack.popPose();
             return;
         }
 
-        GlobeSphereMesh.submitProjected(
+        GlobeToroidMesh.submitProjected(
                 poseStack,
                 submitNodeCollector,
                 texture,

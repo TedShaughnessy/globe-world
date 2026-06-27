@@ -12,11 +12,17 @@ The globe gives players a world-scale readout of the finite canonical tile.
 The current implementation is biased toward projection testing: it fills the
 small test tile automatically instead of relying on player exploration.
 
+The active plan treats the original sphere projection as a failed topological
+fit and pivots the object toward a toroidal map where canonical X and Z are the
+two independent loops. The visible renderer has started that pivot, while some
+sphere-era projection scaffolding still remains to be removed.
+
 ## Implementation
 
 `GlobeWorldBlocks` registers the `globe` block, matching `BlockItem`, and a
-minimal `GlobeBlockEntity` type. `GlobeBlock` supplies a sphere-like outline
-and collision shape.
+`GlobeBlockEntity` type. `GlobeBlock` currently behaves as a projector base:
+its selection/collision shape is only the small base, while the toroidal map is
+a non-colliding hologram.
 
 `GlobeMapSavedData` stores one 512x512 Overworld texture for the current tile
 size. It keeps a discovered bitset, vanilla packed map-color bytes, and a
@@ -38,19 +44,22 @@ On the client, `GlobeMapTextureCache` converts the packed map bytes into a
 dynamic texture. Unknown pixels render as a dark unexplored color. Placed
 globes render through `GlobeBlockEntityRenderer`; held and inventory globes
 render through a custom special item renderer registered by `GlobeRenderers`.
-Both renderers fall back to the blank generated sphere until a snapshot is
-available.
+Both renderers now submit `GlobeToroidMesh`. Held and inventory globes remain a
+small torus preview. Placed globes render a simple textured projector base plus
+a large walk-through torus hologram above the block. The placed projector now
+draws only the outside surface, using a mostly visible hologram translucency.
 
-`GlobeSphereMesh` projects the canonical tile texture with a front-facing
-curved projection. The projection maps angular distance from the front of the
-sphere to radial distance in the tile texture, keeping the only unavoidable
-projection singularity at the hidden back of the sphere instead of creating
-latitude/longitude poles. Held globes continuously use the local client's
-canonical player position as the projection center. Placed globes capture a
-viewer-local projection center and facing when their render state first sees an
-available map texture, so walking around a placed globe shows different sides of
-the same local projection. Real exploration rules are still planned work in
-[Globe Object Plan](../plans/globe-object.md).
+The placed projector stores its wrap-axis test setting in the block entity and
+syncs it to clients. Right-click swaps the wrap axis between canonical X around
+the major ring and canonical Z around the major ring. When Globe debug visuals
+are enabled with `F3+Y`, placed globes render the earlier 2x2 comparison grid
+instead: front-left outside surface with X on the major ring, front-right inside
+surface with X on the major ring, back-left outside surface with Z on the major
+ring, and back-right inside surface with Z on the major ring.
+
+`GlobeSphereMesh` is now only a transitional source of shared constants and the
+blank fallback sprite. Real exploration rules and cleanup of the transitional
+sphere renderer code are still planned work in [Globe Object Plan](../plans/globe-object.md).
 
 ## Key Files
 
@@ -63,6 +72,7 @@ the same local projection. Real exploration rules are still planned work in
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeMapTextureCache.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeBlockEntityRenderer.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeSpecialRenderer.java`
+- `mod-fabric/src/client/java/globe/world/client/render/GlobeToroidMesh.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeSphereMesh.java`
 - `mod-fabric/src/main/resources/assets/globe-world/blockstates/globe.json`
 - `mod-fabric/src/main/resources/assets/globe-world/items/globe.json`

@@ -16,8 +16,9 @@ point for current behavior and modded code anchors.
 - [Minecraft 26.2 upgrade plan](minecraft-26-2-upgrade.md): dependency bump,
   Loom source regeneration, mixin audit, packet policy refresh, and runtime
   validation plan for the next Minecraft target.
-- [Globe object](globe-object.md): placeable globe block/item concept that
-  renders a gradually discovered canonical tile map onto a viewer-aware sphere.
+- [Globe object](globe-object.md): placeable globe block/item concept pivoting
+  from the failed viewer-aware sphere projection to a toroidal canonical-tile
+  map.
 - [Seam-behavior checklist](seam-behavior-checklist.md): manual regression
   matrix and automation candidates for preserving seam behavior during future
   work.

@@ -1,109 +1,116 @@
 # Globe Object Plan
 
-This plan describes a placeable globe object that acts like a persistent map of
-the whole canonical tile. The object should gradually reveal the tile as players
-explore, then render the discovered tile surface on a visible globe.
+This plan now treats the sphere-based globe object as a failed projection
+experiment. The useful object for Globe World's wrapped rectangular tile is a
+toroid: the canonical tile wraps independently in X and Z, and a torus is the
+surface with exactly those two independent loops.
 
-The intended player-facing behavior is:
+The block/item can keep the player-facing `globe` name for now, but the durable
+renderer target is a toroidal world map rather than a miniature sphere.
+
+## Why The Sphere Plan Failed
+
+The current sphere prototype was trying to make the tile look like Globe World's
+curved terrain illusion. That was attractive visually, but it fights the actual
+topology of the world:
+
+- The canonical tile is a rectangular periodic domain. X wraps to X and Z wraps
+  to Z, so the real map surface is a torus.
+- A sphere cannot represent both tile cycles without inventing poles,
+  singularities, or hidden compression.
+- The six-chart placed-globe pass reduced the worst artifacts, but it also made
+  the object viewer-relative. That is not a stable map of the world.
+- Hiding distortion on the back of a sphere makes the object prettier, not more
+  useful. Players need to understand both seams and the continuous tile layout.
+
+The conclusion: keep the saved map state and sync work, but replace the sphere
+projection renderer with a toroidal representation.
+
+## Intended Behavior
 
 - Players can craft or obtain a globe item and place it as a block.
-- A placed globe shows the explored parts of the current world's canonical tile.
+- A placed object shows explored parts of the current world's canonical tile on
+  a toroidal surface.
+- One torus loop corresponds to one full wrap in canonical X; the other
+  corresponds to one full wrap in canonical Z.
+- The placed projector can swap which canonical axis occupies the torus major
+  ring while testing the most readable orientation.
 - Exploration progresses automatically while players move through the world,
   instead of requiring a held map update loop.
-- The visible globe uses the tile width as the circumference of the projected
-  world, so walking one tile width in X corresponds to one full turn around the
-  globe.
-- The globe uses the same visual idea as Globe World's terrain curvature: the
-  tile gets visually denser toward the sides/back of the globe, and the worst
-  distortion is hidden on the far side.
-- Each client projects the server-owned tile map from that player's position,
-  so multiplayer players can see the same explored data through different
-  local projections.
+- The texture is server-owned world state. The torus mesh and any local
+  highlights are client rendering details.
+- Multiple placed objects in the same dimension normally show the same
+  discovered tile map.
+
+This makes the object a readable model of the mod's actual world: walking across
+the X seam moves around the torus's main ring; walking across the Z seam moves
+around the tube.
 
 ## Design Shape
 
-Treat the globe as three separate systems:
+Treat the object as three separate systems:
 
 1. A server-owned exploration state for the canonical tile.
 2. A placeable block and block entity that exposes that state to clients.
-3. A client renderer that draws a globe and projects the tile map onto it from
-   the local player's view/projection center.
+3. A client renderer that draws the tile as a toroidal map surface.
 
-The saved exploration state is world data, not per-block mutable state. Multiple
-placed globes in the same dimension should normally show the same discovered
-tile map. The block entity only needs placement/orientation and a way to request
-or receive the current texture state.
+The saved exploration state is world data, not per-block mutable state. The
+block entity only needs placement/orientation and a way to request or receive
+the current texture state.
 
-The server does not decide how the tile is wrapped onto the visible globe for
-each viewer. It owns discovery, persistence, and sync. The client owns the
-camera/player-relative projection and can update that projection every frame
-without changing server data.
+The server owns discovery, persistence, and sync. The client owns mesh
+generation, material choice, debug markers, and optional local player markers.
+The server should not send projection-center updates.
 
 Start with the Overworld. Nether support can follow once the Overworld object is
 stable, because Nether tile size and portal scale are independent from the
 Overworld settings.
 
-## Projection Model
+## Toroid Mapping
 
-The globe should use a miniature version of Globe World's curved-terrain visual
-model, not a normal atlas globe projection. Conceptually, the client projects a
-flat canonical tile map onto a front-facing sphere cap from a player-relative
-viewpoint:
+Use direct periodic UV mapping instead of a sphere projection:
 
-- The player's current canonical tile position is the projection center.
-- The front of the globe shows the nearby canonical tile region at the clearest
-  density.
-- Regions farther from the projection center curve around the sides and become
-  visually denser.
-- The most distorted/compressed part of the tile lies on the hidden back side of
-  the globe.
-- One tile width corresponds to the full circumference of the globe projection.
+- `u` maps canonical X from `0..1` around the torus's major ring.
+- `v` maps canonical Z from `0..1` around the torus's minor tube.
+- Both mesh loops are closed, and both texture axes are periodic.
+- The canonical X/Z corner appears where the two torus seams cross.
+- There are no poles, hidden antipodes, or viewer-specific chart transitions.
 
-This should make the globe look like the curved terrain already looks to the
-player, but compressed into an object. It also avoids forcing the rectangular
-tile through a latitude/longitude model where the Z edges become poles.
+The current placed prototype uses a conventional torus as a large hologram above
+a small projector base:
 
-Use a front-disk projection for the visible surface rather than longitude and
-latitude UVs. The foremost normal samples the projection center. Angular
-distance from the front maps to radial tile distance, so a full great-circle
-turn corresponds to one tile width. The only unavoidable projection singularity
-is placed at the back of the sphere, where compression and wrapping artifacts
-are acceptable. The dynamic texture should be sampled with continuous/repeating
-UVs rather than per-vertex `0..1` wrapping, so tile-edge crossings interpolate
-locally on the front side.
+- Center: above the block, not inside the base's collision shape.
+- Major radius: large enough for the player to inspect the world map from
+  outside the hologram.
+- Minor radius: large enough to show terrain color bands on the tube.
+- Segments: enough for a smooth object, probably `64 x 24` or similar.
+- Normals: generated from the torus parameterization for normal item/block
+  lighting.
 
-The projection is client-side and viewer-specific. The exploration texture
-remains stable; only the transform from canonical tile X/Z to the globe surface
-changes for each client.
+Placed objects should be stable. Their texture orientation comes from block
+facing or a fixed default, not from the current viewer. A player walking around
+the object should inspect different physical parts of the same torus, not cause
+the map to reproject.
 
-Held and placed globes should anchor the projection differently:
+Held objects still need a separate design pass. The likely direction is a small
+portable torus preview with an explicit local-player marker, but it may need a
+different scale, orientation, or simplified visual treatment from the placed
+projector.
 
-- Held globe: the foremost point of the globe tracks the holder's current
-  canonical tile position. As the player moves, the tile projection scrolls so
-  the player's position stays at the front.
-- Placed globe: when viewed by a player, that player's current canonical tile
-  position faces toward that player. The globe then behaves as a stationary
-  object in world space while they walk around it, so walking to the back side
-  reveals the far side of that projected globe instead of continuously rotating
-  the same front face toward the camera.
+Chosen toroid direction:
 
-For placed globes, the projection basis should be captured per client/viewer
-when the globe enters view or when the renderer establishes a stable viewing
-session. After that, camera movement around the object should reveal different
-sides of the same local projection. The projection may need a refresh rule if
-the player moves far enough through the world while continuing to watch the same
-placed globe.
+- Use a small projector base with a large non-colliding hologram torus above it.
+- Render the placed projector's outside surface only for ordinary gameplay.
+- Let right-click swap which canonical axis occupies the torus major ring.
+- Keep the `F3+Y` 2x2 comparison grid as a temporary debug view.
 
-Open projection questions:
+Open toroid questions:
 
-- What exact math should the object renderer share with
-  `GlobeCurvatureShader`/curved raycast helpers so the globe's miniaturized
-  terrain illusion matches the world illusion?
-- For placed globes, when should the viewer-specific projection anchor refresh:
-  on first view, on interaction, after the player moves a threshold distance, or
-  only when the block is reloaded?
-- Should the placed globe also have a fixed decorative spin/orientation, or
-  should it stay fully locked to the captured projection basis?
+- Should placed toroids use block facing to choose where `u=0` appears?
+- How should the current player's canonical position render on placed and held
+  toroids without making the map hard to read?
+- Should seam rings be subtly marked so players can read the topology, or should
+  seams be invisible when the sampled map wraps cleanly?
 - Should unexplored regions appear as parchment/blank, dark fog, ocean blue, or
   vanilla map-like empty pixels?
 
@@ -135,9 +142,20 @@ The server should update exploration opportunistically:
 The state should survive alias movement. Exploring an alias of a block reveals
 the canonical pixel owned by that block.
 
+The current implementation still raster-fills the canonical tile for projection
+testing. Replace that with map-like discovery before treating the object as a
+real survival feature:
+
+- Reveal pixels around player canonical positions as they move.
+- Keep unknown regions visually distinct on the hologram.
+- Refresh discovered colors from vanilla map-color sampling or a cheaper
+  equivalent.
+- Send dirty patches instead of full snapshots once automatic updates are active.
+- Preserve discovered state across reloads and topology changes where possible.
+
 ## Block And Item
 
-Add a new globe item/block pair:
+The existing globe item/block pair remains useful:
 
 - The item places a block with horizontal facing.
 - The block has a block entity for client sync and renderer attachment.
@@ -147,36 +165,46 @@ Add a new globe item/block pair:
 
 Possible interactions:
 
-- Right-click opens a larger globe/map screen.
-- Sneak right-click toggles rotation mode or orientation.
+- Right-click swaps which canonical axis occupies the torus major ring.
+- A later interaction can open a larger map/configuration screen once the visual
+  language settles.
 - Comparator output can be the discovered percentage, if that feels useful
   later.
 
 Keep the first version simple: place, render, break, and optionally report
 discovered percentage in a tooltip or debug screen.
 
+Crafting still needs a survival recipe. It should probably communicate
+"projector plus map" rather than "ordinary decorative globe"; candidate
+ingredients to test include copper, amethyst, glass, compass, redstone, and a
+filled or empty map.
+
 ## Client Rendering
 
-Use a custom block entity renderer for the placed globe:
+Replace the sphere renderer with a toroid renderer:
 
-- Render a sphere mesh inside the block bounds.
+- Rename or replace `GlobeSphereMesh` with `GlobeToroidMesh`.
+- Render a small projector base and a large non-colliding torus hologram above
+  the placed block.
 - Upload the exploration color buffer as a dynamic texture.
 - Draw unknown pixels distinctly from discovered pixels.
-- For held items, continuously center the projection on the holder's canonical
-  tile position.
-- For placed blocks, capture a viewer-specific projection basis that puts the
-  viewer's current canonical tile position on the side initially facing them,
-  then keep the object stationary as the viewer walks around it.
-- Sample the texture through the curved-terrain-style front-disk projection,
-  with the densest/distorted regions hidden around the far side.
+- Map texture `u/v` directly to torus major/minor angles.
+- Render the outside surface only, with a mostly visible hologram translucency.
+- Keep a temporary `F3+Y` comparison grid for choosing texture side and axis
+  mapping: front-left outside X-major/Z-minor, front-right inside
+  X-major/Z-minor, back-left outside Z-major/X-minor, and back-right inside
+  Z-major/X-minor.
+- Remove the viewer-specific projection session and six-anchor chart selection.
+- Add optional debug overlays for the X seam, Z seam, seam intersection, and
+  local player canonical position.
 
-The physical globe does not need to be world-scale. The circumference rule is a
-projection rule: tile width corresponds to one full wrap of the texture around
-the sphere. The block model can remain a normal placed object.
+The physical object does not need to be world-scale. The circumference rule is a
+texture rule: tile width corresponds to one full wrap around each torus loop.
+The block model can remain a normal placed object.
 
-The renderer should reuse the same conceptual curvature math as the world
-renderer where possible, but it should remain an object-space renderer. It
-should look acceptable when Globe World terrain curvature is enabled or disabled.
+The renderer should remain object-space and should look acceptable when Globe
+World terrain curvature is enabled or disabled. It no longer needs to share
+curved-terrain projection math with `GlobeCurvatureShader`.
 
 ## Networking
 
@@ -185,13 +213,13 @@ Avoid sending the full texture every tick.
 Suggested protocol:
 
 - Send a compact initial snapshot when a client starts watching a globe block or
-  opens the larger globe view.
+  opens the larger map view.
 - Send dirty rectangular patches or changed pixel runs afterward.
 - Include dimension/topology identifiers so stale updates are ignored after
   world changes or setting mismatches.
 - Let clients cache the latest texture per dimension during the play session.
-- Do not send projection-center updates from the server; each client can derive
-  them from its own canonical player position and local view of the globe.
+- Do not send projection-center updates from the server; clients can derive
+  local player markers from their own canonical position.
 
 For the first prototype, a full snapshot on block-entity sync is acceptable if
 the texture is small and updates are manual or infrequent. Before release, move
@@ -199,50 +227,53 @@ to patch updates so several placed globes do not spam clients.
 
 ## Implementation Steps
 
-Stage 1 and the first visual refinement were blank shell object work:
+Already useful and keep:
 
-- Added a registered `globe` block/item.
-- Added a smooth generated sphere mesh that renders both placed and held.
-- Added a minimal block entity and client renderer for placed globes.
-- Added a special item renderer for held and inventory globes.
-- Added creative-tab, language, and loot-table resources.
-
-The current projection-test pass also:
-
-- Adds `GlobeMapSavedData` as Overworld world data for a 512x512 canonical-tile
+- Registered `globe` block/item.
+- Minimal block entity and client renderer hook for placed globes.
+- Special item renderer for held and inventory globes.
+- Creative-tab, language, and loot-table resources.
+- `GlobeMapSavedData` as Overworld world data for a 512x512 canonical-tile
   texture.
-- Fills the texture by raster-scanning the canonical tile on server ticks,
-  rather than requiring player exploration. This is temporary so small test
-  worlds can validate projection and projection-center behavior.
-- Sends full `GlobeMapSnapshotPayload` snapshots to watching clients on join
-  and when the saved map revision changes.
-- Uploads the snapshot into a client dynamic texture.
-- Projects that texture on placed and held globes with a player-centered
-  curved sphere projection.
+- Temporary raster-fill of the canonical tile for projection testing.
+- Full `GlobeMapSnapshotPayload` snapshots to clients on join and revision
+  changes.
+- Client dynamic texture upload through `GlobeMapTextureCache`.
+- First toroid mesh submission through `GlobeToroidMesh`, with direct canonical
+  X/Z texture mapping.
+- Debug comparison grid for side-by-side inside/outside texture winding and
+  X-major versus Z-major wrap-axis tests.
+- Placed projector prototype with persisted wrap-axis mode, base-only collision,
+  and a large outside-surface torus hologram.
 
-1. Inspect vanilla map saved data, map color sampling, dynamic texture upload,
-   block entity renderer registration, and block/item registration in the
-   Minecraft 26.1.2 sources. Done.
-2. Add registration scaffolding for the globe block, item, block entity type,
-   and client renderer. Done.
-3. Add a minimal static renderer with a placeholder generated texture so the
-   placed object can be validated before saved data exists. Done.
-4. Add `GlobeMapSavedData` or similar server state for discovered pixels and
-   colors. Done for the Overworld projection-test texture.
-5. Add player-tick exploration updates using canonical X/Z from
-   `TopologyContexts` or `CoordUtil`. Shelved temporarily; the current build
-   raster-fills the tile for projection testing.
-6. Add snapshot sync from server to clients and dynamic texture upload on the
-   client. Done with full snapshots.
-7. Replace the placeholder renderer texture with synced exploration data. Done.
-8. Add held-item projection centered on the holder's canonical position. First
-   pass done for the local client.
-9. Add placed-block projection with a stable viewer-specific basis and tune the
-   sphere mesh. First pass done with a captured viewer-local center/facing and
-   front-disk sphere projection.
-10. Add optional item tooltip or debug command output for discovered percentage.
-11. Document shipped behavior in `docs/mod-mechanics/` and keep any unresolved
-    projection experiments in this plan.
+Retire or replace:
+
+- The smooth generated sphere mesh.
+- Player-centered front-disk sphere projection.
+- Placed-object viewer-local projection sessions. Removed from the placed
+  renderer.
+- Six-anchor chart selection and debug markers. Removed from the placed
+  renderer.
+- Any validation criteria based on hiding sphere distortion.
+
+Next steps:
+
+1. Delete or fully retire `GlobeSphereMesh` once no transitional references
+   remain.
+2. Add a player-position marker for placed and held toroids.
+3. Design held-item behavior: stable miniature, player-forward orientation, or a
+   simplified readable preview.
+4. Replace the temporary raster-fill with real player exploration updates that
+   fill in like a map.
+5. Add a survival crafting recipe for the projector/globe item.
+6. Choose the final default wrap-axis mapping after in-world testing.
+7. Tune the projector base, hologram size, transparency, and interaction
+   feedback.
+8. Add torus debug markers for X seam, Z seam, seam crossing, and player
+   canonical position.
+9. Add optional item tooltip or debug command output for discovered percentage.
+10. Document shipped toroid behavior in `docs/mod-mechanics/` and keep only
+   unresolved exploration or renderer questions in this plan.
 
 ## Vanilla Sources To Inspect
 
@@ -272,12 +303,15 @@ Functional checks:
 
 Rendering checks:
 
-- Hold the globe while walking and confirm the player's canonical position stays
-  at the front of the object.
-- View a placed globe, then walk around it and confirm it behaves as a
-  stationary object whose far side can be inspected.
-- Confirm the densest/distorted part of the tile remains on or near the hidden
-  back side from the intended projection anchor.
+- Confirm the torus shows a continuous major loop for canonical X.
+- Confirm the torus shows a continuous minor loop for canonical Z.
+- Confirm both texture seams meet cleanly at the torus seam crossing.
+- Confirm a placed torus does not reproject or scroll when the viewer walks
+  around it.
+- Confirm the player-position marker is readable from outside the hologram and
+  while standing inside the torus.
+- Confirm held and inventory rendering fit inside expected item bounds.
+- Confirm held behavior clearly communicates the player's canonical position.
 - Check the object with Globe World terrain curvature on and off.
 - Check near, medium, and far view distances.
 - Check multiplayer with two players exploring different parts of the tile.
@@ -290,29 +324,31 @@ Performance checks:
 
 ## Risks
 
-- A sphere-like object cannot show the entire rectangular tile at uniform
-  density. The design relies on hiding the worst compression around the back.
-- Placed globes need a stable per-viewer projection basis; if it refreshes too
-  often the object will feel like it is billboarded instead of stationary.
-- Vanilla map color sampling may be too expensive if run at high resolution or
-  too often.
+- A torus is less immediately "globe-like" than a sphere, even though it is more
+  accurate to the wrapped world.
+- The tube can visually hide itself from some angles; marker and seam design may
+  matter more than on a flat map.
 - Dynamic texture updates can become noisy in multiplayer without patch-based
   sync.
+- Vanilla map color sampling may be too expensive if run at high resolution or
+  too often.
 - Client renderer APIs may drift during the planned Minecraft 26.2 upgrade, so
   keep rendering hooks small and isolated.
 
 ## Done Criteria
 
-- A globe item can place a visible globe block.
-- The block renders discovered canonical tile data through the same broad
-  visual model as Globe World's curved terrain.
-- The held globe keeps the holder's current canonical tile position at the
-  front.
-- The placed globe uses a stable viewer-specific projection so players can walk
-  around it and see the far side.
+- A globe item can place a visible toroidal world-map block.
+- The globe/projector item has a survival crafting recipe.
+- The block renders discovered canonical tile data as a torus with X and Z as
+  the two independent loops.
+- The placed object is stable in object space and does not depend on the
+  viewer's current camera angle.
+- Placed and held renderers can show the local player's canonical position.
+- The held item remains readable and has an intentional behavior distinct from
+  the large placed projector.
 - Exploration updates automatically from player movement and persists in saved
   world data.
-- The globe uses canonical X/Z, so aliases do not duplicate or offset explored
+- The map uses canonical X/Z, so aliases do not duplicate or offset explored
   regions.
 - Multiplayer clients receive the same discovered state without excessive
   packet traffic.
