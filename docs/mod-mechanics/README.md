@@ -87,7 +87,7 @@ World period:
 | Small-world End portal fallback | Implemented | [worldgen.md](worldgen.md) |
 | Client chunk/world rendering | Implemented for server-relabeled aliases | [client.md](client.md) |
 | Multiplayer settings sync | Implemented for join-time and runtime changes | [client.md](client.md) |
-| Filled maps and Atlas Projectors | Filled-map marker aliasing implemented; Atlas Projector torus rendering uses shared player-driven canonical discovery | [maps.md](maps.md) |
+| Filled maps and Atlas Projectors | Filled-map marker aliasing implemented; Atlas Projector torus and held projection use shared player-driven canonical discovery | [maps.md](maps.md) |
 | Curvature visuals and shader packs | Implemented | [client.md](client.md) |
 | Local solar time helper | Implemented | [local-solar-time.md](local-solar-time.md) |
 | Day-length multiplier | Implemented | [scrolling-day-night.md](scrolling-day-night.md) |

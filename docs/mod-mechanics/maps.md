@@ -68,6 +68,23 @@ revision changes, then `GlobeMapTextureCache` uploads the dynamic texture.
 Undiscovered pixels are uploaded as fully transparent pixels, so hidden regions
 leave holes in the toroidal projection until players reveal them.
 
+When held in first person, Atlas Projector items keep the ordinary block-item
+hand pose and render a separate translucent projection above the held projector.
+`GlobeHeldMapRenderer` samples a player-centered window from the shared
+projector texture, so the projection moves under the player instead of moving a
+player icon across a fixed map. The window uses vanilla map spans: the smallest
+span from `128`, `256`, `512`, `1024`, and `2048` blocks that can contain the
+tile, capped at `2048` blocks. The held viewport rotates with the player so the
+top of the projection is always the direction the player is facing, shifts half
+its width toward the active hand's side of the screen, and is circular with a
+soft alpha fade at the edge. The held projection has no vanilla map-paper
+backing. It uses a held-only dynamic texture where unknown space has a faint
+hologram fill so the player-centered window remains visible, while placed
+projector holograms still use fully transparent unknown pixels. Held projection
+vertices render full-bright so the map reads like a projector hologram rather
+than a hand-lit item surface. If no current-dimension snapshot has arrived yet,
+the held projection renders nothing.
+
 ## Key Files
 
 - `mod-fabric/src/main/java/globe/world/mixin/MapItemMixin.java`
@@ -79,7 +96,9 @@ leave holes in the toroidal projection until players reveal them.
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapSavedData.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapTracker.java`
 - `mod-fabric/src/main/java/globe/world/network/GlobeMapSnapshotPayload.java`
+- `mod-fabric/src/client/java/globe/world/client/mixin/ItemInHandRendererMixin.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeBlockEntityRenderer.java`
+- `mod-fabric/src/client/java/globe/world/client/render/GlobeHeldMapRenderer.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeToroidMesh.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeMapTextureCache.java`
 

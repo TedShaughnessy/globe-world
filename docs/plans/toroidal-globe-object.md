@@ -16,6 +16,9 @@ note tracks remaining hardening work for sync efficiency and tuning.
 - The client renders a large non-colliding torus hologram from the placed block
   entity. Canonical X maps around the torus major ring; canonical Z maps around
   the minor tube.
+- Held Atlas Projector items keep the projector model in hand and render the
+  shared discovery texture above it as a small translucent, player-centered,
+  heading-up circular map window.
 - The torus uses server-owned `GlobeMapSavedData` for a `512x512` canonical
   Overworld texture. Clients receive full `GlobeMapSnapshotPayload` snapshots
   on join and revision changes, then upload the buffer through
