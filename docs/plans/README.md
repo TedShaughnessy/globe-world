@@ -13,11 +13,11 @@ point for current behavior and modded code anchors.
   social follow, temptation, short-range movement, and brain/social behaviors
   that still need actor-local alias handling after the owner-adjacent tameable
   fixes.
+- [Exploration reward beacon](exploration-reward-beacon.md): Atlas Projector
+  power UI and wrapped-radius effects unlocked by canonical-world discovery.
 - [Minecraft 26.2 upgrade plan](minecraft-26-2-upgrade.md): dependency bump,
   Loom source regeneration, mixin audit, packet policy refresh, and runtime
   validation plan for the next Minecraft target.
-- [Atlas Projector discovery](toroidal-globe-object.md): follow-up tuning and
-  sync improvements for shared player-driven canonical map discovery.
 - [Seam-behavior checklist](seam-behavior-checklist.md): manual regression
   matrix and automation candidates for preserving seam behavior during future
   work.

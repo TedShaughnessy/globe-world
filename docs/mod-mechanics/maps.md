@@ -35,11 +35,12 @@ Atlas Projectors are placeable toroidal views of the canonical Overworld tile.
 The original registry id is still `globe`, but the player-facing block family is
 Atlas Projector, Copper Atlas Projector, and Soul Atlas Projector.
 
-Placed projectors store only local presentation state: attachment face,
-horizontal facing, and whether the hologram projection is enabled. Right-click
-toggles the hologram on or off. Map discovery is shared world state, not per
-projector state, so multiple projectors in the same dimension show the same
-canonical tile texture.
+Placed projectors store local presentation state, attachment face, horizontal
+facing, whether the hologram projection is enabled, and their reward-beacon
+loadout. Empty-hand use opens the Atlas power UI. Sneak-use toggles the
+hologram on or off. Map discovery is shared world state, not per projector
+state, so multiple projectors in the same dimension show the same canonical
+tile texture.
 
 `GlobeMapSavedData` stores a fixed `512x512` tile texture, a discovered bitset,
 and compact vanilla map colors for the Overworld. `GlobeMapTracker` scans
@@ -91,6 +92,36 @@ the map reads like a projector hologram rather than a hand-lit item surface. If
 no current-dimension snapshot has arrived yet, the held projection renders
 nothing.
 
+## Exploration Rewards
+
+Atlas Projectors can spend shared Overworld discovery progress on a local
+reward-beacon loadout. `GlobeDiscoveryRewards` derives world effect points and a
+per-Atlas radius cap from `GlobeMapSavedData` discovered pixels, discovered
+percentage, discovered block area, tile size, and literal full completion.
+Tiny tiles receive no points until full completion; small tiles require at least
+half discovery; larger tiles can earn points from absolute explored area.
+
+`GlobeAtlasPowerState` is saved Overworld state keyed by canonical Atlas block
+position. Loaded Atlas block entities mirror their saved loadout into this
+state, and removed Atlases drop their reservation. Each loadout spends points
+on radius tier, selected effects, and the travel-network toggle. When total
+spend exceeds the shared budget, the deterministic powered subset is chosen by
+most recently edited Atlas first, then canonical block-position order.
+
+The first reward effect set is speed, haste, and regeneration. Loaded powered
+Atlases periodically apply their selected effects to non-spectator players
+inside the selected radius using wrapped X/Z distance, so players across a
+canonical edge can still qualify. Unloaded Atlases keep reserving budget through
+saved state, but they do not apply effects.
+
+Full discovery creates the Mastered Atlas state and unlocks linked Atlas
+travel. A travel-enabled source Atlas can instantly send a player to another
+loaded, powered, travel-enabled Atlas in the same Overworld when the player is
+inside the source radius, the destination map pixel is discovered, and a safe
+arrival space exists next to or above the destination. Travel has a `30` second
+per-player cooldown. The first implementation does not yet include channeled
+travel cancellation, Atlas Flight, active visual state, or ownership rules.
+
 ## Key Files
 
 - `mod-fabric/src/main/java/globe/world/mixin/MapItemMixin.java`
@@ -99,9 +130,18 @@ nothing.
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/block/GlobeBlock.java`
 - `mod-fabric/src/main/java/globe/world/block/entity/GlobeBlockEntity.java`
+- `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasEffect.java`
+- `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasLoadout.java`
+- `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasPowerState.java`
+- `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasPowers.java`
+- `mod-fabric/src/main/java/globe/world/atlas/GlobeDiscoveryRewards.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapSavedData.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapTracker.java`
+- `mod-fabric/src/main/java/globe/world/network/GlobeAtlasScreenPayload.java`
+- `mod-fabric/src/main/java/globe/world/network/GlobeAtlasTravelPayload.java`
+- `mod-fabric/src/main/java/globe/world/network/GlobeAtlasUpdatePayload.java`
 - `mod-fabric/src/main/java/globe/world/network/GlobeMapSnapshotPayload.java`
+- `mod-fabric/src/client/java/globe/world/client/GlobeAtlasPowerScreen.java`
 - `mod-fabric/src/client/java/globe/world/client/mixin/ItemInHandRendererMixin.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeBlockEntityRenderer.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeHeldMapRenderer.java`

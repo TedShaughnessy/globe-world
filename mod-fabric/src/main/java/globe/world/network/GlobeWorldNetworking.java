@@ -2,6 +2,7 @@ package globe.world.network;
 
 import globe.world.config.GlobeSettings;
 import globe.world.config.GlobeSettingsHolder;
+import globe.world.atlas.GlobeAtlasPowers;
 import net.fabricmc.fabric.api.networking.v1.FabricServerConfigurationPacketListenerImpl;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerConfigurationConnectionEvents;
@@ -32,6 +33,11 @@ public final class GlobeWorldNetworking {
         PayloadTypeRegistry.clientboundPlay().register(GlobeWorldSettingsPayload.TYPE, GlobeWorldSettingsPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(GlobeEntityAliasCommandPayload.TYPE, GlobeEntityAliasCommandPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(GlobeMapSnapshotPayload.TYPE, GlobeMapSnapshotPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(GlobeAtlasScreenPayload.TYPE, GlobeAtlasScreenPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(GlobeAtlasUpdatePayload.TYPE, GlobeAtlasUpdatePayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(GlobeAtlasTravelPayload.TYPE, GlobeAtlasTravelPayload.CODEC);
+
+        GlobeAtlasPowers.register();
 
         ServerConfigurationNetworking.registerGlobalReceiver(GlobeWorldSettingsAckPayload.TYPE, (payload, context) ->
                 ((FabricServerConfigurationPacketListenerImpl) context.packetListener()).completeTask(SETTINGS_SYNC_TASK));

@@ -196,13 +196,35 @@ public class GlobeMapSavedData extends SavedData {
     }
 
     public double discoveredPercent() {
+        return this.discoveredPixels() * 100.0D / PIXEL_COUNT;
+    }
+
+    public int discoveredPixels() {
         int discoveredPixels = 0;
         for (int i = 0; i < PIXEL_COUNT; i++) {
             if (this.isDiscovered(i)) {
                 discoveredPixels++;
             }
         }
-        return discoveredPixels * 100.0D / PIXEL_COUNT;
+        return discoveredPixels;
+    }
+
+    public int totalPixels() {
+        return PIXEL_COUNT;
+    }
+
+    public double discoveredAreaBlocks() {
+        return this.discoveredPixels() / (double)PIXEL_COUNT * this.tileSizeBlocks * (double)this.tileSizeBlocks;
+    }
+
+    public boolean isDiscoveredCanonicalBlock(final DimensionTiling tiling, final BlockPos pos) {
+        if (!this.matches(tiling)) {
+            return false;
+        }
+
+        int px = this.pixelForCanonicalBlock(CoordUtil.wrapBlock(tiling, pos.getX()));
+        int pz = this.pixelForCanonicalBlock(CoordUtil.wrapBlock(tiling, pos.getZ()));
+        return this.isDiscovered(px, pz);
     }
 
     private static GlobeMapSavedData empty() {

@@ -1,11 +1,15 @@
 package globe.world.block;
 
 import com.mojang.serialization.MapCodec;
+import globe.world.GlobeWorldBlocks;
+import globe.world.atlas.GlobeAtlasPowerState;
+import globe.world.atlas.GlobeAtlasPowers;
 import globe.world.block.entity.GlobeBlockEntity;
 import java.util.Map;
 import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
@@ -23,6 +27,8 @@ import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -83,6 +89,21 @@ public class GlobeBlock extends BaseEntityBlock {
         return new GlobeBlockEntity(worldPosition, blockState);
     }
 
+    @Nullable
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
+            final Level level,
+            final BlockState blockState,
+            final BlockEntityType<T> type) {
+        if (level.isClientSide()) {
+            return null;
+        }
+        return createTickerHelper(
+                type,
+                GlobeWorldBlocks.GLOBE_BLOCK_ENTITY,
+                (serverLevel, pos, state, globe) -> GlobeAtlasPowers.tickBlockEntity((ServerLevel)serverLevel, pos, globe));
+    }
+
     @Override
     protected RenderShape getRenderShape(final BlockState state) {
         return RenderShape.MODEL;
@@ -123,18 +144,32 @@ public class GlobeBlock extends BaseEntityBlock {
         }
 
         if (level.getBlockEntity(pos) instanceof GlobeBlockEntity globe) {
-            boolean projectionEnabled = globe.toggleProjection();
-            level.playSound(
-                    null,
-                    pos,
-                    SoundEvents.COMPARATOR_CLICK,
-                    SoundSource.BLOCKS,
-                    0.3F,
-                    projectionEnabled ? 1.1F : 0.75F);
+            if (player.isShiftKeyDown()) {
+                boolean projectionEnabled = globe.toggleProjection();
+                level.playSound(
+                        null,
+                        pos,
+                        SoundEvents.COMPARATOR_CLICK,
+                        SoundSource.BLOCKS,
+                        0.3F,
+                        projectionEnabled ? 1.1F : 0.75F);
+            } else if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                GlobeAtlasPowers.openScreen(serverPlayer, pos);
+            }
             return InteractionResult.SUCCESS_SERVER;
         }
 
         return InteractionResult.PASS;
+    }
+
+    @Override
+    protected void affectNeighborsAfterRemoval(
+            final BlockState state,
+            final ServerLevel level,
+            final BlockPos pos,
+            final boolean movedByPiston) {
+        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
+        GlobeAtlasPowerState.getIfOverworld(level).ifPresent(powerState -> powerState.remove(pos));
     }
 
     @Override
