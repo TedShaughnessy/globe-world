@@ -4,9 +4,11 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.diagnostics.DiagnosticsChannel;
 import globe.world.diagnostics.GlobeDiagnostics;
+import globe.world.map.GlobeMapTracker;
 import globe.world.topology.TopologyContexts;
 import java.util.ArrayDeque;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -138,14 +140,18 @@ public abstract class LevelSetBlockBroadcastMixin {
             int recursionLeft,
             CallbackInfoReturnable<Boolean> cir) {
         GlobeWorldSetBlockFrame frame = globeWorld$setBlockFrames.poll();
-        if (frame == null || isClientSide() || !cir.getReturnValue() || frame.sentBlockUpdate || frame.oldState == null) {
-            return;
-        }
-        if ((flags & 2) == 0) {
+        if (frame == null || isClientSide() || !cir.getReturnValue() || frame.oldState == null) {
             return;
         }
         BlockState actualState = getBlockState(pos);
-        if (actualState != frame.oldState) {
+        if (actualState == frame.oldState) {
+            return;
+        }
+
+        if ((Object)this instanceof ServerLevel serverLevel) {
+            GlobeMapTracker.refreshChangedColumn(serverLevel, frame.canonicalPos);
+        }
+        if (!frame.sentBlockUpdate && (flags & 2) != 0) {
             sendBlockUpdated(pos, frame.oldState, actualState, flags);
         }
     }

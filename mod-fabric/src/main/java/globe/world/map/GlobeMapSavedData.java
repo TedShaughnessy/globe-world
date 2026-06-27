@@ -96,6 +96,11 @@ public class GlobeMapSavedData extends SavedData {
         return created;
     }
 
+    public static GlobeMapSavedData getIfPresent(final ServerLevel level, final DimensionTiling tiling) {
+        GlobeMapSavedData existing = level.getDataStorage().get(TYPE);
+        return existing != null && existing.matches(tiling) ? existing : null;
+    }
+
     public boolean revealAround(
             final ServerLevel level,
             final DimensionTiling tiling,
@@ -114,7 +119,7 @@ public class GlobeMapSavedData extends SavedData {
         double canonicalZ = CoordUtil.wrapBlock(tiling, z);
         int centerPixelX = this.pixelForCanonicalBlock(canonicalX);
         int centerPixelZ = this.pixelForCanonicalBlock(canonicalZ);
-        int pixelRadius = (int)Math.ceil(radiusBlocks * (double)this.resolution / this.tileSizeBlocks) + 1;
+        int pixelRadius = Math.min((int)Math.ceil(radiusBlocks * (double)this.resolution / this.tileSizeBlocks) + 1, this.resolution / 2);
         double radiusSqr = (double)radiusBlocks * radiusBlocks;
         int sampledPixels = 0;
         boolean changed = false;
@@ -140,13 +145,30 @@ public class GlobeMapSavedData extends SavedData {
                     continue;
                 }
 
-                int sampledColor = this.samplePixelColor(level, px, pz);
-                changed |= this.updatePixel(px, pz, sampledColor < 0 ? MapColor.NONE.getPackedId(MapColor.Brightness.NORMAL) : (byte)sampledColor);
+                changed |= this.sampleAndUpdatePixel(level, px, pz);
                 sampledPixels++;
             }
         }
 
+        if (sampledPixels < pixelBudget) {
+            changed |= this.fillSmallGapsAround(level, centerPixelX, centerPixelZ, pixelRadius + 1, pixelBudget - sampledPixels);
+        }
+
         return this.finishReveal(changed);
+    }
+
+    public boolean refreshColumn(final ServerLevel level, final DimensionTiling tiling, final BlockPos pos) {
+        if (!Level.OVERWORLD.equals(level.dimension()) || !this.matches(tiling)) {
+            return false;
+        }
+
+        int px = this.pixelForCanonicalBlock(CoordUtil.wrapBlock(tiling, pos.getX()));
+        int pz = this.pixelForCanonicalBlock(CoordUtil.wrapBlock(tiling, pos.getZ()));
+        if (!this.isDiscovered(px, pz)) {
+            return false;
+        }
+
+        return this.finishReveal(this.sampleAndUpdatePixel(level, px, pz));
     }
 
     public Identifier dimensionId() {
@@ -235,6 +257,62 @@ public class GlobeMapSavedData extends SavedData {
         return color.getPackedId(color == MapColor.WATER ? MapColor.Brightness.HIGH : MapColor.Brightness.NORMAL) & 0xFF;
     }
 
+    private boolean sampleAndUpdatePixel(final ServerLevel level, final int px, final int pz) {
+        int sampledColor = this.samplePixelColor(level, px, pz);
+        return this.updatePixel(px, pz, sampledColor < 0 ? MapColor.NONE.getPackedId(MapColor.Brightness.NORMAL) : (byte)sampledColor);
+    }
+
+    private boolean fillSmallGapsAround(
+            final ServerLevel level,
+            final int centerPixelX,
+            final int centerPixelZ,
+            final int pixelRadius,
+            final int pixelBudget) {
+        int searchRadius = Math.min(pixelRadius, this.resolution / 2);
+        int filledPixels = 0;
+        boolean changed = false;
+
+        for (int dz = -searchRadius; dz <= searchRadius; dz++) {
+            int pz = Math.floorMod(centerPixelZ + dz, this.resolution);
+            for (int dx = -searchRadius; dx <= searchRadius; dx++) {
+                if (filledPixels >= pixelBudget) {
+                    return changed;
+                }
+
+                int px = Math.floorMod(centerPixelX + dx, this.resolution);
+                if (this.isDiscovered(px, pz) || !this.isSmallGap(px, pz)) {
+                    continue;
+                }
+
+                changed |= this.sampleAndUpdatePixel(level, px, pz);
+                filledPixels++;
+            }
+        }
+
+        return changed;
+    }
+
+    private boolean isSmallGap(final int px, final int pz) {
+        int discoveredNeighbors = 0;
+        int cardinalNeighbors = 0;
+        for (int dz = -1; dz <= 1; dz++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                if (dx == 0 && dz == 0) {
+                    continue;
+                }
+
+                if (this.isDiscovered(Math.floorMod(px + dx, this.resolution), Math.floorMod(pz + dz, this.resolution))) {
+                    discoveredNeighbors++;
+                    if (dx == 0 || dz == 0) {
+                        cardinalNeighbors++;
+                    }
+                }
+            }
+        }
+
+        return discoveredNeighbors >= 7 && cardinalNeighbors >= 3;
+    }
+
     private int wrapCanonicalBlock(final int block) {
         int half = this.tileSizeBlocks / 2;
         return Math.floorMod(block + half, this.tileSizeBlocks) - half;
@@ -291,6 +369,10 @@ public class GlobeMapSavedData extends SavedData {
 
     private boolean isDiscovered(final int index) {
         return (this.discovered[index >> 3] & (1 << (index & 7))) != 0;
+    }
+
+    private boolean isDiscovered(final int px, final int pz) {
+        return this.isDiscovered(px + pz * this.resolution);
     }
 
     private void setDiscovered(final int index) {

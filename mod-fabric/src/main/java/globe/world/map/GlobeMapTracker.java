@@ -6,6 +6,7 @@ import globe.world.util.DimensionTiling;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,7 +21,7 @@ import java.util.UUID;
 public final class GlobeMapTracker {
     private static final int UPDATE_INTERVAL_TICKS = 5;
     private static final int SYNC_INTERVAL_TICKS = 20;
-    private static final int REVEAL_RADIUS_BLOCKS = 32;
+    private static final int REVEAL_RADIUS_BLOCKS = 48;
     private static final int REVEAL_MOVE_THRESHOLD_BLOCKS = 8;
     private static final int PERIODIC_REVEAL_TICKS = 200;
     private static final int MAX_PIXELS_PER_PLAYER_REVEAL = 20_000;
@@ -34,6 +35,22 @@ public final class GlobeMapTracker {
         ServerTickEvents.END_SERVER_TICK.register(GlobeMapTracker::tick);
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> sendInitialSnapshot(handler.player));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> LAST_REVEALS.remove(handler.player.getUUID()));
+    }
+
+    public static void refreshChangedColumn(final ServerLevel level, final BlockPos pos) {
+        if (!Level.OVERWORLD.equals(level.dimension())) {
+            return;
+        }
+
+        DimensionTiling tiling = DimensionTiling.forDimension(Level.OVERWORLD);
+        if (!tiling.enabled()) {
+            return;
+        }
+
+        GlobeMapSavedData data = GlobeMapSavedData.getIfPresent(level, tiling);
+        if (data != null) {
+            data.refreshColumn(level, tiling, pos);
+        }
     }
 
     private static void tick(final MinecraftServer server) {

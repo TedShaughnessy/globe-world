@@ -50,9 +50,18 @@ discover the same canonical map pixels.
 
 Discovery is shared world state. It is not per-player and is not stored on
 individual Atlas Projector block entities. The tracker skips spectator players,
-rate-limits repeated reveals by canonical movement and time, and caps sampled
-pixels per reveal pass so small tiles and multiplayer exploration do not do all
-map work in a single tick.
+reveals a generous 48 block radius, rate-limits repeated reveals by canonical
+movement and time, and caps sampled pixels per reveal pass so small tiles and
+multiplayer exploration do not do all map work in a single tick. After each
+reveal pass, single-pixel holes surrounded by discovered map pixels are filled
+in so tiny missed spots do not linger when players have explored around them.
+
+Discovered colors also refresh after block edits. `LevelSetBlockBroadcastMixin`
+already observes successful canonical `Level.setBlock(...)` mutations; when a
+changed Overworld column belongs to a discovered map pixel, it asks
+`GlobeMapTracker.refreshChangedColumn(...)` to resample that pixel through
+`GlobeMapSavedData.refreshColumn(...)`. Undiscovered pixels stay hidden, so
+editing terrain in unexplored space does not reveal it.
 
 The client receives full `GlobeMapSnapshotPayload` snapshots on join and
 revision changes, then `GlobeMapTextureCache` uploads the dynamic texture.
@@ -63,6 +72,7 @@ leave holes in the toroidal projection until players reveal them.
 
 - `mod-fabric/src/main/java/globe/world/mixin/MapItemMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/MapItemSavedDataMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java`
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/block/GlobeBlock.java`
 - `mod-fabric/src/main/java/globe/world/block/entity/GlobeBlockEntity.java`

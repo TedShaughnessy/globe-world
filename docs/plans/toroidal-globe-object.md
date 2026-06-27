@@ -27,9 +27,13 @@ note tracks remaining hardening work for sync efficiency and tuning.
   pixels with the existing map-color path, and advances the saved-data revision
   when discovery changes.
 - `GlobeMapTracker` scans non-spectator Overworld players every 5 ticks,
-  reveals a 32 block radius around their canonical X/Z, skips redundant work
+  reveals a 48 block radius around their canonical X/Z, skips redundant work
   until players move 8 canonical blocks or a 200 tick refresh window passes,
   and caps each reveal pass at 20,000 newly sampled pixels.
+- Discovery fills tiny single-pixel holes that are surrounded by discovered
+  pixels, smoothing over small missed spots after players explore around them.
+- Successful canonical Overworld block edits refresh the affected discovered
+  projector-map pixel through `GlobeMapTracker.refreshChangedColumn(...)`.
 - The old background full-tile fill path has been removed from normal code.
 
 ## Remaining Follow-Ups
@@ -39,9 +43,8 @@ note tracks remaining hardening work for sync efficiency and tuning.
 - Add dirty patch, changed-run, or dirty-rectangle sync so several players
   exploring different regions do not resend the full `512x512` texture each
   sync.
-- Decide whether discovered pixels should periodically resample terrain colors
-  after block edits. The first implementation prioritizes discovery stability
-  and skips already discovered pixels.
+- Consider whether any non-`Level.setBlock(...)` world mutations need explicit
+  projector-map refresh hooks after testing.
 - Consider grouping players by nearby canonical pixel center in the same tick
   to avoid duplicate sampling in dense multiplayer sessions.
 - If projection debug comparison should show holes too, render its comparison
@@ -76,3 +79,5 @@ players exploring different regions do not resend the full texture each time.
   regions.
 - Multiplayer clients should converge on the same discovered state without
   excessive packet traffic.
+- Editing blocks in a discovered column should refresh that projector pixel;
+  editing blocks in undiscovered space should not reveal it.
