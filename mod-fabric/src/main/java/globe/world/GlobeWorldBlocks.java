@@ -19,23 +19,65 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 
 public final class GlobeWorldBlocks {
+    public static final int IRON_PROJECTOR_COLOR = 0xCCFFFFFF;
+    public static final int COPPER_PROJECTOR_COLOR = 0xCCFFB45C;
+    public static final int SOUL_PROJECTOR_COLOR = 0xCC66D9FF;
+    private static final int LIGHT_LEVEL = 14;
+
     public static final Block GLOBE = registerBlock(
             "globe",
-            properties -> new GlobeBlock(properties
-                    .mapColor(MapColor.COLOR_LIGHT_BLUE)
-                    .strength(0.6F)
-                    .sound(SoundType.WOOD)
-                    .noOcclusion()));
+            properties -> newProjectorBlock(properties, MapColor.METAL));
+    public static final Block COPPER_ATLAS_PROJECTOR = registerBlock(
+            "copper_atlas_projector",
+            properties -> newProjectorBlock(properties, MapColor.COLOR_ORANGE));
+    public static final Block SOUL_ATLAS_PROJECTOR = registerBlock(
+            "soul_atlas_projector",
+            properties -> newProjectorBlock(properties, MapColor.COLOR_LIGHT_BLUE));
     public static final BlockEntityType<GlobeBlockEntity> GLOBE_BLOCK_ENTITY = registerBlockEntity(
             "globe",
-            FabricBlockEntityTypeBuilder.create(GlobeBlockEntity::new, GLOBE).build());
+            FabricBlockEntityTypeBuilder.create(
+                    GlobeBlockEntity::new,
+                    GLOBE,
+                    COPPER_ATLAS_PROJECTOR,
+                    SOUL_ATLAS_PROJECTOR).build());
     public static final Item GLOBE_ITEM = registerBlockItem("globe", GLOBE, new Item.Properties());
+    public static final Item COPPER_ATLAS_PROJECTOR_ITEM = registerBlockItem(
+            "copper_atlas_projector",
+            COPPER_ATLAS_PROJECTOR,
+            new Item.Properties());
+    public static final Item SOUL_ATLAS_PROJECTOR_ITEM = registerBlockItem(
+            "soul_atlas_projector",
+            SOUL_ATLAS_PROJECTOR,
+            new Item.Properties());
 
     private GlobeWorldBlocks() {
     }
 
     public static void register() {
-        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(output -> output.accept(GLOBE_ITEM));
+        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(output -> {
+            output.accept(GLOBE_ITEM);
+            output.accept(COPPER_ATLAS_PROJECTOR_ITEM);
+            output.accept(SOUL_ATLAS_PROJECTOR_ITEM);
+        });
+    }
+
+    public static int projectorColor(final Block block) {
+        if (block == COPPER_ATLAS_PROJECTOR) {
+            return COPPER_PROJECTOR_COLOR;
+        }
+        if (block == SOUL_ATLAS_PROJECTOR) {
+            return SOUL_PROJECTOR_COLOR;
+        }
+        return IRON_PROJECTOR_COLOR;
+    }
+
+    private static GlobeBlock newProjectorBlock(final BlockBehaviour.Properties properties, final MapColor mapColor) {
+        return new GlobeBlock(properties
+                .mapColor(mapColor)
+                .strength(0.6F)
+                .sound(SoundType.METAL)
+                .lightLevel(state -> LIGHT_LEVEL)
+                .noOcclusion());
     }
 
     private static Block registerBlock(final String id, final BlockFactory factory) {

@@ -5,8 +5,9 @@ experiment. The useful object for Globe World's wrapped rectangular tile is a
 toroid: the canonical tile wraps independently in X and Z, and a torus is the
 surface with exactly those two independent loops.
 
-The block/item can keep the player-facing `globe` name for now, but the durable
-renderer target is a toroidal world map rather than a miniature sphere.
+The original block/item keeps the internal `globe` id for compatibility, but
+the player-facing object family is `Atlas Projector`. Its durable renderer
+target is a toroidal world map rather than a miniature sphere.
 
 ## Why The Sphere Plan Failed
 
@@ -28,7 +29,7 @@ projection renderer with a toroidal representation.
 
 ## Intended Behavior
 
-- Players can craft or obtain a globe item and place it as a block.
+- Players can craft or obtain an Atlas Projector item and place it as a block.
 - A placed object shows explored parts of the current world's canonical tile on
   a toroidal surface.
 - One torus loop corresponds to one full wrap in canonical X; the other
@@ -155,9 +156,10 @@ real survival feature:
 
 ## Block And Item
 
-The existing globe item/block pair remains useful:
+The existing globe item/block pair remains useful, with `Atlas Projector` as
+the in-game name for the original iron-lantern variant:
 
-- The item places a block with horizontal facing.
+- The items place blocks with horizontal facing.
 - The block has a block entity for client sync and renderer attachment.
 - Breaking the block drops the item.
 - The placed block is mostly decorative; it should not duplicate map state in
@@ -174,10 +176,22 @@ Possible interactions:
 Keep the first version simple: place, render, break, and optionally report
 discovered percentage in a tooltip or debug screen.
 
-Crafting still needs a survival recipe. It should probably communicate
-"projector plus map" rather than "ordinary decorative globe"; candidate
-ingredients to test include copper, amethyst, glass, compass, redstone, and a
-filled or empty map.
+The Atlas Projector family has three color variants: iron, copper, and soul.
+They are visual variants of the same map projector, not dimension-specific
+objects. Each uses the same recipe silhouette:
+
+```text
+Empty           Filled Map       Empty
+Copper Nugget   Amethyst Shard   Copper Nugget
+Copper Ingot    Lantern Type     Copper Ingot
+```
+
+This keeps the center column readable as map, focusing crystal, and projector
+light, while the side materials stay light enough for an object that can be
+held as well as placed. Normal lanterns craft the white Atlas Projector, copper
+lanterns craft the warm Copper Atlas Projector, and soul lanterns craft the blue
+Soul Atlas Projector. The copper recipe accepts the copper lantern family,
+including oxidized and waxed variants.
 
 ## Client Rendering
 
@@ -229,9 +243,11 @@ to patch updates so several placed globes do not spam clients.
 
 Already useful and keep:
 
-- Registered `globe` block/item.
+- Registered the original `globe` block/item plus copper and soul Atlas
+  Projector variants.
 - Minimal block entity and client renderer hook for placed globes.
-- Special item renderer for held and inventory globes.
+- Shared lantern-like held, inventory, and placed projector models with an
+  amethyst focus.
 - Creative-tab, language, and loot-table resources.
 - `GlobeMapSavedData` as Overworld world data for a 512x512 canonical-tile
   texture.
@@ -244,7 +260,10 @@ Already useful and keep:
 - Debug comparison grid for side-by-side inside/outside texture winding and
   X-major versus Z-major wrap-axis tests.
 - Placed projector prototype with persisted wrap-axis mode, base-only collision,
-  and a large outside-surface torus hologram.
+  light emission, shared copper/amethyst model rendering, and a large
+  outside-surface torus hologram.
+- Survival shaped recipes using a filled map, amethyst shard, lantern variant,
+  copper nuggets, and copper ingots.
 
 Retire or replace:
 
@@ -265,14 +284,13 @@ Next steps:
    simplified readable preview.
 4. Replace the temporary raster-fill with real player exploration updates that
    fill in like a map.
-5. Add a survival crafting recipe for the projector/globe item.
-6. Choose the final default wrap-axis mapping after in-world testing.
-7. Tune the projector base, hologram size, transparency, and interaction
+5. Choose the final default wrap-axis mapping after in-world testing.
+6. Tune the projector base, hologram size, transparency, and interaction
    feedback.
-8. Add torus debug markers for X seam, Z seam, seam crossing, and player
+7. Add torus debug markers for X seam, Z seam, seam crossing, and player
    canonical position.
-9. Add optional item tooltip or debug command output for discovered percentage.
-10. Document shipped toroid behavior in `docs/mod-mechanics/` and keep only
+8. Add optional item tooltip or debug command output for discovered percentage.
+9. Document shipped toroid behavior in `docs/mod-mechanics/` and keep only
    unresolved exploration or renderer questions in this plan.
 
 ## Vanilla Sources To Inspect
@@ -337,8 +355,8 @@ Performance checks:
 
 ## Done Criteria
 
-- A globe item can place a visible toroidal world-map block.
-- The globe/projector item has a survival crafting recipe.
+- An Atlas Projector item can place a visible toroidal world-map block.
+- The projector variants have survival crafting recipes.
 - The block renders discovered canonical tile data as a torus with X and Z as
   the two independent loops.
 - The placed object is stable in object space and does not depend on the

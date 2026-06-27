@@ -1,6 +1,7 @@
 package globe.world.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import globe.world.GlobeWorldBlocks;
 import globe.world.block.entity.GlobeBlockEntity;
 import globe.world.client.GlobeDebugState;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -35,6 +36,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
             final ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTicks, cameraPosition, breakProgress);
         state.textureMapping = textureMapping(blockEntity.wrapAxis());
+        state.projectorColor = GlobeWorldBlocks.projectorColor(blockEntity.getBlockState().getBlock());
     }
 
     @Override
@@ -43,13 +45,6 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
             final PoseStack poseStack,
             final SubmitNodeCollector submitNodeCollector,
             final CameraRenderState camera) {
-        GlobeToroidMesh.submitBase(
-                poseStack,
-                submitNodeCollector,
-                this.sprites.get(GlobeToroidMesh.BLANK_TEXTURE),
-                state.lightCoords,
-                net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
-
         Identifier texture = GlobeMapTextureCache.textureForCurrentDimension();
         if (texture == null) {
             GlobeToroidMesh.submit(
@@ -76,6 +71,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
                 submitNodeCollector,
                 texture,
                 state.textureMapping,
+                state.projectorColor,
                 state.lightCoords,
                 net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
     }
@@ -104,5 +100,6 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
 
     public static class State extends BlockEntityRenderState {
         private GlobeToroidMesh.TextureMapping textureMapping = GlobeToroidMesh.TextureMapping.X_MAJOR_Z_MINOR;
+        private int projectorColor = GlobeWorldBlocks.IRON_PROJECTOR_COLOR;
     }
 }

@@ -1,9 +1,6 @@
 {
   "model": {
-    "type": "minecraft:special",
-    "base": "globe-world:block/globe",
-    "model": {
-      "type": "globe-world:globe"
-    }
+    "type": "minecraft:model",
+    "model": "globe-world:block/atlas_projector"
   }
 }

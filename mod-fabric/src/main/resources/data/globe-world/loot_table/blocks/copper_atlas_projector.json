@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "globe-world:copper_atlas_projector"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "globe-world:blocks/copper_atlas_projector"
+}

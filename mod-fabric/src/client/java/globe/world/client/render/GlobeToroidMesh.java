@@ -24,7 +24,6 @@ final class GlobeToroidMesh {
     private static final float HOLOGRAM_CENTER_Y = 2.0F;
     private static final float HOLOGRAM_SCALE = 8.0F;
     private static final int COLOR = -1;
-    private static final int OUTSIDE_HOLOGRAM_COLOR = 0xCCFFFFFF;
 
     private GlobeToroidMesh() {
     }
@@ -49,16 +48,6 @@ final class GlobeToroidMesh {
             final int overlayCoords) {
         submitNodeCollector.submitCustomGeometry(poseStack, renderType(), (pose, buffer) ->
                 renderTorus(pose, buffer, sprite, lightCoords, overlayCoords));
-    }
-
-    static void submitBase(
-            final PoseStack poseStack,
-            final SubmitNodeCollector submitNodeCollector,
-            final TextureAtlasSprite sprite,
-            final int lightCoords,
-            final int overlayCoords) {
-        submitNodeCollector.submitCustomGeometry(poseStack, renderType(), (pose, buffer) ->
-                renderBase(pose, buffer, sprite, lightCoords, overlayCoords));
     }
 
     static void submitProjected(
@@ -149,6 +138,7 @@ final class GlobeToroidMesh {
             final SubmitNodeCollector submitNodeCollector,
             final Identifier texture,
             final TextureMapping mapping,
+            final int color,
             final int lightCoords,
             final int overlayCoords) {
         submitHologramVariant(
@@ -157,7 +147,7 @@ final class GlobeToroidMesh {
                 texture,
                 mapping,
                 SurfaceSide.OUTSIDE,
-                OUTSIDE_HOLOGRAM_COLOR,
+                color,
                 lightCoords,
                 overlayCoords);
     }
@@ -213,16 +203,6 @@ final class GlobeToroidMesh {
                 }
             }
         }
-    }
-
-    private static void renderBase(
-            final PoseStack.Pose pose,
-            final VertexConsumer buffer,
-            final TextureAtlasSprite sprite,
-            final int lightCoords,
-            final int overlayCoords) {
-        cuboid(buffer, pose, sprite, 0.18F, 0.0F, 0.18F, 0.82F, 0.14F, 0.82F, lightCoords, overlayCoords);
-        cuboid(buffer, pose, sprite, 0.34F, 0.14F, 0.34F, 0.66F, 0.42F, 0.66F, lightCoords, overlayCoords);
     }
 
     private static void submitComparisonVariant(
@@ -374,81 +354,6 @@ final class GlobeToroidMesh {
                 .setOverlay(overlayCoords)
                 .setLight(lightCoords)
                 .setNormal(pose, normalX * normalScale, normalY * normalScale, normalZ * normalScale);
-    }
-
-    private static void cuboid(
-            final VertexConsumer buffer,
-            final PoseStack.Pose pose,
-            final TextureAtlasSprite sprite,
-            final float minX,
-            final float minY,
-            final float minZ,
-            final float maxX,
-            final float maxY,
-            final float maxZ,
-            final int lightCoords,
-            final int overlayCoords) {
-        float u0 = sprite.getU(0.0F);
-        float u1 = sprite.getU(1.0F);
-        float v0 = sprite.getV(0.0F);
-        float v1 = sprite.getV(1.0F);
-        face(buffer, pose, minX, maxY, minZ, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, 0.0F, 1.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-        face(buffer, pose, minX, minY, maxZ, minX, minY, minZ, maxX, minY, minZ, maxX, minY, maxZ, 0.0F, -1.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-        face(buffer, pose, minX, minY, minZ, minX, minY, maxZ, minX, maxY, maxZ, minX, maxY, minZ, -1.0F, 0.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-        face(buffer, pose, maxX, minY, maxZ, maxX, minY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, 1.0F, 0.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-        face(buffer, pose, maxX, minY, minZ, minX, minY, minZ, minX, maxY, minZ, maxX, maxY, minZ, 0.0F, 0.0F, -1.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-        face(buffer, pose, minX, minY, maxZ, maxX, minY, maxZ, maxX, maxY, maxZ, minX, maxY, maxZ, 0.0F, 0.0F, 1.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-    }
-
-    private static void face(
-            final VertexConsumer buffer,
-            final PoseStack.Pose pose,
-            final float x0,
-            final float y0,
-            final float z0,
-            final float x1,
-            final float y1,
-            final float z1,
-            final float x2,
-            final float y2,
-            final float z2,
-            final float x3,
-            final float y3,
-            final float z3,
-            final float normalX,
-            final float normalY,
-            final float normalZ,
-            final float u0,
-            final float u1,
-            final float v0,
-            final float v1,
-            final int lightCoords,
-            final int overlayCoords) {
-        cuboidVertex(buffer, pose, x0, y0, z0, normalX, normalY, normalZ, u0, v0, lightCoords, overlayCoords);
-        cuboidVertex(buffer, pose, x1, y1, z1, normalX, normalY, normalZ, u1, v0, lightCoords, overlayCoords);
-        cuboidVertex(buffer, pose, x2, y2, z2, normalX, normalY, normalZ, u1, v1, lightCoords, overlayCoords);
-        cuboidVertex(buffer, pose, x3, y3, z3, normalX, normalY, normalZ, u0, v1, lightCoords, overlayCoords);
-    }
-
-    private static void cuboidVertex(
-            final VertexConsumer buffer,
-            final PoseStack.Pose pose,
-            final float x,
-            final float y,
-            final float z,
-            final float normalX,
-            final float normalY,
-            final float normalZ,
-            final float u,
-            final float v,
-            final int lightCoords,
-            final int overlayCoords) {
-        buffer.addVertex(pose.pose(), x, y, z)
-                .setColor(COLOR)
-                .setUv(u, v)
-                .setOverlay(overlayCoords)
-                .setLight(lightCoords)
-                .setNormal(pose, normalX, normalY, normalZ);
     }
 
     enum TextureMapping {

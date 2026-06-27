@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "globe-world:block/globe"
+      "model": "globe-world:block/atlas_projector"
     }
   }
 }

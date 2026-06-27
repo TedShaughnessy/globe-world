@@ -42,7 +42,7 @@ public class GlobeBlock extends BaseEntityBlock {
 
     @Override
     protected RenderShape getRenderShape(final BlockState state) {
-        return RenderShape.INVISIBLE;
+        return RenderShape.MODEL;
     }
 
     @Override

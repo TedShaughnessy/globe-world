@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "globe-world:block/copper_atlas_projector"
+  }
+}
