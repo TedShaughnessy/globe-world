@@ -100,14 +100,16 @@ projector.
 
 Chosen toroid direction:
 
-- Use a small projector base with a large non-colliding hologram torus above it.
+- Use a small projector base with a large non-colliding hologram torus projected
+  away from the supporting floor, wall, or ceiling.
 - Render the placed projector's outside surface only for ordinary gameplay.
 - Let right-click swap which canonical axis occupies the torus major ring.
+- Use the placed block's `face` and horizontal `facing` state for the base
+  model, hitbox, and hologram transform.
 - Keep the `F3+Y` 2x2 comparison grid as a temporary debug view.
 
 Open toroid questions:
 
-- Should placed toroids use block facing to choose where `u=0` appears?
 - How should the current player's canonical position render on placed and held
   toroids without making the map hard to read?
 - Should seam rings be subtly marked so players can read the topology, or should
@@ -159,7 +161,9 @@ real survival feature:
 The existing globe item/block pair remains useful, with `Atlas Projector` as
 the in-game name for the original iron-lantern variant:
 
-- The items place blocks with horizontal facing.
+- The items place blocks on floors, walls, and ceilings. The saved block state
+  stores the attachment face and horizontal facing, and the projector base,
+  hitbox, and torus hologram follow that placement orientation.
 - The block has a block entity for client sync and renderer attachment.
 - Breaking the block drops the item.
 - The placed block is mostly decorative; it should not duplicate map state in
@@ -259,9 +263,9 @@ Already useful and keep:
   X/Z texture mapping.
 - Debug comparison grid for side-by-side inside/outside texture winding and
   X-major versus Z-major wrap-axis tests.
-- Placed projector prototype with persisted wrap-axis mode, base-only collision,
-  light emission, shared copper/amethyst model rendering, and a large
-  outside-surface torus hologram.
+- Placed projector prototype with persisted wrap-axis mode, floor/wall/ceiling
+  placement orientation, base-only collision, light emission, shared
+  copper/amethyst model rendering, and a large outside-surface torus hologram.
 - Survival shaped recipes using a filled map, amethyst shard, lantern variant,
   copper nuggets, and copper ingots.
 
@@ -284,7 +288,8 @@ Next steps:
    simplified readable preview.
 4. Replace the temporary raster-fill with real player exploration updates that
    fill in like a map.
-5. Choose the final default wrap-axis mapping after in-world testing.
+5. Choose the final default wrap-axis mapping and seam start after in-world
+   testing.
 6. Tune the projector base, hologram size, transparency, and interaction
    feedback.
 7. Add torus debug markers for X seam, Z seam, seam crossing, and player

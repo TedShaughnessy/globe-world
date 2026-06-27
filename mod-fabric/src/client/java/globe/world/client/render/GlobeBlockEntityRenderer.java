@@ -1,9 +1,12 @@
 package globe.world.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import globe.world.GlobeWorldBlocks;
+import globe.world.block.GlobeBlock;
 import globe.world.block.entity.GlobeBlockEntity;
 import globe.world.client.GlobeDebugState;
+import net.minecraft.core.Direction;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -12,6 +15,7 @@ import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.resources.model.sprite.SpriteGetter;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -37,6 +41,8 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
         BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTicks, cameraPosition, breakProgress);
         state.textureMapping = textureMapping(blockEntity.wrapAxis());
         state.projectorColor = GlobeWorldBlocks.projectorColor(blockEntity.getBlockState().getBlock());
+        state.face = blockEntity.getBlockState().getValue(GlobeBlock.FACE);
+        state.facing = blockEntity.getBlockState().getValue(GlobeBlock.FACING);
     }
 
     @Override
@@ -45,6 +51,8 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
             final PoseStack poseStack,
             final SubmitNodeCollector submitNodeCollector,
             final CameraRenderState camera) {
+        poseStack.pushPose();
+        applyPlacementTransform(poseStack, state.face, state.facing);
         Identifier texture = GlobeMapTextureCache.textureForCurrentDimension();
         if (texture == null) {
             GlobeToroidMesh.submit(
@@ -53,6 +61,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
                     this.sprites.get(GlobeToroidMesh.BLANK_TEXTURE),
                     state.lightCoords,
                     net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
+            poseStack.popPose();
             return;
         }
 
@@ -63,6 +72,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
                     texture,
                     state.lightCoords,
                     net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
+            poseStack.popPose();
             return;
         }
 
@@ -74,6 +84,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
                 state.projectorColor,
                 state.lightCoords,
                 net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
+        poseStack.popPose();
     }
 
     @Override
@@ -98,8 +109,36 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
         };
     }
 
+    private static void applyPlacementTransform(final PoseStack poseStack, final AttachFace face, final Direction facing) {
+        poseStack.translate(0.5F, 0.5F, 0.5F);
+        switch (face) {
+            case CEILING -> {
+                poseStack.mulPose(Axis.YP.rotationDegrees(facingYawDegrees(facing) + 180.0F));
+                poseStack.mulPose(Axis.XP.rotationDegrees(180.0F));
+            }
+            case FLOOR -> poseStack.mulPose(Axis.YP.rotationDegrees(facingYawDegrees(facing)));
+            case WALL -> {
+                switch (facing) {
+                    case NORTH -> poseStack.mulPose(Axis.XP.rotationDegrees(-90.0F));
+                    case SOUTH -> poseStack.mulPose(Axis.XP.rotationDegrees(90.0F));
+                    case EAST -> poseStack.mulPose(Axis.ZP.rotationDegrees(-90.0F));
+                    case WEST -> poseStack.mulPose(Axis.ZP.rotationDegrees(90.0F));
+                    default -> {
+                    }
+                }
+            }
+        }
+        poseStack.translate(-0.5F, -0.5F, -0.5F);
+    }
+
+    private static float facingYawDegrees(final Direction facing) {
+        return facing.toYRot() - 180.0F;
+    }
+
     public static class State extends BlockEntityRenderState {
         private GlobeToroidMesh.TextureMapping textureMapping = GlobeToroidMesh.TextureMapping.X_MAJOR_Z_MINOR;
         private int projectorColor = GlobeWorldBlocks.IRON_PROJECTOR_COLOR;
+        private AttachFace face = AttachFace.FLOOR;
+        private Direction facing = Direction.NORTH;
     }
 }
