@@ -13,6 +13,10 @@
   "screen.globe-world.atlas_power.level_two": "Level II",
   "screen.globe-world.atlas_power.locked": "Travel locked",
   "screen.globe-world.atlas_power.mastered": "Mastered Atlas",
+  "screen.globe-world.atlas_power.name": "Atlas Name",
+  "screen.globe-world.atlas_power.no_destinations": "No destinations",
+  "screen.globe-world.atlas_power.powers": "Powers",
+  "screen.globe-world.atlas_power.projection": "Projection",
   "screen.globe-world.atlas_power.radius": "Radius",
   "screen.globe-world.atlas_power.travel": "Travel"
 }

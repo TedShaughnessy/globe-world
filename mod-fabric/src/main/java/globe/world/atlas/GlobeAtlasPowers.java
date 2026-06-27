@@ -18,6 +18,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Relative;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -40,7 +41,7 @@ public final class GlobeAtlasPowers {
 
     public static void register() {
         ServerPlayNetworking.registerGlobalReceiver(GlobeAtlasUpdatePayload.TYPE, (payload, context) ->
-                updateLoadout(context.player(), payload.pos(), payload.loadout()));
+                updateAtlas(context.player(), payload));
         ServerPlayNetworking.registerGlobalReceiver(GlobeAtlasTravelPayload.TYPE, (payload, context) ->
                 travel(context.player(), payload.source(), payload.destination()));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
@@ -67,10 +68,10 @@ public final class GlobeAtlasPowers {
 
         GlobeAtlasPowerState state = GlobeAtlasPowerState.get(level);
         state.entry(rawPos).ifPresentOrElse(entry -> {
-            if (!entry.loadout().equals(atlas.loadout())) {
-                state.update(level, rawPos, atlas.loadout(), false);
+            if (!entry.loadout().equals(atlas.loadout()) || !entry.name().equals(atlas.atlasName())) {
+                state.update(level, rawPos, atlas.loadout(), atlas.atlasName(), false);
             }
-        }, () -> state.update(level, rawPos, atlas.loadout(), false));
+        }, () -> state.update(level, rawPos, atlas.loadout(), atlas.atlasName(), false));
 
         if (level.getGameTime() % EFFECT_INTERVAL_TICKS != Math.floorMod(rawPos.asLong(), EFFECT_INTERVAL_TICKS)) {
             return;
@@ -109,7 +110,8 @@ public final class GlobeAtlasPowers {
         }
     }
 
-    private static void updateLoadout(final ServerPlayer player, final BlockPos rawPos, final GlobeAtlasLoadout requestedLoadout) {
+    private static void updateAtlas(final ServerPlayer player, final GlobeAtlasUpdatePayload payload) {
+        BlockPos rawPos = payload.pos();
         if (!(player.level() instanceof ServerLevel level) || !Level.OVERWORLD.equals(level.dimension())) {
             return;
         }
@@ -123,7 +125,7 @@ public final class GlobeAtlasPowers {
         GlobeAtlasLoadout currentLoadout = currentEntry
                 .map(GlobeAtlasPowerState.Entry::loadout)
                 .orElse(atlas.loadout());
-        GlobeAtlasLoadout loadout = requestedLoadout;
+        GlobeAtlasLoadout loadout = payload.loadout();
         if (!rewards.complete()) {
             loadout = loadout.withoutTravel();
         }
@@ -137,8 +139,12 @@ public final class GlobeAtlasPowers {
             return;
         }
 
+        BlockPos canonicalPos = CoordUtil.wrapBlockPos(DimensionTiling.forDimension(Level.OVERWORLD), rawPos);
+        String name = sanitizeName(payload.name(), canonicalPos);
+        atlas.setAtlasName(name);
+        atlas.setProjectionEnabled(payload.projectionEnabled());
         atlas.setLoadout(loadout, true);
-        state.update(level, rawPos, loadout, true);
+        state.update(level, rawPos, loadout, name, !loadout.equals(currentLoadout));
         sendScreen(player, rawPos);
     }
 
@@ -235,13 +241,22 @@ public final class GlobeAtlasPowers {
     private static GlobeAtlasScreenPayload createScreenPayload(final ServerLevel level, final BlockPos rawPos) {
         GlobeDiscoveryRewards rewards = GlobeDiscoveryRewards.get(level);
         GlobeAtlasPowerState state = GlobeAtlasPowerState.get(level);
-        GlobeAtlasLoadout loadout = state.entry(rawPos)
+        Optional<GlobeAtlasPowerState.Entry> entry = state.entry(rawPos);
+        BlockPos canonicalPos = CoordUtil.wrapBlockPos(DimensionTiling.forDimension(Level.OVERWORLD), rawPos);
+        BlockEntity blockEntity = level.getBlockEntity(rawPos);
+        GlobeAtlasLoadout loadout = entry
                 .map(GlobeAtlasPowerState.Entry::loadout)
-                .orElseGet(() -> level.getBlockEntity(rawPos) instanceof GlobeBlockEntity atlas ? atlas.loadout() : GlobeAtlasLoadout.EMPTY);
+                .orElseGet(() -> blockEntity instanceof GlobeBlockEntity atlas ? atlas.loadout() : GlobeAtlasLoadout.EMPTY);
+        String name = blockEntity instanceof GlobeBlockEntity atlas
+                ? atlasDisplayName(atlas.atlasName(), canonicalPos)
+                : atlasDisplayName(entry.map(GlobeAtlasPowerState.Entry::name).orElse(""), canonicalPos);
+        boolean projectionEnabled = !(blockEntity instanceof GlobeBlockEntity atlas) || atlas.projectionEnabled();
         int spentPoints = state.spentPoints();
         boolean powered = state.isPowered(rawPos, rewards);
         return new GlobeAtlasScreenPayload(
-                CoordUtil.wrapBlockPos(DimensionTiling.forDimension(Level.OVERWORLD), rawPos),
+                canonicalPos,
+                name,
+                projectionEnabled,
                 loadout,
                 rewards.totalPoints(),
                 rewards.radiusCap(),
@@ -273,7 +288,8 @@ public final class GlobeAtlasPowers {
             }
 
             boolean available = powered.contains(pos) && level.getBlockEntity(pos) instanceof GlobeBlockEntity;
-            destinations.add(new GlobeAtlasScreenPayload.Destination(pos, available, label(pos)));
+            String name = level.getBlockEntity(pos) instanceof GlobeBlockEntity atlas ? atlas.atlasName() : entry.name();
+            destinations.add(new GlobeAtlasScreenPayload.Destination(pos, available, atlasDisplayName(name, pos)));
         }
         return destinations;
     }
@@ -308,6 +324,22 @@ public final class GlobeAtlasPowers {
 
     private static String label(final BlockPos pos) {
         return pos.getX() + ", " + pos.getY() + ", " + pos.getZ();
+    }
+
+    private static String atlasDisplayName(final String name, final BlockPos pos) {
+        String sanitized = sanitizeName(name, pos);
+        return sanitized.isEmpty() ? label(pos) : sanitized;
+    }
+
+    private static String sanitizeName(final String name, final BlockPos pos) {
+        if (name == null) {
+            return "";
+        }
+        String trimmed = name.trim();
+        if (trimmed.equals(label(pos))) {
+            return "";
+        }
+        return trimmed.length() > 64 ? trimmed.substring(0, 64) : trimmed;
     }
 
     private record TravelCheck(boolean allowed, String message, Vec3 arrival) {

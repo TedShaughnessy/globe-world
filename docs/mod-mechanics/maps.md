@@ -36,11 +36,12 @@ The original registry id is still `globe`, but the player-facing block family is
 Atlas Projector, Copper Atlas Projector, and Soul Atlas Projector.
 
 Placed projectors store local presentation state, attachment face, horizontal
-facing, whether the hologram projection is enabled, and their reward-beacon
-loadout. Empty-hand use opens the Atlas power UI. Sneak-use toggles the
-hologram on or off. Map discovery is shared world state, not per projector
-state, so multiple projectors in the same dimension show the same canonical
-tile texture.
+facing, optional custom Atlas name, whether the hologram projection is enabled,
+and their reward-beacon loadout. Empty-hand use opens the Atlas power UI, where
+the name field defaults to the projector's canonical coordinates when no custom
+name is saved. Sneak-use still toggles the hologram on or off. Map discovery is
+shared world state, not per projector state, so multiple projectors in the same
+dimension show the same canonical tile texture.
 
 `GlobeMapSavedData` stores a fixed `512x512` tile texture, a discovered bitset,
 and compact vanilla map colors for the Overworld. `GlobeMapTracker` scans
@@ -107,10 +108,11 @@ Tiny tiles receive no points until full completion; small tiles require at least
 half discovery; larger tiles can earn points from absolute explored area.
 
 `GlobeAtlasPowerState` is saved Overworld state keyed by canonical Atlas block
-position. Loaded Atlas block entities mirror their saved loadout into this
-state, and removed Atlases drop their reservation. Each loadout spends points
-on radius tier, selected effects, per-effect level II upgrades, and the
-travel-network toggle. The power screen greys out upgrades whose candidate
+position. Loaded Atlas block entities mirror their saved loadout and custom
+name into this state, and removed Atlases drop their reservation. Each loadout
+spends points on radius tier, selected effects, per-effect level II upgrades,
+and the travel-network toggle. The projection toggle is local presentation
+state and is free. The power screen greys out upgrades whose candidate
 loadout would exceed the shared budget, while still allowing players to turn
 existing powers off. If saved loadouts exceed the current budget after a
 settings or discovery-state change, the deterministic powered subset is chosen
@@ -125,16 +127,21 @@ reserving budget through saved state, but they do not apply effects.
 The client Atlas power screen draws a compact grey in-game panel without the
 vanilla beacon payment slot, confirmation row, inventory, or hotbar. Effect
 selection is icon-based, each effect has a neighboring level II toggle, radius
-and travel are small symbol controls, and linked-travel destinations remain
-listed in the lower panel when available.
+uses matching `R`, `II`, and `III` toggle buttons, and the projection and travel
+buttons use the same symbol-control style. Discovery, budget, radius cap, and
+current cost are shown along the bottom. Linked-travel destinations live on a
+separate destination tab that is enabled only when this Atlas is powered with
+the `T` travel-network toggle selected.
 
 Full discovery creates the Mastered Atlas state and unlocks linked Atlas
 travel. A travel-enabled source Atlas can instantly send a player to another
 loaded, powered, travel-enabled Atlas in the same Overworld when the player is
 inside the source radius, the destination map pixel is discovered, and a safe
-arrival space exists next to or above the destination. Travel has a `30` second
-per-player cooldown. The first implementation does not yet include channeled
-travel cancellation, Atlas Flight, active visual state, or ownership rules.
+arrival space exists next to or above the destination. Destination buttons use
+custom Atlas names when present, otherwise canonical coordinates. Travel has a
+`30` second per-player cooldown. The first implementation does not yet include
+channeled travel cancellation, Atlas Flight, active visual state, or ownership
+rules.
 
 ## Key Files
 

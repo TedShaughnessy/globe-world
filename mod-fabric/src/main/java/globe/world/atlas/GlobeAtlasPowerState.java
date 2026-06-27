@@ -26,6 +26,7 @@ public class GlobeAtlasPowerState extends SavedData {
     private static final Codec<Entry> ENTRY_CODEC = RecordCodecBuilder.create(instance -> instance.group(
             BlockPos.CODEC.fieldOf("pos").forGetter(Entry::pos),
             GlobeAtlasLoadout.CODEC.fieldOf("loadout").forGetter(Entry::loadout),
+            Codec.STRING.optionalFieldOf("name", "").forGetter(Entry::name),
             Codec.LONG.optionalFieldOf("priority", 0L).forGetter(Entry::priority)
     ).apply(instance, Entry::new));
     private static final Codec<GlobeAtlasPowerState> CODEC = ENTRY_CODEC.listOf().xmap(
@@ -64,11 +65,11 @@ public class GlobeAtlasPowerState extends SavedData {
         return Optional.ofNullable(this.entries.get(this.canonicalPos(rawPos)));
     }
 
-    public void update(final ServerLevel level, final BlockPos rawPos, final GlobeAtlasLoadout loadout, final boolean edited) {
+    public void update(final ServerLevel level, final BlockPos rawPos, final GlobeAtlasLoadout loadout, final String name, final boolean edited) {
         BlockPos canonicalPos = this.canonicalPos(rawPos);
         Entry previous = this.entries.get(canonicalPos);
         long priority = edited || previous == null ? level.getGameTime() : previous.priority();
-        this.entries.put(canonicalPos, new Entry(canonicalPos, loadout, priority));
+        this.entries.put(canonicalPos, new Entry(canonicalPos, loadout, sanitizeName(name), priority));
         this.setDirty();
     }
 
@@ -133,6 +134,14 @@ public class GlobeAtlasPowerState extends SavedData {
         return CoordUtil.wrapBlockPos(tiling, rawPos).immutable();
     }
 
-    public record Entry(BlockPos pos, GlobeAtlasLoadout loadout, long priority) {
+    private static String sanitizeName(final String name) {
+        if (name == null) {
+            return "";
+        }
+        String trimmed = name.trim();
+        return trimmed.length() > 64 ? trimmed.substring(0, 64) : trimmed;
+    }
+
+    public record Entry(BlockPos pos, GlobeAtlasLoadout loadout, String name, long priority) {
     }
 }

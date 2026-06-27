@@ -15,12 +15,14 @@ import net.minecraft.world.level.storage.ValueOutput;
 
 public class GlobeBlockEntity extends BlockEntity {
     private static final String TAG_PROJECTION_ENABLED = "projection_enabled";
+    private static final String TAG_ATLAS_NAME = "atlas_name";
     private static final String TAG_RADIUS_TIER = "atlas_radius_tier";
     private static final String TAG_EFFECTS = "atlas_effects";
     private static final String TAG_LEVEL_TWO_EFFECTS = "atlas_level_two_effects";
     private static final String TAG_TRAVEL_NETWORK = "atlas_travel_network";
 
     private boolean projectionEnabled = true;
+    private String atlasName = "";
     private GlobeAtlasLoadout loadout = GlobeAtlasLoadout.EMPTY;
 
     public GlobeBlockEntity(final BlockPos worldPosition, final BlockState blockState) {
@@ -31,10 +33,32 @@ public class GlobeBlockEntity extends BlockEntity {
         return this.projectionEnabled;
     }
 
+    public void setProjectionEnabled(final boolean projectionEnabled) {
+        if (this.projectionEnabled != projectionEnabled) {
+            this.projectionEnabled = projectionEnabled;
+            this.markModeChanged();
+        }
+    }
+
     public boolean toggleProjection() {
         this.projectionEnabled = !this.projectionEnabled;
         this.markModeChanged();
         return this.projectionEnabled;
+    }
+
+    public String atlasName() {
+        return this.atlasName;
+    }
+
+    public void setAtlasName(final String atlasName) {
+        String sanitized = atlasName == null ? "" : atlasName;
+        if (sanitized.length() > 64) {
+            sanitized = sanitized.substring(0, 64);
+        }
+        if (!sanitized.equals(this.atlasName)) {
+            this.atlasName = sanitized;
+            this.markModeChanged();
+        }
     }
 
     public GlobeAtlasLoadout loadout() {
@@ -63,6 +87,7 @@ public class GlobeBlockEntity extends BlockEntity {
     protected void saveAdditional(final ValueOutput output) {
         super.saveAdditional(output);
         output.putBoolean(TAG_PROJECTION_ENABLED, this.projectionEnabled);
+        output.putString(TAG_ATLAS_NAME, this.atlasName);
         output.putInt(TAG_RADIUS_TIER, this.loadout.radiusTier());
         output.putInt(TAG_EFFECTS, this.loadout.effectMask());
         output.putInt(TAG_LEVEL_TWO_EFFECTS, this.loadout.levelTwoMask());
@@ -73,6 +98,10 @@ public class GlobeBlockEntity extends BlockEntity {
     protected void loadAdditional(final ValueInput input) {
         super.loadAdditional(input);
         this.projectionEnabled = input.getBooleanOr(TAG_PROJECTION_ENABLED, true);
+        this.atlasName = input.getStringOr(TAG_ATLAS_NAME, "");
+        if (this.atlasName.length() > 64) {
+            this.atlasName = this.atlasName.substring(0, 64);
+        }
         this.loadout = new GlobeAtlasLoadout(
                 input.getIntOr(TAG_RADIUS_TIER, 0),
                 input.getIntOr(TAG_EFFECTS, 0),

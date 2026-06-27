@@ -13,6 +13,8 @@ import java.util.List;
 
 public record GlobeAtlasScreenPayload(
         BlockPos pos,
+        String name,
+        boolean projectionEnabled,
         GlobeAtlasLoadout loadout,
         int worldPoints,
         int radiusCap,
@@ -31,6 +33,7 @@ public record GlobeAtlasScreenPayload(
             GlobeAtlasScreenPayload::read);
 
     public GlobeAtlasScreenPayload {
+        name = truncate(name);
         destinations = destinations == null ? List.of() : List.copyOf(destinations);
     }
 
@@ -41,6 +44,8 @@ public record GlobeAtlasScreenPayload(
 
     private static GlobeAtlasScreenPayload read(final FriendlyByteBuf input) {
         BlockPos pos = input.readBlockPos();
+        String name = input.readUtf(64);
+        boolean projectionEnabled = input.readBoolean();
         GlobeAtlasLoadout loadout = GlobeAtlasLoadout.STREAM_CODEC.decode(input);
         int worldPoints = input.readVarInt();
         int radiusCap = input.readVarInt();
@@ -56,6 +61,8 @@ public record GlobeAtlasScreenPayload(
         }
         return new GlobeAtlasScreenPayload(
                 pos,
+                name,
+                projectionEnabled,
                 loadout,
                 worldPoints,
                 radiusCap,
@@ -69,6 +76,8 @@ public record GlobeAtlasScreenPayload(
 
     private void write(final FriendlyByteBuf output) {
         output.writeBlockPos(this.pos);
+        output.writeUtf(this.name, 64);
+        output.writeBoolean(this.projectionEnabled);
         GlobeAtlasLoadout.STREAM_CODEC.encode(output, this.loadout);
         output.writeVarInt(this.worldPoints);
         output.writeVarInt(this.radiusCap);
@@ -84,6 +93,10 @@ public record GlobeAtlasScreenPayload(
     }
 
     public record Destination(BlockPos pos, boolean available, String label) {
+        public Destination {
+            label = truncate(label);
+        }
+
         private static Destination read(final FriendlyByteBuf input) {
             return new Destination(input.readBlockPos(), input.readBoolean(), input.readUtf(64));
         }
@@ -93,5 +106,12 @@ public record GlobeAtlasScreenPayload(
             output.writeBoolean(this.available);
             output.writeUtf(this.label, 64);
         }
+    }
+
+    private static String truncate(final String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() > 64 ? value.substring(0, 64) : value;
     }
 }

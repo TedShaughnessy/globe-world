@@ -6,14 +6,16 @@ The current implementation has shipped the first reward-beacon slice into
 [Maps](../mod-mechanics/maps.md#exploration-rewards):
 
 - Atlas Projectors remain the reward block family.
-- Empty-hand use opens a client power UI; sneak-use toggles the hologram.
+- Empty-hand use opens a client power UI with a custom name field; sneak-use
+  still toggles the hologram, and the UI also exposes a free projection toggle.
 - `GlobeDiscoveryRewards` derives shared Overworld points and radius caps from
   discovered pixels, discovered percentage, discovered area, tile size, and
   full completion.
 - `GlobeAtlasPowerState` saves canonical Atlas loadouts and applies deterministic
   in-budget priority by most recently edited Atlas, then canonical position.
 - The Atlas power UI uses a compact grey in-game panel, effect icon toggles,
-  adjacent level II toggles, and disabled controls for unaffordable upgrades.
+  adjacent level II toggles, matching range `R`/`II`/`III` toggles, a powered
+  destination tab, and disabled controls for unaffordable upgrades.
 - Loaded powered Atlases apply speed, haste, and regeneration at selected level
   I or level II strength in wrapped-radius range.
 - Full completion unlocks Mastered Atlas linked travel between loaded, powered,
@@ -189,6 +191,7 @@ Suggested costs:
 | Add another level I effect | +2 |
 | Upgrade one effect to level II | +2 |
 | Increase radius tier | +1 per tier |
+| Show or hide this projector's hologram | Free |
 | Join linked-Atlas travel network | +4 |
 | Completion-only flight power | +10 |
 
@@ -261,7 +264,9 @@ Rules:
 UI:
 
 - show a `Travel` toggle in the Atlas power UI after Mastered Atlas unlocks;
-- show a destination list of active, in-budget, travel-enabled Atlases;
+- enable a destination tab only when the source Atlas is powered with the
+  `Travel` toggle selected;
+- show a destination list of active, in-budget, travel-enabled Atlases there;
 - display each destination by custom name if present, otherwise coordinates;
 - disable destinations that are unloaded, missing, out of budget, or blocked.
 
