@@ -222,15 +222,16 @@ Client diagnostics are intentionally targeted:
   vertical line at each tile corner plus a horizontal border around each tile at
   the player's nearest block height. Canonical tile borders are green; alias tile
   borders are blue. It also shows the saved world-spawn marker plus active
-  exclusion radius. Placed globe projector objects store an attachment face and
-  horizontal facing, so their base hitbox and large torus hologram project away
-  from the floor, wall, or ceiling they were placed on. They normally render the
-  selected large torus hologram, but draw a 2x2 toroid comparison grid while
-  this debug mode is enabled: front-left outside surface with X on the major
-  ring, front-right inside surface with X on the major ring, back-left outside
-  surface with Z on the major ring, and back-right inside surface with Z on the
-  major ring. The marker uses the client level's respawn data, which vanilla
-  updates from the server's default-spawn packet.
+  exclusion radius. Placed globe projector objects store an attachment face,
+  horizontal facing, and projection enabled flag, so their base hitbox and large
+  torus hologram project away from the floor, wall, or ceiling they were placed
+  on. Right-click toggles the hologram projection on or off. When enabled, they
+  normally render the large X-major/Z-minor torus hologram, but draw a 2x2
+  toroid comparison grid while this debug mode is enabled: front-left outside
+  surface with X on the major ring, front-right inside surface with X on the
+  major ring, back-left outside surface with Z on the major ring, and back-right
+  inside surface with Z on the major ring. The marker uses the client level's
+  respawn data, which vanilla updates from the server's default-spawn packet.
 - `/globeworld debug list`: show server diagnostic channels and whether each
   channel is enabled for this session.
 - `/globeworld debug enable <channel>` and `/globeworld debug disable <channel>`:

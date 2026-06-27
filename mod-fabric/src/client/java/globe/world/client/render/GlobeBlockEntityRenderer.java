@@ -39,7 +39,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
             final Vec3 cameraPosition,
             final ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTicks, cameraPosition, breakProgress);
-        state.textureMapping = textureMapping(blockEntity.wrapAxis());
+        state.projectionEnabled = blockEntity.projectionEnabled();
         state.projectorColor = GlobeWorldBlocks.projectorColor(blockEntity.getBlockState().getBlock());
         state.face = blockEntity.getBlockState().getValue(GlobeBlock.FACE);
         state.facing = blockEntity.getBlockState().getValue(GlobeBlock.FACING);
@@ -53,6 +53,11 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
             final CameraRenderState camera) {
         poseStack.pushPose();
         applyPlacementTransform(poseStack, state.face, state.facing);
+        if (!state.projectionEnabled) {
+            poseStack.popPose();
+            return;
+        }
+
         Identifier texture = GlobeMapTextureCache.textureForCurrentDimension();
         if (texture == null) {
             GlobeToroidMesh.submit(
@@ -80,7 +85,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
                 poseStack,
                 submitNodeCollector,
                 texture,
-                state.textureMapping,
+                GlobeToroidMesh.TextureMapping.X_MAJOR_Z_MINOR,
                 state.projectorColor,
                 state.lightCoords,
                 net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
@@ -100,13 +105,6 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
     @Override
     public boolean shouldRender(final GlobeBlockEntity blockEntity, final Vec3 cameraPosition) {
         return Vec3.atCenterOf(blockEntity.getBlockPos()).closerThan(cameraPosition, this.getViewDistance());
-    }
-
-    private static GlobeToroidMesh.TextureMapping textureMapping(final GlobeBlockEntity.WrapAxis axis) {
-        return switch (axis) {
-            case X_MAJOR_Z_MINOR -> GlobeToroidMesh.TextureMapping.X_MAJOR_Z_MINOR;
-            case Z_MAJOR_X_MINOR -> GlobeToroidMesh.TextureMapping.Z_MAJOR_X_MINOR;
-        };
     }
 
     private static void applyPlacementTransform(final PoseStack poseStack, final AttachFace face, final Direction facing) {
@@ -136,7 +134,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
     }
 
     public static class State extends BlockEntityRenderState {
-        private GlobeToroidMesh.TextureMapping textureMapping = GlobeToroidMesh.TextureMapping.X_MAJOR_Z_MINOR;
+        private boolean projectionEnabled = true;
         private int projectorColor = GlobeWorldBlocks.IRON_PROJECTOR_COLOR;
         private AttachFace face = AttachFace.FLOOR;
         private Direction facing = Direction.NORTH;

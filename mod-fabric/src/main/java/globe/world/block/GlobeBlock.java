@@ -123,8 +123,14 @@ public class GlobeBlock extends BaseEntityBlock {
         }
 
         if (level.getBlockEntity(pos) instanceof GlobeBlockEntity globe) {
-            globe.cycleWrapAxis();
-            level.playSound(null, pos, SoundEvents.COMPARATOR_CLICK, SoundSource.BLOCKS, 0.3F, 0.9F);
+            boolean projectionEnabled = globe.toggleProjection();
+            level.playSound(
+                    null,
+                    pos,
+                    SoundEvents.COMPARATOR_CLICK,
+                    SoundSource.BLOCKS,
+                    0.3F,
+                    projectionEnabled ? 1.1F : 0.75F);
             return InteractionResult.SUCCESS_SERVER;
         }
 

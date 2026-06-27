@@ -13,21 +13,22 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
 public class GlobeBlockEntity extends BlockEntity {
-    private static final String TAG_WRAP_AXIS = "wrap_axis";
+    private static final String TAG_PROJECTION_ENABLED = "projection_enabled";
 
-    private WrapAxis wrapAxis = WrapAxis.X_MAJOR_Z_MINOR;
+    private boolean projectionEnabled = true;
 
     public GlobeBlockEntity(final BlockPos worldPosition, final BlockState blockState) {
         super(GlobeWorldBlocks.GLOBE_BLOCK_ENTITY, worldPosition, blockState);
     }
 
-    public WrapAxis wrapAxis() {
-        return this.wrapAxis;
+    public boolean projectionEnabled() {
+        return this.projectionEnabled;
     }
 
-    public void cycleWrapAxis() {
-        this.wrapAxis = this.wrapAxis.next();
+    public boolean toggleProjection() {
+        this.projectionEnabled = !this.projectionEnabled;
         this.markModeChanged();
+        return this.projectionEnabled;
     }
 
     private void markModeChanged() {
@@ -41,13 +42,13 @@ public class GlobeBlockEntity extends BlockEntity {
     @Override
     protected void saveAdditional(final ValueOutput output) {
         super.saveAdditional(output);
-        output.putString(TAG_WRAP_AXIS, this.wrapAxis.serializedName);
+        output.putBoolean(TAG_PROJECTION_ENABLED, this.projectionEnabled);
     }
 
     @Override
     protected void loadAdditional(final ValueInput input) {
         super.loadAdditional(input);
-        this.wrapAxis = WrapAxis.byName(input.getStringOr(TAG_WRAP_AXIS, WrapAxis.X_MAJOR_Z_MINOR.serializedName));
+        this.projectionEnabled = input.getBooleanOr(TAG_PROJECTION_ENABLED, true);
     }
 
     @Override
@@ -58,29 +59,5 @@ public class GlobeBlockEntity extends BlockEntity {
     @Override
     public CompoundTag getUpdateTag(final HolderLookup.Provider registries) {
         return this.saveCustomOnly(registries);
-    }
-
-    public enum WrapAxis {
-        X_MAJOR_Z_MINOR("x_major_z_minor"),
-        Z_MAJOR_X_MINOR("z_major_x_minor");
-
-        private final String serializedName;
-
-        WrapAxis(final String serializedName) {
-            this.serializedName = serializedName;
-        }
-
-        private WrapAxis next() {
-            return this == X_MAJOR_Z_MINOR ? Z_MAJOR_X_MINOR : X_MAJOR_Z_MINOR;
-        }
-
-        private static WrapAxis byName(final String serializedName) {
-            for (WrapAxis axis : values()) {
-                if (axis.serializedName.equals(serializedName)) {
-                    return axis;
-                }
-            }
-            return X_MAJOR_Z_MINOR;
-        }
     }
 }

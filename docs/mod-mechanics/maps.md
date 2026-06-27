@@ -29,11 +29,42 @@ frames, and static exploration markers keep their stored map coordinates.
 and tracked-player decorations are corrected before vanilla builds the packet,
 instead of being rewritten during send.
 
+## Atlas Projectors
+
+Atlas Projectors are placeable toroidal views of the canonical Overworld tile.
+The original registry id is still `globe`, but the player-facing block family is
+Atlas Projector, Copper Atlas Projector, and Soul Atlas Projector.
+
+Placed projectors store only local presentation state: attachment face,
+horizontal facing, and whether the hologram projection is enabled. Right-click
+toggles the hologram on or off. Map discovery is shared world state, not per
+projector state, so multiple projectors in the same dimension show the same
+canonical tile texture.
+
+`GlobeMapSavedData` stores a fixed `512x512` tile texture, a discovered bitset,
+and compact vanilla map colors for the Overworld. `GlobeMapTracker` currently
+uses `fillNextPixels(...)` to raster-fill the canonical tile as projection
+testing scaffolding. The client receives full `GlobeMapSnapshotPayload`
+snapshots on join and revision changes, then `GlobeMapTextureCache` uploads the
+dynamic texture. Unknown pixels are rendered with a distinct client color.
+
+The remaining unfinished behavior is player-driven discovery: pixels should be
+revealed around canonical player positions instead of being filled globally in
+the background.
+
 ## Key Files
 
 - `mod-fabric/src/main/java/globe/world/mixin/MapItemMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/MapItemSavedDataMixin.java`
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
+- `mod-fabric/src/main/java/globe/world/block/GlobeBlock.java`
+- `mod-fabric/src/main/java/globe/world/block/entity/GlobeBlockEntity.java`
+- `mod-fabric/src/main/java/globe/world/map/GlobeMapSavedData.java`
+- `mod-fabric/src/main/java/globe/world/map/GlobeMapTracker.java`
+- `mod-fabric/src/main/java/globe/world/network/GlobeMapSnapshotPayload.java`
+- `mod-fabric/src/client/java/globe/world/client/render/GlobeBlockEntityRenderer.java`
+- `mod-fabric/src/client/java/globe/world/client/render/GlobeToroidMesh.java`
+- `mod-fabric/src/client/java/globe/world/client/render/GlobeMapTextureCache.java`
 
 ## Related Vanilla Mechanics
 

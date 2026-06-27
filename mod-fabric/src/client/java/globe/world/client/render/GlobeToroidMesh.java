@@ -11,8 +11,10 @@ import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.resources.Identifier;
 
 final class GlobeToroidMesh {
-    static final SpriteId BLANK_TEXTURE = GlobeSphereMesh.BLANK_TEXTURE;
-    static final float FULL_TURN_RADIANS = GlobeSphereMesh.FULL_TURN_RADIANS;
+    static final SpriteId BLANK_TEXTURE = new SpriteId(
+            TextureAtlas.LOCATION_BLOCKS,
+            Identifier.withDefaultNamespace("block/calcite"));
+    private static final float FULL_TURN_RADIANS = (float)(Math.PI * 2.0D);
     private static final int MAJOR_SEGMENTS = 64;
     private static final int MINOR_SEGMENTS = 24;
     private static final float CENTER = 0.5F;
@@ -48,41 +50,6 @@ final class GlobeToroidMesh {
             final int overlayCoords) {
         submitNodeCollector.submitCustomGeometry(poseStack, renderType(), (pose, buffer) ->
                 renderTorus(pose, buffer, sprite, lightCoords, overlayCoords));
-    }
-
-    static void submitProjected(
-            final PoseStack poseStack,
-            final SubmitNodeCollector submitNodeCollector,
-            final Identifier texture,
-            final float centerU,
-            final float centerV,
-            final int lightCoords,
-            final int overlayCoords) {
-        submitNodeCollector.submitCustomGeometry(poseStack, renderType(texture), (pose, buffer) ->
-                renderMappedTorus(
-                        pose,
-                        buffer,
-                        TextureMapping.X_MAJOR_Z_MINOR,
-                        SurfaceSide.INSIDE,
-                        CENTER,
-                        CENTER,
-                        CENTER,
-                        1.0F,
-                        COLOR,
-                        lightCoords,
-                        overlayCoords));
-    }
-
-    static void submitProjected(
-            final PoseStack poseStack,
-            final SubmitNodeCollector submitNodeCollector,
-            final Identifier texture,
-            final float centerU,
-            final float centerV,
-            final GlobeSphereMesh.ProjectionBasis basis,
-            final int lightCoords,
-            final int overlayCoords) {
-        submitProjected(poseStack, submitNodeCollector, texture, centerU, centerV, lightCoords, overlayCoords);
     }
 
     static void submitComparison(

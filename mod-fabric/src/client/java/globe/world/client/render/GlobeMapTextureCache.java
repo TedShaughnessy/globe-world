@@ -6,7 +6,6 @@ import globe.world.network.GlobeMapSnapshotPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.material.MapColor;
 
 public final class GlobeMapTextureCache {
@@ -15,7 +14,6 @@ public final class GlobeMapTextureCache {
     private static final int EMPTY_DISCOVERED_COLOR = 0xFF6C6047;
 
     private static Identifier dimension;
-    private static int tileSizeBlocks;
     private static int resolution;
     private static int revision = -1;
     private static DynamicTexture texture;
@@ -37,7 +35,6 @@ public final class GlobeMapTextureCache {
         }
 
         dimension = payload.dimension();
-        tileSizeBlocks = payload.tileSizeBlocks();
         resolution = payload.resolution();
         revision = payload.revision();
 
@@ -59,24 +56,6 @@ public final class GlobeMapTextureCache {
         return client.level.dimension().identifier().equals(dimension) ? TEXTURE_ID : null;
     }
 
-    public static float projectionCenterU() {
-        Minecraft client = Minecraft.getInstance();
-        if (client.level == null || client.player == null || tileSizeBlocks <= 0) {
-            return 0.5F;
-        }
-
-        return normalizedTileCoordinate(client.player.getX());
-    }
-
-    public static float projectionCenterV() {
-        Minecraft client = Minecraft.getInstance();
-        if (client.level == null || client.player == null || tileSizeBlocks <= 0) {
-            return 0.5F;
-        }
-
-        return normalizedTileCoordinate(client.player.getZ());
-    }
-
     public static int revision() {
         return revision;
     }
@@ -84,7 +63,6 @@ public final class GlobeMapTextureCache {
     public static void reset() {
         release();
         dimension = null;
-        tileSizeBlocks = 0;
         resolution = 0;
         revision = -1;
     }
@@ -107,11 +85,5 @@ public final class GlobeMapTextureCache {
 
     private static boolean isDiscovered(final byte[] discovered, final int index) {
         return (discovered[index >> 3] & (1 << (index & 7))) != 0;
-    }
-
-    private static float normalizedTileCoordinate(final double coordinate) {
-        double half = tileSizeBlocks / 2.0D;
-        double canonicalCoordinate = Mth.positiveModulo(coordinate + half, tileSizeBlocks) - half;
-        return (float)Mth.positiveModulo((canonicalCoordinate + half) / tileSizeBlocks, 1.0D);
     }
 }
