@@ -392,12 +392,12 @@ final class GlobeToroidMesh {
         float u1 = sprite.getU(1.0F);
         float v0 = sprite.getV(0.0F);
         float v1 = sprite.getV(1.0F);
-        face(buffer, pose, minX, maxY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, minX, maxY, maxZ, 0.0F, 1.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-        face(buffer, pose, minX, minY, maxZ, maxX, minY, maxZ, maxX, minY, minZ, minX, minY, minZ, 0.0F, -1.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-        face(buffer, pose, minX, minY, minZ, minX, maxY, minZ, minX, maxY, maxZ, minX, minY, maxZ, -1.0F, 0.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-        face(buffer, pose, maxX, minY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, maxX, minY, minZ, 1.0F, 0.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-        face(buffer, pose, maxX, minY, minZ, maxX, maxY, minZ, minX, maxY, minZ, minX, minY, minZ, 0.0F, 0.0F, -1.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
-        face(buffer, pose, minX, minY, maxZ, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, minY, maxZ, 0.0F, 0.0F, 1.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
+        face(buffer, pose, minX, maxY, minZ, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, 0.0F, 1.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
+        face(buffer, pose, minX, minY, maxZ, minX, minY, minZ, maxX, minY, minZ, maxX, minY, maxZ, 0.0F, -1.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
+        face(buffer, pose, minX, minY, minZ, minX, minY, maxZ, minX, maxY, maxZ, minX, maxY, minZ, -1.0F, 0.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
+        face(buffer, pose, maxX, minY, maxZ, maxX, minY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, 1.0F, 0.0F, 0.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
+        face(buffer, pose, maxX, minY, minZ, minX, minY, minZ, minX, maxY, minZ, maxX, maxY, minZ, 0.0F, 0.0F, -1.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
+        face(buffer, pose, minX, minY, maxZ, maxX, minY, maxZ, maxX, maxY, maxZ, minX, maxY, maxZ, 0.0F, 0.0F, 1.0F, u0, u1, v0, v1, lightCoords, overlayCoords);
     }
 
     private static void face(

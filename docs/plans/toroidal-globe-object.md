@@ -1,4 +1,4 @@
-# Globe Object Plan
+# Toroidal Globe Object Plan
 
 This plan now treats the sphere-based globe object as a failed projection
 experiment. The useful object for Globe World's wrapped rectangular tile is a
