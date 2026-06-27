@@ -9,7 +9,6 @@ import globe.world.util.DimensionTiling;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
@@ -19,9 +18,14 @@ public final class GlobeHeldMapRenderer {
     private static final int MIN_VANILLA_MAP_SPAN = 128;
     private static final int MAX_VANILLA_MAP_SPAN = 2048;
     private static final int MAP_SEGMENTS = 24;
-    private static final float PROJECTION_SIZE = 1.18F;
+    private static final float PROJECTION_SIZE = 0.40F;
     private static final float PROJECTION_HALF_SIZE = PROJECTION_SIZE * 0.5F;
-    private static final float SIDE_OFFSET_SCALE = 1.1F;
+    private static final float PROJECTION_CAMERA_BOW = 0.03F;
+    private static final float SCREEN_HAND_X = 0.46F;
+    private static final float SCREEN_HAND_Y = 0.08F;
+    private static final float SCREEN_HAND_Z = -0.48F;
+    private static final float SCREEN_HAND_YAW = 16.0F;
+    private static final float SCREEN_HAND_ROLL = 2.0F;
     private static final int FULL_BRIGHT_LIGHT = 0x00F000F0;
     private static final int MAP_COLOR = 0xE6FFFFFF;
 
@@ -56,7 +60,6 @@ public final class GlobeHeldMapRenderer {
         Identifier texture = GlobeMapTextureCache.updateHeldViewportForCurrentDimension(
                 centerX,
                 centerZ,
-                yawDegrees,
                 mapSpanBlocks,
                 tiling.tileSizeBlocks());
         if (texture == null) {
@@ -64,14 +67,15 @@ public final class GlobeHeldMapRenderer {
         }
 
         poseStack.pushPose();
-        poseStack.translate(handOffset(arm), 0.2F, -0.86F);
-        poseStack.mulPose(Axis.XP.rotationDegrees(-10.0F));
-        poseStack.mulPose(Axis.YP.rotationDegrees(10.0F));
-        poseStack.mulPose(Axis.ZP.rotationDegrees(2.0F));
+        int armSign = armSign(arm);
+        poseStack.translate(armSign * SCREEN_HAND_X, SCREEN_HAND_Y, SCREEN_HAND_Z);
+        poseStack.mulPose(Axis.YP.rotationDegrees(-armSign * SCREEN_HAND_YAW));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(armSign * SCREEN_HAND_ROLL));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(yawDegrees));
 
         submitNodeCollector.submitCustomGeometry(
                 poseStack,
-                RenderTypes.entityTranslucent(texture, false),
+                RenderTypes.textSeeThrough(texture),
                 (pose, buffer) -> renderProjection(buffer, pose, FULL_BRIGHT_LIGHT));
         poseStack.popPose();
     }
@@ -106,16 +110,21 @@ public final class GlobeHeldMapRenderer {
             final float u,
             final float v,
             final int lightCoords) {
-        buffer.addVertex(pose, x, y, 0.0F)
+        buffer.addVertex(pose, x, y, cameraBow(x, y))
                 .setColor(MAP_COLOR)
                 .setUv(u, v)
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(lightCoords)
-                .setNormal(pose, 0.0F, 0.0F, -1.0F);
+                .setLight(lightCoords);
     }
 
-    private static float handOffset(final HumanoidArm arm) {
-        return (arm == HumanoidArm.RIGHT ? 1.4F : -1.0F) * PROJECTION_HALF_SIZE * SIDE_OFFSET_SCALE;
+    private static float cameraBow(final float x, final float y) {
+        float normalizedX = x / PROJECTION_HALF_SIZE;
+        float normalizedY = y / PROJECTION_HALF_SIZE;
+        float distanceSqr = Math.min(1.0F, normalizedX * normalizedX + normalizedY * normalizedY);
+        return PROJECTION_CAMERA_BOW * (1.0F - distanceSqr);
+    }
+
+    private static int armSign(final HumanoidArm arm) {
+        return arm == HumanoidArm.RIGHT ? 1 : -1;
     }
 
     private static int mapSpanBlocks(final int tileSizeBlocks) {

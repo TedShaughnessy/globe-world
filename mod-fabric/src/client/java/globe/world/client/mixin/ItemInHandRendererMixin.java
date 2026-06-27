@@ -4,55 +4,52 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import globe.world.client.render.GlobeHeldMapRenderer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ItemInHandRenderer.class)
 public class ItemInHandRendererMixin {
+    @Shadow
+    private ItemStack mainHandItem;
+
+    @Shadow
+    private ItemStack offHandItem;
+
     @Inject(
-            method = "renderArmWithItem",
+            method = "renderHandsWithItems",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderItem("
-                            + "Lnet/minecraft/world/entity/LivingEntity;"
-                            + "Lnet/minecraft/world/item/ItemStack;"
-                            + "Lnet/minecraft/world/item/ItemDisplayContext;"
-                            + "Lcom/mojang/blaze3d/vertex/PoseStack;"
-                            + "Lnet/minecraft/client/renderer/SubmitNodeCollector;"
-                            + "I"
-                            + ")V",
-                    shift = At.Shift.AFTER
+                    target = "Lnet/minecraft/client/renderer/GameRenderer;getFeatureRenderDispatcher()"
+                            + "Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher;"
             )
     )
-    private void globeWorld$renderAtlasProjectorMapAboveItem(
-            final AbstractClientPlayer player,
+    private void globeWorld$renderAtlasProjectorMapsAfterHands(
             final float frameInterp,
-            final float xRot,
-            final InteractionHand hand,
-            final float attack,
-            final ItemStack itemStack,
-            final float inverseArmHeight,
             final PoseStack poseStack,
             final SubmitNodeCollector submitNodeCollector,
+            final LocalPlayer player,
             final int lightCoords,
             final CallbackInfo ci) {
-        if (GlobeHeldMapRenderer.isAtlasProjector(itemStack)) {
+        if (GlobeHeldMapRenderer.isAtlasProjector(this.mainHandItem)) {
             GlobeHeldMapRenderer.renderAboveAtlas(
                     poseStack,
                     submitNodeCollector,
                     lightCoords,
-                    arm(player, hand),
+                    player.getMainArm(),
                     player.getYRot(frameInterp));
         }
-    }
-
-    private static HumanoidArm arm(final AbstractClientPlayer player, final InteractionHand hand) {
-        return hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
+        if (GlobeHeldMapRenderer.isAtlasProjector(this.offHandItem)) {
+            GlobeHeldMapRenderer.renderAboveAtlas(
+                    poseStack,
+                    submitNodeCollector,
+                    lightCoords,
+                    player.getMainArm().getOpposite(),
+                    player.getYRot(frameInterp));
+        }
     }
 }

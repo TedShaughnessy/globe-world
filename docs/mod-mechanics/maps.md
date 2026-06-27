@@ -74,16 +74,22 @@ hand pose and render a separate translucent projection above the held projector.
 projector texture, so the projection moves under the player instead of moving a
 player icon across a fixed map. The window uses vanilla map spans: the smallest
 span from `128`, `256`, `512`, `1024`, and `2048` blocks that can contain the
-tile, capped at `2048` blocks. The held viewport rotates with the player so the
-top of the projection is always the direction the player is facing, shifts half
-its width toward the active hand's side of the screen, and is circular with a
-soft alpha fade at the edge. The held projection has no vanilla map-paper
+tile, capped at `2048` blocks. The held viewport texture is sampled in canonical
+world axes instead of being resampled for player yaw; the projected surface then
+rotates with the player so the top of the projection is always the direction the
+player is facing, letting map pixels become diagonal on screen. After both hands
+submit their held models, the projection renders from a mirrored first-person
+screen-space pose above the active hand, so left and right hands use symmetric
+placement and the hologram appears in front of the item model. The window is
+circular with a soft alpha fade at the edge, tilts toward the camera, and bows
+slightly forward at its center. The held projection has no vanilla map-paper
 backing. It uses a held-only dynamic texture where unknown space has a faint
 hologram fill so the player-centered window remains visible, while placed
 projector holograms still use fully transparent unknown pixels. Held projection
-vertices render full-bright so the map reads like a projector hologram rather
-than a hand-lit item surface. If no current-dimension snapshot has arrived yet,
-the held projection renders nothing.
+vertices render full-bright through a depth-free first-person textured pass, so
+the map reads like a projector hologram rather than a hand-lit item surface. If
+no current-dimension snapshot has arrived yet, the held projection renders
+nothing.
 
 ## Key Files
 

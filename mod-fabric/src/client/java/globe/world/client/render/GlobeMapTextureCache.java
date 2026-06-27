@@ -71,7 +71,6 @@ public final class GlobeMapTextureCache {
     public static Identifier updateHeldViewportForCurrentDimension(
             final double centerX,
             final double centerZ,
-            final float yawDegrees,
             final int spanBlocks,
             final int tileSizeBlocks) {
         Identifier source = heldTextureForCurrentDimension();
@@ -90,7 +89,7 @@ public final class GlobeMapTextureCache {
 
         NativeImage sourcePixels = heldTexture.getPixels();
         NativeImage targetPixels = heldViewportTexture.getPixels();
-        fillHeldViewport(sourcePixels, targetPixels, centerX, centerZ, yawDegrees, spanBlocks, tileSizeBlocks);
+        fillHeldViewport(sourcePixels, targetPixels, centerX, centerZ, spanBlocks, tileSizeBlocks);
         heldViewportTexture.upload();
         return HELD_VIEWPORT_TEXTURE_ID;
     }
@@ -134,14 +133,8 @@ public final class GlobeMapTextureCache {
             final NativeImage targetPixels,
             final double centerX,
             final double centerZ,
-            final float yawDegrees,
             final int spanBlocks,
             final int tileSizeBlocks) {
-        double yawRadians = Math.toRadians(yawDegrees);
-        double facingX = -Math.sin(yawRadians);
-        double facingZ = Math.cos(yawRadians);
-        double rightX = -Math.cos(yawRadians);
-        double rightZ = -Math.sin(yawRadians);
         double blockRadius = spanBlocks * 0.5D;
         double pixelCenter = HELD_VIEWPORT_RESOLUTION * 0.5D;
         double fadeStart = 0.86D;
@@ -158,8 +151,8 @@ public final class GlobeMapTextureCache {
 
                 double blockRight = normalizedRight * blockRadius;
                 double blockForward = normalizedForward * blockRadius;
-                double blockX = centerX + rightX * blockRight + facingX * blockForward;
-                double blockZ = centerZ + rightZ * blockRight + facingZ * blockForward;
+                double blockX = centerX - blockRight;
+                double blockZ = centerZ + blockForward;
                 int sourceX = pixelForBlock(blockX, tileSizeBlocks);
                 int sourceZ = pixelForBlock(blockZ, tileSizeBlocks);
                 int color = sourcePixels.getPixel(sourceX, sourceZ);
