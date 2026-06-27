@@ -118,7 +118,7 @@ existing powers off. If saved loadouts exceed the current budget after a
 settings or discovery-state change, the deterministic powered subset is chosen
 by most recently edited Atlas first, then canonical block-position order.
 
-The first reward effect set is speed, haste, and regeneration. Loaded powered
+The first reward effect set is speed, haste, and jump boost. Loaded powered
 Atlases periodically apply their selected level I or level II effects to
 non-spectator players inside the selected radius using wrapped X/Z distance, so
 players across a canonical edge can still qualify. Unloaded Atlases keep
@@ -128,28 +128,30 @@ The client Atlas power screen draws a compact grey in-game panel without the
 vanilla beacon payment slot, confirmation row, inventory, or hotbar. Effect
 selection is icon-based, each effect has a neighboring level II toggle, radius
 uses matching `R`, `II`, and `III` toggle buttons, and the projection and travel
-buttons use the same symbol-control style. Discovery, budget, radius cap, and
-current cost are shown along the bottom. Linked-travel destinations live on a
-separate destination tab that is enabled only when this Atlas is powered with
-the `T` travel-network toggle selected.
+buttons use the same symbol-control style. Discovery is shown as a progress bar
+with point/radius milestone markers derived from `GlobeDiscoveryRewards`;
+budget, radius cap, and current cost are shown alongside it. Linked-travel
+destinations live on a separate destination tab that is enabled only when this
+Atlas is powered with the `T` travel-network toggle selected.
 
 Full discovery creates the Mastered Atlas state and unlocks linked Atlas
-travel. A travel-enabled source Atlas can instantly send a player to another
-loaded, powered, travel-enabled Atlas in the same Overworld when the player is
-inside the source radius, the destination map pixel is discovered, and a safe
-arrival space exists above, below, inside the same block as, or next to the
-destination projector. Arrival selection uses the player's collision box, so
-wall-mounted and ceiling-mounted projectors can be valid destinations when the
-thin projector shape leaves room for the player. Wall-mounted destinations
-prefer the vertical column directly in the projector's facing direction, so
-projectors embedded flush in a wall can place the player next to the wall with
-the Atlas at foot or head height. Destination buttons use custom Atlas names
-when present, otherwise canonical coordinates. Clicking a
+travel, and the shared completion state awards the Mastered Atlas advancement
+to non-spectator Overworld players. A travel-enabled source Atlas can instantly
+send a player to another loaded, powered, travel-enabled Atlas in the same
+Overworld when the player is inside the source radius, the destination map pixel
+is discovered, and a safe arrival space exists above, below, inside the same
+block as, or next to the destination projector. Arrival selection uses the
+player's collision box, so wall-mounted and ceiling-mounted projectors can be
+valid destinations when the thin projector shape leaves room for the player.
+Wall-mounted destinations prefer the vertical column directly in the projector's
+facing direction, so projectors embedded flush in a wall can place the player
+next to the wall with the Atlas at foot or head height. Destination buttons use
+custom Atlas names when present, otherwise canonical coordinates. Clicking a
 destination sends a one-shot travel request and closes the Atlas screen; denied
 or failed requests leave the screen closed and show feedback. Travel has no
 recharge delay, so players can use another linked Atlas immediately after
-arriving. The first implementation does not yet include channeled travel
-cancellation, Atlas Flight, active visual state, or ownership rules.
+arriving. Channeled travel, Atlas Flight, active visual state, and ownership
+rules are not part of the current reward scope.
 
 ## Key Files
 
@@ -166,6 +168,7 @@ cancellation, Atlas Flight, active visual state, or ownership rules.
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeDiscoveryRewards.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapSavedData.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapTracker.java`
+- `mod-fabric/src/main/resources/data/globe-world/advancement/mastered_atlas.json`
 - `mod-fabric/src/main/java/globe/world/network/GlobeAtlasScreenPayload.java`
 - `mod-fabric/src/main/java/globe/world/network/GlobeAtlasTravelPayload.java`
 - `mod-fabric/src/main/java/globe/world/network/GlobeAtlasUpdatePayload.java`

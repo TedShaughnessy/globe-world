@@ -20,7 +20,7 @@ import net.minecraft.resources.Identifier;
 
 public class GlobeAtlasPowerScreen extends Screen {
     private static final int PANEL_WIDTH = 250;
-    private static final int PANEL_HEIGHT = 212;
+    private static final int PANEL_HEIGHT = 226;
     private static final int MAX_VISIBLE_DESTINATIONS = 5;
     private static final int LINE = 11;
     private static final int BUTTON_SIZE = 22;
@@ -145,21 +145,45 @@ public class GlobeAtlasPowerScreen extends Screen {
     }
 
     private void status(final GuiGraphicsExtractor graphics, final int left, final int top) {
-        int y = top + PANEL_HEIGHT - 19;
-        graphics.fill(left + 12, y - LINE * 2 - 5, left + PANEL_WIDTH - 12, top + PANEL_HEIGHT - 8, 0xFF2C2C2C);
-        graphics.outline(left + 12, y - LINE * 2 - 5, PANEL_WIDTH - 24, 38, 0xFF5F5F5F);
-        this.line(graphics, left + 18, y, Component.translatable("screen.globe-world.atlas_power.discovery"), String.format("%.2f%%", this.data.discoveredPercent()));
-        this.line(graphics, left + 126, y, Component.translatable("screen.globe-world.atlas_power.budget"), this.data.spentPoints() + " / " + this.data.worldPoints());
+        int statusTop = top + PANEL_HEIGHT - 58;
+        graphics.fill(left + 12, statusTop, left + PANEL_WIDTH - 12, top + PANEL_HEIGHT - 8, 0xFF2C2C2C);
+        graphics.outline(left + 12, statusTop, PANEL_WIDTH - 24, 50, 0xFF5F5F5F);
+        this.line(graphics, left + 18, statusTop + 5, Component.translatable("screen.globe-world.atlas_power.discovery"), String.format("%.2f%%", this.data.discoveredPercent()));
+        this.discoveryBar(graphics, left + 18, statusTop + 18, PANEL_WIDTH - 36, 7);
 
-        y -= LINE;
-        this.line(graphics, left + 18, y, Component.translatable("screen.globe-world.atlas_power.cap"), this.data.radiusCap() + "m");
-        this.line(graphics, left + 126, y, Component.translatable("screen.globe-world.atlas_power.cost"), this.data.loadout().cost() + " pts");
+        int y = statusTop + 31;
+        this.line(graphics, left + 18, y, Component.translatable("screen.globe-world.atlas_power.budget"), this.data.spentPoints() + " / " + this.data.worldPoints());
+        this.line(graphics, left + 126, y, Component.translatable("screen.globe-world.atlas_power.cap"), this.data.radiusCap() + "m");
 
-        y -= LINE;
+        y += LINE;
+        this.line(graphics, left + 18, y, Component.translatable("screen.globe-world.atlas_power.cost"), this.data.loadout().cost() + " pts");
         graphics.centeredText(this.font, this.data.complete()
                         ? Component.translatable("screen.globe-world.atlas_power.mastered")
                         : Component.translatable("screen.globe-world.atlas_power.locked"),
-                left + PANEL_WIDTH / 2, y, 0xFFE8E8E8);
+                left + 178, y, 0xFFE8E8E8);
+    }
+
+    private void discoveryBar(final GuiGraphicsExtractor graphics, final int x, final int y, final int width, final int height) {
+        graphics.fill(x, y, x + width, y + height, 0xFF171717);
+        graphics.outline(x, y, width, height, 0xFF767676);
+        int fillWidth = (int)Math.round(width * clamp(this.data.discoveredPercent(), 0.0D, 100.0D) / 100.0D);
+        if (fillWidth > 0) {
+            graphics.fill(x + 1, y + 1, x + 1 + Math.min(width - 2, fillWidth), y + height - 1, this.data.complete() ? 0xFF8FE8FF : 0xFF84C57A);
+        }
+
+        for (int milestone : this.data.milestoneTenths()) {
+            int markerX = x + Math.round(width * clamp(milestone, 0, 1000) / 1000.0F);
+            int color = this.data.discoveredPercent() * 10.0D >= milestone ? 0xFFFFFFFF : 0xFF777777;
+            graphics.verticalLine(markerX, y - 2, y + height + 1, color);
+        }
+    }
+
+    private static double clamp(final double value, final double min, final double max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private static int clamp(final int value, final int min, final int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private void line(final GuiGraphicsExtractor graphics, final int x, final int y, final Component label, final String value) {

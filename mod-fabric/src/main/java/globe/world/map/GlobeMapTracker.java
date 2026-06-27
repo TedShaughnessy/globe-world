@@ -1,12 +1,15 @@
 package globe.world.map;
 
+import globe.world.GlobeWorld;
 import globe.world.network.GlobeMapSnapshotPayload;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class GlobeMapTracker {
+    private static final Identifier MASTERED_ATLAS_ADVANCEMENT = Identifier.fromNamespaceAndPath(GlobeWorld.MOD_ID, "mastered_atlas");
     private static final int UPDATE_INTERVAL_TICKS = 5;
     private static final int SYNC_INTERVAL_TICKS = 20;
     private static final int REVEAL_RADIUS_BLOCKS = 48;
@@ -70,6 +74,7 @@ public final class GlobeMapTracker {
 
         GlobeMapSavedData data = GlobeMapSavedData.get(overworld, tiling);
         revealForPlayers(server, overworld, tiling, data);
+        awardCompletionAdvancement(server, overworld, data);
 
         if (server.getTickCount() % SYNC_INTERVAL_TICKS == 0) {
             sendIfChanged(overworld, data);
@@ -111,6 +116,26 @@ public final class GlobeMapTracker {
                 MAX_PIXELS_PER_PLAYER_REVEAL);
         if (!changed) {
             LAST_REVEALS.put(playerId, new RevealState(canonicalX, canonicalZ, server.getTickCount()));
+        }
+    }
+
+    private static void awardCompletionAdvancement(
+            final MinecraftServer server,
+            final ServerLevel level,
+            final GlobeMapSavedData data) {
+        if (!data.complete()) {
+            return;
+        }
+
+        AdvancementHolder advancement = server.getAdvancements().get(MASTERED_ATLAS_ADVANCEMENT);
+        if (advancement == null) {
+            return;
+        }
+
+        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
+            if (player.level() == level && !player.isSpectator()) {
+                player.getAdvancements().award(advancement, "completed");
+            }
         }
     }
 

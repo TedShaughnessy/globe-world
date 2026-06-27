@@ -16,14 +16,17 @@ The current implementation has shipped the first reward-beacon slice into
 - The Atlas power UI uses a compact grey in-game panel, effect icon toggles,
   adjacent level II toggles, matching range `R`/`II`/`III` toggles, a powered
   destination tab, and disabled controls for unaffordable upgrades.
-- Loaded powered Atlases apply speed, haste, and regeneration at selected level
+- Loaded powered Atlases apply speed, haste, and jump boost at selected level
   I or level II strength in wrapped-radius range.
 - Full completion unlocks Mastered Atlas linked travel between loaded, powered,
-  travel-enabled Atlases with destination discovery and safe-arrival validation.
+  travel-enabled Atlases with destination discovery and safe-arrival validation,
+  and awards the Mastered Atlas advancement.
+- The Atlas power UI includes a discovery progress bar with reward milestone
+  markers derived from `GlobeDiscoveryRewards`.
 
-Remaining plan items are Atlas Flight, channeled travel/cancellation polish,
-active visual feedback, more effect/loadout tuning, and multiplayer ownership or
-team restrictions if testing needs them.
+The earlier Atlas Flight, channeled travel, larger effect pool, active visual
+feedback, and multiplayer ownership ideas are retired for now unless
+playtesting gives them a clear reason to return.
 
 ## Goal
 
@@ -51,9 +54,9 @@ Implement the first version with these decisions:
 - Sneak-use toggles the hologram projection.
 - Discovery creates a shared Overworld point budget.
 - Each active Atlas loadout spends from that shared budget.
-- Full discovery unlocks a Mastered Atlas capstone point surge, Atlas Flight,
-  and linked-Atlas fast travel.
-- Atlas Flight and fast travel are expensive completion-only powers.
+- Full discovery unlocks a Mastered Atlas capstone point surge, linked-Atlas
+  fast travel, and the Mastered Atlas advancement.
+- Fast travel is an expensive completion-only power.
 - Fast travel requires both source and destination Atlases to buy into the
   travel network.
 - The UI prevents new selections that exceed the current shared budget. If saved
@@ -89,9 +92,6 @@ change:
 - **Completion**: treat `99%` discovered pixels as Mastered Atlas completion.
   The reveal cleanup fills the remaining hidden pixels so the rendered map
   catches up to the rounded completion state.
-- **Flight feel**: use ordinary creative-style flight permission while the
-  Atlas grants flight, with strict cleanup when the player leaves qualifying
-  ranges.
 - **Fast travel arrival**: use the nearest safe block next to or above the
   destination Atlas. Do not add a separate arrival pad block.
 - **Travel discovery restriction**: require the destination Atlas's canonical
@@ -192,7 +192,7 @@ Suggested costs:
 | Increase radius tier | +1 per tier |
 | Show or hide this projector's hologram | Free |
 | Join linked-Atlas travel network | +4 |
-| Completion-only flight power | +10 |
+| Completion advancement | Free |
 
 This makes the core choice explicit:
 
@@ -213,28 +213,13 @@ point step. Reserve a separate capstone for `100%` discovery.
 Recommended capstone:
 
 - grant a large completion point surge;
-- unlock **Atlas Flight** as an expensive completion-only power;
 - unlock linked-Atlas fast travel as an expensive completion-only network;
-- show a distinct "Mastered Atlas" state in the UI.
+- show a distinct "Mastered Atlas" state in the UI;
+- award the Mastered Atlas advancement to non-spectator Overworld players.
 
-Atlas Flight would be radius-bound to the active Atlas that bought it. Players
-inside that Atlas's wrapped AOE can fly; leaving the radius starts a short grace
-window, then flight is removed if the player is not creative, spectator, or
-otherwise allowed to fly by another system.
-
-Flight costs enough that it competes with several normal effects or
-multiple active Atlases. That makes it feel legendary without making it the
-automatic best loadout for every base.
-
-Implementation cautions:
-
-- do not mutate creative or spectator flight permissions;
-- track which players currently have Atlas-granted flight so removal is precise;
-- add a short exit grace period to avoid dropping players immediately at the
-  radius boundary;
-- consider slow falling or fall-damage grace when Atlas flight expires;
-- make flight unavailable unless the shared discovery state exactly matches the
-  current Overworld tile size and is complete.
+Atlas Flight is intentionally not part of the active reward design. Keeping the
+capstone to points, linked travel, and a vanilla advancement gives completion a
+clear payoff without adding a second movement-permission system.
 
 ## Linked Atlas Fast Travel
 
@@ -250,10 +235,7 @@ Rules:
 - the player must be within the source Atlas radius;
 - the destination must still exist at its canonical block position;
 - travel is same-dimension only for the first version;
-- travel has a `5` second channel time;
-- damage, movement outside source radius, closing the UI, or source losing
-  in-budget power
-  cancels the channel;
+- travel is instant after server-side validation;
 - arrival position is the nearest safe block next to or above the destination
   Atlas, evaluated in the destination's canonical tile;
 - after arrival, render-facing packets should naturally show the nearest alias
@@ -270,22 +252,20 @@ UI:
 
 This gives completion a strong infrastructure reward without making travel free
 for every placed projector. A large completed world can support a real network,
-but every endpoint competes with flight, effects, radius, and other endpoints.
+but every endpoint competes with effects, radius, and other endpoints.
 
 ## Effect Pool
 
-Start with vanilla beacon-safe effects:
+The active effect pool stays deliberately small:
 
 - Speed
 - Haste
-- Resistance
 - Jump Boost
-- Strength
-- Regeneration
 
 The block should not grant effects that invalidate progression or create odd
-server behavior, such as Night Vision, Invisibility, Fire Resistance, Water
-Breathing, or Saturation, until they have a separate balance pass.
+server behavior, such as Regeneration, Resistance, Strength, Night Vision,
+Invisibility, Fire Resistance, Water Breathing, or Saturation, unless
+playtesting gives one of them a strong reason to return.
 
 With effect points, the UI allows either:
 
@@ -328,7 +308,6 @@ entity only needs to store player choices:
 - whether this Atlas is power-active
 - selected effect ids
 - which effect, if any, is boosted to level II
-- whether this Atlas has selected Atlas Flight
 - whether this Atlas participates in linked-Atlas travel
 - chosen radius tier
 - priority or last-edited tick for budget allocation
@@ -354,7 +333,6 @@ entity each tick, and it lets unloaded active Atlases remain part of the budget.
 - selected effect ids;
 - boosted effect id, if any;
 - radius tier;
-- flight selected;
 - travel selected;
 - active selected;
 - last edited game time;
@@ -438,13 +416,11 @@ Candidate query:
    tune to a fixed vertical radius if playtesting says whole-column effects are
    too strong.
 
-Normal selected effects use ordinary `MobEffectInstance` refreshes. Atlas
-Flight needs a separate player-power tracker because it changes flight
-permissions instead of applying a vanilla mob effect.
+Normal selected effects use ordinary `MobEffectInstance` refreshes.
 
-Linked Atlas travel is not an AOE refresh. It is a deliberate UI action or
-button press from inside the source radius. Validate all travel conditions again
-on the server when the channel starts and when it completes.
+Linked Atlas travel is not an AOE refresh. It is a deliberate UI action from
+inside the source radius. Validate all travel conditions on the server when the
+request is received.
 
 The stored Atlas block position should be canonical for server authority. When
 players interact with an alias of the block, existing block-position
@@ -457,7 +433,7 @@ Initial implementation can be modest:
 
 - active/inactive block model state or particle pulse
 - ambient sound on the same cadence as effect application
-- UI progress bar showing discovery percent and next unlock
+- UI progress bar showing discovery percent and reward milestone markers
 - UI point meter showing total, spent, and available effect points
 - distinct Mastered Atlas treatment once completion-only powers are available
 
@@ -482,8 +458,8 @@ Phase 1, reward math and saved state:
 Phase 2, Atlas loadouts and UI shell:
 
 5. Extend `GlobeBlockEntity` save/load for selected effects, boosted effect,
-   Atlas Flight selection, travel selection, active state, radius tier, custom
-   name, and last-edited priority.
+   travel selection, active state, radius tier, custom name, and last-edited
+   priority.
 6. Extend `GlobeBlock` interaction handling so ordinary use opens the power UI
    and sneak-use toggles projection.
 7. Register `GlobeAtlasPowerMenu`, sync fields, and
@@ -495,23 +471,24 @@ Phase 3, effect application:
 
 9. Implement the server cadence that recomputes reward state, resolves the
    in-budget Atlas set, and applies wrapped-radius mob effects.
-10. Add Atlas Flight tracking with permission cleanup, exit grace, and
-   fall-damage or slow-falling grace.
-11. Add activation/deactivation sounds and a minimal active visual state.
+10. Replace regeneration with jump boost so the supported effect set stays at
+   three powers.
+11. Keep active visual/audio polish retired unless playtesting identifies a
+   concrete readability problem.
 
 Phase 4, linked travel:
 
 12. Add travel target listing to `GlobeAtlasPowerState` and the menu sync.
-13. Implement a serverbound travel request payload with source, destination,
-   and channel id.
+13. Implement a serverbound travel request payload with source and destination.
 14. Validate source radius, in-budget status, destination existence, safe
-   arrival position, and completion unlock at channel start and completion.
-15. Add channel progress UI, cancellation rules, and arrival sound/particles.
+   arrival position, and completion unlock when the request arrives.
+15. Keep channeled travel and arrival effects retired unless instant travel
+   proves confusing or too strong.
 
 Phase 5, polish and docs:
 
-16. Add advancement or toast feedback for first active Atlas, new point unlocks,
-   full completion, first Atlas Flight, and first linked travel.
+16. Add a Mastered Atlas advancement for full completion and use the Atlas power
+   UI progress bar to indicate point/radius milestones.
 17. Document shipped behavior in `docs/mod-mechanics/maps.md` or a new
    `docs/mod-mechanics/exploration-rewards.md`, then update the mechanics index.
 18. Keep or retire this plan depending on whether any follow-up work remains.
@@ -524,8 +501,8 @@ These are intentionally not blockers for the first implementation:
   playtesting.
 - Whether Earth-scale completed worlds should exceed the `512` block per-Atlas
   radius cap.
-- Whether Atlas Flight should later become glide, levitation, or another
-  custom movement mode instead of creative-style flight.
+- Whether any retired capstone idea, such as Atlas Flight or channeled travel,
+  earns its complexity back in playtesting.
 - Whether fast travel should require a built arrival pad or named station.
 - Whether multiplayer servers need placer ownership, team permissions, or
   operator-only loadout editing.
@@ -560,12 +537,9 @@ These are intentionally not blockers for the first implementation:
   inside a raw AABB alias query.
 - Multiple powered Atlases refreshing in the same tick do not duplicate or
   shorten effects unexpectedly.
-- Atlas Flight only works inside the selected Atlas radius, does not alter
-  creative/spectator flight permissions, and is removed after a grace period
-  when the player leaves all qualifying Atlas Flight ranges.
 - Linked travel is only available after completion, only between active
-  in-budget travel Atlases, and only while the player remains inside the source
-  radius for the full channel.
+  in-budget travel Atlases, and only while the player is inside the source
+  radius when the request is validated.
 - Unloaded powered Atlases reserve budget but do not apply effects or serve as
   travel endpoints until loaded again.
 - Linked travel refuses missing, obstructed, out-of-budget, cross-dimension, or

@@ -21,10 +21,12 @@ public record GlobeAtlasScreenPayload(
         int spentPoints,
         int discoveredPixels,
         double discoveredPercent,
+        List<Integer> milestoneTenths,
         boolean complete,
         boolean powered,
         List<Destination> destinations) implements CustomPacketPayload {
     private static final int MAX_DESTINATIONS = 128;
+    private static final int MAX_MILESTONES = 32;
 
     public static final Type<GlobeAtlasScreenPayload> TYPE = new Type<>(
             Identifier.fromNamespaceAndPath(GlobeWorld.MOD_ID, "atlas_screen"));
@@ -34,6 +36,7 @@ public record GlobeAtlasScreenPayload(
 
     public GlobeAtlasScreenPayload {
         name = truncate(name);
+        milestoneTenths = milestoneTenths == null ? List.of() : List.copyOf(milestoneTenths);
         destinations = destinations == null ? List.of() : List.copyOf(destinations);
     }
 
@@ -52,6 +55,11 @@ public record GlobeAtlasScreenPayload(
         int spentPoints = input.readVarInt();
         int discoveredPixels = input.readVarInt();
         double discoveredPercent = input.readDouble();
+        int milestoneCount = Math.min(input.readVarInt(), MAX_MILESTONES);
+        List<Integer> milestoneTenths = new ArrayList<>(milestoneCount);
+        for (int i = 0; i < milestoneCount; i++) {
+            milestoneTenths.add(input.readVarInt());
+        }
         boolean complete = input.readBoolean();
         boolean powered = input.readBoolean();
         int count = Math.min(input.readVarInt(), MAX_DESTINATIONS);
@@ -69,6 +77,7 @@ public record GlobeAtlasScreenPayload(
                 spentPoints,
                 discoveredPixels,
                 discoveredPercent,
+                milestoneTenths,
                 complete,
                 powered,
                 destinations);
@@ -84,6 +93,10 @@ public record GlobeAtlasScreenPayload(
         output.writeVarInt(this.spentPoints);
         output.writeVarInt(this.discoveredPixels);
         output.writeDouble(this.discoveredPercent);
+        output.writeVarInt(Math.min(this.milestoneTenths.size(), MAX_MILESTONES));
+        for (int milestone : this.milestoneTenths.stream().limit(MAX_MILESTONES).toList()) {
+            output.writeVarInt(milestone);
+        }
         output.writeBoolean(this.complete);
         output.writeBoolean(this.powered);
         output.writeVarInt(Math.min(this.destinations.size(), MAX_DESTINATIONS));

@@ -248,6 +248,7 @@ public final class GlobeAtlasPowers {
                 spentPoints,
                 rewards.discoveredPixels(),
                 rewards.discoveredPercent(),
+                rewards.milestoneTenths(),
                 rewards.complete(),
                 powered,
                 destinations(level, rawPos, rewards, state));

@@ -7,7 +7,7 @@ import net.minecraft.world.effect.MobEffects;
 public enum GlobeAtlasEffect {
     SPEED("effect.minecraft.speed"),
     HASTE("effect.minecraft.haste"),
-    REGENERATION("effect.minecraft.regeneration");
+    JUMP_BOOST("effect.minecraft.jump_boost");
 
     private final String translationKey;
 
@@ -27,7 +27,7 @@ public enum GlobeAtlasEffect {
         return switch (this) {
             case SPEED -> MobEffects.SPEED;
             case HASTE -> MobEffects.HASTE;
-            case REGENERATION -> MobEffects.REGENERATION;
+            case JUMP_BOOST -> MobEffects.JUMP_BOOST;
         };
     }
 

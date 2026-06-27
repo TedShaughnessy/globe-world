@@ -1,4 +1,6 @@
 {
+  "advancements.globe-world.mastered_atlas.description": "Reveal the canonical Overworld tile with Atlas discovery.",
+  "advancements.globe-world.mastered_atlas.title": "Mastered Atlas",
   "block.globe-world.globe": "Atlas Projector",
   "block.globe-world.copper_atlas_projector": "Copper Atlas Projector",
   "block.globe-world.soul_atlas_projector": "Soul Atlas Projector",
