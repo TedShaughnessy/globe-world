@@ -10,7 +10,7 @@ import net.minecraft.world.level.material.MapColor;
 
 public final class GlobeMapTextureCache {
     private static final Identifier TEXTURE_ID = Identifier.fromNamespaceAndPath(GlobeWorld.MOD_ID, "dynamic/globe_map");
-    private static final int UNKNOWN_COLOR = 0xFF27231D;
+    private static final int UNKNOWN_COLOR = 0x00000000;
     private static final int EMPTY_DISCOVERED_COLOR = 0xFF6C6047;
 
     private static Identifier dimension;

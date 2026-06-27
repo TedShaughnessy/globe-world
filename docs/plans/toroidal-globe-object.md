@@ -1,9 +1,8 @@
 # Atlas Projector Discovery Plan
 
 Atlas Projectors now work as the toroidal world-map object for Globe World's
-wrapped rectangular tile. The remaining feature is progressive discovery:
-canonical tile pixels should stay hidden until players explore nearby world
-space.
+wrapped rectangular tile. Progressive shared discovery is implemented; this
+note tracks remaining hardening work for sync efficiency and tuning.
 
 ## Current Shipped Behavior
 
@@ -21,30 +20,32 @@ space.
   Overworld texture. Clients receive full `GlobeMapSnapshotPayload` snapshots
   on join and revision changes, then upload the buffer through
   `GlobeMapTextureCache`.
-- Unknown pixels are already represented in the saved `discovered` bitset and
-  are rendered with the client unknown color.
-- For projection testing, the server currently raster-fills the whole canonical
-  tile through `GlobeMapSavedData.fillNextPixels(...)`. This is scaffolding, not
-  final survival behavior.
+- Unknown pixels are represented in the saved `discovered` bitset and upload to
+  the client as fully transparent texture pixels.
+- `GlobeMapSavedData.revealAround(...)` canonicalizes an exploration center,
+  converts a block radius into toroidal texture pixel bounds, samples unknown
+  pixels with the existing map-color path, and advances the saved-data revision
+  when discovery changes.
+- `GlobeMapTracker` scans non-spectator Overworld players every 5 ticks,
+  reveals a 32 block radius around their canonical X/Z, skips redundant work
+  until players move 8 canonical blocks or a 200 tick refresh window passes,
+  and caps each reveal pass at 20,000 newly sampled pixels.
+- The old background full-tile fill path has been removed from normal code.
 
-## Remaining Feature
+## Remaining Follow-Ups
 
-Replace background full-tile reveal with player-driven exploration:
-
-- On server player ticks, canonicalize each exploring player's X/Z position in
-  the effective dimension.
-- Convert the canonical position and reveal radius into one or more texture
-  pixel ranges.
-- Sample and mark only those nearby pixels as discovered.
-- Preserve alias semantics: exploring any alias reveals the canonical pixels
-  owned by that location, without duplicating or offsetting discoveries.
-- Keep unknown regions hidden across save/reload and client reconnect until the
-  server sends discovered pixels.
-- Rate-limit sampling so sprinting, flying, teleporting, and multiplayer
-  exploration do not spike server tick time.
-
-The temporary `fillNextPixels(...)` path should be retired or converted into a
-debug/admin tool once player-driven discovery is active.
+- Tune reveal radius, movement threshold, refresh cadence, and pixel budget from
+  playtesting; consider exposing them as config once the feel is settled.
+- Add dirty patch, changed-run, or dirty-rectangle sync so several players
+  exploring different regions do not resend the full `512x512` texture each
+  sync.
+- Decide whether discovered pixels should periodically resample terrain colors
+  after block edits. The first implementation prioritizes discovery stability
+  and skips already discovered pixels.
+- Consider grouping players by nearby canonical pixel center in the same tick
+  to avoid duplicate sampling in dense multiplayer sessions.
+- If projection debug comparison should show holes too, render its comparison
+  variants with a translucent render type.
 
 ## Data And Sync Direction
 
@@ -56,8 +57,12 @@ The existing data shape is still the right base:
 - `colors`: compact vanilla-map-color buffer.
 - `version`: future format changes.
 
-Full snapshots are acceptable during the prototype. Before treating this as a
-finished multiplayer feature, add dirty patch or changed-run sync so several
+Discovery is shared world state. It is not per-player and not stored on
+individual Atlas Projector block entities. Multiple projectors in different
+aliases should therefore always display the same canonical texture.
+
+Full snapshots remain acceptable during the prototype. Before treating this as
+a finished multiplayer feature, add dirty patch or changed-run sync so several
 players exploring different regions do not resend the full texture each time.
 
 ## Validation

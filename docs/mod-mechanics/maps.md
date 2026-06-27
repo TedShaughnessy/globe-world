@@ -42,15 +42,22 @@ projector state, so multiple projectors in the same dimension show the same
 canonical tile texture.
 
 `GlobeMapSavedData` stores a fixed `512x512` tile texture, a discovered bitset,
-and compact vanilla map colors for the Overworld. `GlobeMapTracker` currently
-uses `fillNextPixels(...)` to raster-fill the canonical tile as projection
-testing scaffolding. The client receives full `GlobeMapSnapshotPayload`
-snapshots on join and revision changes, then `GlobeMapTextureCache` uploads the
-dynamic texture. Unknown pixels are rendered with a distinct client color.
+and compact vanilla map colors for the Overworld. `GlobeMapTracker` scans
+Overworld players on a short server cadence, canonicalizes their X/Z positions
+with `CoordUtil.wrapBlock(...)`, and reveals nearby canonical pixels through
+`GlobeMapSavedData.revealAround(...)`. This makes exploration in any alias tile
+discover the same canonical map pixels.
 
-The remaining unfinished behavior is player-driven discovery: pixels should be
-revealed around canonical player positions instead of being filled globally in
-the background.
+Discovery is shared world state. It is not per-player and is not stored on
+individual Atlas Projector block entities. The tracker skips spectator players,
+rate-limits repeated reveals by canonical movement and time, and caps sampled
+pixels per reveal pass so small tiles and multiplayer exploration do not do all
+map work in a single tick.
+
+The client receives full `GlobeMapSnapshotPayload` snapshots on join and
+revision changes, then `GlobeMapTextureCache` uploads the dynamic texture.
+Undiscovered pixels are uploaded as fully transparent pixels, so hidden regions
+leave holes in the toroidal projection until players reveal them.
 
 ## Key Files
 

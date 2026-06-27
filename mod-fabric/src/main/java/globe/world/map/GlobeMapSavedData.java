@@ -7,6 +7,7 @@ import com.google.common.collect.Multisets;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import globe.world.GlobeWorld;
+import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -95,29 +96,57 @@ public class GlobeMapSavedData extends SavedData {
         return created;
     }
 
-    public boolean fillNextPixels(final ServerLevel level, final DimensionTiling tiling, final int pixelBudget) {
+    public boolean revealAround(
+            final ServerLevel level,
+            final DimensionTiling tiling,
+            final double x,
+            final double z,
+            final int radiusBlocks,
+            final int pixelBudget) {
         if (!Level.OVERWORLD.equals(level.dimension()) || !this.matches(tiling)) {
             return false;
         }
-        if (pixelBudget <= 0 || this.fillCursor >= PIXEL_COUNT) {
+        if (radiusBlocks <= 0 || pixelBudget <= 0) {
             return false;
         }
 
+        double canonicalX = CoordUtil.wrapBlock(tiling, x);
+        double canonicalZ = CoordUtil.wrapBlock(tiling, z);
+        int centerPixelX = this.pixelForCanonicalBlock(canonicalX);
+        int centerPixelZ = this.pixelForCanonicalBlock(canonicalZ);
+        int pixelRadius = (int)Math.ceil(radiusBlocks * (double)this.resolution / this.tileSizeBlocks) + 1;
+        double radiusSqr = (double)radiusBlocks * radiusBlocks;
+        int sampledPixels = 0;
         boolean changed = false;
-        int end = Math.min(PIXEL_COUNT, this.fillCursor + pixelBudget);
-        while (this.fillCursor < end) {
-            int index = this.fillCursor++;
-            int px = index % this.resolution;
-            int pz = index / this.resolution;
-            int sampledColor = this.samplePixelColor(level, px, pz);
-            changed |= this.updatePixel(px, pz, sampledColor < 0 ? MapColor.NONE.getPackedId(MapColor.Brightness.NORMAL) : (byte)sampledColor);
+
+        for (int dz = -pixelRadius; dz <= pixelRadius; dz++) {
+            int pz = Math.floorMod(centerPixelZ + dz, this.resolution);
+            double pixelZ = this.canonicalBlockCenter(pz);
+            double blockDz = CoordUtil.wrappedDeltaBlock(tiling, pixelZ, canonicalZ);
+            for (int dx = -pixelRadius; dx <= pixelRadius; dx++) {
+                if (sampledPixels >= pixelBudget) {
+                    return this.finishReveal(changed);
+                }
+
+                int px = Math.floorMod(centerPixelX + dx, this.resolution);
+                int index = px + pz * this.resolution;
+                if (this.isDiscovered(index)) {
+                    continue;
+                }
+
+                double pixelX = this.canonicalBlockCenter(px);
+                double blockDx = CoordUtil.wrappedDeltaBlock(tiling, pixelX, canonicalX);
+                if (blockDx * blockDx + blockDz * blockDz > radiusSqr) {
+                    continue;
+                }
+
+                int sampledColor = this.samplePixelColor(level, px, pz);
+                changed |= this.updatePixel(px, pz, sampledColor < 0 ? MapColor.NONE.getPackedId(MapColor.Brightness.NORMAL) : (byte)sampledColor);
+                sampledPixels++;
+            }
         }
 
-        if (changed) {
-            this.revision++;
-            this.setDirty();
-        }
-        return changed;
+        return this.finishReveal(changed);
     }
 
     public Identifier dimensionId() {
@@ -167,6 +196,16 @@ public class GlobeMapSavedData extends SavedData {
     private int canonicalBlock(final int pixel) {
         double normalized = (pixel + 0.5D) / this.resolution;
         return Mth.floor(normalized * this.tileSizeBlocks - this.tileSizeBlocks / 2.0D);
+    }
+
+    private double canonicalBlockCenter(final int pixel) {
+        double normalized = (pixel + 0.5D) / this.resolution;
+        return normalized * this.tileSizeBlocks - this.tileSizeBlocks / 2.0D;
+    }
+
+    private int pixelForCanonicalBlock(final double block) {
+        double normalized = (block + this.tileSizeBlocks / 2.0D) / this.tileSizeBlocks;
+        return Math.floorMod(Mth.floor(normalized * this.resolution), this.resolution);
     }
 
     private int samplePixelColor(final ServerLevel level, final int px, final int pz) {
@@ -240,6 +279,14 @@ public class GlobeMapSavedData extends SavedData {
         this.setDiscovered(index);
         this.colors[index] = color;
         return !wasDiscovered || previousColor != color;
+    }
+
+    private boolean finishReveal(final boolean changed) {
+        if (changed) {
+            this.revision++;
+            this.setDirty();
+        }
+        return changed;
     }
 
     private boolean isDiscovered(final int index) {

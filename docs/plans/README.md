@@ -16,9 +16,8 @@ point for current behavior and modded code anchors.
 - [Minecraft 26.2 upgrade plan](minecraft-26-2-upgrade.md): dependency bump,
   Loom source regeneration, mixin audit, packet policy refresh, and runtime
   validation plan for the next Minecraft target.
-- [Atlas Projector discovery](toroidal-globe-object.md): follow-up work to
-  replace the current projector test fill with player-driven canonical map
-  discovery.
+- [Atlas Projector discovery](toroidal-globe-object.md): follow-up tuning and
+  sync improvements for shared player-driven canonical map discovery.
 - [Seam-behavior checklist](seam-behavior-checklist.md): manual regression
   matrix and automation candidates for preserving seam behavior during future
   work.
