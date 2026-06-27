@@ -449,7 +449,11 @@ public class GlobeAtlasPowerScreen extends Screen {
         @Override
         public void onPress(final InputWithModifiers input) {
             GlobeAtlasPowerScreen.this.sendNameIfChanged();
+            GlobeAtlasPowerScreen.this.sentClosingName = true;
             ClientPlayNetworking.send(new GlobeAtlasTravelPayload(GlobeAtlasPowerScreen.this.data.pos(), this.destination.pos()));
+            if (GlobeAtlasPowerScreen.this.minecraft != null) {
+                GlobeAtlasPowerScreen.this.minecraft.setScreen(null);
+            }
         }
 
         @Override

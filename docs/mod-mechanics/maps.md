@@ -137,11 +137,19 @@ Full discovery creates the Mastered Atlas state and unlocks linked Atlas
 travel. A travel-enabled source Atlas can instantly send a player to another
 loaded, powered, travel-enabled Atlas in the same Overworld when the player is
 inside the source radius, the destination map pixel is discovered, and a safe
-arrival space exists next to or above the destination. Destination buttons use
-custom Atlas names when present, otherwise canonical coordinates. Travel has a
-`30` second per-player cooldown. The first implementation does not yet include
-channeled travel cancellation, Atlas Flight, active visual state, or ownership
-rules.
+arrival space exists above, below, inside the same block as, or next to the
+destination projector. Arrival selection uses the player's collision box, so
+wall-mounted and ceiling-mounted projectors can be valid destinations when the
+thin projector shape leaves room for the player. Wall-mounted destinations
+prefer the vertical column directly in the projector's facing direction, so
+projectors embedded flush in a wall can place the player next to the wall with
+the Atlas at foot or head height. Destination buttons use custom Atlas names
+when present, otherwise canonical coordinates. Clicking a
+destination sends a one-shot travel request and closes the Atlas screen; denied
+or failed requests leave the screen closed and show feedback. Travel has no
+recharge delay, so players can use another linked Atlas immediately after
+arriving. The first implementation does not yet include channeled travel
+cancellation, Atlas Flight, active visual state, or ownership rules.
 
 ## Key Files
 

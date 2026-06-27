@@ -19,8 +19,7 @@ The current implementation has shipped the first reward-beacon slice into
 - Loaded powered Atlases apply speed, haste, and regeneration at selected level
   I or level II strength in wrapped-radius range.
 - Full completion unlocks Mastered Atlas linked travel between loaded, powered,
-  travel-enabled Atlases with destination discovery, safe-arrival, and cooldown
-  validation.
+  travel-enabled Atlases with destination discovery and safe-arrival validation.
 
 Remaining plan items are Atlas Flight, channeled travel/cancellation polish,
 active visual feedback, more effect/loadout tuning, and multiplayer ownership or
@@ -252,7 +251,6 @@ Rules:
 - the destination must still exist at its canonical block position;
 - travel is same-dimension only for the first version;
 - travel has a `5` second channel time;
-- completed travel starts a `30` second per-player travel cooldown;
 - damage, movement outside source radius, closing the UI, or source losing
   in-budget power
   cancels the channel;
@@ -508,8 +506,7 @@ Phase 4, linked travel:
    and channel id.
 14. Validate source radius, in-budget status, destination existence, safe
    arrival position, and completion unlock at channel start and completion.
-15. Add channel progress UI, cancellation rules, `30` second cooldown, and
-   arrival sound/particles.
+15. Add channel progress UI, cancellation rules, and arrival sound/particles.
 
 Phase 5, polish and docs:
 

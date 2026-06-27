@@ -1,5 +1,6 @@
 package globe.world.atlas;
 
+import globe.world.block.GlobeBlock;
 import globe.world.block.entity.GlobeBlockEntity;
 import globe.world.map.GlobeMapSavedData;
 import globe.world.network.GlobeAtlasScreenPayload;
@@ -7,7 +8,6 @@ import globe.world.network.GlobeAtlasTravelPayload;
 import globe.world.network.GlobeAtlasUpdatePayload;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -20,21 +20,18 @@ import net.minecraft.world.entity.Relative;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 public final class GlobeAtlasPowers {
     private static final int EFFECT_INTERVAL_TICKS = 80;
     private static final int EFFECT_DURATION_TICKS = 180;
-    private static final int TRAVEL_COOLDOWN_TICKS = 600;
-    private static final Map<UUID, Long> LAST_TRAVEL_TICK = new HashMap<>();
 
     private GlobeAtlasPowers() {
     }
@@ -44,8 +41,6 @@ public final class GlobeAtlasPowers {
                 updateAtlas(context.player(), payload));
         ServerPlayNetworking.registerGlobalReceiver(GlobeAtlasTravelPayload.TYPE, (payload, context) ->
                 travel(context.player(), payload.source(), payload.destination()));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-                LAST_TRAVEL_TICK.remove(handler.player.getUUID()));
     }
 
     public static void openScreen(final ServerPlayer player, final BlockPos rawPos) {
@@ -153,29 +148,19 @@ public final class GlobeAtlasPowers {
             return;
         }
 
-        long now = level.getGameTime();
-        long lastTravel = LAST_TRAVEL_TICK.getOrDefault(player.getUUID(), Long.MIN_VALUE / 2);
-        if (now - lastTravel < TRAVEL_COOLDOWN_TICKS) {
-            int seconds = Math.max(1, (int)Math.ceil((TRAVEL_COOLDOWN_TICKS - (now - lastTravel)) / 20.0D));
-            player.sendSystemMessage(Component.literal("Atlas travel recharging: " + seconds + "s").withStyle(ChatFormatting.GRAY), true);
-            sendScreen(player, sourceRawPos);
-            return;
-        }
-
         TravelCheck check = checkTravel(level, player, sourceRawPos, destinationRawPos);
         if (!check.allowed()) {
             player.sendSystemMessage(Component.literal(check.message()).withStyle(ChatFormatting.RED), true);
-            sendScreen(player, sourceRawPos);
             return;
         }
 
         Vec3 arrival = check.arrival();
         boolean teleported = player.teleportTo(level, arrival.x(), arrival.y(), arrival.z(), Set.<Relative>of(), player.getYRot(), player.getXRot(), true);
         if (teleported) {
-            LAST_TRAVEL_TICK.put(player.getUUID(), now);
             player.resetFallDistance();
+            return;
         }
-        sendScreen(player, destinationRawPos);
+        player.sendSystemMessage(Component.literal("Atlas travel failed.").withStyle(ChatFormatting.RED), true);
     }
 
     private static TravelCheck checkTravel(
@@ -295,31 +280,84 @@ public final class GlobeAtlasPowers {
     }
 
     private static Vec3 findArrival(final ServerLevel level, final ServerPlayer player, final BlockPos atlasPos) {
-        List<BlockPos> candidates = new ArrayList<>();
-        candidates.add(atlasPos.above());
-        for (Direction direction : Direction.Plane.HORIZONTAL) {
-            BlockPos side = atlasPos.relative(direction);
-            candidates.add(side);
-            candidates.add(side.above());
+        Set<BlockPos> candidates = new LinkedHashSet<>();
+        Set<BlockPos> wallFacingCandidates = new LinkedHashSet<>();
+        BlockState atlasState = level.getBlockState(atlasPos);
+        if (atlasState.getBlock() instanceof GlobeBlock) {
+            switch (atlasState.getValue(GlobeBlock.FACE)) {
+                case FLOOR -> {
+                    addCandidate(candidates, atlasPos.above());
+                    addHorizontalCandidates(candidates, atlasPos);
+                }
+                case CEILING -> {
+                    addCandidate(candidates, atlasPos.below());
+                    addHorizontalCandidates(candidates, atlasPos.below());
+                    addCandidate(candidates, atlasPos.below(2));
+                }
+                case WALL -> {
+                    Direction pointingDirection = atlasState.getValue(GlobeBlock.FACING);
+                    addWallFacingCandidates(wallFacingCandidates, atlasPos.relative(pointingDirection));
+                    candidates.addAll(wallFacingCandidates);
+                    addCandidate(candidates, atlasPos);
+                    addCandidate(candidates, atlasPos.below());
+                }
+            }
         }
-        candidates.add(atlasPos.above(2));
+
+        addCandidate(candidates, atlasPos.above());
+        addCandidate(candidates, atlasPos);
+        addCandidate(candidates, atlasPos.below());
+        addHorizontalCandidates(candidates, atlasPos);
+        addHorizontalCandidates(candidates, atlasPos.above());
+        addHorizontalCandidates(candidates, atlasPos.below());
+        addCandidate(candidates, atlasPos.above(2));
+        addCandidate(candidates, atlasPos.below(2));
 
         for (BlockPos candidate : candidates) {
             if (isSafeArrival(level, player, candidate)) {
                 return Vec3.atBottomCenterOf(candidate);
             }
         }
+        for (BlockPos candidate : wallFacingCandidates) {
+            if (isOpenArrival(level, player, candidate)) {
+                return Vec3.atBottomCenterOf(candidate);
+            }
+        }
         return null;
     }
 
+    private static void addWallFacingCandidates(final Set<BlockPos> candidates, final BlockPos center) {
+        addCandidate(candidates, center);
+        addCandidate(candidates, center.below());
+        addCandidate(candidates, center.above());
+        addCandidate(candidates, center.below(2));
+        addCandidate(candidates, center.above(2));
+    }
+
+    private static void addHorizontalCandidates(final Set<BlockPos> candidates, final BlockPos center) {
+        for (Direction direction : Direction.Plane.HORIZONTAL) {
+            addCandidate(candidates, center.relative(direction));
+        }
+    }
+
+    private static void addCandidate(final Set<BlockPos> candidates, final BlockPos candidate) {
+        candidates.add(candidate.immutable());
+    }
+
     private static boolean isSafeArrival(final ServerLevel level, final ServerPlayer player, final BlockPos feetPos) {
-        BlockState feet = level.getBlockState(feetPos);
-        BlockState head = level.getBlockState(feetPos.above());
         BlockPos belowPos = feetPos.below();
         BlockState below = level.getBlockState(belowPos);
-        return feet.isAir()
-                && head.isAir()
-                && below.entityCanStandOnFace(level, belowPos, player, Direction.UP);
+        if (!below.entityCanStandOnFace(level, belowPos, player, Direction.UP)) {
+            return false;
+        }
+
+        AABB box = player.getDimensions(player.getPose()).makeBoundingBox(Vec3.atBottomCenterOf(feetPos));
+        return level.noCollision(player, box);
+    }
+
+    private static boolean isOpenArrival(final ServerLevel level, final ServerPlayer player, final BlockPos feetPos) {
+        AABB box = player.getDimensions(player.getPose()).makeBoundingBox(Vec3.atBottomCenterOf(feetPos));
+        return level.noCollision(player, box);
     }
 
     private static String label(final BlockPos pos) {
