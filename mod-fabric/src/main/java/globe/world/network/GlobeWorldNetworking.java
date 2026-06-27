@@ -31,6 +31,7 @@ public final class GlobeWorldNetworking {
         PayloadTypeRegistry.serverboundConfiguration().register(GlobeWorldSettingsAckPayload.TYPE, GlobeWorldSettingsAckPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(GlobeWorldSettingsPayload.TYPE, GlobeWorldSettingsPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(GlobeEntityAliasCommandPayload.TYPE, GlobeEntityAliasCommandPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(GlobeMapSnapshotPayload.TYPE, GlobeMapSnapshotPayload.CODEC);
 
         ServerConfigurationNetworking.registerGlobalReceiver(GlobeWorldSettingsAckPayload.TYPE, (payload, context) ->
                 ((FabricServerConfigurationPacketListenerImpl) context.packetListener()).completeTask(SETTINGS_SYNC_TASK));

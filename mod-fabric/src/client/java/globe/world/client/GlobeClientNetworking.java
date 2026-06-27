@@ -1,7 +1,9 @@
 package globe.world.client;
 
 import globe.world.config.GlobeSettings;
+import globe.world.client.render.GlobeMapTextureCache;
 import globe.world.network.GlobeEntityAliasCommandPayload;
+import globe.world.network.GlobeMapSnapshotPayload;
 import globe.world.network.GlobeWorldSettingsAckPayload;
 import globe.world.network.GlobeWorldSettingsPayload;
 import globe.world.util.GlobeEntityAliasMode;
@@ -29,6 +31,9 @@ public final class GlobeClientNetworking {
 
         ClientPlayNetworking.registerGlobalReceiver(GlobeEntityAliasCommandPayload.TYPE, (payload, context) ->
                 context.client().execute(() -> handleEntityAliasCommand(payload.action())));
+
+        ClientPlayNetworking.registerGlobalReceiver(GlobeMapSnapshotPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> GlobeMapTextureCache.applySnapshot(payload)));
 
         ClientConfigurationConnectionEvents.DISCONNECT.register((listener, client) -> resetSyncedSettings());
         ClientPlayConnectionEvents.DISCONNECT.register((listener, client) -> resetSyncedSettings());
@@ -61,5 +66,6 @@ public final class GlobeClientNetworking {
 
     private static void resetSyncedSettings() {
         GlobeClientSettings.applySyncedFromServer(GlobeSettings.DEFAULT);
+        GlobeMapTextureCache.reset();
     }
 }

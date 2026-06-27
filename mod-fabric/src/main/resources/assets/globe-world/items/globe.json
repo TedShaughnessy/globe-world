@@ -1,0 +1,9 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "globe-world:block/globe",
+    "model": {
+      "type": "globe-world:globe"
+    }
+  }
+}
