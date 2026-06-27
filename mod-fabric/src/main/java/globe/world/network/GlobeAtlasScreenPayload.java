@@ -21,7 +21,6 @@ public record GlobeAtlasScreenPayload(
         double discoveredPercent,
         boolean complete,
         boolean powered,
-        boolean overloaded,
         List<Destination> destinations) implements CustomPacketPayload {
     private static final int MAX_DESTINATIONS = 128;
 
@@ -50,7 +49,6 @@ public record GlobeAtlasScreenPayload(
         double discoveredPercent = input.readDouble();
         boolean complete = input.readBoolean();
         boolean powered = input.readBoolean();
-        boolean overloaded = input.readBoolean();
         int count = Math.min(input.readVarInt(), MAX_DESTINATIONS);
         List<Destination> destinations = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
@@ -66,7 +64,6 @@ public record GlobeAtlasScreenPayload(
                 discoveredPercent,
                 complete,
                 powered,
-                overloaded,
                 destinations);
     }
 
@@ -80,7 +77,6 @@ public record GlobeAtlasScreenPayload(
         output.writeDouble(this.discoveredPercent);
         output.writeBoolean(this.complete);
         output.writeBoolean(this.powered);
-        output.writeBoolean(this.overloaded);
         output.writeVarInt(Math.min(this.destinations.size(), MAX_DESTINATIONS));
         for (Destination destination : this.destinations.stream().limit(MAX_DESTINATIONS).toList()) {
             destination.write(output);

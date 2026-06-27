@@ -11,9 +11,11 @@ The current implementation has shipped the first reward-beacon slice into
   discovered pixels, discovered percentage, discovered area, tile size, and
   full completion.
 - `GlobeAtlasPowerState` saves canonical Atlas loadouts and applies deterministic
-  overload priority by most recently edited Atlas, then canonical position.
-- Loaded powered Atlases apply speed, haste, and regeneration in wrapped-radius
-  range.
+  in-budget priority by most recently edited Atlas, then canonical position.
+- The Atlas power UI uses a compact grey in-game panel, effect icon toggles,
+  adjacent level II toggles, and disabled controls for unaffordable upgrades.
+- Loaded powered Atlases apply speed, haste, and regeneration at selected level
+  I or level II strength in wrapped-radius range.
 - Full completion unlocks Mastered Atlas linked travel between loaded, powered,
   travel-enabled Atlases with destination discovery, safe-arrival, and cooldown
   validation.
@@ -53,8 +55,9 @@ Implement the first version with these decisions:
 - Atlas Flight and fast travel are expensive completion-only powers.
 - Fast travel requires both source and destination Atlases to buy into the
   travel network.
-- If active loadouts exceed the current budget, a deterministic in-budget subset
-  remains powered and the UI shows the overload.
+- The UI prevents new selections that exceed the current shared budget. If saved
+  loadouts later exceed the budget after settings or discovery-state changes, a
+  deterministic in-budget subset remains powered.
 
 ## Player Model
 
@@ -247,7 +250,8 @@ Rules:
 - travel is same-dimension only for the first version;
 - travel has a `5` second channel time;
 - completed travel starts a `30` second per-player travel cooldown;
-- damage, movement outside source radius, closing the UI, or source overload
+- damage, movement outside source radius, closing the UI, or source losing
+  in-budget power
   cancels the channel;
 - arrival position is the nearest safe block next to or above the destination
   Atlas, evaluated in the destination's canonical tile;
@@ -259,7 +263,7 @@ UI:
 - show a `Travel` toggle in the Atlas power UI after Mastered Atlas unlocks;
 - show a destination list of active, in-budget, travel-enabled Atlases;
 - display each destination by custom name if present, otherwise coordinates;
-- disable destinations that are unloaded, missing, overloaded, or blocked.
+- disable destinations that are unloaded, missing, out of budget, or blocked.
 
 This gives completion a strong infrastructure reward without making travel free
 for every placed projector. A large completed world can support a real network,
@@ -335,7 +339,7 @@ entity each tick, and it lets unloaded active Atlases remain part of the budget.
 `GlobeAtlasPowerState` stores:
 
 - map from canonical `BlockPos` to `AtlasLoadout`;
-- cached deterministic order for overload resolution;
+- cached deterministic order for in-budget resolution;
 - last computed `totalPoints`, `spentPoints`, and `availablePoints`;
 - active/in-budget status per Atlas;
 - optional custom display name copied from the block entity;
@@ -394,9 +398,9 @@ Use vanilla beacon classes as structure references:
 - `BeaconScreen` lays out effect icon buttons and enables them based on the
   current unlocked level.
 
-The Atlas power UI should not require a payment item. Exploration is the cost.
-The confirm button should be enabled when the selected loadout is valid and the
-world has enough unspent effect points. If discovery drops because the world
+The Atlas power UI should not require a payment item or confirmation row.
+Exploration is the cost, and controls for candidate loadouts that exceed the
+available point budget should be disabled. If discovery drops because the world
 settings changed and the saved map no longer matches, Atlases keep their saved
 choices but apply nothing until compatible discovery state exists again.
 
@@ -470,7 +474,7 @@ Phase 1, reward math and saved state:
 2. Add `GlobeDiscoveryRewards` with the initial point and radius formulas.
 3. Add tests for tiny, small, medium, huge, complete, and Earth-scale inputs.
 4. Add `GlobeAtlasPowerState` saved data with `AtlasLoadout` records,
-   deterministic overload resolution, and point-spend accounting.
+   deterministic in-budget resolution, and point-spend accounting.
 
 Phase 2, Atlas loadouts and UI shell:
 
@@ -524,7 +528,7 @@ These are intentionally not blockers for the first implementation:
 - Whether multiplayer servers need placer ownership, team permissions, or
   operator-only loadout editing.
 - Whether old/anchored Atlases should outrank recently edited Atlases during
-  overload resolution.
+  in-budget resolution.
 - Whether active powered Atlases should force-load chunks or only work while
   naturally loaded.
 - Whether Mastered Atlas completion should allow a near-complete threshold such
@@ -563,7 +567,7 @@ These are intentionally not blockers for the first implementation:
   radius for the full channel.
 - Unloaded powered Atlases reserve budget but do not apply effects or serve as
   travel endpoints until loaded again.
-- Linked travel refuses missing, obstructed, overloaded, cross-dimension, or
+- Linked travel refuses missing, obstructed, out-of-budget, cross-dimension, or
   non-travel-enabled destinations.
 - Changing the Overworld tile size invalidates mismatched discovery data and
   leaves powered Atlases inactive until compatible discovery state exists.

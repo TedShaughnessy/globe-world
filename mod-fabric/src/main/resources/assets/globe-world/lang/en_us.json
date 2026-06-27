@@ -1,5 +1,18 @@
 {
   "block.globe-world.globe": "Atlas Projector",
   "block.globe-world.copper_atlas_projector": "Copper Atlas Projector",
-  "block.globe-world.soul_atlas_projector": "Soul Atlas Projector"
+  "block.globe-world.soul_atlas_projector": "Soul Atlas Projector",
+  "screen.globe-world.atlas_power": "Atlas Powers",
+  "screen.globe-world.atlas_power.atlas": "Atlas",
+  "screen.globe-world.atlas_power.budget": "Budget",
+  "screen.globe-world.atlas_power.cap": "Cap",
+  "screen.globe-world.atlas_power.cost": "Cost",
+  "screen.globe-world.atlas_power.destinations": "Destinations",
+  "screen.globe-world.atlas_power.discovery": "Discovery",
+  "screen.globe-world.atlas_power.effects": "Effects",
+  "screen.globe-world.atlas_power.level_two": "Level II",
+  "screen.globe-world.atlas_power.locked": "Travel locked",
+  "screen.globe-world.atlas_power.mastered": "Mastered Atlas",
+  "screen.globe-world.atlas_power.radius": "Radius",
+  "screen.globe-world.atlas_power.travel": "Travel"
 }

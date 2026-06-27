@@ -103,7 +103,7 @@ public final class GlobeAtlasPowers {
 
             for (GlobeAtlasEffect effect : GlobeAtlasEffect.values()) {
                 if (loadout.hasEffect(effect)) {
-                    player.addEffect(new MobEffectInstance(effect.mobEffect(), EFFECT_DURATION_TICKS, 0, true, true, true));
+                    player.addEffect(new MobEffectInstance(effect.mobEffect(), EFFECT_DURATION_TICKS, loadout.amplifier(effect), true, true, true));
                 }
             }
         }
@@ -118,13 +118,27 @@ public final class GlobeAtlasPowers {
         }
 
         GlobeDiscoveryRewards rewards = GlobeDiscoveryRewards.get(level);
+        GlobeAtlasPowerState state = GlobeAtlasPowerState.get(level);
+        Optional<GlobeAtlasPowerState.Entry> currentEntry = state.entry(rawPos);
+        GlobeAtlasLoadout currentLoadout = currentEntry
+                .map(GlobeAtlasPowerState.Entry::loadout)
+                .orElse(atlas.loadout());
         GlobeAtlasLoadout loadout = requestedLoadout;
         if (!rewards.complete()) {
             loadout = loadout.withoutTravel();
         }
+        int otherSpent = currentEntry.isPresent()
+                ? Math.max(0, state.spentPoints() - currentLoadout.cost())
+                : state.spentPoints();
+        boolean affordable = otherSpent + loadout.cost() <= rewards.totalPoints();
+        boolean reducingCost = loadout.cost() <= currentLoadout.cost();
+        if (!affordable && !reducingCost) {
+            sendScreen(player, rawPos);
+            return;
+        }
 
         atlas.setLoadout(loadout, true);
-        GlobeAtlasPowerState.get(level).update(level, rawPos, loadout, true);
+        state.update(level, rawPos, loadout, true);
         sendScreen(player, rawPos);
     }
 
@@ -225,7 +239,6 @@ public final class GlobeAtlasPowers {
                 .map(GlobeAtlasPowerState.Entry::loadout)
                 .orElseGet(() -> level.getBlockEntity(rawPos) instanceof GlobeBlockEntity atlas ? atlas.loadout() : GlobeAtlasLoadout.EMPTY);
         int spentPoints = state.spentPoints();
-        boolean overloaded = spentPoints > rewards.totalPoints();
         boolean powered = state.isPowered(rawPos, rewards);
         return new GlobeAtlasScreenPayload(
                 CoordUtil.wrapBlockPos(DimensionTiling.forDimension(Level.OVERWORLD), rawPos),
@@ -237,7 +250,6 @@ public final class GlobeAtlasPowers {
                 rewards.discoveredPercent(),
                 rewards.complete(),
                 powered,
-                overloaded,
                 destinations(level, rawPos, rewards, state));
     }
 

@@ -104,15 +104,24 @@ half discovery; larger tiles can earn points from absolute explored area.
 `GlobeAtlasPowerState` is saved Overworld state keyed by canonical Atlas block
 position. Loaded Atlas block entities mirror their saved loadout into this
 state, and removed Atlases drop their reservation. Each loadout spends points
-on radius tier, selected effects, and the travel-network toggle. When total
-spend exceeds the shared budget, the deterministic powered subset is chosen by
-most recently edited Atlas first, then canonical block-position order.
+on radius tier, selected effects, per-effect level II upgrades, and the
+travel-network toggle. The power screen greys out upgrades whose candidate
+loadout would exceed the shared budget, while still allowing players to turn
+existing powers off. If saved loadouts exceed the current budget after a
+settings or discovery-state change, the deterministic powered subset is chosen
+by most recently edited Atlas first, then canonical block-position order.
 
 The first reward effect set is speed, haste, and regeneration. Loaded powered
-Atlases periodically apply their selected effects to non-spectator players
-inside the selected radius using wrapped X/Z distance, so players across a
-canonical edge can still qualify. Unloaded Atlases keep reserving budget through
-saved state, but they do not apply effects.
+Atlases periodically apply their selected level I or level II effects to
+non-spectator players inside the selected radius using wrapped X/Z distance, so
+players across a canonical edge can still qualify. Unloaded Atlases keep
+reserving budget through saved state, but they do not apply effects.
+
+The client Atlas power screen draws a compact grey in-game panel without the
+vanilla beacon payment slot, confirmation row, inventory, or hotbar. Effect
+selection is icon-based, each effect has a neighboring level II toggle, radius
+and travel are small symbol controls, and linked-travel destinations remain
+listed in the lower panel when available.
 
 Full discovery creates the Mastered Atlas state and unlocks linked Atlas
 travel. A travel-enabled source Atlas can instantly send a player to another

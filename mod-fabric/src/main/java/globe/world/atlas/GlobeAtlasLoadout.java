@@ -6,12 +6,13 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.Mth;
 
-public record GlobeAtlasLoadout(int radiusTier, int effectMask, boolean travelNetwork) {
+public record GlobeAtlasLoadout(int radiusTier, int effectMask, int levelTwoMask, boolean travelNetwork) {
     public static final int MAX_RADIUS_TIER = 4;
-    public static final GlobeAtlasLoadout EMPTY = new GlobeAtlasLoadout(0, 0, false);
+    public static final GlobeAtlasLoadout EMPTY = new GlobeAtlasLoadout(0, 0, 0, false);
     public static final Codec<GlobeAtlasLoadout> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.INT.optionalFieldOf("radius_tier", 0).forGetter(GlobeAtlasLoadout::radiusTier),
             Codec.INT.optionalFieldOf("effects", 0).forGetter(GlobeAtlasLoadout::effectMask),
+            Codec.INT.optionalFieldOf("level_two_effects", 0).forGetter(GlobeAtlasLoadout::levelTwoMask),
             Codec.BOOL.optionalFieldOf("travel_network", false).forGetter(GlobeAtlasLoadout::travelNetwork)
     ).apply(instance, GlobeAtlasLoadout::new));
     public static final StreamCodec<FriendlyByteBuf, GlobeAtlasLoadout> STREAM_CODEC = StreamCodec.ofMember(
@@ -21,6 +22,7 @@ public record GlobeAtlasLoadout(int radiusTier, int effectMask, boolean travelNe
     public GlobeAtlasLoadout {
         radiusTier = Mth.clamp(radiusTier, 0, MAX_RADIUS_TIER);
         effectMask = GlobeAtlasEffect.validMask(effectMask);
+        levelTwoMask = GlobeAtlasEffect.validMask(levelTwoMask) & effectMask;
     }
 
     public int radiusBlocks() {
@@ -38,7 +40,7 @@ public record GlobeAtlasLoadout(int radiusTier, int effectMask, boolean travelNe
     }
 
     public int cost() {
-        return this.effectCount() * 2 + this.radiusTier + (this.travelNetwork ? 4 : 0);
+        return this.effectCount() * 2 + this.levelTwoCount() * 2 + this.radiusTier + (this.travelNetwork ? 4 : 0);
     }
 
     public boolean active() {
@@ -53,17 +55,30 @@ public record GlobeAtlasLoadout(int radiusTier, int effectMask, boolean travelNe
         return (this.effectMask & effect.mask()) != 0;
     }
 
+    public int levelTwoCount() {
+        return Integer.bitCount(this.levelTwoMask);
+    }
+
+    public boolean hasLevelTwo(final GlobeAtlasEffect effect) {
+        return (this.levelTwoMask & effect.mask()) != 0;
+    }
+
+    public int amplifier(final GlobeAtlasEffect effect) {
+        return this.hasLevelTwo(effect) ? 1 : 0;
+    }
+
     public GlobeAtlasLoadout withoutTravel() {
-        return this.travelNetwork ? new GlobeAtlasLoadout(this.radiusTier, this.effectMask, false) : this;
+        return this.travelNetwork ? new GlobeAtlasLoadout(this.radiusTier, this.effectMask, this.levelTwoMask, false) : this;
     }
 
     private static GlobeAtlasLoadout read(final FriendlyByteBuf input) {
-        return new GlobeAtlasLoadout(input.readVarInt(), input.readVarInt(), input.readBoolean());
+        return new GlobeAtlasLoadout(input.readVarInt(), input.readVarInt(), input.readVarInt(), input.readBoolean());
     }
 
     private void write(final FriendlyByteBuf output) {
         output.writeVarInt(this.radiusTier);
         output.writeVarInt(this.effectMask);
+        output.writeVarInt(this.levelTwoMask);
         output.writeBoolean(this.travelNetwork);
     }
 }

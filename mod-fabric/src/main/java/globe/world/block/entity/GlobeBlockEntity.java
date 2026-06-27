@@ -17,6 +17,7 @@ public class GlobeBlockEntity extends BlockEntity {
     private static final String TAG_PROJECTION_ENABLED = "projection_enabled";
     private static final String TAG_RADIUS_TIER = "atlas_radius_tier";
     private static final String TAG_EFFECTS = "atlas_effects";
+    private static final String TAG_LEVEL_TWO_EFFECTS = "atlas_level_two_effects";
     private static final String TAG_TRAVEL_NETWORK = "atlas_travel_network";
 
     private boolean projectionEnabled = true;
@@ -64,6 +65,7 @@ public class GlobeBlockEntity extends BlockEntity {
         output.putBoolean(TAG_PROJECTION_ENABLED, this.projectionEnabled);
         output.putInt(TAG_RADIUS_TIER, this.loadout.radiusTier());
         output.putInt(TAG_EFFECTS, this.loadout.effectMask());
+        output.putInt(TAG_LEVEL_TWO_EFFECTS, this.loadout.levelTwoMask());
         output.putBoolean(TAG_TRAVEL_NETWORK, this.loadout.travelNetwork());
     }
 
@@ -74,6 +76,7 @@ public class GlobeBlockEntity extends BlockEntity {
         this.loadout = new GlobeAtlasLoadout(
                 input.getIntOr(TAG_RADIUS_TIER, 0),
                 input.getIntOr(TAG_EFFECTS, 0),
+                input.getIntOr(TAG_LEVEL_TWO_EFFECTS, 0),
                 input.getBooleanOr(TAG_TRAVEL_NETWORK, false));
     }
 
