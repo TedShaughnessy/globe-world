@@ -44,11 +44,13 @@ shared world state, not per projector state, so multiple projectors in the same
 dimension show the same canonical tile texture.
 
 `GlobeMapSavedData` stores a fixed `512x512` tile texture, a discovered bitset,
-and compact vanilla map colors for the Overworld. `GlobeMapTracker` scans
-Overworld players on a short server cadence, canonicalizes their X/Z positions
-with `CoordUtil.wrapBlock(...)`, and reveals nearby canonical pixels through
-`GlobeMapSavedData.revealAround(...)`. This makes exploration in any alias tile
-discover the same canonical map pixels.
+and compact vanilla map colors for the Overworld. Full snapshots stay at this
+size because clientbound custom payloads are capped at `1,048,576` bytes, and a
+larger whole-tile texture would exceed that once discovery data is included.
+`GlobeMapTracker` scans Overworld players on a short server cadence,
+canonicalizes their X/Z positions with `CoordUtil.wrapBlock(...)`, and reveals
+nearby canonical pixels through `GlobeMapSavedData.revealAround(...)`. This
+makes exploration in any alias tile discover the same canonical map pixels.
 
 Discovery is shared world state. It is not per-player and is not stored on
 individual Atlas Projector block entities. The tracker skips spectator players,
@@ -77,13 +79,24 @@ When held in first person, Atlas Projector items keep the ordinary block-item
 hand pose and render a separate translucent projection above the held projector.
 `GlobeHeldMapRenderer` samples a player-centered window from the shared
 projector texture, so the projection moves under the player instead of moving a
-player icon across a fixed map. The window uses vanilla map spans: the smallest
-span from `128`, `256`, `512`, `1024`, and `2048` blocks that can contain the
-tile, capped at `2048` blocks. The held viewport texture is sampled in canonical
-world axes instead of being resampled for player yaw; the projected surface then
-rotates with the player so the top of the projection is always the direction the
-player is facing, letting map pixels become diagonal on screen. After both hands
-submit their held models, the projection renders from a mirrored first-person
+player icon across a fixed map. `GlobeMapProjection` starts with vanilla map
+spans: the smallest span from `128`, `256`, `512`, `1024`, and `2048` blocks
+that can contain the tile, capped at `2048` blocks. For larger tiles, the
+window expands once a `2048` block view would contain fewer than `128` source
+texels from the shared texture. With the current `512x512` full-tile texture,
+that means the held view begins scaling above `512` chunks and then covers a
+constant quarter of the tile width, keeping at least vanilla-map visual texel
+density in the handheld projection.
+
+The placed Atlas hologram uses the same large-tile scale, so the torus grows
+with the held window instead of staying at the small-world size. The hologram
+center rises with the scaled minor radius so large projections stay above the
+projector block, and block-entity render culling is expanded for large
+projections. The held viewport texture is sampled in canonical world axes
+instead of being resampled for player yaw; the projected surface then rotates
+with the player so the top of the projection is always the direction the player
+is facing, letting map pixels become diagonal on screen. After both hands submit
+their held models, the projection renders from a mirrored first-person
 screen-space pose above the active hand, so left and right hands use symmetric
 placement and the hologram appears in front of the item model. The window is
 circular with a soft alpha fade at the edge, tilts toward the camera, and bows
@@ -166,6 +179,7 @@ rules are not part of the current reward scope.
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasPowerState.java`
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasPowers.java`
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeDiscoveryRewards.java`
+- `mod-fabric/src/main/java/globe/world/map/GlobeMapProjection.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapSavedData.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapTracker.java`
 - `mod-fabric/src/main/resources/data/globe-world/advancement/mastered_atlas.json`

@@ -28,6 +28,12 @@ The earlier Atlas Flight, channeled travel, larger effect pool, active visual
 feedback, and multiplayer ownership ideas are retired for now unless
 playtesting gives them a clear reason to return.
 
+Large tiles may switch away from full-map completion entirely. See
+[Large Atlas exploration metrics](large-atlas-exploration-metrics.md) for the
+follow-up direction: biome variety, Atlas coverage, and travel-network size
+replace full-tile projection and completion on worlds too large for useful
+whole-world cartography.
+
 ## Goal
 
 Make Atlas Projectors double as the exploration reward beacon. A placed Atlas
