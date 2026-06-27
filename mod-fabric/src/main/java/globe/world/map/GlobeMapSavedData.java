@@ -33,6 +33,8 @@ public class GlobeMapSavedData extends SavedData {
     public static final int CURRENT_VERSION = 1;
     public static final int RESOLUTION = 512;
     private static final int PIXEL_COUNT = RESOLUTION * RESOLUTION;
+    private static final double COMPLETION_ROUND_UP_PERCENT = 99.0D;
+    private static final int COMPLETION_ROUND_UP_PIXELS = (int)Math.floor(PIXEL_COUNT * COMPLETION_ROUND_UP_PERCENT / 100.0D);
     private static final int DISCOVERED_BYTES = (PIXEL_COUNT + 7) / 8;
     private static final int MAX_SAMPLES_PER_PIXEL_AXIS = 4;
     private static final SavedDataType<GlobeMapSavedData> TYPE = new SavedDataType<>(
@@ -151,7 +153,7 @@ public class GlobeMapSavedData extends SavedData {
         }
 
         if (sampledPixels < pixelBudget) {
-            changed |= this.fillSmallGapsAround(level, centerPixelX, centerPixelZ, pixelRadius + 1, pixelBudget - sampledPixels);
+            changed |= this.fillExplorationGaps(level, pixelRadius + 1, pixelBudget - sampledPixels);
         }
 
         return this.finishReveal(changed);
@@ -196,7 +198,8 @@ public class GlobeMapSavedData extends SavedData {
     }
 
     public double discoveredPercent() {
-        return this.discoveredPixels() * 100.0D / PIXEL_COUNT;
+        int discoveredPixels = this.discoveredPixels();
+        return this.isNearComplete(discoveredPixels) ? 100.0D : discoveredPixels * 100.0D / PIXEL_COUNT;
     }
 
     public int discoveredPixels() {
@@ -217,9 +220,16 @@ public class GlobeMapSavedData extends SavedData {
         return this.discoveredPixels() / (double)PIXEL_COUNT * this.tileSizeBlocks * (double)this.tileSizeBlocks;
     }
 
+    public boolean complete() {
+        return this.isNearComplete(this.discoveredPixels());
+    }
+
     public boolean isDiscoveredCanonicalBlock(final DimensionTiling tiling, final BlockPos pos) {
         if (!this.matches(tiling)) {
             return false;
+        }
+        if (this.complete()) {
+            return true;
         }
 
         int px = this.pixelForCanonicalBlock(CoordUtil.wrapBlock(tiling, pos.getX()));
@@ -284,55 +294,150 @@ public class GlobeMapSavedData extends SavedData {
         return this.updatePixel(px, pz, sampledColor < 0 ? MapColor.NONE.getPackedId(MapColor.Brightness.NORMAL) : (byte)sampledColor);
     }
 
-    private boolean fillSmallGapsAround(
-            final ServerLevel level,
-            final int centerPixelX,
-            final int centerPixelZ,
-            final int pixelRadius,
-            final int pixelBudget) {
-        int searchRadius = Math.min(pixelRadius, this.resolution / 2);
+    private boolean fillExplorationGaps(final ServerLevel level, final int visibilityPixelRadius, final int pixelBudget) {
+        int discoveredPixels = this.discoveredPixels();
+        if (this.isNearComplete(discoveredPixels)) {
+            return this.fillAllRemainingPixels(level);
+        }
+        if (pixelBudget <= 0 || visibilityPixelRadius <= 0) {
+            return false;
+        }
+
+        int maxAxisSpan = Math.min(this.resolution, visibilityPixelRadius * 2 + 1);
+        int maxGapPixels = Math.min(PIXEL_COUNT, maxAxisSpan * maxAxisSpan);
+        boolean[] visited = new boolean[PIXEL_COUNT];
+        int[] queue = new int[PIXEL_COUNT];
+        int[] component = new int[PIXEL_COUNT];
+        int[] xMarks = new int[this.resolution];
+        int[] zMarks = new int[this.resolution];
+        int mark = 1;
         int filledPixels = 0;
         boolean changed = false;
 
-        for (int dz = -searchRadius; dz <= searchRadius; dz++) {
-            int pz = Math.floorMod(centerPixelZ + dz, this.resolution);
-            for (int dx = -searchRadius; dx <= searchRadius; dx++) {
-                if (filledPixels >= pixelBudget) {
-                    return changed;
-                }
+        for (int start = 0; start < PIXEL_COUNT; start++) {
+            if (visited[start] || this.isDiscovered(start)) {
+                continue;
+            }
 
-                int px = Math.floorMod(centerPixelX + dx, this.resolution);
-                if (this.isDiscovered(px, pz) || !this.isSmallGap(px, pz)) {
-                    continue;
-                }
+            int componentSize = this.collectUndiscoveredComponent(start, visited, queue, component, xMarks, zMarks, mark);
+            boolean fillable = componentSize <= maxGapPixels
+                    && this.circularMarkedSpan(xMarks, mark) <= maxAxisSpan
+                    && this.circularMarkedSpan(zMarks, mark) <= maxAxisSpan;
+            mark++;
 
+            if (!fillable) {
+                continue;
+            }
+            if (filledPixels + componentSize > pixelBudget) {
+                return changed;
+            }
+
+            for (int i = 0; i < componentSize; i++) {
+                int index = component[i];
+                int px = index % this.resolution;
+                int pz = index / this.resolution;
                 changed |= this.sampleAndUpdatePixel(level, px, pz);
                 filledPixels++;
+            }
+            discoveredPixels += componentSize;
+
+            if (this.isNearComplete(discoveredPixels)) {
+                changed |= this.fillAllRemainingPixels(level);
+                return changed;
             }
         }
 
         return changed;
     }
 
-    private boolean isSmallGap(final int px, final int pz) {
-        int discoveredNeighbors = 0;
-        int cardinalNeighbors = 0;
-        for (int dz = -1; dz <= 1; dz++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                if (dx == 0 && dz == 0) {
-                    continue;
-                }
+    private boolean fillAllRemainingPixels(final ServerLevel level) {
+        boolean changed = false;
+        for (int index = 0; index < PIXEL_COUNT; index++) {
+            if (!this.isDiscovered(index)) {
+                int px = index % this.resolution;
+                int pz = index / this.resolution;
+                changed |= this.sampleAndUpdatePixel(level, px, pz);
+            }
+        }
+        return changed;
+    }
 
-                if (this.isDiscovered(Math.floorMod(px + dx, this.resolution), Math.floorMod(pz + dz, this.resolution))) {
-                    discoveredNeighbors++;
-                    if (dx == 0 || dz == 0) {
-                        cardinalNeighbors++;
+    private int collectUndiscoveredComponent(
+            final int start,
+            final boolean[] visited,
+            final int[] queue,
+            final int[] component,
+            final int[] xMarks,
+            final int[] zMarks,
+            final int mark) {
+        int head = 0;
+        int tail = 0;
+        int componentSize = 0;
+        visited[start] = true;
+        queue[tail++] = start;
+
+        while (head < tail) {
+            int index = queue[head++];
+            component[componentSize++] = index;
+            int px = index % this.resolution;
+            int pz = index / this.resolution;
+            xMarks[px] = mark;
+            zMarks[pz] = mark;
+
+            for (int dz = -1; dz <= 1; dz++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    if (dx == 0 && dz == 0) {
+                        continue;
                     }
+
+                    int nx = Math.floorMod(px + dx, this.resolution);
+                    int nz = Math.floorMod(pz + dz, this.resolution);
+                    int neighbor = nx + nz * this.resolution;
+                    if (visited[neighbor] || this.isDiscovered(neighbor)) {
+                        continue;
+                    }
+
+                    visited[neighbor] = true;
+                    queue[tail++] = neighbor;
                 }
             }
         }
 
-        return discoveredNeighbors >= 7 && cardinalNeighbors >= 3;
+        return componentSize;
+    }
+
+    private int circularMarkedSpan(final int[] marks, final int mark) {
+        int first = -1;
+        int previous = -1;
+        int markedCount = 0;
+        int largestGap = 0;
+        for (int i = 0; i < marks.length; i++) {
+            if (marks[i] != mark) {
+                continue;
+            }
+
+            if (first < 0) {
+                first = i;
+            } else {
+                largestGap = Math.max(largestGap, i - previous - 1);
+            }
+            previous = i;
+            markedCount++;
+        }
+
+        if (markedCount == 0) {
+            return 0;
+        }
+        if (markedCount == marks.length) {
+            return marks.length;
+        }
+
+        largestGap = Math.max(largestGap, first + marks.length - previous - 1);
+        return marks.length - largestGap;
+    }
+
+    private boolean isNearComplete(final int discoveredPixels) {
+        return discoveredPixels >= COMPLETION_ROUND_UP_PIXELS;
     }
 
     private int wrapCanonicalBlock(final int block) {

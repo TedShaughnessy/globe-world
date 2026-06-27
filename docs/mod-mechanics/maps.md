@@ -54,8 +54,11 @@ individual Atlas Projector block entities. The tracker skips spectator players,
 reveals a generous 48 block radius, rate-limits repeated reveals by canonical
 movement and time, and caps sampled pixels per reveal pass so small tiles and
 multiplayer exploration do not do all map work in a single tick. After each
-reveal pass, single-pixel holes surrounded by discovered map pixels are filled
-in so tiny missed spots do not linger when players have explored around them.
+reveal pass, undiscovered components whose pixel span fits inside the reveal
+footprint are sampled and filled, so small missed islands do not linger when
+players have explored around them. Once the discovered bitset reaches `99%`,
+the Atlas treats the tile as complete and the next reveal cleanup samples all
+remaining hidden pixels so the rendered map catches up to the mastered state.
 
 Discovered colors also refresh after block edits. `LevelSetBlockBroadcastMixin`
 already observes successful canonical `Level.setBlock(...)` mutations; when a
@@ -97,7 +100,9 @@ nothing.
 Atlas Projectors can spend shared Overworld discovery progress on a local
 reward-beacon loadout. `GlobeDiscoveryRewards` derives world effect points and a
 per-Atlas radius cap from `GlobeMapSavedData` discovered pixels, discovered
-percentage, discovered block area, tile size, and literal full completion.
+percentage, discovered block area, tile size, and completion. Discovery at or
+above `99%` rounds up to `100%` for completion rewards and Mastered Atlas
+checks.
 Tiny tiles receive no points until full completion; small tiles require at least
 half discovery; larger tiles can earn points from absolute explored area.
 

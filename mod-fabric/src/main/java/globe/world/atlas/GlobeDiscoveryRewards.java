@@ -33,7 +33,7 @@ public record GlobeDiscoveryRewards(
         int discoveredPixels = data.discoveredPixels();
         double discoveredPercent = data.discoveredPercent();
         double discoveredAreaBlocks = data.discoveredAreaBlocks();
-        boolean complete = discoveredPixels >= data.totalPixels();
+        boolean complete = data.complete();
         int tileSizeChunks = tiling.tileSizeChunks();
         int totalPoints;
         int radiusCap;

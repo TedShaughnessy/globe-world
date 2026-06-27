@@ -85,9 +85,9 @@ change:
   preset tables.
 - **Earth-scale cap**: keep the post-completion per-Atlas radius cap at `512`
   blocks.
-- **Completion**: require literal `100%` discovered pixels for Mastered Atlas
-  unlocks. The existing small-gap fill can make this achievable on ordinary
-  tiles; if this proves frustrating, loosen it later.
+- **Completion**: treat `99%` discovered pixels as Mastered Atlas completion.
+  The reveal cleanup fills the remaining hidden pixels so the rendered map
+  catches up to the rounded completion state.
 - **Flight feel**: use ordinary creative-style flight permission while the
   Atlas grants flight, with strict cleanup when the player leaves qualifying
   ranges.
@@ -531,13 +531,12 @@ These are intentionally not blockers for the first implementation:
   in-budget resolution.
 - Whether active powered Atlases should force-load chunks or only work while
   naturally loaded.
-- Whether Mastered Atlas completion should allow a near-complete threshold such
-  as `99.5%` instead of literal `100%`.
+- Whether the `99%` Mastered Atlas threshold should be tuned after playtesting.
 
 ## Validation
 
 - On a `<= 16` chunk Overworld tile, no effect can be selected or applied until
-  discovery reaches `100%`.
+  discovery reaches the rounded `99%` completion threshold.
 - On a large or Earth-scale tile, effect points and radius caps increase from
   sustained exploration without requiring full-tile completion.
 - Full completion grants the Mastered Atlas point surge and unlocks
