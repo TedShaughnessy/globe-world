@@ -20,6 +20,8 @@ You'll find a Globe settings tab when creating a world, and settings can be adju
 - A Nether to match with configurable portal distance ratio
 - A built-in shader that allows you to add curvature to your world
 - Adjustable day length and realistic day night cycles
+- Atlas Projectors for shared wrapped-world cartography, exploration rewards,
+  local effects, and linked travel between powered projectors
 
 
 ## Compatibility:

@@ -13,10 +13,8 @@ point for current behavior and modded code anchors.
   social follow, temptation, short-range movement, and brain/social behaviors
   that still need actor-local alias handling after the owner-adjacent tameable
   fixes.
-- [Exploration reward beacon](exploration-reward-beacon.md): Atlas Projector
-  power UI and wrapped-radius effects unlocked by canonical-world discovery.
-- [Large Atlas exploration metrics](large-atlas-exploration-metrics.md):
-  survey-style progression for tiles too large for full-map completion.
+- [Hexagonal tiles](hexagonal-tiles.md): plan for a chunk-composed hex topology
+  with toroidal Atlas projection and edge-blend-only terrain continuity.
 - [Minecraft 26.2 upgrade plan](minecraft-26-2-upgrade.md): dependency bump,
   Loom source regeneration, mixin audit, packet policy refresh, and runtime
   validation plan for the next Minecraft target.

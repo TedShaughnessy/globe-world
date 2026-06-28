@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import globe.world.GlobeWorldBlocks;
+import globe.world.atlas.GlobeAtlasSurvey;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.client.Minecraft;
@@ -50,7 +51,9 @@ public final class GlobeHeldMapRenderer {
         }
 
         DimensionTiling tiling = DimensionTiling.forLevel(client.level);
-        if (!tiling.enabled() || !Level.OVERWORLD.equals(client.level.dimension())) {
+        if (!tiling.enabled()
+                || GlobeAtlasSurvey.surveyMode(tiling)
+                || !Level.OVERWORLD.equals(client.level.dimension())) {
             return;
         }
 

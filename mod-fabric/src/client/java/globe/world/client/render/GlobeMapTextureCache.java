@@ -21,6 +21,7 @@ public final class GlobeMapTextureCache {
     private static Identifier dimension;
     private static int resolution;
     private static int revision = -1;
+    private static boolean surveyMode;
     private static DynamicTexture texture;
     private static DynamicTexture heldTexture;
     private static DynamicTexture heldViewportTexture;
@@ -49,11 +50,17 @@ public final class GlobeMapTextureCache {
 
         NativeImage pixels = texture.getPixels();
         NativeImage heldPixels = heldTexture.getPixels();
-        for (int z = 0; z < resolution; z++) {
-            for (int x = 0; x < resolution; x++) {
-                int index = x + z * resolution;
-                pixels.setPixel(x, z, color(payload, index, false));
-                heldPixels.setPixel(x, z, color(payload, index, true));
+        surveyMode = payload.surveyMode();
+        if (surveyMode) {
+            fillTransparent(pixels);
+            fillTransparent(heldPixels);
+        } else {
+            for (int z = 0; z < resolution; z++) {
+                for (int x = 0; x < resolution; x++) {
+                    int index = x + z * resolution;
+                    pixels.setPixel(x, z, color(payload, index, false));
+                    heldPixels.setPixel(x, z, color(payload, index, true));
+                }
             }
         }
         texture.upload();
@@ -75,6 +82,9 @@ public final class GlobeMapTextureCache {
             final int tileSizeBlocks) {
         Identifier source = heldTextureForCurrentDimension();
         if (source == null || heldTexture == null || resolution <= 0) {
+            return null;
+        }
+        if (surveyMode) {
             return null;
         }
 
@@ -111,6 +121,7 @@ public final class GlobeMapTextureCache {
         dimension = null;
         resolution = 0;
         revision = -1;
+        surveyMode = false;
     }
 
     private static void release() {
@@ -157,6 +168,14 @@ public final class GlobeMapTextureCache {
                 int sourceZ = pixelForBlock(blockZ, tileSizeBlocks);
                 int color = sourcePixels.getPixel(sourceX, sourceZ);
                 targetPixels.setPixel(x, y, withAlpha(color, Math.round(alpha(color) * edgeFade(radius, fadeStart))));
+            }
+        }
+    }
+
+    private static void fillTransparent(final NativeImage pixels) {
+        for (int z = 0; z < resolution; z++) {
+            for (int x = 0; x < resolution; x++) {
+                pixels.setPixel(x, z, 0);
             }
         }
     }

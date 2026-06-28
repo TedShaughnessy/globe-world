@@ -121,7 +121,7 @@ public final class GlobeAtlasPowers {
                 .map(GlobeAtlasPowerState.Entry::loadout)
                 .orElse(atlas.loadout());
         GlobeAtlasLoadout loadout = payload.loadout();
-        if (!rewards.complete()) {
+        if (!rewards.surveyMode() && !rewards.travelUnlocked()) {
             loadout = loadout.withoutTravel();
         }
         int otherSpent = currentEntry.isPresent()
@@ -137,7 +137,7 @@ public final class GlobeAtlasPowers {
         BlockPos canonicalPos = CoordUtil.wrapBlockPos(DimensionTiling.forDimension(Level.OVERWORLD), rawPos);
         String name = sanitizeName(payload.name(), canonicalPos);
         atlas.setAtlasName(name);
-        atlas.setProjectionEnabled(payload.projectionEnabled());
+        atlas.setProjectionEnabled(!rewards.surveyMode() && payload.projectionEnabled());
         atlas.setLoadout(loadout, true);
         state.update(level, rawPos, loadout, name, !loadout.equals(currentLoadout));
         sendScreen(player, rawPos);
@@ -169,8 +169,10 @@ public final class GlobeAtlasPowers {
             final BlockPos sourceRawPos,
             final BlockPos destinationRawPos) {
         GlobeDiscoveryRewards rewards = GlobeDiscoveryRewards.get(level);
-        if (!rewards.complete()) {
-            return TravelCheck.denied("Mastered Atlas discovery is required.");
+        if (!rewards.travelUnlocked()) {
+            return TravelCheck.denied(rewards.surveyMode()
+                    ? "Atlas survey milestones are required."
+                    : "Mastered Atlas discovery is required.");
         }
 
         GlobeAtlasPowerState state = GlobeAtlasPowerState.get(level);
@@ -208,9 +210,11 @@ public final class GlobeAtlasPowers {
             return TravelCheck.denied("Both Atlases must be loaded.");
         }
 
-        GlobeMapSavedData data = GlobeMapSavedData.getIfPresent(level, tiling);
-        if (data == null || !data.isDiscoveredCanonicalBlock(tiling, destinationPos)) {
-            return TravelCheck.denied("Destination Atlas is not discovered on the map.");
+        if (!rewards.surveyMode()) {
+            GlobeMapSavedData data = GlobeMapSavedData.getIfPresent(level, tiling);
+            if (data == null || !data.isDiscoveredCanonicalBlock(tiling, destinationPos)) {
+                return TravelCheck.denied("Destination Atlas is not discovered on the map.");
+            }
         }
 
         Vec3 arrival = findArrival(level, player, destinationPos);
@@ -235,7 +239,8 @@ public final class GlobeAtlasPowers {
         String name = blockEntity instanceof GlobeBlockEntity atlas
                 ? atlasDisplayName(atlas.atlasName(), canonicalPos)
                 : atlasDisplayName(entry.map(GlobeAtlasPowerState.Entry::name).orElse(""), canonicalPos);
-        boolean projectionEnabled = !(blockEntity instanceof GlobeBlockEntity atlas) || atlas.projectionEnabled();
+        boolean projectionEnabled = !rewards.surveyMode()
+                && (!(blockEntity instanceof GlobeBlockEntity atlas) || atlas.projectionEnabled());
         int spentPoints = state.spentPoints();
         boolean powered = state.isPowered(rawPos, rewards);
         return new GlobeAtlasScreenPayload(
@@ -248,8 +253,13 @@ public final class GlobeAtlasPowers {
                 spentPoints,
                 rewards.discoveredPixels(),
                 rewards.discoveredPercent(),
+                rewards.surveyMode(),
+                rewards.biomesVisited(),
+                rewards.visitedCells(),
+                rewards.totalCells(),
                 rewards.milestoneTenths(),
                 rewards.complete(),
+                rewards.travelUnlocked(),
                 powered,
                 destinations(level, rawPos, rewards, state));
     }
@@ -259,7 +269,7 @@ public final class GlobeAtlasPowers {
             final BlockPos sourceRawPos,
             final GlobeDiscoveryRewards rewards,
             final GlobeAtlasPowerState state) {
-        if (!rewards.complete()) {
+        if (!rewards.travelUnlocked()) {
             return List.of();
         }
 

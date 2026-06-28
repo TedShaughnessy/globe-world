@@ -3,9 +3,12 @@ package globe.world.client.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import globe.world.GlobeWorldBlocks;
+import globe.world.atlas.GlobeAtlasSurvey;
 import globe.world.block.GlobeBlock;
 import globe.world.block.entity.GlobeBlockEntity;
 import globe.world.client.GlobeDebugState;
+import globe.world.util.DimensionTiling;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.Direction;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -53,7 +56,10 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
             final CameraRenderState camera) {
         poseStack.pushPose();
         applyPlacementTransform(poseStack, state.face, state.facing);
-        if (!state.projectionEnabled) {
+        Minecraft client = Minecraft.getInstance();
+        if (!state.projectionEnabled
+                || client.level == null
+                || GlobeAtlasSurvey.surveyMode(DimensionTiling.forLevel(client.level))) {
             poseStack.popPose();
             return;
         }
@@ -134,7 +140,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
     }
 
     public static class State extends BlockEntityRenderState {
-        private boolean projectionEnabled = true;
+        private boolean projectionEnabled;
         private int projectorColor = GlobeWorldBlocks.IRON_PROJECTOR_COLOR;
         private AttachFace face = AttachFace.FLOOR;
         private Direction facing = Direction.NORTH;

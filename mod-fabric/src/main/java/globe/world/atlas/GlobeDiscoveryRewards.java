@@ -13,11 +13,19 @@ public record GlobeDiscoveryRewards(
         int discoveredPixels,
         double discoveredPercent,
         double discoveredAreaBlocks,
+        boolean surveyMode,
+        int biomesVisited,
+        int visitedCells,
+        int totalCells,
         int totalPoints,
         int radiusCap,
         boolean complete,
+        boolean travelUnlocked,
         List<Integer> milestoneTenths) {
-    public static final GlobeDiscoveryRewards EMPTY = new GlobeDiscoveryRewards(0, 0.0D, 0.0D, 0, 0, false, List.of());
+    public static final GlobeDiscoveryRewards EMPTY = new GlobeDiscoveryRewards(
+            0, 0.0D, 0.0D, false, 0, 0, 0, 0, 0, false, false, List.of());
+    private static final int LARGE_TRAVEL_BIOMES = 8;
+    private static final int LARGE_TRAVEL_CELLS = 16;
 
     public static GlobeDiscoveryRewards get(final ServerLevel level) {
         if (!Level.OVERWORLD.equals(level.dimension())) {
@@ -29,6 +37,11 @@ public record GlobeDiscoveryRewards(
             return EMPTY;
         }
 
+        int tileSizeChunks = tiling.tileSizeChunks();
+        if (GlobeAtlasSurvey.surveyMode(tiling)) {
+            return largeTileRewards(level, tiling, tileSizeChunks);
+        }
+
         GlobeMapSavedData data = GlobeMapSavedData.getIfPresent(level, tiling);
         if (data == null) {
             return EMPTY;
@@ -38,7 +51,6 @@ public record GlobeDiscoveryRewards(
         double discoveredPercent = data.discoveredPercent();
         double discoveredAreaBlocks = data.discoveredAreaBlocks();
         boolean complete = data.complete();
-        int tileSizeChunks = tiling.tileSizeChunks();
         int totalPoints;
         int radiusCap;
 
@@ -70,14 +82,70 @@ public record GlobeDiscoveryRewards(
                 discoveredPixels,
                 discoveredPercent,
                 discoveredAreaBlocks,
+                false,
+                0,
+                0,
+                0,
                 totalPoints,
                 radiusCap,
                 complete,
+                complete,
+                milestoneTenths(tileSizeChunks, tiling.tileSizeBlocks()));
+    }
+
+    private static GlobeDiscoveryRewards largeTileRewards(
+            final ServerLevel level,
+            final DimensionTiling tiling,
+            final int tileSizeChunks) {
+        GlobeAtlasSurveyState survey = GlobeAtlasSurveyState.getIfPresent(level, tiling).orElse(null);
+        int biomesVisited = survey == null ? 0 : survey.biomeCount();
+        int visitedCells = survey == null ? 0 : survey.visitedCells();
+        int totalCells = survey == null ? GlobeAtlasSurvey.COVERAGE_CELL_COUNT : survey.totalCells();
+        double visitedCellPercent = totalCells <= 0 ? 0.0D : visitedCells * 100.0D / totalCells;
+        double visitedAreaBlocks = visitedCellPercent / 100.0D * tiling.tileSizeBlocks() * (double)tiling.tileSizeBlocks();
+
+        int biomePoints = Math.min(biomesVisited, 16);
+        int cellPoints = Math.min(visitedCells / 4, 16);
+        int totalPoints = biomePoints + cellPoints;
+        int radiusCap = 0;
+        if (totalPoints > 0) {
+            radiusCap = 64;
+            if (totalPoints >= 8) {
+                radiusCap = 128;
+            }
+            if (totalPoints >= 16) {
+                radiusCap = 256;
+            }
+            if (totalPoints >= 24) {
+                radiusCap = 512;
+            }
+        }
+
+        boolean travelUnlocked = biomesVisited >= LARGE_TRAVEL_BIOMES && visitedCells >= LARGE_TRAVEL_CELLS;
+        return new GlobeDiscoveryRewards(
+                visitedCells,
+                visitedCellPercent,
+                visitedAreaBlocks,
+                true,
+                biomesVisited,
+                visitedCells,
+                totalCells,
+                totalPoints,
+                radiusCap,
+                false,
+                travelUnlocked,
                 milestoneTenths(tileSizeChunks, tiling.tileSizeBlocks()));
     }
 
     private static List<Integer> milestoneTenths(final int tileSizeChunks, final int tileSizeBlocks) {
         List<Integer> milestones = new ArrayList<>();
+        if (tileSizeChunks > GlobeAtlasSurvey.LARGE_TILE_CUTOFF_CHUNKS) {
+            for (int point = 1; point <= 8; point++) {
+                addMilestone(milestones, point * 125);
+            }
+            return List.copyOf(milestones);
+        }
+
         if (tileSizeChunks <= 16) {
             addMilestone(milestones, 990);
             return List.copyOf(milestones);

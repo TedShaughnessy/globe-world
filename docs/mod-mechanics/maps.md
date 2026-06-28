@@ -46,11 +46,12 @@ dimension show the same canonical tile texture.
 `GlobeMapSavedData` stores a fixed `512x512` tile texture, a discovered bitset,
 and compact vanilla map colors for the Overworld. Full snapshots stay at this
 size because clientbound custom payloads are capped at `1,048,576` bytes, and a
-larger whole-tile texture would exceed that once discovery data is included.
-`GlobeMapTracker` scans Overworld players on a short server cadence,
-canonicalizes their X/Z positions with `CoordUtil.wrapBlock(...)`, and reveals
-nearby canonical pixels through `GlobeMapSavedData.revealAround(...)`. This
-makes exploration in any alias tile discover the same canonical map pixels.
+larger whole-tile texture would exceed that once discovery data is included. For
+tiles up to `512` chunks wide, `GlobeMapTracker` scans Overworld players on a
+short server cadence, canonicalizes their X/Z positions with
+`CoordUtil.wrapBlock(...)`, and reveals nearby canonical pixels through
+`GlobeMapSavedData.revealAround(...)`. This makes exploration in any alias tile
+discover the same canonical map pixels.
 
 Discovery is shared world state. It is not per-player and is not stored on
 individual Atlas Projector block entities. The tracker skips spectator players,
@@ -75,18 +76,26 @@ revision changes, then `GlobeMapTextureCache` uploads the dynamic texture.
 Undiscovered pixels are uploaded as fully transparent pixels, so hidden regions
 leave holes in the toroidal projection until players reveal them.
 
+For tiles above `512` chunks wide, the Atlas switches to survey mode instead of
+presenting the `512x512` texture as a literal whole-world map. `GlobeAtlasSurveyState`
+stores shared visited biome ids and a coarse `64x64` wrapped grid of canonical
+cells reached by non-spectator players. The tracker imports completed criteria
+from vanilla's `minecraft:adventure/adventuring_time` advancement when present,
+samples the player's current canonical Overworld biome, and marks the player's
+current canonical survey cell as visited.
+
+Large survey tiles do not render Atlas projections. Placed projector holograms,
+held projector holograms, the projection power-screen button, and sneak-use
+projection toggling are disabled above the cutoff. New Atlas Projector block
+entities also default their local projection state to hidden.
+
 When held in first person, Atlas Projector items keep the ordinary block-item
 hand pose and render a separate translucent projection above the held projector.
 `GlobeHeldMapRenderer` samples a player-centered window from the shared
 projector texture, so the projection moves under the player instead of moving a
-player icon across a fixed map. `GlobeMapProjection` starts with vanilla map
-spans: the smallest span from `128`, `256`, `512`, `1024`, and `2048` blocks
-that can contain the tile, capped at `2048` blocks. For larger tiles, the
-window expands once a `2048` block view would contain fewer than `128` source
-texels from the shared texture. With the current `512x512` full-tile texture,
-that means the held view begins scaling above `512` chunks and then covers a
-constant quarter of the tile width, keeping at least vanilla-map visual texel
-density in the handheld projection.
+player icon across a fixed map. The held literal-map window uses vanilla-style
+spans from `128`, `256`, `512`, `1024`, and `2048` blocks. In survey mode, the
+held renderer does not submit a projection.
 
 The placed Atlas hologram uses the same large-tile scale, so the torus grows
 with the held window instead of staying at the small-world size. The hologram
@@ -114,18 +123,26 @@ nothing.
 Atlas Projectors can spend shared Overworld discovery progress on a local
 reward-beacon loadout. `GlobeDiscoveryRewards` derives world effect points and a
 per-Atlas radius cap from `GlobeMapSavedData` discovered pixels, discovered
-percentage, discovered block area, tile size, and completion. Discovery at or
-above `99%` rounds up to `100%` for completion rewards and Mastered Atlas
-checks.
+percentage, discovered block area, tile size, and completion on tiles up to the
+large-survey cutoff. Discovery at or above `99%` rounds up to `100%` for
+completion rewards and Mastered Atlas checks.
 Tiny tiles receive no points until full completion; small tiles require at least
 half discovery; larger tiles can earn points from absolute explored area.
+
+In survey mode, `GlobeDiscoveryRewards` derives points and radius caps from
+visited biome count and visited survey cells. Linked Atlas travel unlocks when
+the shared survey has at least eight visited biomes and at least sixteen visited
+cells. The travel-network toggle can be saved before that unlock on large
+tiles, so players can prepare destinations while still building survey progress.
+The Mastered Atlas advancement remains full-map completion behavior for tiles
+where literal projection is enabled.
 
 `GlobeAtlasPowerState` is saved Overworld state keyed by canonical Atlas block
 position. Loaded Atlas block entities mirror their saved loadout and custom
 name into this state, and removed Atlases drop their reservation. Each loadout
 spends points on radius tier, selected effects, per-effect level II upgrades,
 and the travel-network toggle. The projection toggle is local presentation
-state and is free. The power screen greys out upgrades whose candidate
+state and is free on literal-map tiles. The power screen greys out upgrades whose candidate
 loadout would exceed the shared budget, while still allowing players to turn
 existing powers off. If saved loadouts exceed the current budget after a
 settings or discovery-state change, the deterministic powered subset is chosen
@@ -141,19 +158,26 @@ The client Atlas power screen draws a compact grey in-game panel without the
 vanilla beacon payment slot, confirmation row, inventory, or hotbar. Effect
 selection is icon-based, each effect has a neighboring level II toggle, radius
 uses matching `R`, `II`, and `III` toggle buttons, and the projection and travel
-buttons use the same symbol-control style. Discovery is shown as a progress bar
+buttons use the same symbol-control style on literal-map tiles. Discovery is shown as a progress bar
 with point/radius milestone markers derived from `GlobeDiscoveryRewards`;
-budget, radius cap, and current cost are shown alongside it. Linked-travel
+budget, radius cap, and current cost are shown alongside it on literal-map
+tiles. In survey mode, the projection button is hidden and the status area shows
+visited-cell progress, visited biomes, current cost, and travel unlock state. Linked-travel
 destinations live on a separate destination tab that is enabled only when this
-Atlas is powered with the `T` travel-network toggle selected.
+Atlas is powered with the `T` travel-network toggle selected and the current
+progression mode has unlocked travel.
 
 Full discovery creates the Mastered Atlas state and unlocks linked Atlas
-travel, and the shared completion state awards the Mastered Atlas advancement
-to non-spectator Overworld players. A travel-enabled source Atlas can instantly
-send a player to another loaded, powered, travel-enabled Atlas in the same
-Overworld when the player is inside the source radius, the destination map pixel
-is discovered, and a safe arrival space exists above, below, inside the same
-block as, or next to the destination projector. Arrival selection uses the
+travel on literal-map tiles, and the shared completion state awards the
+Mastered Atlas advancement to non-spectator Overworld players. On survey-mode
+tiles, linked travel is unlocked by survey milestones instead. A travel-enabled
+source Atlas can instantly send a player to another loaded, powered,
+travel-enabled Atlas in the same Overworld when the player is inside the source
+radius, the destination is valid for the current progression mode, and a safe
+arrival space exists above, below, inside the same block as, or next to the
+destination projector. Literal-map tiles still require the destination map
+pixel to be discovered; survey-mode tiles rely on the powered survey network.
+Arrival selection uses the
 player's collision box, so wall-mounted and ceiling-mounted projectors can be
 valid destinations when the thin projector shape leaves room for the player.
 Wall-mounted destinations prefer the vertical column directly in the projector's
@@ -178,8 +202,9 @@ rules are not part of the current reward scope.
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasLoadout.java`
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasPowerState.java`
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasPowers.java`
+- `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasSurvey.java`
+- `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasSurveyState.java`
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeDiscoveryRewards.java`
-- `mod-fabric/src/main/java/globe/world/map/GlobeMapProjection.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapSavedData.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapTracker.java`
 - `mod-fabric/src/main/resources/data/globe-world/advancement/mastered_atlas.json`

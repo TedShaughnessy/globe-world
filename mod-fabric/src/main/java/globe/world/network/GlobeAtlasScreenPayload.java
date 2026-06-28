@@ -21,8 +21,13 @@ public record GlobeAtlasScreenPayload(
         int spentPoints,
         int discoveredPixels,
         double discoveredPercent,
+        boolean surveyMode,
+        int biomesVisited,
+        int visitedCells,
+        int totalCells,
         List<Integer> milestoneTenths,
         boolean complete,
+        boolean travelUnlocked,
         boolean powered,
         List<Destination> destinations) implements CustomPacketPayload {
     private static final int MAX_DESTINATIONS = 128;
@@ -55,12 +60,17 @@ public record GlobeAtlasScreenPayload(
         int spentPoints = input.readVarInt();
         int discoveredPixels = input.readVarInt();
         double discoveredPercent = input.readDouble();
+        boolean surveyMode = input.readBoolean();
+        int biomesVisited = input.readVarInt();
+        int visitedCells = input.readVarInt();
+        int totalCells = input.readVarInt();
         int milestoneCount = Math.min(input.readVarInt(), MAX_MILESTONES);
         List<Integer> milestoneTenths = new ArrayList<>(milestoneCount);
         for (int i = 0; i < milestoneCount; i++) {
             milestoneTenths.add(input.readVarInt());
         }
         boolean complete = input.readBoolean();
+        boolean travelUnlocked = input.readBoolean();
         boolean powered = input.readBoolean();
         int count = Math.min(input.readVarInt(), MAX_DESTINATIONS);
         List<Destination> destinations = new ArrayList<>(count);
@@ -77,8 +87,13 @@ public record GlobeAtlasScreenPayload(
                 spentPoints,
                 discoveredPixels,
                 discoveredPercent,
+                surveyMode,
+                biomesVisited,
+                visitedCells,
+                totalCells,
                 milestoneTenths,
                 complete,
+                travelUnlocked,
                 powered,
                 destinations);
     }
@@ -93,11 +108,16 @@ public record GlobeAtlasScreenPayload(
         output.writeVarInt(this.spentPoints);
         output.writeVarInt(this.discoveredPixels);
         output.writeDouble(this.discoveredPercent);
+        output.writeBoolean(this.surveyMode);
+        output.writeVarInt(this.biomesVisited);
+        output.writeVarInt(this.visitedCells);
+        output.writeVarInt(this.totalCells);
         output.writeVarInt(Math.min(this.milestoneTenths.size(), MAX_MILESTONES));
         for (int milestone : this.milestoneTenths.stream().limit(MAX_MILESTONES).toList()) {
             output.writeVarInt(milestone);
         }
         output.writeBoolean(this.complete);
+        output.writeBoolean(this.travelUnlocked);
         output.writeBoolean(this.powered);
         output.writeVarInt(Math.min(this.destinations.size(), MAX_DESTINATIONS));
         for (Destination destination : this.destinations.stream().limit(MAX_DESTINATIONS).toList()) {

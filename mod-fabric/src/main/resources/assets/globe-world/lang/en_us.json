@@ -7,7 +7,9 @@
   "screen.globe-world.atlas_power": "Atlas Powers",
   "screen.globe-world.atlas_power.atlas": "Atlas",
   "screen.globe-world.atlas_power.budget": "Budget",
+  "screen.globe-world.atlas_power.biomes": "Biomes",
   "screen.globe-world.atlas_power.cap": "Cap",
+  "screen.globe-world.atlas_power.cells": "Cells",
   "screen.globe-world.atlas_power.cost": "Cost",
   "screen.globe-world.atlas_power.destinations": "Destinations",
   "screen.globe-world.atlas_power.discovery": "Discovery",
@@ -20,5 +22,6 @@
   "screen.globe-world.atlas_power.powers": "Powers",
   "screen.globe-world.atlas_power.projection": "Projection",
   "screen.globe-world.atlas_power.radius": "Radius",
+  "screen.globe-world.atlas_power.surveyed": "Surveyed Atlas",
   "screen.globe-world.atlas_power.travel": "Travel"
 }

@@ -21,7 +21,7 @@ public class GlobeBlockEntity extends BlockEntity {
     private static final String TAG_LEVEL_TWO_EFFECTS = "atlas_level_two_effects";
     private static final String TAG_TRAVEL_NETWORK = "atlas_travel_network";
 
-    private boolean projectionEnabled = true;
+    private boolean projectionEnabled;
     private String atlasName = "";
     private GlobeAtlasLoadout loadout = GlobeAtlasLoadout.EMPTY;
 
@@ -97,7 +97,7 @@ public class GlobeBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(final ValueInput input) {
         super.loadAdditional(input);
-        this.projectionEnabled = input.getBooleanOr(TAG_PROJECTION_ENABLED, true);
+        this.projectionEnabled = input.getBooleanOr(TAG_PROJECTION_ENABLED, false);
         this.atlasName = input.getStringOr(TAG_ATLAS_NAME, "");
         if (this.atlasName.length() > 64) {
             this.atlasName = this.atlasName.substring(0, 64);
