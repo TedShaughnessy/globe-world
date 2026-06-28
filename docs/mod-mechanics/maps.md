@@ -93,13 +93,13 @@ the chunk is loaded and an unknown-biome fill otherwise.
 Survey projection uses `GlobeAtlasSurveyWindowPayload`, not the whole-map
 `GlobeMapSnapshotPayload`. Payloads carry centered chunk windows with a
 discovered bitset, a biome-id palette, per-cell palette indexes, and simple
-player/Atlas markers. Window construction walks saved survey entries and wraps
-chunk coordinates into the requested window; it does not force-load or generate
-chunks for display. Held survey windows are `128x128` chunks centered on the
-current player's canonical chunk. Placed survey windows are `512x512` chunks
-centered on loaded, projection-enabled Atlas Projectors near the receiving
-player, capped per sync tick and rate-limited by center chunk and survey
-revision.
+player/Atlas markers. Window construction uses saved survey entries while that
+is cheaper than the requested window, then switches to fixed-size window-cell
+lookups for heavily explored saves; it does not force-load or generate chunks
+for display. Held survey windows are `128x128` chunks centered on the current
+player's canonical chunk. Placed survey windows are `512x512` chunks centered on
+loaded, projection-enabled Atlas Projectors near the receiving player, capped
+per sync tick and rate-limited by center chunk and survey revision.
 
 The client uploads survey windows through `GlobeAtlasSurveyTextureCache`, which
 is separate from the literal map texture cache. Undiscovered chunks render as a

@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.function.LongConsumer;
 
 public class GlobeAtlasSurveyState extends SavedData {
     private static final int CURRENT_VERSION = 1;
@@ -165,6 +166,14 @@ public class GlobeAtlasSurveyState extends SavedData {
 
     public Optional<Identifier> visitedChunkBiome(final int chunkX, final int chunkZ) {
         return Optional.ofNullable(this.chunkBiomes.get(new ChunkPos(chunkX, chunkZ).pack()));
+    }
+
+    public Optional<Identifier> visitedChunkBiome(final long chunk) {
+        return Optional.ofNullable(this.chunkBiomes.get(chunk));
+    }
+
+    public void forEachVisitedChunk(final LongConsumer consumer) {
+        this.visitedChunks.forEach(consumer::accept);
     }
 
     public List<Long> visitedChunkKeys() {

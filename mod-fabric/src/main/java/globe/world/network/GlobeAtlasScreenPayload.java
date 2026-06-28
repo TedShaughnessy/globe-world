@@ -2,6 +2,7 @@ package globe.world.network;
 
 import globe.world.GlobeWorld;
 import globe.world.atlas.GlobeAtlasLoadout;
+import io.netty.handler.codec.DecoderException;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -64,7 +65,7 @@ public record GlobeAtlasScreenPayload(
         int biomesVisited = input.readVarInt();
         int visitedChunks = input.readVarInt();
         int targetChunks = input.readVarInt();
-        int milestoneCount = Math.min(input.readVarInt(), MAX_MILESTONES);
+        int milestoneCount = readBoundedCount(input, MAX_MILESTONES, "milestone");
         List<Integer> milestoneTenths = new ArrayList<>(milestoneCount);
         for (int i = 0; i < milestoneCount; i++) {
             milestoneTenths.add(input.readVarInt());
@@ -72,7 +73,7 @@ public record GlobeAtlasScreenPayload(
         boolean complete = input.readBoolean();
         boolean travelUnlocked = input.readBoolean();
         boolean powered = input.readBoolean();
-        int count = Math.min(input.readVarInt(), MAX_DESTINATIONS);
+        int count = readBoundedCount(input, MAX_DESTINATIONS, "destination");
         List<Destination> destinations = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             destinations.add(Destination.read(input));
@@ -113,15 +114,15 @@ public record GlobeAtlasScreenPayload(
         output.writeVarInt(this.visitedChunks);
         output.writeVarInt(this.targetChunks);
         output.writeVarInt(Math.min(this.milestoneTenths.size(), MAX_MILESTONES));
-        for (int milestone : this.milestoneTenths.stream().limit(MAX_MILESTONES).toList()) {
-            output.writeVarInt(milestone);
+        for (int i = 0; i < this.milestoneTenths.size() && i < MAX_MILESTONES; i++) {
+            output.writeVarInt(this.milestoneTenths.get(i));
         }
         output.writeBoolean(this.complete);
         output.writeBoolean(this.travelUnlocked);
         output.writeBoolean(this.powered);
         output.writeVarInt(Math.min(this.destinations.size(), MAX_DESTINATIONS));
-        for (Destination destination : this.destinations.stream().limit(MAX_DESTINATIONS).toList()) {
-            destination.write(output);
+        for (int i = 0; i < this.destinations.size() && i < MAX_DESTINATIONS; i++) {
+            this.destinations.get(i).write(output);
         }
     }
 
@@ -148,5 +149,13 @@ public record GlobeAtlasScreenPayload(
             return "";
         }
         return value.length() > 64 ? value.substring(0, 64) : value;
+    }
+
+    private static int readBoundedCount(final FriendlyByteBuf input, final int max, final String label) {
+        int count = input.readVarInt();
+        if (count < 0 || count > max) {
+            throw new DecoderException("Globe atlas screen " + label + " count " + count + " exceeds limit " + max);
+        }
+        return count;
     }
 }

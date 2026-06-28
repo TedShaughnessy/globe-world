@@ -30,8 +30,8 @@ public record GlobeMapSnapshotPayload(
             GlobeMapSnapshotPayload::read);
 
     public GlobeMapSnapshotPayload {
-        discovered = discovered == null ? new byte[0] : discovered;
-        colors = colors == null ? new byte[0] : colors;
+        discovered = discovered == null ? new byte[0] : discovered.clone();
+        colors = colors == null ? new byte[0] : colors.clone();
     }
 
     public static GlobeMapSnapshotPayload from(final GlobeMapSavedData data) {

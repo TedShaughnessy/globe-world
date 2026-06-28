@@ -70,26 +70,17 @@ public final class GlobeAtlasSurveyWindows {
         byte[] biomeIndexes = new byte[cells];
         List<Identifier> palette = new ArrayList<>();
         Map<Identifier, Integer> paletteIndexes = new HashMap<>();
-        Map<Long, Identifier> chunkBiomes = new HashMap<>();
-        for (GlobeAtlasSurveyState.ChunkBiomeEntry entry : survey.chunkBiomeEntries()) {
-            chunkBiomes.put(entry.chunk(), entry.biome());
-        }
 
-        for (long chunkKey : survey.visitedChunkKeys()) {
-            ChunkPos chunk = ChunkPos.unpack(chunkKey);
-            int cell = cellIndex(tiling, centerChunkX, centerChunkZ, windowChunks, chunk.x(), chunk.z());
-            if (cell < 0) {
-                continue;
-            }
-
-            discovered[cell >> 3] = (byte)(discovered[cell >> 3] | (1 << (cell & 7)));
-            Identifier biome = chunkBiomes.get(chunkKey);
-            if (biome != null) {
-                int paletteIndex = paletteIndex(biome, palette, paletteIndexes);
-                if (paletteIndex > 0) {
-                    biomeIndexes[cell] = (byte)paletteIndex;
+        if (survey.visitedChunks() > cells) {
+            fillByWindowCells(tiling, survey, centerChunkX, centerChunkZ, windowChunks, discovered, biomeIndexes, palette, paletteIndexes);
+        } else {
+            survey.forEachVisitedChunk(chunkKey -> {
+                ChunkPos chunk = ChunkPos.unpack(chunkKey);
+                int cell = cellIndex(tiling, centerChunkX, centerChunkZ, windowChunks, chunk.x(), chunk.z());
+                if (cell >= 0) {
+                    fillCell(survey, chunkKey, cell, discovered, biomeIndexes, palette, paletteIndexes);
                 }
-            }
+            });
         }
 
         return new GlobeAtlasSurveyWindowPayload(
@@ -102,6 +93,55 @@ public final class GlobeAtlasSurveyWindows {
                 palette,
                 biomeIndexes,
                 markers);
+    }
+
+    private static void fillByWindowCells(
+            final DimensionTiling tiling,
+            final GlobeAtlasSurveyState survey,
+            final int centerChunkX,
+            final int centerChunkZ,
+            final int windowChunks,
+            final byte[] discovered,
+            final byte[] biomeIndexes,
+            final List<Identifier> palette,
+            final Map<Identifier, Integer> paletteIndexes) {
+        int halfWindow = windowChunks / 2;
+        for (int z = 0; z < windowChunks; z++) {
+            int chunkZ = CoordUtil.wrapChunk(tiling, centerChunkZ + z - halfWindow);
+            for (int x = 0; x < windowChunks; x++) {
+                int chunkX = CoordUtil.wrapChunk(tiling, centerChunkX + x - halfWindow);
+                if (!survey.isVisitedChunk(chunkX, chunkZ)) {
+                    continue;
+                }
+
+                int cell = x + z * windowChunks;
+                fillCell(
+                        survey,
+                        new ChunkPos(chunkX, chunkZ).pack(),
+                        cell,
+                        discovered,
+                        biomeIndexes,
+                        palette,
+                        paletteIndexes);
+            }
+        }
+    }
+
+    private static void fillCell(
+            final GlobeAtlasSurveyState survey,
+            final long chunkKey,
+            final int cell,
+            final byte[] discovered,
+            final byte[] biomeIndexes,
+            final List<Identifier> palette,
+            final Map<Identifier, Integer> paletteIndexes) {
+        discovered[cell >> 3] = (byte)(discovered[cell >> 3] | (1 << (cell & 7)));
+        survey.visitedChunkBiome(chunkKey).ifPresent(biome -> {
+            int paletteIndex = paletteIndex(biome, palette, paletteIndexes);
+            if (paletteIndex > 0) {
+                biomeIndexes[cell] = (byte)paletteIndex;
+            }
+        });
     }
 
     private static int paletteIndex(

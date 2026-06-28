@@ -1,6 +1,7 @@
 package globe.world.network;
 
 import globe.world.GlobeWorld;
+import io.netty.handler.codec.DecoderException;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -34,9 +35,9 @@ public record GlobeAtlasSurveyWindowPayload(
             GlobeAtlasSurveyWindowPayload::read);
 
     public GlobeAtlasSurveyWindowPayload {
-        discovered = discovered == null ? new byte[0] : discovered;
+        discovered = discovered == null ? new byte[0] : discovered.clone();
         biomePalette = biomePalette == null ? List.of() : List.copyOf(biomePalette);
-        biomeIndexes = biomeIndexes == null ? new byte[0] : biomeIndexes;
+        biomeIndexes = biomeIndexes == null ? new byte[0] : biomeIndexes.clone();
         markers = markers == null ? List.of() : List.copyOf(markers);
     }
 
@@ -52,13 +53,13 @@ public record GlobeAtlasSurveyWindowPayload(
         int windowChunks = input.readVarInt();
         int revision = input.readVarInt();
         byte[] discovered = input.readByteArray(MAX_DISCOVERED_BYTES);
-        int paletteCount = Math.min(input.readVarInt(), MAX_PALETTE);
+        int paletteCount = readBoundedCount(input, MAX_PALETTE, "biome palette");
         List<Identifier> palette = new ArrayList<>(paletteCount);
         for (int i = 0; i < paletteCount; i++) {
             palette.add(Identifier.STREAM_CODEC.decode(input));
         }
         byte[] biomeIndexes = input.readByteArray(MAX_CELLS);
-        int markerCount = Math.min(input.readVarInt(), MAX_MARKERS);
+        int markerCount = readBoundedCount(input, MAX_MARKERS, "marker");
         List<Marker> markers = new ArrayList<>(markerCount);
         for (int i = 0; i < markerCount; i++) {
             markers.add(Marker.read(input));
@@ -83,14 +84,22 @@ public record GlobeAtlasSurveyWindowPayload(
         output.writeVarInt(this.revision);
         output.writeByteArray(this.discovered);
         output.writeVarInt(Math.min(this.biomePalette.size(), MAX_PALETTE));
-        for (Identifier biome : this.biomePalette.stream().limit(MAX_PALETTE).toList()) {
-            Identifier.STREAM_CODEC.encode(output, biome);
+        for (int i = 0; i < this.biomePalette.size() && i < MAX_PALETTE; i++) {
+            Identifier.STREAM_CODEC.encode(output, this.biomePalette.get(i));
         }
         output.writeByteArray(this.biomeIndexes);
         output.writeVarInt(Math.min(this.markers.size(), MAX_MARKERS));
-        for (Marker marker : this.markers.stream().limit(MAX_MARKERS).toList()) {
-            marker.write(output);
+        for (int i = 0; i < this.markers.size() && i < MAX_MARKERS; i++) {
+            this.markers.get(i).write(output);
         }
+    }
+
+    private static int readBoundedCount(final FriendlyByteBuf input, final int max, final String label) {
+        int count = input.readVarInt();
+        if (count < 0 || count > max) {
+            throw new DecoderException("Globe atlas survey window " + label + " count " + count + " exceeds limit " + max);
+        }
+        return count;
     }
 
     public record Marker(int x, int z, int color) {
