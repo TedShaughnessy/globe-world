@@ -62,7 +62,12 @@ Wandering trader placement also wraps the event spawn search itself. Meeting
 point lookup returns the canonical POI, trader and llama placement samples
 around that reference in the nearest player-visible tile frame, and candidate
 height/spawn checks run against the canonical owner block position. Trader
-wander/home memories remain canonical.
+wander/home memories remain canonical. `GameplaySettings` can multiply how
+quickly the saved wandering-trader spawn delay counts down in wrapped
+dimensions, from vanilla `1x` through `32x` in powers of two. Simple world
+creation defaults this to `2x` for tiles up to `64` chunks and `4x` for tiles
+up to `16` chunks; Custom creation and the pause settings screen expose the
+multiplier directly.
 
 Village sieges use the topological village-section distance supplied by
 `ServerLevelPoiMixin` when choosing an eligible player village, then wrap the

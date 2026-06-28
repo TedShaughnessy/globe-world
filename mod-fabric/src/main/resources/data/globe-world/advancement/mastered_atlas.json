@@ -1,0 +1,23 @@
+{
+  "display": {
+    "icon": {
+      "id": "globe-world:globe"
+    },
+    "title": {
+      "translate": "advancements.globe-world.mastered_atlas.title"
+    },
+    "description": {
+      "translate": "advancements.globe-world.mastered_atlas.description"
+    },
+    "background": "minecraft:gui/advancements/backgrounds/adventure",
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "completed": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

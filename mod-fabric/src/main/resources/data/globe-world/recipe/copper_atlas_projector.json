@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": "minecraft:amethyst_shard",
+    "I": "minecraft:copper_ingot",
+    "L": "#globe-world:copper_lanterns",
+    "M": "minecraft:filled_map",
+    "N": "minecraft:copper_nugget"
+  },
+  "pattern": [
+    " M ",
+    "NAN",
+    "ILI"
+  ],
+  "result": {
+    "id": "globe-world:copper_atlas_projector"
+  }
+}

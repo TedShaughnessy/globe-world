@@ -60,6 +60,20 @@ world/dimension curvature setting, so buckets, boats, fluids, signs, entities,
 and block interactions resolve to the visually selected target while vanilla
 reach, permissions, and final state checks remain authoritative. Entity physics
 and collision boxes are not curved; only picking and presentation are.
+Player-fired projectiles also compensate their initial launch vector through
+`GlobeCurvedProjectileAim`, so ordinary curved-visual shots do not inherit the
+raw downward pitch needed to put the crosshair on visually lowered terrain or
+mobs. `ProjectileCurvedAimMixin` covers player launches that use
+`Projectile.shootFromRotation`, including bows, thrown tridents, snowballs,
+eggs, ender pearls, splash and lingering potions, experience bottles, and wind
+charges. Crossbows use their own vector path, so `CrossbowItemRangedAttackMixin`
+applies the same correction to player-fired arrows, multishot arrows, and
+fireworks. `FishingHookCurvedAimMixin` preserves the vanilla cast speed while
+tilting the bobber toward the curved visual aim. When the curved visual ray hits
+a block or entity within 20 blocks, that hit distance becomes the launch focus
+so close shots are not over-corrected. Otherwise projectiles use a conservative
+fallback focus distance. Projectiles still fly with vanilla physics after
+launch, so long-range lob shots remain player-aimed rather than target-inferred.
 
 Curvature also reaches selected-block outlines, block-breaking progress
 overlays, item entities, third-person held items such as skeleton bows,
@@ -208,8 +222,16 @@ Client diagnostics are intentionally targeted:
   vertical line at each tile corner plus a horizontal border around each tile at
   the player's nearest block height. Canonical tile borders are green; alias tile
   borders are blue. It also shows the saved world-spawn marker plus active
-  exclusion radius. The marker uses the client level's respawn data, which
-  vanilla updates from the server's default-spawn packet.
+  exclusion radius. Placed globe projector objects store an attachment face,
+  horizontal facing, and projection enabled flag, so their base hitbox and large
+  torus hologram project away from the floor, wall, or ceiling they were placed
+  on. Right-click toggles the hologram projection on or off. When enabled, they
+  normally render the large X-major/Z-minor torus hologram, but draw a 2x2
+  toroid comparison grid while this debug mode is enabled: front-left outside
+  surface with X on the major ring, front-right inside surface with X on the
+  major ring, back-left outside surface with Z on the major ring, and back-right
+  inside surface with Z on the major ring. The marker uses the client level's
+  respawn data, which vanilla updates from the server's default-spawn packet.
 - `/globeworld debug list`: show server diagnostic channels and whether each
   channel is enabled for this session.
 - `/globeworld debug enable <channel>` and `/globeworld debug disable <channel>`:
@@ -246,7 +268,9 @@ Client diagnostics are intentionally targeted:
   `GlobeSeedPreflight`, `CreateWorldScreenMixin`.
 - Curvature and picking:
   `GlobeCurvature`, `GlobeCurvatureShader`, `GlobeCurvedRaycast`,
-  `GlobeWorldSettingsControls`, `ShaderManagerMixin`, `LocalPlayerMixin`,
+  `GlobeCurvedProjectileAim`, `GlobeWorldSettingsControls`,
+  `ProjectileCurvedAimMixin`, `CrossbowItemRangedAttackMixin`,
+  `FishingHookCurvedAimMixin`, `ShaderManagerMixin`, `LocalPlayerMixin`,
   `ItemMixin`, `OptionsMixin`, `FrustumMixin`, `CloudRendererMixin`,
   `SkyRendererMixin`, `ItemEntityRendererMixin`, `ItemInHandLayerMixin`,
   `FoxHeldItemLayerMixin`, `ThrownItemRendererMixin`,
@@ -267,6 +291,12 @@ Client diagnostics are intentionally targeted:
   `DiagnosticsChannel`, `GlobeDiagnostics`,
   `GlobeClientDebugCommands`, `GlobeDebugHud`, `GlobeDebugState`,
   `GlobeTileBorderRenderer`, `KeyboardHandlerMixin`.
+- Placed Atlas Projectors:
+  `GlobeBlock`, `GlobeBlockEntity`, `GlobeBlockEntityRenderer`,
+  `GlobeToroidMesh`, `GlobeMapTextureCache`,
+  `assets/globe-world/blockstates/globe.json`,
+  `assets/globe-world/blockstates/copper_atlas_projector.json`,
+  `assets/globe-world/blockstates/soul_atlas_projector.json`.
 
 ## Related Vanilla Mechanics
 

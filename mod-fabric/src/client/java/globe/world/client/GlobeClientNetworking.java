@@ -1,7 +1,12 @@
 package globe.world.client;
 
 import globe.world.config.GlobeSettings;
+import globe.world.client.render.GlobeAtlasSurveyTextureCache;
+import globe.world.client.render.GlobeMapTextureCache;
 import globe.world.network.GlobeEntityAliasCommandPayload;
+import globe.world.network.GlobeAtlasScreenPayload;
+import globe.world.network.GlobeAtlasSurveyWindowPayload;
+import globe.world.network.GlobeMapSnapshotPayload;
 import globe.world.network.GlobeWorldSettingsAckPayload;
 import globe.world.network.GlobeWorldSettingsPayload;
 import globe.world.util.GlobeEntityAliasMode;
@@ -29,6 +34,15 @@ public final class GlobeClientNetworking {
 
         ClientPlayNetworking.registerGlobalReceiver(GlobeEntityAliasCommandPayload.TYPE, (payload, context) ->
                 context.client().execute(() -> handleEntityAliasCommand(payload.action())));
+
+        ClientPlayNetworking.registerGlobalReceiver(GlobeMapSnapshotPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> GlobeMapTextureCache.applySnapshot(payload)));
+
+        ClientPlayNetworking.registerGlobalReceiver(GlobeAtlasSurveyWindowPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> GlobeAtlasSurveyTextureCache.applySurveyWindow(payload)));
+
+        ClientPlayNetworking.registerGlobalReceiver(GlobeAtlasScreenPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> openAtlasScreen(payload)));
 
         ClientConfigurationConnectionEvents.DISCONNECT.register((listener, client) -> resetSyncedSettings());
         ClientPlayConnectionEvents.DISCONNECT.register((listener, client) -> resetSyncedSettings());
@@ -59,7 +73,18 @@ public final class GlobeClientNetworking {
         Minecraft.getInstance().gui.getChat().addClientSystemMessage(Component.literal(message));
     }
 
+    private static void openAtlasScreen(final GlobeAtlasScreenPayload payload) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen instanceof GlobeAtlasPowerScreen screen) {
+            screen.apply(payload);
+        } else {
+            minecraft.setScreen(new GlobeAtlasPowerScreen(payload));
+        }
+    }
+
     private static void resetSyncedSettings() {
         GlobeClientSettings.applySyncedFromServer(GlobeSettings.DEFAULT);
+        GlobeMapTextureCache.reset();
+        GlobeAtlasSurveyTextureCache.reset();
     }
 }

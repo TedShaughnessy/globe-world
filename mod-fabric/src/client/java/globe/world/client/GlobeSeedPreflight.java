@@ -119,15 +119,8 @@ public final class GlobeSeedPreflight {
         }
 
         ChunkGenerator generator = overworld.generator();
-        BiomeSource biomeSource = generator.getBiomeSource();
-        Climate.Sampler sampler = climateSampler(finalLayers, generator, seed);
         int sampleStep = sampleStepBlocks(topology.tileSize());
-        List<Integer> sampleXs = sampleCoordinates(topology.tileSize(), sampleStep);
-        if (sampleXs.isEmpty()) {
-            return false;
-        }
-        List<Integer> sampleZs = sampleXs;
-        int sampleCount = sampleXs.size() * sampleZs.size();
+        long sampleCount = sampleCount(topology.tileSize(), sampleStep);
         if (topology.tileSize() > SMALL_TILE_MAX_CHUNKS && sampleCount > LARGE_TILE_SAMPLE_CAP) {
             GlobeDiagnostics.debug(
                     DiagnosticsChannel.WORLDGEN,
@@ -138,6 +131,14 @@ public final class GlobeSeedPreflight {
             );
             return false;
         }
+
+        BiomeSource biomeSource = generator.getBiomeSource();
+        Climate.Sampler sampler = climateSampler(finalLayers, generator, seed);
+        List<Integer> sampleXs = sampleCoordinates(topology.tileSize(), sampleStep);
+        if (sampleXs.isEmpty()) {
+            return false;
+        }
+        List<Integer> sampleZs = sampleXs;
 
         for (int blockX : sampleXs) {
             int quartX = QuartPos.fromBlock(blockX);
@@ -204,17 +205,51 @@ public final class GlobeSeedPreflight {
     }
 
     private static List<Integer> sampleCoordinates(int tileSizeChunks, int stepBlocks) {
-        int minChunk = -tileSizeChunks / 2;
-        int maxChunkExclusive = minChunk + tileSizeChunks;
-        int blockMin = minChunk * 16;
-        int blockMaxExclusive = maxChunkExclusive * 16;
-        List<Integer> samples = new ArrayList<>();
-        for (int block = blockMin; block < blockMaxExclusive; block += stepBlocks) {
-            addSample(samples, block);
+        long minChunk = -tileSizeChunks / 2L;
+        long maxChunkExclusive = minChunk + tileSizeChunks;
+        long blockMin = minChunk * 16L;
+        long blockMaxExclusive = maxChunkExclusive * 16L;
+        if (blockMin < Integer.MIN_VALUE || blockMaxExclusive > Integer.MAX_VALUE) {
+            return List.of();
         }
-        addSample(samples, blockMaxExclusive - 1);
-        addSample(samples, blockMin + (blockMaxExclusive - blockMin) / 2);
+
+        List<Integer> samples = new ArrayList<>();
+        for (long block = blockMin; block < blockMaxExclusive; block += stepBlocks) {
+            addSample(samples, (int)block);
+        }
+        addSample(samples, (int)(blockMaxExclusive - 1));
+        addSample(samples, (int)(blockMin + (blockMaxExclusive - blockMin) / 2));
         return samples;
+    }
+
+    private static long sampleCount(int tileSizeChunks, int stepBlocks) {
+        long minChunk = -tileSizeChunks / 2L;
+        long maxChunkExclusive = minChunk + tileSizeChunks;
+        long blockMin = minChunk * 16L;
+        long blockMaxExclusive = maxChunkExclusive * 16L;
+        long axisSamples = Math.max(0L, ceilDiv(blockMaxExclusive - blockMin, stepBlocks));
+        axisSamples = countUniqueSample(axisSamples, blockMin, blockMaxExclusive, stepBlocks, blockMaxExclusive - 1);
+        axisSamples = countUniqueSample(
+                axisSamples,
+                blockMin,
+                blockMaxExclusive,
+                stepBlocks,
+                blockMin + (blockMaxExclusive - blockMin) / 2
+        );
+        return axisSamples != 0L && axisSamples > Long.MAX_VALUE / axisSamples
+                ? Long.MAX_VALUE
+                : axisSamples * axisSamples;
+    }
+
+    private static long countUniqueSample(long current, long blockMin, long blockMaxExclusive, int stepBlocks, long block) {
+        if (block < blockMin || block >= blockMaxExclusive) {
+            return current;
+        }
+        return (block - blockMin) % stepBlocks == 0 ? current : current + 1;
+    }
+
+    private static long ceilDiv(long value, long divisor) {
+        return value <= 0L ? 0L : (value + divisor - 1L) / divisor;
     }
 
     private static void addSample(List<Integer> samples, int block) {

@@ -1,0 +1,161 @@
+package globe.world.network;
+
+import globe.world.GlobeWorld;
+import globe.world.atlas.GlobeAtlasLoadout;
+import io.netty.handler.codec.DecoderException;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public record GlobeAtlasScreenPayload(
+        BlockPos pos,
+        String name,
+        boolean projectionEnabled,
+        GlobeAtlasLoadout loadout,
+        int worldPoints,
+        int radiusCap,
+        int spentPoints,
+        int discoveredPixels,
+        double discoveredPercent,
+        boolean surveyMode,
+        int biomesVisited,
+        int visitedChunks,
+        int targetChunks,
+        List<Integer> milestoneTenths,
+        boolean complete,
+        boolean travelUnlocked,
+        boolean powered,
+        List<Destination> destinations) implements CustomPacketPayload {
+    private static final int MAX_DESTINATIONS = 128;
+    private static final int MAX_MILESTONES = 32;
+
+    public static final Type<GlobeAtlasScreenPayload> TYPE = new Type<>(
+            Identifier.fromNamespaceAndPath(GlobeWorld.MOD_ID, "atlas_screen"));
+    public static final StreamCodec<FriendlyByteBuf, GlobeAtlasScreenPayload> CODEC = StreamCodec.ofMember(
+            GlobeAtlasScreenPayload::write,
+            GlobeAtlasScreenPayload::read);
+
+    public GlobeAtlasScreenPayload {
+        name = truncate(name);
+        milestoneTenths = milestoneTenths == null ? List.of() : List.copyOf(milestoneTenths);
+        destinations = destinations == null ? List.of() : List.copyOf(destinations);
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    private static GlobeAtlasScreenPayload read(final FriendlyByteBuf input) {
+        BlockPos pos = input.readBlockPos();
+        String name = input.readUtf(64);
+        boolean projectionEnabled = input.readBoolean();
+        GlobeAtlasLoadout loadout = GlobeAtlasLoadout.STREAM_CODEC.decode(input);
+        int worldPoints = input.readVarInt();
+        int radiusCap = input.readVarInt();
+        int spentPoints = input.readVarInt();
+        int discoveredPixels = input.readVarInt();
+        double discoveredPercent = input.readDouble();
+        boolean surveyMode = input.readBoolean();
+        int biomesVisited = input.readVarInt();
+        int visitedChunks = input.readVarInt();
+        int targetChunks = input.readVarInt();
+        int milestoneCount = readBoundedCount(input, MAX_MILESTONES, "milestone");
+        List<Integer> milestoneTenths = new ArrayList<>(milestoneCount);
+        for (int i = 0; i < milestoneCount; i++) {
+            milestoneTenths.add(input.readVarInt());
+        }
+        boolean complete = input.readBoolean();
+        boolean travelUnlocked = input.readBoolean();
+        boolean powered = input.readBoolean();
+        int count = readBoundedCount(input, MAX_DESTINATIONS, "destination");
+        List<Destination> destinations = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            destinations.add(Destination.read(input));
+        }
+        return new GlobeAtlasScreenPayload(
+                pos,
+                name,
+                projectionEnabled,
+                loadout,
+                worldPoints,
+                radiusCap,
+                spentPoints,
+                discoveredPixels,
+                discoveredPercent,
+                surveyMode,
+                biomesVisited,
+                visitedChunks,
+                targetChunks,
+                milestoneTenths,
+                complete,
+                travelUnlocked,
+                powered,
+                destinations);
+    }
+
+    private void write(final FriendlyByteBuf output) {
+        output.writeBlockPos(this.pos);
+        output.writeUtf(this.name, 64);
+        output.writeBoolean(this.projectionEnabled);
+        GlobeAtlasLoadout.STREAM_CODEC.encode(output, this.loadout);
+        output.writeVarInt(this.worldPoints);
+        output.writeVarInt(this.radiusCap);
+        output.writeVarInt(this.spentPoints);
+        output.writeVarInt(this.discoveredPixels);
+        output.writeDouble(this.discoveredPercent);
+        output.writeBoolean(this.surveyMode);
+        output.writeVarInt(this.biomesVisited);
+        output.writeVarInt(this.visitedChunks);
+        output.writeVarInt(this.targetChunks);
+        output.writeVarInt(Math.min(this.milestoneTenths.size(), MAX_MILESTONES));
+        for (int i = 0; i < this.milestoneTenths.size() && i < MAX_MILESTONES; i++) {
+            output.writeVarInt(this.milestoneTenths.get(i));
+        }
+        output.writeBoolean(this.complete);
+        output.writeBoolean(this.travelUnlocked);
+        output.writeBoolean(this.powered);
+        output.writeVarInt(Math.min(this.destinations.size(), MAX_DESTINATIONS));
+        for (int i = 0; i < this.destinations.size() && i < MAX_DESTINATIONS; i++) {
+            this.destinations.get(i).write(output);
+        }
+    }
+
+    public record Destination(BlockPos pos, boolean available, String label, String detail) {
+        public Destination {
+            label = truncate(label);
+            detail = truncate(detail);
+        }
+
+        private static Destination read(final FriendlyByteBuf input) {
+            return new Destination(input.readBlockPos(), input.readBoolean(), input.readUtf(64), input.readUtf(64));
+        }
+
+        private void write(final FriendlyByteBuf output) {
+            output.writeBlockPos(this.pos);
+            output.writeBoolean(this.available);
+            output.writeUtf(this.label, 64);
+            output.writeUtf(this.detail, 64);
+        }
+    }
+
+    private static String truncate(final String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() > 64 ? value.substring(0, 64) : value;
+    }
+
+    private static int readBoundedCount(final FriendlyByteBuf input, final int max, final String label) {
+        int count = input.readVarInt();
+        if (count < 0 || count > max) {
+            throw new DecoderException("Globe atlas screen " + label + " count " + count + " exceeds limit " + max);
+        }
+        return count;
+    }
+}

@@ -1,0 +1,845 @@
+package globe.world.client;
+
+import com.mojang.blaze3d.platform.InputConstants;
+import globe.world.atlas.GlobeAtlasEffect;
+import globe.world.atlas.GlobeAtlasLoadout;
+import globe.world.network.GlobeAtlasScreenPayload;
+import globe.world.network.GlobeAtlasTravelPayload;
+import globe.world.network.GlobeAtlasUpdatePayload;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.InputWithModifiers;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.FormattedCharSequence;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class GlobeAtlasPowerScreen extends Screen {
+    private static final int PANEL_WIDTH = 275;
+    private static final int PANEL_HEIGHT = 226;
+    private static final int MAX_VISIBLE_DESTINATIONS = 7;
+    private static final int DESTINATION_SECTION_TOP = 62;
+    private static final int DESTINATION_SECTION_HEIGHT = 152;
+    private static final int DESTINATION_ROW_TOP = 72;
+    private static final int DESTINATION_ROW_STEP = 20;
+    private static final int DESTINATION_BUTTON_WIDTH = PANEL_WIDTH - 44;
+    private static final int TAB_GAP = 10;
+    private static final int TAB_WIDTH = (PANEL_WIDTH - 32 - TAB_GAP) / 2;
+    private static final int ATLAS_SECTION_LEFT = 112;
+    private static final int ATLAS_SECTION_WIDTH = PANEL_WIDTH - ATLAS_SECTION_LEFT - 12;
+    private static final int LINE = 11;
+    private static final int BUTTON_SIZE = 22;
+    private static final int STATUS_HEIGHT = 54;
+    private static final int STATUS_BOTTOM_MARGIN = 8;
+    private static final Identifier BUTTON_DISABLED_SPRITE = Identifier.withDefaultNamespace("container/beacon/button_disabled");
+    private static final Identifier BUTTON_SELECTED_SPRITE = Identifier.withDefaultNamespace("container/beacon/button_selected");
+    private static final Identifier BUTTON_HIGHLIGHTED_SPRITE = Identifier.withDefaultNamespace("container/beacon/button_highlighted");
+    private static final Identifier BUTTON_SPRITE = Identifier.withDefaultNamespace("container/beacon/button");
+    private static final int BUTTON_TEXT_COLOR = 0xFFFFFFFF;
+    private static final int DISABLED_TEXT_COLOR = 0xFF777777;
+    private static final int WIDE_BUTTON_COLOR = 0xFF9A9A9A;
+    private static final int WIDE_BUTTON_HOVER_COLOR = 0xFF6F91C8;
+    private static final int WIDE_BUTTON_SELECTED_COLOR = 0xFF727272;
+    private static final int WIDE_BUTTON_DISABLED_COLOR = 0xFF4E4E4E;
+    private static final int WIDE_BUTTON_LIGHT_EDGE = 0xFFFFFFFF;
+    private static final int WIDE_BUTTON_DISABLED_LIGHT_EDGE = 0xFF999999;
+    private static final int WIDE_BUTTON_DARK_EDGE = 0xFF373737;
+
+    private GlobeAtlasScreenPayload data;
+    private EditBox nameField;
+    private Tab activeTab = Tab.POWERS;
+    private boolean sentClosingName;
+    private int destinationScroll;
+
+    public GlobeAtlasPowerScreen(final GlobeAtlasScreenPayload data) {
+        super(Component.translatable("screen.globe-world.atlas_power"));
+        this.data = data;
+    }
+
+    public void apply(final GlobeAtlasScreenPayload data) {
+        this.data = data;
+        this.clampDestinationScroll();
+        this.rebuildWidgets();
+    }
+
+    @Override
+    protected void init() {
+        int left = this.left();
+        int top = this.top();
+
+        this.nameField = new EditBox(this.font, left + 16, top + 13, PANEL_WIDTH - 32, 18, Component.translatable("screen.globe-world.atlas_power.name"));
+        this.nameField.setMaxLength(64);
+        this.nameField.setValue(this.data.name());
+        this.nameField.setTooltip(Tooltip.create(Component.translatable("screen.globe-world.atlas_power.tooltip.name")));
+        this.addRenderableWidget(this.nameField);
+
+        this.addRenderableWidget(new TabButton(left + 16, top + 38, Tab.POWERS));
+        TabButton destinationTab = new TabButton(left + 16 + TAB_WIDTH + TAB_GAP, top + 38, Tab.DESTINATIONS);
+        this.addRenderableWidget(destinationTab);
+
+        if (this.activeTab == Tab.DESTINATIONS) {
+            int y = top + DESTINATION_ROW_TOP;
+            for (GlobeAtlasScreenPayload.Destination destination : this.data.destinations().stream()
+                    .skip(this.destinationScroll)
+                    .limit(MAX_VISIBLE_DESTINATIONS)
+                    .toList()) {
+                DestinationButton button = new DestinationButton(left + 18, y, destination);
+                button.active = destination.available();
+                this.addRenderableWidget(button);
+                y += DESTINATION_ROW_STEP;
+            }
+            return;
+        }
+
+        int effectX = left + 28;
+        int levelX = effectX + 28;
+        int effectY = top + 82;
+        for (GlobeAtlasEffect effect : GlobeAtlasEffect.values()) {
+            this.addRenderableWidget(new EffectButton(effectX, effectY, effect));
+            this.addRenderableWidget(new LevelTwoButton(levelX, effectY, effect));
+            effectY += 25;
+        }
+
+        int powerX = left + ATLAS_SECTION_LEFT + (ATLAS_SECTION_WIDTH - (BUTTON_SIZE * 3 + 6 * 2)) / 2;
+        int powerY = top + 82;
+        this.addRenderableWidget(new RangeButton(powerX, powerY, 1));
+        this.addRenderableWidget(new RangeButton(powerX + 28, powerY, 2));
+        this.addRenderableWidget(new RangeButton(powerX + 56, powerY, 3));
+        this.addRenderableWidget(new ProjectionButton(powerX, powerY + 28));
+        this.addRenderableWidget(new TravelButton(powerX + 28, powerY + 28));
+    }
+
+    @Override
+    public void onClose() {
+        this.sendNameIfChanged();
+        this.sentClosingName = true;
+        super.onClose();
+    }
+
+    @Override
+    public void removed() {
+        if (!this.sentClosingName) {
+            this.sendNameIfChanged();
+        }
+        super.removed();
+    }
+
+    @Override
+    public void extractRenderState(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+        int left = this.left();
+        int top = this.top();
+        this.panel(graphics, left, top, PANEL_WIDTH, PANEL_HEIGHT);
+
+        if (this.activeTab == Tab.DESTINATIONS) {
+            this.section(graphics, left + 12, top + DESTINATION_SECTION_TOP, PANEL_WIDTH - 24, DESTINATION_SECTION_HEIGHT);
+            if (this.data.destinations().isEmpty()) {
+                graphics.centeredText(
+                        this.font,
+                        Component.translatable("screen.globe-world.atlas_power.no_destinations"),
+                        left + PANEL_WIDTH / 2,
+                        top + DESTINATION_SECTION_TOP + DESTINATION_SECTION_HEIGHT / 2 - 4,
+                        0xFFE8E8E8);
+                this.hoverTooltip(
+                        graphics,
+                        mouseX,
+                        mouseY,
+                        left + 18,
+                        top + DESTINATION_SECTION_TOP + DESTINATION_SECTION_HEIGHT / 2 - 15,
+                        PANEL_WIDTH - 36,
+                        22,
+                        Component.translatable("screen.globe-world.atlas_power.tooltip.no_destinations"));
+            } else {
+                this.destinationScrollBar(graphics, left, top);
+            }
+        } else {
+            this.section(graphics, left + 12, top + 62, 94, 100);
+            this.section(graphics, left + ATLAS_SECTION_LEFT, top + 62, ATLAS_SECTION_WIDTH, 100);
+            this.centeredTextWithTooltip(
+                    graphics,
+                    mouseX,
+                    mouseY,
+                    Component.translatable("screen.globe-world.atlas_power.effects"),
+                    left + 59,
+                    top + 67,
+                    Component.translatable("screen.globe-world.atlas_power.tooltip.effects"));
+            this.centeredTextWithTooltip(
+                    graphics,
+                    mouseX,
+                    mouseY,
+                    Component.translatable("screen.globe-world.atlas_power.atlas"),
+                    left + ATLAS_SECTION_LEFT + ATLAS_SECTION_WIDTH / 2,
+                    top + 67,
+                    Component.translatable("screen.globe-world.atlas_power.tooltip.atlas"));
+            this.status(graphics, left, top, mouseX, mouseY);
+        }
+
+        super.extractRenderState(graphics, mouseX, mouseY, a);
+    }
+
+    @Override
+    public boolean mouseScrolled(final double x, final double y, final double scrollX, final double scrollY) {
+        if (this.activeTab == Tab.DESTINATIONS
+                && this.isMouseOverDestinationSection(x, y)
+                && scrollY != 0.0D
+                && this.scrollDestinations(scrollY < 0.0D ? 1 : -1)) {
+            return true;
+        }
+        return super.mouseScrolled(x, y, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean keyPressed(final KeyEvent event) {
+        if (super.keyPressed(event)) {
+            return true;
+        }
+        if (this.activeTab != Tab.DESTINATIONS) {
+            return false;
+        }
+        return switch (event.key()) {
+            case InputConstants.KEY_DOWN -> this.scrollDestinations(1);
+            case InputConstants.KEY_UP -> this.scrollDestinations(-1);
+            case InputConstants.KEY_PAGEDOWN -> this.scrollDestinations(MAX_VISIBLE_DESTINATIONS);
+            case InputConstants.KEY_PAGEUP -> this.scrollDestinations(-MAX_VISIBLE_DESTINATIONS);
+            case InputConstants.KEY_HOME -> this.setDestinationScroll(0);
+            case InputConstants.KEY_END -> this.setDestinationScroll(this.maxDestinationScroll());
+            default -> false;
+        };
+    }
+
+    private void panel(final GuiGraphicsExtractor graphics, final int x, final int y, final int width, final int height) {
+        graphics.fill(x, y, x + width, y + height, 0xFFC6C6C6);
+        graphics.outline(x, y, width, height, 0xFF000000);
+        graphics.outline(x + 1, y + 1, width - 2, height - 2, 0xFFFFFFFF);
+        graphics.outline(x + 3, y + 3, width - 6, height - 6, 0xFF555555);
+    }
+
+    private void section(final GuiGraphicsExtractor graphics, final int x, final int y, final int width, final int height) {
+        graphics.fill(x, y, x + width, y + height, 0xFF2C2C2C);
+        graphics.outline(x, y, width, height, 0xFF5F5F5F);
+    }
+
+    private static Identifier buttonSprite(final boolean active, final boolean selected, final boolean focused) {
+        if (!active) {
+            return BUTTON_DISABLED_SPRITE;
+        }
+        if (selected) {
+            return BUTTON_SELECTED_SPRITE;
+        }
+        if (focused) {
+            return BUTTON_HIGHLIGHTED_SPRITE;
+        }
+        return BUTTON_SPRITE;
+    }
+
+    private static int buttonTextColor(final boolean active) {
+        if (!active) {
+            return DISABLED_TEXT_COLOR;
+        }
+        return BUTTON_TEXT_COLOR;
+    }
+
+    private void drawButtonFrame(
+            final GuiGraphicsExtractor graphics,
+            final int x,
+            final int y,
+            final int width,
+            final int height,
+            final boolean active,
+            final boolean selected,
+            final boolean focused) {
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, buttonSprite(active, selected, focused), x, y, width, height);
+    }
+
+    private void drawWideButtonFrame(
+            final GuiGraphicsExtractor graphics,
+            final int x,
+            final int y,
+            final int width,
+            final int height,
+            final boolean active,
+            final boolean selected,
+            final boolean focused) {
+        int body = !active
+                ? WIDE_BUTTON_DISABLED_COLOR
+                : selected
+                        ? WIDE_BUTTON_SELECTED_COLOR
+                        : focused
+                                ? WIDE_BUTTON_HOVER_COLOR
+                                : WIDE_BUTTON_COLOR;
+        int light = active ? WIDE_BUTTON_LIGHT_EDGE : WIDE_BUTTON_DISABLED_LIGHT_EDGE;
+        int dark = WIDE_BUTTON_DARK_EDGE;
+        int topLeft = selected ? dark : light;
+        int bottomRight = selected ? light : dark;
+        graphics.fill(x, y, x + width, y + height, body);
+        graphics.horizontalLine(x, x + width - 1, y, topLeft);
+        graphics.verticalLine(x, y, y + height - 1, topLeft);
+        graphics.horizontalLine(x, x + width - 1, y + height - 1, bottomRight);
+        graphics.verticalLine(x + width - 1, y, y + height - 1, bottomRight);
+    }
+
+    private void destinationScrollBar(final GuiGraphicsExtractor graphics, final int left, final int top) {
+        int maxScroll = this.maxDestinationScroll();
+        if (maxScroll <= 0) {
+            return;
+        }
+        int trackX = left + PANEL_WIDTH - 16;
+        int trackTop = top + DESTINATION_ROW_TOP;
+        int trackHeight = MAX_VISIBLE_DESTINATIONS * DESTINATION_ROW_STEP - 2;
+        int thumbHeight = Math.max(14, trackHeight * MAX_VISIBLE_DESTINATIONS / this.data.destinations().size());
+        int thumbY = trackTop + Math.round((trackHeight - thumbHeight) * (this.destinationScroll / (float)maxScroll));
+        graphics.fill(trackX, trackTop, trackX + 3, trackTop + trackHeight, 0xFF171717);
+        graphics.fill(trackX, thumbY, trackX + 3, thumbY + thumbHeight, 0xFFE8E8E8);
+    }
+
+    private void status(final GuiGraphicsExtractor graphics, final int left, final int top, final int mouseX, final int mouseY) {
+        int statusTop = top + PANEL_HEIGHT - STATUS_HEIGHT - STATUS_BOTTOM_MARGIN;
+        graphics.fill(left + 12, statusTop, left + PANEL_WIDTH - 12, top + PANEL_HEIGHT - 8, 0xFF2C2C2C);
+        graphics.outline(left + 12, statusTop, PANEL_WIDTH - 24, STATUS_HEIGHT, 0xFF5F5F5F);
+        this.line(
+                graphics,
+                mouseX,
+                mouseY,
+                left + 18,
+                statusTop + 5,
+                Component.translatable(this.data.surveyMode()
+                        ? "screen.globe-world.atlas_power.chunks"
+                        : "screen.globe-world.atlas_power.discovery"),
+                String.format("%.2f%%", this.data.discoveredPercent()),
+                this.progressTooltip());
+        this.discoveryBar(graphics, left + 18, statusTop + 18, PANEL_WIDTH - 36, 7);
+        this.hoverTooltip(
+                graphics,
+                mouseX,
+                mouseY,
+                left + 18,
+                statusTop + 16,
+                PANEL_WIDTH - 36,
+                11,
+                this.progressTooltip());
+
+        int y = statusTop + 31;
+        if (this.data.surveyMode()) {
+            this.line(graphics, mouseX, mouseY, left + 18, y, Component.translatable("screen.globe-world.atlas_power.biomes"), Integer.toString(this.data.biomesVisited()),
+                    Component.translatable("screen.globe-world.atlas_power.tooltip.biomes"));
+            this.line(graphics, mouseX, mouseY, left + 126, y, Component.translatable("screen.globe-world.atlas_power.chunks"), this.data.visitedChunks() + " / " + this.data.targetChunks(),
+                    Component.translatable("screen.globe-world.atlas_power.tooltip.chunks"));
+        } else {
+            this.line(graphics, mouseX, mouseY, left + 18, y, Component.translatable("screen.globe-world.atlas_power.budget"), this.data.spentPoints() + " / " + this.data.worldPoints(),
+                    this.budgetTooltip());
+            this.line(graphics, mouseX, mouseY, left + 126, y, Component.translatable("screen.globe-world.atlas_power.cap"), this.data.radiusCap() + "m",
+                    Component.translatable("screen.globe-world.atlas_power.tooltip.cap"));
+        }
+
+        y += LINE;
+        if (this.data.surveyMode()) {
+            this.line(graphics, mouseX, mouseY, left + 18, y, Component.translatable("screen.globe-world.atlas_power.budget"), this.data.spentPoints() + " / " + this.data.worldPoints(),
+                    this.budgetTooltip());
+            this.line(graphics, mouseX, mouseY, left + 126, y, Component.translatable("screen.globe-world.atlas_power.usage"), this.data.loadout().cost() + " pts",
+                    this.usageTooltip());
+        } else {
+            this.line(graphics, mouseX, mouseY, left + 18, y, Component.translatable("screen.globe-world.atlas_power.usage"), this.data.loadout().cost() + " pts",
+                    this.usageTooltip());
+            graphics.centeredText(this.font, this.statusText(),
+                    left + 178, y, 0xFFE8E8E8);
+            this.hoverTooltip(
+                    graphics,
+                    mouseX,
+                    mouseY,
+                    left + 138,
+                    y - 1,
+                    80,
+                    LINE,
+                    this.data.complete()
+                            ? Component.translatable("screen.globe-world.atlas_power.tooltip.mastered")
+                            : Component.translatable("screen.globe-world.atlas_power.tooltip.locked"));
+        }
+    }
+
+    private void discoveryBar(final GuiGraphicsExtractor graphics, final int x, final int y, final int width, final int height) {
+        graphics.fill(x, y, x + width, y + height, 0xFF171717);
+        graphics.outline(x, y, width, height, 0xFF767676);
+        int fillWidth = (int)Math.round(width * clamp(this.data.discoveredPercent(), 0.0D, 100.0D) / 100.0D);
+        if (fillWidth > 0) {
+            graphics.fill(x + 1, y + 1, x + 1 + Math.min(width - 2, fillWidth), y + height - 1, this.data.travelUnlocked() ? 0xFF8FE8FF : 0xFF84C57A);
+        }
+
+        for (int milestone : this.data.milestoneTenths()) {
+            int markerX = x + Math.round(width * clamp(milestone, 0, 1000) / 1000.0F);
+            int color = this.data.discoveredPercent() * 10.0D >= milestone ? 0xFFFFFFFF : 0xFF777777;
+            graphics.verticalLine(markerX, y - 2, y + height + 1, color);
+        }
+    }
+
+    private static double clamp(final double value, final double min, final double max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private static int clamp(final int value, final int min, final int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private void line(
+            final GuiGraphicsExtractor graphics,
+            final int mouseX,
+            final int mouseY,
+            final int x,
+            final int y,
+            final Component label,
+            final String value,
+            final Component... tooltip) {
+        graphics.text(this.font, label, x, y, 0xFFAAAAAA, false);
+        graphics.text(this.font, value, x + 54, y, 0xFFE8E8E8, false);
+        if (tooltip.length > 0) {
+            this.hoverTooltip(graphics, mouseX, mouseY, x, y - 1, 104, LINE, tooltip);
+        }
+    }
+
+    private void centeredTextWithTooltip(
+            final GuiGraphicsExtractor graphics,
+            final int mouseX,
+            final int mouseY,
+            final Component text,
+            final int centerX,
+            final int y,
+            final Component tooltip) {
+        graphics.centeredText(this.font, text, centerX, y, 0xFFE8E8E8);
+        int width = this.font.width(text);
+        this.hoverTooltip(graphics, mouseX, mouseY, centerX - width / 2, y - 1, width, LINE, tooltip);
+    }
+
+    private void hoverTooltip(
+            final GuiGraphicsExtractor graphics,
+            final int mouseX,
+            final int mouseY,
+            final int x,
+            final int y,
+            final int width,
+            final int height,
+            final Component... lines) {
+        if (mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height && lines.length > 0) {
+            List<FormattedCharSequence> wrapped = new ArrayList<>();
+            for (Component line : lines) {
+                wrapped.addAll(this.font.split(line, 170));
+            }
+            graphics.setTooltipForNextFrame(this.font, wrapped, mouseX, mouseY);
+        }
+    }
+
+    private Component progressTooltip() {
+        return this.data.surveyMode()
+                ? Component.translatable("screen.globe-world.atlas_power.tooltip.progress_chunks")
+                : Component.translatable("screen.globe-world.atlas_power.tooltip.progress_discovery");
+    }
+
+    private Component budgetTooltip() {
+        return Component.translatable("screen.globe-world.atlas_power.tooltip.budget", this.data.spentPoints(), this.data.worldPoints());
+    }
+
+    private Component usageTooltip() {
+        return Component.translatable("screen.globe-world.atlas_power.tooltip.usage", this.data.loadout().cost());
+    }
+
+    private int left() {
+        return (this.width - PANEL_WIDTH) / 2;
+    }
+
+    private int top() {
+        return (this.height - PANEL_HEIGHT) / 2;
+    }
+
+    private boolean isMouseOverDestinationSection(final double x, final double y) {
+        int left = this.left();
+        int top = this.top();
+        return x >= left + 12
+                && x < left + PANEL_WIDTH - 12
+                && y >= top + DESTINATION_SECTION_TOP
+                && y < top + DESTINATION_SECTION_TOP + DESTINATION_SECTION_HEIGHT;
+    }
+
+    private boolean scrollDestinations(final int rows) {
+        return this.setDestinationScroll(this.destinationScroll + rows);
+    }
+
+    private boolean setDestinationScroll(final int scroll) {
+        int clamped = clamp(scroll, 0, this.maxDestinationScroll());
+        if (clamped == this.destinationScroll) {
+            return false;
+        }
+        String name = this.currentName();
+        this.destinationScroll = clamped;
+        this.rebuildWidgets();
+        this.nameField.setValue(name);
+        return true;
+    }
+
+    private void clampDestinationScroll() {
+        this.destinationScroll = clamp(this.destinationScroll, 0, this.maxDestinationScroll());
+    }
+
+    private int maxDestinationScroll() {
+        return Math.max(0, this.data.destinations().size() - MAX_VISIBLE_DESTINATIONS);
+    }
+
+    private Component statusText() {
+        if (this.data.surveyMode()) {
+            return this.data.travelUnlocked()
+                    ? Component.translatable("screen.globe-world.atlas_power.surveyed")
+                    : Component.translatable("screen.globe-world.atlas_power.locked");
+        }
+        return this.data.complete()
+                ? Component.translatable("screen.globe-world.atlas_power.mastered")
+                : Component.translatable("screen.globe-world.atlas_power.locked");
+    }
+
+    private int pointBudgetForThisAtlas() {
+        return Math.max(0, this.data.worldPoints() - Math.max(0, this.data.spentPoints() - this.data.loadout().cost()));
+    }
+
+    private boolean canApply(final GlobeAtlasLoadout candidate) {
+        return candidate.cost() <= this.pointBudgetForThisAtlas();
+    }
+
+    private GlobeAtlasLoadout withRadiusTier(final int radiusTier) {
+        return new GlobeAtlasLoadout(
+                radiusTier,
+                this.data.loadout().effectMask(),
+                this.data.loadout().levelTwoMask(),
+                this.data.loadout().travelNetwork());
+    }
+
+    private GlobeAtlasLoadout toggledRadiusLevel(final int level) {
+        int current = this.data.loadout().radiusTier();
+        int targetTier = this.radiusTierForLevel(level);
+        return this.withRadiusTier(current >= targetTier ? targetTier - 1 : targetTier);
+    }
+
+    private int radiusTierForLevel(final int level) {
+        return level == 3 ? GlobeAtlasLoadout.MAX_RADIUS_TIER : level;
+    }
+
+    private GlobeAtlasLoadout toggledEffect(final GlobeAtlasEffect effect) {
+        int mask = this.data.loadout().effectMask() ^ effect.mask();
+        int levelTwoMask = this.data.loadout().levelTwoMask() & mask;
+        return new GlobeAtlasLoadout(
+                this.data.loadout().radiusTier(),
+                mask,
+                levelTwoMask,
+                this.data.loadout().travelNetwork());
+    }
+
+    private GlobeAtlasLoadout toggledLevelTwo(final GlobeAtlasEffect effect) {
+        int levelTwoMask = this.data.loadout().levelTwoMask() ^ effect.mask();
+        return new GlobeAtlasLoadout(
+                this.data.loadout().radiusTier(),
+                this.data.loadout().effectMask(),
+                levelTwoMask,
+                this.data.loadout().travelNetwork());
+    }
+
+    private GlobeAtlasLoadout toggledTravel() {
+        return new GlobeAtlasLoadout(
+                this.data.loadout().radiusTier(),
+                this.data.loadout().effectMask(),
+                this.data.loadout().levelTwoMask(),
+                !this.data.loadout().travelNetwork());
+    }
+
+    private String currentName() {
+        return this.nameField == null ? this.data.name() : this.nameField.getValue();
+    }
+
+    private void sendNameIfChanged() {
+        if (!this.currentName().equals(this.data.name())) {
+            this.sendUpdate(this.data.loadout(), this.data.projectionEnabled());
+        }
+    }
+
+    private void sendUpdate(final GlobeAtlasLoadout loadout, final boolean projectionEnabled) {
+        ClientPlayNetworking.send(new GlobeAtlasUpdatePayload(
+                this.data.pos(),
+                loadout,
+                this.currentName(),
+                projectionEnabled));
+    }
+
+    private enum Tab {
+        POWERS,
+        DESTINATIONS
+    }
+
+    private class TabButton extends AbstractButton {
+        private final Tab tab;
+
+        TabButton(final int x, final int y, final Tab tab) {
+            super(x, y, TAB_WIDTH, 18, Component.translatable(tab == Tab.POWERS
+                    ? "screen.globe-world.atlas_power.powers"
+                    : "screen.globe-world.atlas_power.destinations"));
+            this.tab = tab;
+            this.setTooltip(Tooltip.create(Component.translatable(tab == Tab.POWERS
+                    ? "screen.globe-world.atlas_power.tooltip.powers_tab"
+                    : "screen.globe-world.atlas_power.tooltip.destinations_tab")));
+        }
+
+        @Override
+        public void onPress(final InputWithModifiers input) {
+            GlobeAtlasPowerScreen.this.sendNameIfChanged();
+            GlobeAtlasPowerScreen.this.activeTab = this.tab;
+            GlobeAtlasPowerScreen.this.rebuildWidgets();
+        }
+
+        @Override
+        protected void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+            boolean selected = GlobeAtlasPowerScreen.this.activeTab == this.tab;
+            GlobeAtlasPowerScreen.this.drawWideButtonFrame(
+                    graphics,
+                    this.getX(),
+                    this.getY(),
+                    this.width,
+                    this.height,
+                    this.active,
+                    selected,
+                    this.isHoveredOrFocused());
+            int textX = this.getX() + (this.width - GlobeAtlasPowerScreen.this.font.width(this.getMessage())) / 2;
+            graphics.text(GlobeAtlasPowerScreen.this.font, this.getMessage(), textX, this.getY() + 5, buttonTextColor(this.active), false);
+        }
+
+        @Override
+        public void updateWidgetNarration(final NarrationElementOutput output) {
+            this.defaultButtonNarrationText(output);
+        }
+    }
+
+    private abstract class AtlasButton extends AbstractButton {
+        private boolean selected;
+
+        AtlasButton(final int x, final int y, final Component message) {
+            super(x, y, BUTTON_SIZE, BUTTON_SIZE, message);
+        }
+
+        @Override
+        protected void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+            GlobeAtlasPowerScreen.this.drawButtonFrame(
+                    graphics,
+                    this.getX(),
+                    this.getY(),
+                    this.width,
+                    this.height,
+                    this.active,
+                    this.selected,
+                    this.isHoveredOrFocused());
+            this.extractIcon(graphics);
+        }
+
+        protected int iconTextColor() {
+            return buttonTextColor(this.active);
+        }
+
+        protected abstract void extractIcon(GuiGraphicsExtractor graphics);
+
+        void setSelected(final boolean selected) {
+            this.selected = selected;
+        }
+
+        @Override
+        public void updateWidgetNarration(final NarrationElementOutput output) {
+            this.defaultButtonNarrationText(output);
+        }
+    }
+
+    private class EffectButton extends AtlasButton {
+        private final GlobeAtlasEffect effect;
+
+        EffectButton(final int x, final int y, final GlobeAtlasEffect effect) {
+            super(x, y, Component.translatable(effect.translationKey()));
+            this.effect = effect;
+            boolean selected = GlobeAtlasPowerScreen.this.data.loadout().hasEffect(effect);
+            this.setSelected(selected);
+            this.active = selected || GlobeAtlasPowerScreen.this.canApply(GlobeAtlasPowerScreen.this.toggledEffect(effect));
+            this.setTooltip(Tooltip.create(Component.translatable(
+                    "screen.globe-world.atlas_power.tooltip.effect",
+                    Component.translatable(effect.translationKey()))));
+        }
+
+        @Override
+        public void onPress(final InputWithModifiers input) {
+            GlobeAtlasPowerScreen.this.sendUpdate(GlobeAtlasPowerScreen.this.toggledEffect(this.effect), GlobeAtlasPowerScreen.this.data.projectionEnabled());
+        }
+
+        @Override
+        protected void extractIcon(final GuiGraphicsExtractor graphics) {
+            Identifier sprite = Gui.getMobEffectSprite(this.effect.mobEffect());
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, this.getX() + 2, this.getY() + 2, 18, 18);
+        }
+    }
+
+    private class LevelTwoButton extends AtlasButton {
+        private final GlobeAtlasEffect effect;
+
+        LevelTwoButton(final int x, final int y, final GlobeAtlasEffect effect) {
+            super(x, y, Component.translatable("screen.globe-world.atlas_power.level_two"));
+            this.effect = effect;
+            boolean selected = GlobeAtlasPowerScreen.this.data.loadout().hasLevelTwo(effect);
+            boolean hasEffect = GlobeAtlasPowerScreen.this.data.loadout().hasEffect(effect);
+            this.setSelected(selected);
+            this.active = selected || (hasEffect && GlobeAtlasPowerScreen.this.canApply(GlobeAtlasPowerScreen.this.toggledLevelTwo(effect)));
+            this.setTooltip(Tooltip.create(Component.translatable(
+                    "screen.globe-world.atlas_power.tooltip.level_two",
+                    Component.translatable(effect.translationKey()))));
+        }
+
+        @Override
+        public void onPress(final InputWithModifiers input) {
+            GlobeAtlasPowerScreen.this.sendUpdate(GlobeAtlasPowerScreen.this.toggledLevelTwo(this.effect), GlobeAtlasPowerScreen.this.data.projectionEnabled());
+        }
+
+        @Override
+        protected void extractIcon(final GuiGraphicsExtractor graphics) {
+            graphics.centeredText(GlobeAtlasPowerScreen.this.font, "II", this.getX() + 11, this.getY() + 7, this.iconTextColor());
+        }
+    }
+
+    private class RangeButton extends AtlasButton {
+        private final int level;
+
+        RangeButton(final int x, final int y, final int level) {
+            super(x, y, Component.translatable("screen.globe-world.atlas_power.radius"));
+            this.level = level;
+            int current = GlobeAtlasPowerScreen.this.data.loadout().radiusTier();
+            int targetTier = GlobeAtlasPowerScreen.this.radiusTierForLevel(level);
+            boolean selected = current >= targetTier;
+            this.setSelected(selected);
+            this.active = selected
+                    || (level == 1 || current >= level - 1)
+                    && GlobeAtlasPowerScreen.this.canApply(GlobeAtlasPowerScreen.this.toggledRadiusLevel(level));
+            this.setTooltip(Tooltip.create(Component.translatable(
+                    "screen.globe-world.atlas_power.tooltip.radius",
+                    GlobeAtlasPowerScreen.this.withRadiusTier(targetTier).radiusBlocks())));
+        }
+
+        @Override
+        public void onPress(final InputWithModifiers input) {
+            GlobeAtlasPowerScreen.this.sendUpdate(GlobeAtlasPowerScreen.this.toggledRadiusLevel(this.level), GlobeAtlasPowerScreen.this.data.projectionEnabled());
+        }
+
+        @Override
+        protected void extractIcon(final GuiGraphicsExtractor graphics) {
+            String text = this.level == 1 ? "R" : this.level == 2 ? "II" : "III";
+            graphics.centeredText(GlobeAtlasPowerScreen.this.font, text, this.getX() + 11, this.getY() + 7, this.iconTextColor());
+        }
+    }
+
+    private class ProjectionButton extends AtlasButton {
+        ProjectionButton(final int x, final int y) {
+            super(x, y, Component.translatable("screen.globe-world.atlas_power.projection"));
+            this.setSelected(GlobeAtlasPowerScreen.this.data.projectionEnabled());
+            this.active = true;
+            this.setTooltip(Tooltip.create(Component.translatable("screen.globe-world.atlas_power.tooltip.projection")));
+        }
+
+        @Override
+        public void onPress(final InputWithModifiers input) {
+            GlobeAtlasPowerScreen.this.sendUpdate(GlobeAtlasPowerScreen.this.data.loadout(), !GlobeAtlasPowerScreen.this.data.projectionEnabled());
+        }
+
+        @Override
+        protected void extractIcon(final GuiGraphicsExtractor graphics) {
+            graphics.centeredText(GlobeAtlasPowerScreen.this.font, "P", this.getX() + 11, this.getY() + 7, this.iconTextColor());
+        }
+    }
+
+    private class TravelButton extends AtlasButton {
+        TravelButton(final int x, final int y) {
+            super(x, y, Component.translatable("screen.globe-world.atlas_power.travel"));
+            boolean selected = GlobeAtlasPowerScreen.this.data.loadout().travelNetwork();
+            this.setSelected(selected);
+            this.active = selected
+                    || (GlobeAtlasPowerScreen.this.data.surveyMode() || GlobeAtlasPowerScreen.this.data.travelUnlocked())
+                    && GlobeAtlasPowerScreen.this.canApply(GlobeAtlasPowerScreen.this.toggledTravel());
+            this.setTooltip(Tooltip.create(Component.translatable("screen.globe-world.atlas_power.tooltip.travel")));
+        }
+
+        @Override
+        public void onPress(final InputWithModifiers input) {
+            GlobeAtlasPowerScreen.this.sendUpdate(GlobeAtlasPowerScreen.this.toggledTravel(), GlobeAtlasPowerScreen.this.data.projectionEnabled());
+        }
+
+        @Override
+        protected void extractIcon(final GuiGraphicsExtractor graphics) {
+            graphics.centeredText(GlobeAtlasPowerScreen.this.font, "T", this.getX() + 11, this.getY() + 7, this.iconTextColor());
+        }
+    }
+
+    private class DestinationButton extends AbstractButton {
+        private final GlobeAtlasScreenPayload.Destination destination;
+
+        DestinationButton(final int x, final int y, final GlobeAtlasScreenPayload.Destination destination) {
+            super(x, y, DESTINATION_BUTTON_WIDTH, 18, Component.literal(destinationLabel(destination)));
+            this.destination = destination;
+            this.setTooltip(Tooltip.create(Component.translatable(
+                    "screen.globe-world.atlas_power.tooltip.destination",
+                    destination.label(),
+                    positionLabel(destination.pos()),
+                    destination.detail())));
+        }
+
+        @Override
+        public void onPress(final InputWithModifiers input) {
+            GlobeAtlasPowerScreen.this.sendNameIfChanged();
+            GlobeAtlasPowerScreen.this.sentClosingName = true;
+            ClientPlayNetworking.send(new GlobeAtlasTravelPayload(GlobeAtlasPowerScreen.this.data.pos(), this.destination.pos()));
+            if (GlobeAtlasPowerScreen.this.minecraft != null) {
+                GlobeAtlasPowerScreen.this.minecraft.setScreen(null);
+            }
+        }
+
+        @Override
+        protected void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
+            GlobeAtlasPowerScreen.this.drawWideButtonFrame(
+                    graphics,
+                    this.getX(),
+                    this.getY(),
+                    this.width,
+                    this.height,
+                    this.active,
+                    false,
+                    this.isHoveredOrFocused());
+            String text = this.getMessage().getString();
+            int maxTextWidth = this.width - 8;
+            if (GlobeAtlasPowerScreen.this.font.width(text) > maxTextWidth) {
+                text = GlobeAtlasPowerScreen.this.font.plainSubstrByWidth(text, maxTextWidth - GlobeAtlasPowerScreen.this.font.width("...")) + "...";
+            }
+            int textX = this.getX() + (this.width - GlobeAtlasPowerScreen.this.font.width(text)) / 2;
+            graphics.text(
+                    GlobeAtlasPowerScreen.this.font,
+                    text,
+                    textX,
+                    this.getY() + 5,
+                    buttonTextColor(this.active),
+                    false);
+        }
+
+        @Override
+        public void updateWidgetNarration(final NarrationElementOutput output) {
+            this.defaultButtonNarrationText(output);
+        }
+    }
+
+    private static String destinationLabel(final GlobeAtlasScreenPayload.Destination destination) {
+        return destination.label() + " @ " + positionLabel(destination.pos());
+    }
+
+    private static String positionLabel(final BlockPos pos) {
+        return pos.getX() + ", " + pos.getY() + ", " + pos.getZ();
+    }
+}

@@ -26,9 +26,8 @@ import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 
 public final class GlobeSpawnFinder {
@@ -76,7 +75,7 @@ public final class GlobeSpawnFinder {
         }
 
         BlockPos suggestion = CoordUtil.wrapBlockPos(tiling, spawnChunk.getWorldPosition().offset(8, 0, 8));
-        List<ChunkPos> chunks = orderedCanonicalChunks(tiling, suggestion);
+        CanonicalChunkSearch chunks = orderedCanonicalChunks(tiling, suggestion);
         for (ChunkPos chunk : chunks) {
             BlockPos pos = findDryLandInChunk(level, chunk);
             if (pos != null) {
@@ -306,42 +305,22 @@ public final class GlobeSpawnFinder {
         return level.noCollision(null, PLAYER_DIMENSIONS.makeBoundingBox(pos.getBottomCenter()));
     }
 
-    private static List<ChunkPos> orderedCanonicalChunks(DimensionTiling tiling, BlockPos suggestion) {
-        int min = -tiling.tileSizeChunks() / 2;
-        int max = min + tiling.tileSizeChunks();
-        ChunkPos suggestionChunk = CoordUtil.wrapChunkPos(
-                tiling,
-                new ChunkPos(
-                        SectionPos.blockToSectionCoord(suggestion.getX()),
-                        SectionPos.blockToSectionCoord(suggestion.getZ())));
-        List<ChunkPos> chunks = new ArrayList<>(tiling.tileSizeChunks() * tiling.tileSizeChunks());
-        for (int x = min; x < max; x++) {
-            for (int z = min; z < max; z++) {
-                chunks.add(new ChunkPos(x, z));
-            }
-        }
-        chunks.sort(Comparator
-                .comparingInt((ChunkPos pos) -> CoordUtil.wrappedChunkDistance(tiling, pos.x(), suggestionChunk.x())
-                        + CoordUtil.wrappedChunkDistance(tiling, pos.z(), suggestionChunk.z()))
-                .thenComparingInt(pos -> CoordUtil.wrappedChunkDistance(tiling, pos.x(), suggestionChunk.x()))
-                .thenComparingInt(ChunkPos::x)
-                .thenComparingInt(ChunkPos::z));
-        return chunks;
+    private static CanonicalChunkSearch orderedCanonicalChunks(DimensionTiling tiling, BlockPos suggestion) {
+        return new CanonicalChunkSearch(tiling, suggestion);
     }
 
     private static final class SpawnSearch {
         private final ServerLevel level;
         private final DimensionTiling tiling;
         private final BlockPos suggestion;
-        private final List<ChunkPos> chunks;
+        private final Iterator<ChunkPos> chunks;
         private final CompletableFuture<Vec3> future = new CompletableFuture<>();
-        private int nextIndex;
 
         private SpawnSearch(ServerLevel level, DimensionTiling tiling, BlockPos suggestion) {
             this.level = level;
             this.tiling = tiling;
             this.suggestion = suggestion;
-            this.chunks = orderedCanonicalChunks(tiling, suggestion);
+            this.chunks = orderedCanonicalChunks(tiling, suggestion).iterator();
         }
 
         private void scheduleNext() {
@@ -349,13 +328,12 @@ public final class GlobeSpawnFinder {
                 return;
             }
 
-            if (this.nextIndex >= this.chunks.size()) {
+            if (!this.chunks.hasNext()) {
                 this.completeFallback();
                 return;
             }
 
-            int candidateIndex = this.nextIndex++;
-            ChunkPos chunk = this.chunks.get(candidateIndex);
+            ChunkPos chunk = this.chunks.next();
             this.level.getChunkSource().addTicketAndLoadWithRadius(TicketType.SPAWN_SEARCH, chunk, 0).whenCompleteAsync((ignored, throwable) -> {
                 if (throwable != null) {
                     this.future.completeExceptionally(throwable);
@@ -372,7 +350,7 @@ public final class GlobeSpawnFinder {
         }
 
         private void completeFallback() {
-            for (ChunkPos chunk : this.chunks) {
+            for (ChunkPos chunk : orderedCanonicalChunks(this.tiling, this.suggestion)) {
                 BlockPos pos = findSafeSurfaceInChunk(this.level, chunk);
                 if (pos != null) {
                     this.future.complete(Vec3.atBottomCenterOf(pos));
@@ -388,6 +366,102 @@ public final class GlobeSpawnFinder {
             }
 
             this.future.complete(lastResort(this.level, this.tiling));
+        }
+    }
+
+    private static final class CanonicalChunkSearch implements Iterable<ChunkPos> {
+        private final DimensionTiling tiling;
+        private final int tileSize;
+        private final int halfTileSize;
+        private final long totalChunks;
+        private final ChunkPos suggestionChunk;
+
+        private CanonicalChunkSearch(DimensionTiling tiling, BlockPos suggestion) {
+            this.tiling = tiling;
+            this.tileSize = tiling.tileSizeChunks();
+            this.halfTileSize = this.tileSize / 2;
+            this.totalChunks = (long)this.tileSize * (long)this.tileSize;
+            this.suggestionChunk = CoordUtil.wrapChunkPos(
+                    tiling,
+                    new ChunkPos(
+                            SectionPos.blockToSectionCoord(suggestion.getX()),
+                            SectionPos.blockToSectionCoord(suggestion.getZ())));
+        }
+
+        @Override
+        public Iterator<ChunkPos> iterator() {
+            return new Iterator<>() {
+                private long emitted;
+                private int distance;
+                private int xDistance;
+                private int[] xs = new int[0];
+                private int[] zs = new int[0];
+                private int candidateIndex;
+                private boolean hasCandidateSet;
+
+                @Override
+                public boolean hasNext() {
+                    return this.emitted < CanonicalChunkSearch.this.totalChunks;
+                }
+
+                @Override
+                public ChunkPos next() {
+                    if (!this.hasNext()) {
+                        throw new NoSuchElementException();
+                    }
+
+                    while (!this.hasCandidateSet || this.candidateIndex >= this.xs.length * this.zs.length) {
+                        this.prepareNextCandidateSet();
+                    }
+
+                    int zCount = this.zs.length;
+                    int x = this.xs[this.candidateIndex / zCount];
+                    int z = this.zs[this.candidateIndex % zCount];
+                    this.candidateIndex++;
+                    this.emitted++;
+                    return new ChunkPos(x, z);
+                }
+
+                private void prepareNextCandidateSet() {
+                    while (true) {
+                        int maxXDistance = Math.min(this.distance, CanonicalChunkSearch.this.halfTileSize);
+                        if (this.xDistance > maxXDistance) {
+                            this.distance++;
+                            this.xDistance = 0;
+                            continue;
+                        }
+
+                        int zDistance = this.distance - this.xDistance;
+                        if (zDistance <= CanonicalChunkSearch.this.halfTileSize) {
+                            this.xs = coordinatesAtDistance(
+                                    CanonicalChunkSearch.this.suggestionChunk.x(),
+                                    this.xDistance);
+                            this.zs = coordinatesAtDistance(
+                                    CanonicalChunkSearch.this.suggestionChunk.z(),
+                                    zDistance);
+                            this.candidateIndex = 0;
+                            this.hasCandidateSet = true;
+                            this.xDistance++;
+                            return;
+                        }
+
+                        this.xDistance++;
+                    }
+                }
+            };
+        }
+
+        private int[] coordinatesAtDistance(int origin, int distance) {
+            if (distance == 0) {
+                return new int[] { origin };
+            }
+
+            int negative = CoordUtil.wrapChunk(this.tiling, origin - distance);
+            int positive = CoordUtil.wrapChunk(this.tiling, origin + distance);
+            if (negative == positive) {
+                return new int[] { negative };
+            }
+            return negative < positive ? new int[] { negative, positive } : new int[] { positive, negative };
         }
     }
 }

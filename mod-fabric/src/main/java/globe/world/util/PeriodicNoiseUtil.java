@@ -427,7 +427,10 @@ public class PeriodicNoiseUtil {
             return new PeriodicScale(0.0, 1);
         }
 
-        int cells = Math.max(1, Math.toIntExact(Math.round(period * Math.abs(scale) * factor)));
+        double exactCells = period * Math.abs(scale) * factor;
+        int cells = exactCells >= Integer.MAX_VALUE
+                ? Integer.MAX_VALUE
+                : Math.max(1, (int)Math.round(exactCells));
         double adjustedScale = Math.copySign((double) cells / (period * factor), scale);
         return new PeriodicScale(adjustedScale, cells);
     }

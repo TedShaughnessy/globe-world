@@ -55,8 +55,10 @@ land-adjacent and accept the seed. The first candidate is the vanilla random
 seed already present in `WorldOptions`; later candidates use
 `WorldOptions.randomSeed()`. If all 32 attempts still appear water-only, Globe
 World logs a warning and creates the world with the last tested seed. Large
-tiles whose sample grid would exceed the hard cap skip the heuristic and keep
-the original seed.
+tiles whose sample grid would exceed the hard cap estimate that grid before
+allocating sample coordinates, skip the heuristic, and keep the original seed.
+This keeps very large random world creation from pausing on client-side
+preflight work.
 
 ## Forced Progression Structures
 
@@ -104,7 +106,10 @@ utilities or terrain-mode-aware sampling. Positional random factories are wrappe
 where the caller's coordinate unit is known. Generator phases that rely on raw
 ambient `CoordUtil` calls run inside scoped dimension tiling contexts; async
 biome/noise work captures the caller's dimension context and restores it on the
-worker thread.
+worker thread. For extreme periodic-lattice tiles, octave cell counts that
+exceed Java's integer range are capped to the largest representable cell period
+and the sample scale is adjusted to match that cap, preventing overflow during
+chunk generation.
 
 Alias `LevelChunk.postProcessGeneration` is cancelled and queued
 post-processing offsets are cleared so alias neighbor-shape fixes do not write

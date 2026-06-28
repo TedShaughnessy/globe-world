@@ -1,0 +1,8 @@
+{
+  "parent": "globe-world:block/template_atlas_projector",
+  "textures": {
+    "lantern": "minecraft:block/lantern",
+    "copper": "minecraft:block/copper_block",
+    "crystal": "minecraft:block/amethyst_block"
+  }
+}

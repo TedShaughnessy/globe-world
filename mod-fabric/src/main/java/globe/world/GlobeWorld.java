@@ -1,6 +1,7 @@
 package globe.world;
 
 import globe.world.network.GlobeWorldNetworking;
+import globe.world.map.GlobeMapTracker;
 import globe.world.util.ForcedProgressionStructurePieces;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.core.Registry;
@@ -29,6 +30,8 @@ public class GlobeWorld implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		GlobeWorldBlocks.register();
+		GlobeMapTracker.register();
 		ForcedProgressionStructurePieces.register();
 		GlobeWorldNetworking.registerCommon();
 		GlobeDebugCommands.register();
