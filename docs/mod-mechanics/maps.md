@@ -132,7 +132,9 @@ center rises with the scaled minor radius so large projections stay above the
 projector block, and block-entity render culling is expanded for large
 projections. In survey mode, placed Atlases render a quieter shallow square
 domed holographic survey surface centered on that Atlas' canonical chunk
-instead of the torus, with the corners participating in the curvature.
+instead of the torus, with the corners participating in the curvature. The
+placed survey surface uses a depth-tested translucent render type, so terrain
+and blocks occlude it instead of letting it show through walls.
 Projection-enabled placed Atlases also render a short, translucent,
 variant-tinted light fan from the projector top toward the hologram surface, so
 iron, copper, and soul projectors have a visible active state before the map
@@ -198,11 +200,14 @@ non-spectator players inside the selected radius using wrapped X/Z distance, so
 players across a canonical edge can still qualify. Unloaded Atlases keep
 reserving budget through saved state, but they do not apply effects.
 
-The client Atlas power screen draws a compact grey in-game panel without the
+The client Atlas power screen draws a compact, widened grey in-game panel without the
 vanilla beacon payment slot, confirmation row, inventory, or hotbar. Effect
 selection is icon-based, each effect has a neighboring level II toggle, radius
 uses matching `R`, `II`, and `III` toggle buttons, and the projection and travel
-buttons use the same symbol-control style. Discovery is shown as a progress bar
+buttons use the same symbol-control style. Atlas controls use the vanilla
+beacon button sprites for available, highlighted, selected, and disabled
+states, while tabs and destination rows use matching unstretched rectangular
+frames. Discovery is shown as a progress bar
 with point/radius milestone markers derived from `GlobeDiscoveryRewards`;
 budget, radius cap, and current usage are shown alongside it on literal-map
 tiles. The projection button remains available in survey mode and controls the

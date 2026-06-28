@@ -195,7 +195,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
             final Identifier texture) {
         submitNodeCollector.submitCustomGeometry(
                 poseStack,
-                RenderTypes.textSeeThrough(texture),
+                RenderTypes.entityTranslucent(texture),
                 (pose, buffer) -> renderSurveyPlane(buffer, pose));
     }
 

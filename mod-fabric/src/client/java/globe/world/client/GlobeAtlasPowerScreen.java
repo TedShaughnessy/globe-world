@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GlobeAtlasPowerScreen extends Screen {
-    private static final int PANEL_WIDTH = 250;
+    private static final int PANEL_WIDTH = 275;
     private static final int PANEL_HEIGHT = 226;
     private static final int MAX_VISIBLE_DESTINATIONS = 7;
     private static final int DESTINATION_SECTION_TOP = 62;
@@ -34,13 +34,27 @@ public class GlobeAtlasPowerScreen extends Screen {
     private static final int DESTINATION_ROW_TOP = 72;
     private static final int DESTINATION_ROW_STEP = 20;
     private static final int DESTINATION_BUTTON_WIDTH = PANEL_WIDTH - 44;
+    private static final int TAB_GAP = 10;
+    private static final int TAB_WIDTH = (PANEL_WIDTH - 32 - TAB_GAP) / 2;
+    private static final int ATLAS_SECTION_LEFT = 112;
+    private static final int ATLAS_SECTION_WIDTH = PANEL_WIDTH - ATLAS_SECTION_LEFT - 12;
     private static final int LINE = 11;
     private static final int BUTTON_SIZE = 22;
     private static final int STATUS_HEIGHT = 54;
     private static final int STATUS_BOTTOM_MARGIN = 8;
-    private static final int TEXT_COLOR = 0xFF404040;
+    private static final Identifier BUTTON_DISABLED_SPRITE = Identifier.withDefaultNamespace("container/beacon/button_disabled");
+    private static final Identifier BUTTON_SELECTED_SPRITE = Identifier.withDefaultNamespace("container/beacon/button_selected");
+    private static final Identifier BUTTON_HIGHLIGHTED_SPRITE = Identifier.withDefaultNamespace("container/beacon/button_highlighted");
+    private static final Identifier BUTTON_SPRITE = Identifier.withDefaultNamespace("container/beacon/button");
+    private static final int BUTTON_TEXT_COLOR = 0xFFFFFFFF;
     private static final int DISABLED_TEXT_COLOR = 0xFF777777;
-    private static final int ICON_DISABLED_COLOR = 0x88FFFFFF;
+    private static final int WIDE_BUTTON_COLOR = 0xFF9A9A9A;
+    private static final int WIDE_BUTTON_HOVER_COLOR = 0xFF6F91C8;
+    private static final int WIDE_BUTTON_SELECTED_COLOR = 0xFF727272;
+    private static final int WIDE_BUTTON_DISABLED_COLOR = 0xFF4E4E4E;
+    private static final int WIDE_BUTTON_LIGHT_EDGE = 0xFFFFFFFF;
+    private static final int WIDE_BUTTON_DISABLED_LIGHT_EDGE = 0xFF999999;
+    private static final int WIDE_BUTTON_DARK_EDGE = 0xFF373737;
 
     private GlobeAtlasScreenPayload data;
     private EditBox nameField;
@@ -70,8 +84,8 @@ public class GlobeAtlasPowerScreen extends Screen {
         this.nameField.setTooltip(Tooltip.create(Component.translatable("screen.globe-world.atlas_power.tooltip.name")));
         this.addRenderableWidget(this.nameField);
 
-        this.addRenderableWidget(new TabButton(left + 16, top + 38, 104, Tab.POWERS));
-        TabButton destinationTab = new TabButton(left + 130, top + 38, 104, Tab.DESTINATIONS);
+        this.addRenderableWidget(new TabButton(left + 16, top + 38, Tab.POWERS));
+        TabButton destinationTab = new TabButton(left + 16 + TAB_WIDTH + TAB_GAP, top + 38, Tab.DESTINATIONS);
         this.addRenderableWidget(destinationTab);
 
         if (this.activeTab == Tab.DESTINATIONS) {
@@ -97,7 +111,7 @@ public class GlobeAtlasPowerScreen extends Screen {
             effectY += 25;
         }
 
-        int powerX = left + 136;
+        int powerX = left + ATLAS_SECTION_LEFT + (ATLAS_SECTION_WIDTH - (BUTTON_SIZE * 3 + 6 * 2)) / 2;
         int powerY = top + 82;
         this.addRenderableWidget(new RangeButton(powerX, powerY, 1));
         this.addRenderableWidget(new RangeButton(powerX + 28, powerY, 2));
@@ -150,7 +164,7 @@ public class GlobeAtlasPowerScreen extends Screen {
             }
         } else {
             this.section(graphics, left + 12, top + 62, 94, 100);
-            this.section(graphics, left + 112, top + 62, 126, 100);
+            this.section(graphics, left + ATLAS_SECTION_LEFT, top + 62, ATLAS_SECTION_WIDTH, 100);
             this.centeredTextWithTooltip(
                     graphics,
                     mouseX,
@@ -164,7 +178,7 @@ public class GlobeAtlasPowerScreen extends Screen {
                     mouseX,
                     mouseY,
                     Component.translatable("screen.globe-world.atlas_power.atlas"),
-                    left + 175,
+                    left + ATLAS_SECTION_LEFT + ATLAS_SECTION_WIDTH / 2,
                     top + 67,
                     Component.translatable("screen.globe-world.atlas_power.tooltip.atlas"));
             this.status(graphics, left, top, mouseX, mouseY);
@@ -213,6 +227,65 @@ public class GlobeAtlasPowerScreen extends Screen {
     private void section(final GuiGraphicsExtractor graphics, final int x, final int y, final int width, final int height) {
         graphics.fill(x, y, x + width, y + height, 0xFF2C2C2C);
         graphics.outline(x, y, width, height, 0xFF5F5F5F);
+    }
+
+    private static Identifier buttonSprite(final boolean active, final boolean selected, final boolean focused) {
+        if (!active) {
+            return BUTTON_DISABLED_SPRITE;
+        }
+        if (selected) {
+            return BUTTON_SELECTED_SPRITE;
+        }
+        if (focused) {
+            return BUTTON_HIGHLIGHTED_SPRITE;
+        }
+        return BUTTON_SPRITE;
+    }
+
+    private static int buttonTextColor(final boolean active) {
+        if (!active) {
+            return DISABLED_TEXT_COLOR;
+        }
+        return BUTTON_TEXT_COLOR;
+    }
+
+    private void drawButtonFrame(
+            final GuiGraphicsExtractor graphics,
+            final int x,
+            final int y,
+            final int width,
+            final int height,
+            final boolean active,
+            final boolean selected,
+            final boolean focused) {
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, buttonSprite(active, selected, focused), x, y, width, height);
+    }
+
+    private void drawWideButtonFrame(
+            final GuiGraphicsExtractor graphics,
+            final int x,
+            final int y,
+            final int width,
+            final int height,
+            final boolean active,
+            final boolean selected,
+            final boolean focused) {
+        int body = !active
+                ? WIDE_BUTTON_DISABLED_COLOR
+                : selected
+                        ? WIDE_BUTTON_SELECTED_COLOR
+                        : focused
+                                ? WIDE_BUTTON_HOVER_COLOR
+                                : WIDE_BUTTON_COLOR;
+        int light = active ? WIDE_BUTTON_LIGHT_EDGE : WIDE_BUTTON_DISABLED_LIGHT_EDGE;
+        int dark = WIDE_BUTTON_DARK_EDGE;
+        int topLeft = selected ? dark : light;
+        int bottomRight = selected ? light : dark;
+        graphics.fill(x, y, x + width, y + height, body);
+        graphics.horizontalLine(x, x + width - 1, y, topLeft);
+        graphics.verticalLine(x, y, y + height - 1, topLeft);
+        graphics.horizontalLine(x, x + width - 1, y + height - 1, bottomRight);
+        graphics.verticalLine(x + width - 1, y, y + height - 1, bottomRight);
     }
 
     private void destinationScrollBar(final GuiGraphicsExtractor graphics, final int left, final int top) {
@@ -508,8 +581,8 @@ public class GlobeAtlasPowerScreen extends Screen {
     private class TabButton extends AbstractButton {
         private final Tab tab;
 
-        TabButton(final int x, final int y, final int width, final Tab tab) {
-            super(x, y, width, 18, Component.translatable(tab == Tab.POWERS
+        TabButton(final int x, final int y, final Tab tab) {
+            super(x, y, TAB_WIDTH, 18, Component.translatable(tab == Tab.POWERS
                     ? "screen.globe-world.atlas_power.powers"
                     : "screen.globe-world.atlas_power.destinations"));
             this.tab = tab;
@@ -528,12 +601,17 @@ public class GlobeAtlasPowerScreen extends Screen {
         @Override
         protected void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
             boolean selected = GlobeAtlasPowerScreen.this.activeTab == this.tab;
-            int body = this.active ? (selected ? 0xFFD7D7D7 : 0xFF9A9A9A) : 0xFF505050;
-            int text = this.active ? TEXT_COLOR : 0xFFCFCFCF;
-            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, body);
-            graphics.outline(this.getX(), this.getY(), this.width, this.height, 0xFF373737);
+            GlobeAtlasPowerScreen.this.drawWideButtonFrame(
+                    graphics,
+                    this.getX(),
+                    this.getY(),
+                    this.width,
+                    this.height,
+                    this.active,
+                    selected,
+                    this.isHoveredOrFocused());
             int textX = this.getX() + (this.width - GlobeAtlasPowerScreen.this.font.width(this.getMessage())) / 2;
-            graphics.text(GlobeAtlasPowerScreen.this.font, this.getMessage(), textX, this.getY() + 5, text, false);
+            graphics.text(GlobeAtlasPowerScreen.this.font, this.getMessage(), textX, this.getY() + 5, buttonTextColor(this.active), false);
         }
 
         @Override
@@ -551,20 +629,20 @@ public class GlobeAtlasPowerScreen extends Screen {
 
         @Override
         protected void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
-            int body = this.active ? (this.selected ? 0xFF727272 : 0xFF626262) : 0xFF4E4E4E;
-            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, body);
-            graphics.horizontalLine(this.getX(), this.getX() + this.width - 1, this.getY(), this.active ? 0xFFFFFFFF : 0xFF999999);
-            graphics.verticalLine(this.getX(), this.getY(), this.getY() + this.height - 1, this.active ? 0xFFFFFFFF : 0xFF999999);
-            graphics.horizontalLine(this.getX(), this.getX() + this.width - 1, this.getY() + this.height - 1, 0xFF373737);
-            graphics.verticalLine(this.getX() + this.width - 1, this.getY(), this.getY() + this.height - 1, 0xFF373737);
-            if (this.isHoveredOrFocused() && this.active) {
-                graphics.outline(this.getX() + 1, this.getY() + 1, this.width - 2, this.height - 2, 0xFFFFFFA0);
-            }
+            GlobeAtlasPowerScreen.this.drawButtonFrame(
+                    graphics,
+                    this.getX(),
+                    this.getY(),
+                    this.width,
+                    this.height,
+                    this.active,
+                    this.selected,
+                    this.isHoveredOrFocused());
             this.extractIcon(graphics);
         }
 
         protected int iconTextColor() {
-            return this.active ? 0xFFFFFFFF : DISABLED_TEXT_COLOR;
+            return buttonTextColor(this.active);
         }
 
         protected abstract void extractIcon(GuiGraphicsExtractor graphics);
@@ -601,7 +679,7 @@ public class GlobeAtlasPowerScreen extends Screen {
         @Override
         protected void extractIcon(final GuiGraphicsExtractor graphics) {
             Identifier sprite = Gui.getMobEffectSprite(this.effect.mobEffect());
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, this.getX() + 2, this.getY() + 2, 18, 18, this.active ? 0xFFFFFFFF : ICON_DISABLED_COLOR);
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, this.getX() + 2, this.getY() + 2, 18, 18);
         }
     }
 
@@ -727,12 +805,15 @@ public class GlobeAtlasPowerScreen extends Screen {
 
         @Override
         protected void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
-            int color = this.active ? 0xFF9A9A9A : 0xFF6E6E6E;
-            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, color);
-            graphics.outline(this.getX(), this.getY(), this.width, this.height, 0xFF373737);
-            if (this.isHoveredOrFocused() && this.active) {
-                graphics.outline(this.getX() + 1, this.getY() + 1, this.width - 2, this.height - 2, 0xFFFFFFA0);
-            }
+            GlobeAtlasPowerScreen.this.drawWideButtonFrame(
+                    graphics,
+                    this.getX(),
+                    this.getY(),
+                    this.width,
+                    this.height,
+                    this.active,
+                    false,
+                    this.isHoveredOrFocused());
             String text = this.getMessage().getString();
             int maxTextWidth = this.width - 8;
             if (GlobeAtlasPowerScreen.this.font.width(text) > maxTextWidth) {
@@ -744,7 +825,7 @@ public class GlobeAtlasPowerScreen extends Screen {
                     text,
                     textX,
                     this.getY() + 5,
-                    this.active ? 0xFFFFFFFF : DISABLED_TEXT_COLOR,
+                    buttonTextColor(this.active),
                     false);
         }
 
