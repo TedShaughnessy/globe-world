@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.sugar.Local;
+import globe.world.config.GlobeConfig;
 import globe.world.topology.TopologicalPoiQueries;
 import globe.world.util.DimensionTiling;
 import globe.world.util.GlobeSpawnFinder;
@@ -20,6 +21,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Constant;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Optional;
@@ -27,7 +30,24 @@ import java.util.function.Predicate;
 
 @Mixin(WanderingTraderSpawner.class)
 public class WanderingTraderSpawnerPoiMixin {
+    private static final int VANILLA_TRADER_SPAWN_DELAY_STEP_TICKS = 1200;
+
     @Shadow @Final private RandomSource random;
+
+    @ModifyConstant(
+            method = "tick",
+            constant = @Constant(intValue = VANILLA_TRADER_SPAWN_DELAY_STEP_TICKS, ordinal = 1)
+    )
+    private int useConfiguredSpawnFrequency(
+            int vanillaDelayStep,
+            ServerLevel level,
+            boolean spawnEnemies) {
+        DimensionTiling tiling = DimensionTiling.forLevel(level);
+        if (!tiling.enabled()) {
+            return vanillaDelayStep;
+        }
+        return vanillaDelayStep * GlobeConfig.wanderingTraderSpawnFrequencyMultiplier();
+    }
 
     @WrapOperation(
             method = "spawn",

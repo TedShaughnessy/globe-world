@@ -125,6 +125,10 @@ public class GlobeConfig {
         return globeSettings.gameplay().playerMobSpawnExclusionBlocks();
     }
 
+    public static int wanderingTraderSpawnFrequencyMultiplier() {
+        return globeSettings.gameplay().wanderingTraderSpawnFrequencyMultiplier();
+    }
+
     public static boolean forceMissingStronghold() {
         return globeSettings.topology().forceMissingStronghold();
     }

@@ -45,6 +45,8 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final int CUSTOM_MIN_TILE_SIZE_CHUNKS = TopologySettings.MIN_TILE_SIZE_CHUNKS;
     private static final int SIMPLE_MIN_TILE_SIZE_CHUNKS = 8;
     private static final int SIMPLE_ALLOW_MOBS_AT_WORLD_SPAWN_MAX_TILE_CHUNKS = 16;
+    private static final int SIMPLE_WANDERING_TRADER_SPAWN_FREQUENCY_2X_MAX_TILE_CHUNKS = 64;
+    private static final int SIMPLE_WANDERING_TRADER_SPAWN_FREQUENCY_4X_MAX_TILE_CHUNKS = 16;
     private static final int SIMPLE_SCROLLING_DAY_MIN_TILE_BLOCKS = 7_000;
     private static final String DISTANT_HORIZONS_MOD_ID = "distanthorizons";
     private static final String CURVATURE_TOOLTIP = "Curves the terrain. Comfortable is a gentler curve; "
@@ -52,6 +54,7 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final String DAY_LENGTH_TOOLTIP = "Scales the length of the Minecraft day night cycle";
     private static final String ALLOW_MOBS_AT_WORLD_SPAWN_TOOLTIP = "Allows natural mobs to spawn inside vanilla's 24-block world-spawn exclusion.";
     private static final String PLAYER_MOB_SPAWN_EXCLUSION_TOOLTIP = "Minimum natural-spawn distance from the nearest non-spectator player.";
+    private static final String WANDERING_TRADER_SPAWN_FREQUENCY_TOOLTIP = "Controls how quickly the saved wandering trader spawn delay counts down in wrapped dimensions.";
     private static final String AVOID_WATER_ONLY_SEEDS_TOOLTIP = "Rerolls random seeds whose wrapped Overworld tile appears to be all ocean. "
             + "Explicit seed text is never changed.";
     private static final String FORCE_MISSING_STRONGHOLD_TOOLTIP = "Adds a canonical stronghold if the wrapped Overworld has no canonical stronghold. "
@@ -166,6 +169,7 @@ public class GlobeWorldSettingsControls implements Layout {
     private StringWidget naturalSpawningLabel;
     private Checkbox allowMobsAtWorldSpawnCheckbox;
     private PlayerMobSpawnExclusionSlider playerMobSpawnExclusionSlider;
+    private WanderingTraderSpawnFrequencySlider wanderingTraderSpawnFrequencySlider;
     private StringWidget dayNightLabel;
     private CycleButton<DayNightCycleMode> dayNightCycleButton;
     private DayLengthMultiplierSlider dayLengthSlider;
@@ -441,6 +445,17 @@ public class GlobeWorldSettingsControls implements Layout {
         playerMobSpawnExclusionSlider.setTooltip(tooltip(PLAYER_MOB_SPAWN_EXCLUSION_TOOLTIP));
         addRow(playerMobSpawnExclusionSlider, () -> customGameplayControlsVisible());
 
+        wanderingTraderSpawnFrequencySlider = new WanderingTraderSpawnFrequencySlider(
+                0,
+                0,
+                CONTROL_WIDTH,
+                20,
+                currentGameplay().wanderingTraderSpawnFrequencyMultiplier(),
+                multiplier -> setGameplay(currentGameplay().withWanderingTraderSpawnFrequencyMultiplier(multiplier))
+        );
+        wanderingTraderSpawnFrequencySlider.setTooltip(tooltip(WANDERING_TRADER_SPAWN_FREQUENCY_TOOLTIP));
+        addRow(wanderingTraderSpawnFrequencySlider, () -> customGameplayControlsVisible());
+
         dayNightLabel = sectionLabel("Day/Night", minecraft);
         addSectionRow(dayNightLabel, () -> currentTopology().enabled() && (!createWorld || createMode == CreateMode.CUSTOM));
 
@@ -598,7 +613,8 @@ public class GlobeWorldSettingsControls implements Layout {
                 && !simpleAllowMobsAtWorldSpawn(currentTopology().tileSize());
         globeSettings = globeSettings.withGameplay(globeSettings.gameplay()
                 .withPlayerMobSpawnExclusionBlocks(GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_DEFAULT_BLOCKS)
-                .withAllowMobsAtWorldSpawn(simpleAllowMobsAtWorldSpawn(tileSize) || preserveCustomWorldSpawnSpawning));
+                .withAllowMobsAtWorldSpawn(simpleAllowMobsAtWorldSpawn(tileSize) || preserveCustomWorldSpawnSpawning)
+                .withWanderingTraderSpawnFrequencyMultiplier(simpleWanderingTraderSpawnFrequencyMultiplier(tileSize)));
         if (!simpleScrollingDayCycleSupported(topology)) {
             globeSettings = globeSettings.withGameplay(globeSettings.gameplay().withDayNightCycleMode(DayNightCycleMode.VANILLA));
         }
@@ -622,7 +638,9 @@ public class GlobeWorldSettingsControls implements Layout {
                     ? topology.withAvoidWaterOnlySeeds(true)
                     : topology;
             GameplaySettings simpleGameplay = gameplay
-                    .withPlayerMobSpawnExclusionBlocks(GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_DEFAULT_BLOCKS);
+                    .withPlayerMobSpawnExclusionBlocks(GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_DEFAULT_BLOCKS)
+                    .withWanderingTraderSpawnFrequencyMultiplier(
+                            simpleWanderingTraderSpawnFrequencyMultiplier(simpleTopology.tileSize()));
             if (simpleAllowMobsAtWorldSpawn(simpleTopology.tileSize())) {
                 simpleGameplay = simpleGameplay.withAllowMobsAtWorldSpawn(true);
             }
@@ -682,6 +700,8 @@ public class GlobeWorldSettingsControls implements Layout {
         allowMobsAtWorldSpawnCheckbox.active = editable && topology.enabled();
         playerMobSpawnExclusionSlider.setBlocks(gameplay.playerMobSpawnExclusionBlocks());
         playerMobSpawnExclusionSlider.active = editable && topology.enabled();
+        wanderingTraderSpawnFrequencySlider.setMultiplier(gameplay.wanderingTraderSpawnFrequencyMultiplier());
+        wanderingTraderSpawnFrequencySlider.active = editable && topology.enabled();
         dayNightCycleButton.setValue(gameplay.dayNightCycleMode());
         boolean dayNightCycleSelectable = topology.enabled() && simpleScrollingDayCycleSupported(topology);
         dayNightCycleButton.active = dayNightCycleSelectable;
@@ -727,6 +747,7 @@ public class GlobeWorldSettingsControls implements Layout {
         forceMissingNetherFortressCheckbox.active = false;
         allowMobsAtWorldSpawnCheckbox.active = false;
         playerMobSpawnExclusionSlider.active = false;
+        wanderingTraderSpawnFrequencySlider.active = false;
         dayNightCycleButton.active = false;
         dayLengthSlider.active = false;
     }
@@ -813,6 +834,16 @@ public class GlobeWorldSettingsControls implements Layout {
 
     private static boolean simpleAllowMobsAtWorldSpawn(int tileSizeChunks) {
         return tileSizeChunks <= SIMPLE_ALLOW_MOBS_AT_WORLD_SPAWN_MAX_TILE_CHUNKS;
+    }
+
+    private static int simpleWanderingTraderSpawnFrequencyMultiplier(int tileSizeChunks) {
+        if (tileSizeChunks <= SIMPLE_WANDERING_TRADER_SPAWN_FREQUENCY_4X_MAX_TILE_CHUNKS) {
+            return 4;
+        }
+        if (tileSizeChunks <= SIMPLE_WANDERING_TRADER_SPAWN_FREQUENCY_2X_MAX_TILE_CHUNKS) {
+            return 2;
+        }
+        return GameplaySettings.WANDERING_TRADER_SPAWN_FREQUENCY_DEFAULT_MULTIPLIER;
     }
 
     private static long distantHorizonsCurveRatio(int tileSizeChunks) {
@@ -1368,6 +1399,82 @@ public class GlobeWorldSettingsControls implements Layout {
             int blocks = GameplaySettings.PLAYER_MOB_SPAWN_EXCLUSION_MIN_BLOCKS
                     + (int) Math.round(Math.clamp(value, 0.0D, 1.0D) * range);
             return GameplaySettings.sanitizePlayerMobSpawnExclusionBlocks(blocks);
+        }
+    }
+
+    private static class WanderingTraderSpawnFrequencySlider extends AbstractSliderButton {
+        private final IntConsumer onValueChanged;
+        private boolean changingWithMouse;
+        private int pendingMultiplier;
+
+        private WanderingTraderSpawnFrequencySlider(
+                int x,
+                int y,
+                int width,
+                int height,
+                int initialMultiplier,
+                IntConsumer onValueChanged) {
+            super(x, y, width, height, Component.empty(), valueFromMultiplier(initialMultiplier));
+            this.onValueChanged = onValueChanged;
+            this.pendingMultiplier = multiplierFromValue(this.value);
+            updateMessage();
+        }
+
+        private void setMultiplier(int multiplier) {
+            this.value = valueFromMultiplier(multiplier);
+            this.pendingMultiplier = multiplierFromValue(this.value);
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            this.setMessage(Component.literal("Trader Spawns: ")
+                    .append(Component.literal(multiplierFromValue(this.value) + "x")));
+        }
+
+        @Override
+        protected void applyValue() {
+            int multiplier = multiplierFromValue(this.value);
+            this.value = valueFromMultiplier(multiplier);
+            if (this.changingWithMouse) {
+                this.pendingMultiplier = multiplier;
+            } else {
+                this.onValueChanged.accept(multiplier);
+            }
+        }
+
+        @Override
+        public void onClick(MouseButtonEvent event, boolean doubleClick) {
+            this.changingWithMouse = true;
+            this.pendingMultiplier = multiplierFromValue(this.value);
+            super.onClick(event, doubleClick);
+        }
+
+        @Override
+        public void onRelease(MouseButtonEvent event) {
+            super.onRelease(event);
+            this.changingWithMouse = false;
+            int multiplier = multiplierFromValue(this.value);
+            this.pendingMultiplier = multiplier;
+            this.onValueChanged.accept(multiplier);
+        }
+
+        private static double valueFromMultiplier(int multiplier) {
+            int sanitized = GameplaySettings.sanitizeWanderingTraderSpawnFrequencyMultiplier(multiplier);
+            int minPower = Integer.numberOfTrailingZeros(GameplaySettings.WANDERING_TRADER_SPAWN_FREQUENCY_MIN_MULTIPLIER);
+            int maxPower = Integer.numberOfTrailingZeros(GameplaySettings.WANDERING_TRADER_SPAWN_FREQUENCY_MAX_MULTIPLIER);
+            int range = maxPower - minPower;
+            if (range <= 0) {
+                return 0.0D;
+            }
+            return (double) (Integer.numberOfTrailingZeros(sanitized) - minPower) / (double) range;
+        }
+
+        private static int multiplierFromValue(double value) {
+            int minPower = Integer.numberOfTrailingZeros(GameplaySettings.WANDERING_TRADER_SPAWN_FREQUENCY_MIN_MULTIPLIER);
+            int maxPower = Integer.numberOfTrailingZeros(GameplaySettings.WANDERING_TRADER_SPAWN_FREQUENCY_MAX_MULTIPLIER);
+            int power = minPower + (int) Math.round(Math.clamp(value, 0.0D, 1.0D) * (maxPower - minPower));
+            return GameplaySettings.sanitizeWanderingTraderSpawnFrequencyMultiplier(1 << power);
         }
     }
 
