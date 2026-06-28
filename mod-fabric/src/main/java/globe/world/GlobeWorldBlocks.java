@@ -22,6 +22,9 @@ public final class GlobeWorldBlocks {
     public static final int IRON_PROJECTOR_COLOR = 0xCCFFFFFF;
     public static final int COPPER_PROJECTOR_COLOR = 0xCCFFB45C;
     public static final int SOUL_PROJECTOR_COLOR = 0xCC66D9FF;
+    public static final int IRON_PROJECTION_LIGHT_COLOR = 0xCCFFD2A1;
+    public static final int COPPER_PROJECTION_LIGHT_COLOR = 0xCC68E070;
+    public static final int SOUL_PROJECTION_LIGHT_COLOR = SOUL_PROJECTOR_COLOR;
     private static final int LIGHT_LEVEL = 14;
 
     public static final Block GLOBE = registerBlock(
@@ -69,6 +72,16 @@ public final class GlobeWorldBlocks {
             return SOUL_PROJECTOR_COLOR;
         }
         return IRON_PROJECTOR_COLOR;
+    }
+
+    public static int projectionLightColor(final Block block) {
+        if (block == COPPER_ATLAS_PROJECTOR) {
+            return COPPER_PROJECTION_LIGHT_COLOR;
+        }
+        if (block == SOUL_ATLAS_PROJECTOR) {
+            return SOUL_PROJECTION_LIGHT_COLOR;
+        }
+        return IRON_PROJECTION_LIGHT_COLOR;
     }
 
     private static GlobeBlock newProjectorBlock(final BlockBehaviour.Properties properties, final MapColor mapColor) {

@@ -136,8 +136,10 @@ instead of the torus, with the corners participating in the curvature.
 Projection-enabled placed Atlases also render a short, translucent,
 variant-tinted light fan from the projector top toward the hologram surface, so
 iron, copper, and soul projectors have a visible active state before the map
-texture detail is readable. Survey-mode large-tile Atlases use the same fan at
-half height so it stays tucked under the flatter placed survey surface.
+texture detail is readable. The fan tint is separate from the hologram tint:
+iron uses a slightly warm lantern-like light, copper uses green light, and soul
+keeps its cyan light. Survey-mode large-tile Atlases use the same fan at half
+height so it stays tucked under the flatter placed survey surface.
 
 The held viewport texture is sampled in canonical world axes
 instead of being resampled for player yaw; the projected surface then rotates
@@ -168,9 +170,9 @@ Tiny tiles receive no points until full completion; small tiles require at least
 half discovery; larger tiles can earn points from absolute explored area.
 
 In survey mode, `GlobeDiscoveryRewards` derives points and radius caps from
-visited biome count and visited canonical chunks. Chunk progress is fixed across
-all large tile sizes: linked Atlas travel unlocks when the shared survey has at
-least `256` visited chunks, so single-biome worlds can still unlock travel.
+visited biome count and visited canonical chunks. Linked Atlas travel unlocks
+when the shared survey has visited `90%` of the canonical tile's chunks, capped
+at `12800` chunks for very large tiles.
 Chunks award one point per `64` unique chunks, while biomes award one point per
 ten visited biomes with an extra two-point bonus when vanilla Adventuring Time
 biome completion is imported. The travel-network toggle can be saved before
@@ -207,10 +209,11 @@ tiles. The projection button remains available in survey mode and controls the
 biome survey projection. The survey status area shows chunk progress
 toward the travel target, visited biomes, point budget, and current usage.
 The destinations tab lists saved Atlases by name and canonical location even
-when travel is unavailable. Destination rows are enabled only when this Atlas
-and the destination are loaded, powered, travel-enabled, and the current
-progression mode has unlocked travel; disabled rows explain the blocking
-condition in their tooltip.
+when travel is unavailable, using a scrollable list without the status area
+shown on the Powers tab. Destination rows are enabled only when this Atlas and
+the destination are loaded, powered, travel-enabled, and the current progression
+mode has unlocked travel; disabled rows explain the blocking condition in their
+tooltip.
 
 Full discovery creates the Mastered Atlas state and unlocks linked Atlas
 travel on literal-map tiles, and the shared completion state awards the
@@ -241,6 +244,7 @@ rules are not part of the current reward scope.
 - `mod-fabric/src/main/java/globe/world/mixin/MapItemSavedDataMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/LevelSetBlockBroadcastMixin.java`
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
+- `mod-fabric/src/main/java/globe/world/GlobeWorldBlocks.java`
 - `mod-fabric/src/main/java/globe/world/block/GlobeBlock.java`
 - `mod-fabric/src/main/java/globe/world/block/entity/GlobeBlockEntity.java`
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasEffect.java`

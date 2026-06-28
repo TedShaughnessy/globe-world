@@ -1,5 +1,6 @@
 package globe.world.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import globe.world.atlas.GlobeAtlasEffect;
 import globe.world.atlas.GlobeAtlasLoadout;
 import globe.world.network.GlobeAtlasScreenPayload;
@@ -12,6 +13,7 @@ import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -26,7 +28,12 @@ import java.util.List;
 public class GlobeAtlasPowerScreen extends Screen {
     private static final int PANEL_WIDTH = 250;
     private static final int PANEL_HEIGHT = 226;
-    private static final int MAX_VISIBLE_DESTINATIONS = 5;
+    private static final int MAX_VISIBLE_DESTINATIONS = 7;
+    private static final int DESTINATION_SECTION_TOP = 62;
+    private static final int DESTINATION_SECTION_HEIGHT = 152;
+    private static final int DESTINATION_ROW_TOP = 72;
+    private static final int DESTINATION_ROW_STEP = 20;
+    private static final int DESTINATION_BUTTON_WIDTH = PANEL_WIDTH - 44;
     private static final int LINE = 11;
     private static final int BUTTON_SIZE = 22;
     private static final int STATUS_HEIGHT = 54;
@@ -39,6 +46,7 @@ public class GlobeAtlasPowerScreen extends Screen {
     private EditBox nameField;
     private Tab activeTab = Tab.POWERS;
     private boolean sentClosingName;
+    private int destinationScroll;
 
     public GlobeAtlasPowerScreen(final GlobeAtlasScreenPayload data) {
         super(Component.translatable("screen.globe-world.atlas_power"));
@@ -47,6 +55,7 @@ public class GlobeAtlasPowerScreen extends Screen {
 
     public void apply(final GlobeAtlasScreenPayload data) {
         this.data = data;
+        this.clampDestinationScroll();
         this.rebuildWidgets();
     }
 
@@ -66,12 +75,15 @@ public class GlobeAtlasPowerScreen extends Screen {
         this.addRenderableWidget(destinationTab);
 
         if (this.activeTab == Tab.DESTINATIONS) {
-            int y = top + 72;
-            for (GlobeAtlasScreenPayload.Destination destination : this.data.destinations().stream().limit(MAX_VISIBLE_DESTINATIONS).toList()) {
+            int y = top + DESTINATION_ROW_TOP;
+            for (GlobeAtlasScreenPayload.Destination destination : this.data.destinations().stream()
+                    .skip(this.destinationScroll)
+                    .limit(MAX_VISIBLE_DESTINATIONS)
+                    .toList()) {
                 DestinationButton button = new DestinationButton(left + 18, y, destination);
                 button.active = destination.available();
                 this.addRenderableWidget(button);
-                y += 20;
+                y += DESTINATION_ROW_STEP;
             }
             return;
         }
@@ -116,23 +128,25 @@ public class GlobeAtlasPowerScreen extends Screen {
         this.panel(graphics, left, top, PANEL_WIDTH, PANEL_HEIGHT);
 
         if (this.activeTab == Tab.DESTINATIONS) {
-            this.section(graphics, left + 12, top + 62, PANEL_WIDTH - 24, 100);
+            this.section(graphics, left + 12, top + DESTINATION_SECTION_TOP, PANEL_WIDTH - 24, DESTINATION_SECTION_HEIGHT);
             if (this.data.destinations().isEmpty()) {
                 graphics.centeredText(
                         this.font,
                         Component.translatable("screen.globe-world.atlas_power.no_destinations"),
                         left + PANEL_WIDTH / 2,
-                        top + 107,
+                        top + DESTINATION_SECTION_TOP + DESTINATION_SECTION_HEIGHT / 2 - 4,
                         0xFFE8E8E8);
                 this.hoverTooltip(
                         graphics,
                         mouseX,
                         mouseY,
                         left + 18,
-                        top + 96,
+                        top + DESTINATION_SECTION_TOP + DESTINATION_SECTION_HEIGHT / 2 - 15,
                         PANEL_WIDTH - 36,
                         22,
                         Component.translatable("screen.globe-world.atlas_power.tooltip.no_destinations"));
+            } else {
+                this.destinationScrollBar(graphics, left, top);
             }
         } else {
             this.section(graphics, left + 12, top + 62, 94, 100);
@@ -153,10 +167,40 @@ public class GlobeAtlasPowerScreen extends Screen {
                     left + 175,
                     top + 67,
                     Component.translatable("screen.globe-world.atlas_power.tooltip.atlas"));
+            this.status(graphics, left, top, mouseX, mouseY);
         }
 
-        this.status(graphics, left, top, mouseX, mouseY);
         super.extractRenderState(graphics, mouseX, mouseY, a);
+    }
+
+    @Override
+    public boolean mouseScrolled(final double x, final double y, final double scrollX, final double scrollY) {
+        if (this.activeTab == Tab.DESTINATIONS
+                && this.isMouseOverDestinationSection(x, y)
+                && scrollY != 0.0D
+                && this.scrollDestinations(scrollY < 0.0D ? 1 : -1)) {
+            return true;
+        }
+        return super.mouseScrolled(x, y, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean keyPressed(final KeyEvent event) {
+        if (super.keyPressed(event)) {
+            return true;
+        }
+        if (this.activeTab != Tab.DESTINATIONS) {
+            return false;
+        }
+        return switch (event.key()) {
+            case InputConstants.KEY_DOWN -> this.scrollDestinations(1);
+            case InputConstants.KEY_UP -> this.scrollDestinations(-1);
+            case InputConstants.KEY_PAGEDOWN -> this.scrollDestinations(MAX_VISIBLE_DESTINATIONS);
+            case InputConstants.KEY_PAGEUP -> this.scrollDestinations(-MAX_VISIBLE_DESTINATIONS);
+            case InputConstants.KEY_HOME -> this.setDestinationScroll(0);
+            case InputConstants.KEY_END -> this.setDestinationScroll(this.maxDestinationScroll());
+            default -> false;
+        };
     }
 
     private void panel(final GuiGraphicsExtractor graphics, final int x, final int y, final int width, final int height) {
@@ -169,6 +213,20 @@ public class GlobeAtlasPowerScreen extends Screen {
     private void section(final GuiGraphicsExtractor graphics, final int x, final int y, final int width, final int height) {
         graphics.fill(x, y, x + width, y + height, 0xFF2C2C2C);
         graphics.outline(x, y, width, height, 0xFF5F5F5F);
+    }
+
+    private void destinationScrollBar(final GuiGraphicsExtractor graphics, final int left, final int top) {
+        int maxScroll = this.maxDestinationScroll();
+        if (maxScroll <= 0) {
+            return;
+        }
+        int trackX = left + PANEL_WIDTH - 16;
+        int trackTop = top + DESTINATION_ROW_TOP;
+        int trackHeight = MAX_VISIBLE_DESTINATIONS * DESTINATION_ROW_STEP - 2;
+        int thumbHeight = Math.max(14, trackHeight * MAX_VISIBLE_DESTINATIONS / this.data.destinations().size());
+        int thumbY = trackTop + Math.round((trackHeight - thumbHeight) * (this.destinationScroll / (float)maxScroll));
+        graphics.fill(trackX, trackTop, trackX + 3, trackTop + trackHeight, 0xFF171717);
+        graphics.fill(trackX, thumbY, trackX + 3, thumbY + thumbHeight, 0xFFE8E8E8);
     }
 
     private void status(final GuiGraphicsExtractor graphics, final int left, final int top, final int mouseX, final int mouseY) {
@@ -327,6 +385,39 @@ public class GlobeAtlasPowerScreen extends Screen {
         return (this.height - PANEL_HEIGHT) / 2;
     }
 
+    private boolean isMouseOverDestinationSection(final double x, final double y) {
+        int left = this.left();
+        int top = this.top();
+        return x >= left + 12
+                && x < left + PANEL_WIDTH - 12
+                && y >= top + DESTINATION_SECTION_TOP
+                && y < top + DESTINATION_SECTION_TOP + DESTINATION_SECTION_HEIGHT;
+    }
+
+    private boolean scrollDestinations(final int rows) {
+        return this.setDestinationScroll(this.destinationScroll + rows);
+    }
+
+    private boolean setDestinationScroll(final int scroll) {
+        int clamped = clamp(scroll, 0, this.maxDestinationScroll());
+        if (clamped == this.destinationScroll) {
+            return false;
+        }
+        String name = this.currentName();
+        this.destinationScroll = clamped;
+        this.rebuildWidgets();
+        this.nameField.setValue(name);
+        return true;
+    }
+
+    private void clampDestinationScroll() {
+        this.destinationScroll = clamp(this.destinationScroll, 0, this.maxDestinationScroll());
+    }
+
+    private int maxDestinationScroll() {
+        return Math.max(0, this.data.destinations().size() - MAX_VISIBLE_DESTINATIONS);
+    }
+
     private Component statusText() {
         if (this.data.surveyMode()) {
             return this.data.travelUnlocked()
@@ -460,7 +551,7 @@ public class GlobeAtlasPowerScreen extends Screen {
 
         @Override
         protected void extractContents(final GuiGraphicsExtractor graphics, final int mouseX, final int mouseY, final float a) {
-            int body = this.active ? (this.selected ? 0xFFD7D7D7 : 0xFF9A9A9A) : 0xFF6E6E6E;
+            int body = this.active ? (this.selected ? 0xFF727272 : 0xFF626262) : 0xFF4E4E4E;
             graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, body);
             graphics.horizontalLine(this.getX(), this.getX() + this.width - 1, this.getY(), this.active ? 0xFFFFFFFF : 0xFF999999);
             graphics.verticalLine(this.getX(), this.getY(), this.getY() + this.height - 1, this.active ? 0xFFFFFFFF : 0xFF999999);
@@ -473,7 +564,7 @@ public class GlobeAtlasPowerScreen extends Screen {
         }
 
         protected int iconTextColor() {
-            return this.active ? TEXT_COLOR : DISABLED_TEXT_COLOR;
+            return this.active ? 0xFFFFFFFF : DISABLED_TEXT_COLOR;
         }
 
         protected abstract void extractIcon(GuiGraphicsExtractor graphics);
@@ -615,7 +706,7 @@ public class GlobeAtlasPowerScreen extends Screen {
         private final GlobeAtlasScreenPayload.Destination destination;
 
         DestinationButton(final int x, final int y, final GlobeAtlasScreenPayload.Destination destination) {
-            super(x, y, PANEL_WIDTH - 36, 18, Component.literal(destinationLabel(destination)));
+            super(x, y, DESTINATION_BUTTON_WIDTH, 18, Component.literal(destinationLabel(destination)));
             this.destination = destination;
             this.setTooltip(Tooltip.create(Component.translatable(
                     "screen.globe-world.atlas_power.tooltip.destination",
@@ -653,7 +744,7 @@ public class GlobeAtlasPowerScreen extends Screen {
                     text,
                     textX,
                     this.getY() + 5,
-                    TEXT_COLOR,
+                    this.active ? 0xFFFFFFFF : DISABLED_TEXT_COLOR,
                     false);
         }
 

@@ -68,6 +68,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
         BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTicks, cameraPosition, breakProgress);
         state.projectionEnabled = blockEntity.projectionEnabled();
         state.projectorColor = GlobeWorldBlocks.projectorColor(blockEntity.getBlockState().getBlock());
+        state.projectionLightColor = GlobeWorldBlocks.projectionLightColor(blockEntity.getBlockState().getBlock());
         state.face = blockEntity.getBlockState().getValue(GlobeBlock.FACE);
         state.facing = blockEntity.getBlockState().getValue(GlobeBlock.FACING);
         if (blockEntity.getLevel() != null) {
@@ -98,7 +99,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
                 poseStack,
                 submitNodeCollector,
                 this.sprites.get(GlobeToroidMesh.BLANK_TEXTURE),
-                state.projectorColor,
+                state.projectionLightColor,
                 largeTileAtlas ? 0.5F : 1.0F);
 
         if (largeTileAtlas) {
@@ -336,6 +337,7 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
     public static class State extends BlockEntityRenderState {
         private boolean projectionEnabled;
         private int projectorColor = GlobeWorldBlocks.IRON_PROJECTOR_COLOR;
+        private int projectionLightColor = GlobeWorldBlocks.IRON_PROJECTION_LIGHT_COLOR;
         private AttachFace face = AttachFace.FLOOR;
         private Direction facing = Direction.NORTH;
         private int centerChunkX;

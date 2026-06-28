@@ -308,7 +308,7 @@ public final class GlobeAtlasPowers {
             final boolean destinationTravel,
             final boolean destinationLoaded) {
         if (!rewards.travelUnlocked()) {
-            return "Travel unlocks after 256 visited chunks.";
+            return "Travel unlocks after " + rewards.targetChunks() + " visited chunks.";
         }
         if (!sourcePowered) {
             return "This Atlas is not powered by the current budget.";
