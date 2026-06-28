@@ -21,6 +21,7 @@ import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.resources.model.sprite.SpriteGetter;
 import net.minecraft.resources.Identifier;
@@ -36,6 +37,15 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
     private static final int SURVEY_SEGMENTS = 24;
     private static final int SURVEY_LIGHT = 0x00F000F0;
     private static final int SURVEY_COLOR = 0xDCFFFFFF;
+    private static final float PROJECTION_LIGHT_LOW_Y = 0.69F;
+    private static final float PROJECTION_LIGHT_HIGH_Y = 1.34F;
+    private static final float PROJECTION_LIGHT_LOW_RADIUS = 0.055F;
+    private static final float PROJECTION_LIGHT_HIGH_RADIUS = 0.44F;
+    private static final int PROJECTION_LIGHT_SEGMENTS = 16;
+    private static final int PROJECTION_LIGHT_CENTER_ALPHA = 0x4C;
+    private static final int PROJECTION_LIGHT_EDGE_ALPHA = 0x08;
+    private static final int PROJECTION_LIGHT_CAP_ALPHA = 0x18;
+    private static final int PROJECTION_LIGHT_LIGHT = 0x00F000F0;
 
     private final SpriteGetter sprites;
 
@@ -82,7 +92,16 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
             return;
         }
 
-        if (GlobeAtlasSurvey.surveyMode(DimensionTiling.forLevel(client.level))) {
+        DimensionTiling tiling = DimensionTiling.forLevel(client.level);
+        boolean largeTileAtlas = GlobeAtlasSurvey.surveyMode(tiling);
+        submitProjectionLight(
+                poseStack,
+                submitNodeCollector,
+                this.sprites.get(GlobeToroidMesh.BLANK_TEXTURE),
+                state.projectorColor,
+                largeTileAtlas ? 0.5F : 1.0F);
+
+        if (largeTileAtlas) {
             Identifier texture = GlobeAtlasSurveyTextureCache.textureForCurrentDimension(
                     state.centerChunkX,
                     state.centerChunkZ,
@@ -177,6 +196,84 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
                 poseStack,
                 RenderTypes.textSeeThrough(texture),
                 (pose, buffer) -> renderSurveyPlane(buffer, pose));
+    }
+
+    private static void submitProjectionLight(
+            final PoseStack poseStack,
+            final SubmitNodeCollector submitNodeCollector,
+            final TextureAtlasSprite sprite,
+            final int projectorColor,
+            final float heightScale) {
+        submitNodeCollector.submitCustomGeometry(
+                poseStack,
+                GlobeToroidMesh.translucentRenderType(sprite.atlasLocation()),
+                (pose, buffer) -> renderProjectionLight(buffer, pose, sprite, projectorColor, heightScale));
+    }
+
+    private static void renderProjectionLight(
+            final VertexConsumer buffer,
+            final PoseStack.Pose pose,
+            final TextureAtlasSprite sprite,
+            final int projectorColor,
+            final float heightScale) {
+        int centerColor = withAlpha(projectorColor, PROJECTION_LIGHT_CENTER_ALPHA);
+        int edgeColor = withAlpha(projectorColor, PROJECTION_LIGHT_EDGE_ALPHA);
+        int capColor = withAlpha(projectorColor, PROJECTION_LIGHT_CAP_ALPHA);
+        float highY = lerp(PROJECTION_LIGHT_LOW_Y, PROJECTION_LIGHT_HIGH_Y, heightScale);
+        float centerU = sprite.getU(0.5F);
+        float centerV = sprite.getV(0.5F);
+        for (int segment = 0; segment < PROJECTION_LIGHT_SEGMENTS; segment++) {
+            float u0 = segment / (float)PROJECTION_LIGHT_SEGMENTS;
+            float u1 = (segment + 1) / (float)PROJECTION_LIGHT_SEGMENTS;
+            float angle0 = (float)(Math.PI * 2.0D) * u0;
+            float angle1 = (float)(Math.PI * 2.0D) * u1;
+            float cos0 = (float)Math.cos(angle0);
+            float sin0 = (float)Math.sin(angle0);
+            float cos1 = (float)Math.cos(angle1);
+            float sin1 = (float)Math.sin(angle1);
+            float lowX0 = 0.5F + cos0 * PROJECTION_LIGHT_LOW_RADIUS;
+            float lowZ0 = 0.5F + sin0 * PROJECTION_LIGHT_LOW_RADIUS;
+            float lowX1 = 0.5F + cos1 * PROJECTION_LIGHT_LOW_RADIUS;
+            float lowZ1 = 0.5F + sin1 * PROJECTION_LIGHT_LOW_RADIUS;
+            float highX0 = 0.5F + cos0 * PROJECTION_LIGHT_HIGH_RADIUS;
+            float highZ0 = 0.5F + sin0 * PROJECTION_LIGHT_HIGH_RADIUS;
+            float highX1 = 0.5F + cos1 * PROJECTION_LIGHT_HIGH_RADIUS;
+            float highZ1 = 0.5F + sin1 * PROJECTION_LIGHT_HIGH_RADIUS;
+            float texU0 = sprite.getU(u0);
+            float texU1 = sprite.getU(u1);
+            float texV0 = sprite.getV(0.0F);
+            float texV1 = sprite.getV(1.0F);
+            lightVertex(buffer, pose, lowX0, PROJECTION_LIGHT_LOW_Y, lowZ0, texU0, texV1, centerColor);
+            lightVertex(buffer, pose, lowX1, PROJECTION_LIGHT_LOW_Y, lowZ1, texU1, texV1, centerColor);
+            lightVertex(buffer, pose, highX1, highY, highZ1, texU1, texV0, edgeColor);
+            lightVertex(buffer, pose, highX0, highY, highZ0, texU0, texV0, edgeColor);
+
+            lightVertex(buffer, pose, 0.5F, highY, 0.5F, centerU, centerV, capColor);
+            lightVertex(buffer, pose, highX1, highY, highZ1, texU1, texV0, edgeColor);
+            lightVertex(buffer, pose, highX0, highY, highZ0, texU0, texV0, edgeColor);
+            lightVertex(buffer, pose, 0.5F, highY, 0.5F, centerU, centerV, capColor);
+        }
+    }
+
+    private static void lightVertex(
+            final VertexConsumer buffer,
+            final PoseStack.Pose pose,
+            final float x,
+            final float y,
+            final float z,
+            final float u,
+            final float v,
+            final int color) {
+        buffer.addVertex(pose, x, y, z)
+                .setColor(color)
+                .setUv(u, v)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(PROJECTION_LIGHT_LIGHT)
+                .setNormal(pose, 0.0F, 1.0F, 0.0F);
+    }
+
+    private static int withAlpha(final int color, final int alpha) {
+        return (color & 0x00FFFFFF) | (alpha << 24);
     }
 
     private static void renderSurveyPlane(final VertexConsumer buffer, final PoseStack.Pose pose) {

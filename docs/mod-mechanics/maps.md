@@ -109,7 +109,10 @@ and Atlas markers are baked into the dynamic survey texture. Held survey
 windows omit a player marker because the player is already fixed at the center
 of the projection. The held survey cache keeps the last rounded projection
 texture while a newly centered held survey payload is still in flight, so
-first-person rendering does not blink off on chunk-center changes.
+first-person rendering does not blink off on chunk-center changes. Held survey
+copies are rotated 180 degrees from the placed survey texture so forward motion
+scrolls the projected terrain down toward the player, matching the literal held
+viewport.
 
 When held in first person, Atlas Projector items keep the ordinary block-item
 hand pose and render a separate translucent projection above the held projector.
@@ -130,6 +133,11 @@ projector block, and block-entity render culling is expanded for large
 projections. In survey mode, placed Atlases render a quieter shallow square
 domed holographic survey surface centered on that Atlas' canonical chunk
 instead of the torus, with the corners participating in the curvature.
+Projection-enabled placed Atlases also render a short, translucent,
+variant-tinted light fan from the projector top toward the hologram surface, so
+iron, copper, and soul projectors have a visible active state before the map
+texture detail is readable. Survey-mode large-tile Atlases use the same fan at
+half height so it stays tucked under the flatter placed survey surface.
 
 The held viewport texture is sampled in canonical world axes
 instead of being resampled for player yaw; the projected surface then rotates

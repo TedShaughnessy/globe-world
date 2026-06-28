@@ -227,7 +227,7 @@ public final class GlobeAtlasSurveyTextureCache {
                     continue;
                 }
 
-                int color = source.getPixel(x, z);
+                int color = source.getPixel(size - 1 - x, size - 1 - z);
                 target.setPixel(x, z, withAlpha(color, Math.round(alpha(color) * edgeFade(radius))));
             }
         }
