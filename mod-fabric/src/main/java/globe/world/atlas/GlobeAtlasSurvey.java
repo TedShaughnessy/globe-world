@@ -4,8 +4,7 @@ import globe.world.util.DimensionTiling;
 
 public final class GlobeAtlasSurvey {
     public static final int LARGE_TILE_CUTOFF_CHUNKS = 512;
-    public static final int COVERAGE_GRID_SIZE = 64;
-    public static final int COVERAGE_CELL_COUNT = COVERAGE_GRID_SIZE * COVERAGE_GRID_SIZE;
+    public static final int TRAVEL_CHUNKS = 256;
 
     private GlobeAtlasSurvey() {
     }

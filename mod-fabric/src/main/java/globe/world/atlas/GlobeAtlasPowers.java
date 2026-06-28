@@ -255,8 +255,8 @@ public final class GlobeAtlasPowers {
                 rewards.discoveredPercent(),
                 rewards.surveyMode(),
                 rewards.biomesVisited(),
-                rewards.visitedCells(),
-                rewards.totalCells(),
+                rewards.visitedChunks(),
+                rewards.targetChunks(),
                 rewards.milestoneTenths(),
                 rewards.complete(),
                 rewards.travelUnlocked(),
@@ -269,25 +269,64 @@ public final class GlobeAtlasPowers {
             final BlockPos sourceRawPos,
             final GlobeDiscoveryRewards rewards,
             final GlobeAtlasPowerState state) {
-        if (!rewards.travelUnlocked()) {
-            return List.of();
-        }
-
         Set<BlockPos> powered = state.poweredPositions(rewards);
         DimensionTiling tiling = DimensionTiling.forDimension(Level.OVERWORLD);
         BlockPos sourcePos = CoordUtil.wrapBlockPos(tiling, sourceRawPos);
+        Optional<GlobeAtlasPowerState.Entry> sourceEntry = state.entry(sourcePos);
+        boolean sourcePowered = powered.contains(sourcePos);
+        boolean sourceTravel = sourceEntry.map(entry -> entry.loadout().travelNetwork()).orElse(false);
         List<GlobeAtlasScreenPayload.Destination> destinations = new ArrayList<>();
         for (GlobeAtlasPowerState.Entry entry : state.entries()) {
             BlockPos pos = entry.pos();
-            if (pos.equals(sourcePos) || !entry.loadout().travelNetwork()) {
+            if (pos.equals(sourcePos)) {
                 continue;
             }
 
-            boolean available = powered.contains(pos) && level.getBlockEntity(pos) instanceof GlobeBlockEntity;
+            boolean destinationPowered = powered.contains(pos);
+            boolean destinationTravel = entry.loadout().travelNetwork();
+            boolean destinationLoaded = level.getBlockEntity(pos) instanceof GlobeBlockEntity;
+            boolean available = rewards.travelUnlocked()
+                    && sourcePowered
+                    && sourceTravel
+                    && destinationPowered
+                    && destinationTravel
+                    && destinationLoaded;
             String name = level.getBlockEntity(pos) instanceof GlobeBlockEntity atlas ? atlas.atlasName() : entry.name();
-            destinations.add(new GlobeAtlasScreenPayload.Destination(pos, available, atlasDisplayName(name, pos)));
+            destinations.add(new GlobeAtlasScreenPayload.Destination(
+                    pos,
+                    available,
+                    atlasDisplayName(name, pos),
+                    destinationDetail(rewards, sourcePowered, sourceTravel, destinationPowered, destinationTravel, destinationLoaded)));
         }
         return destinations;
+    }
+
+    private static String destinationDetail(
+            final GlobeDiscoveryRewards rewards,
+            final boolean sourcePowered,
+            final boolean sourceTravel,
+            final boolean destinationPowered,
+            final boolean destinationTravel,
+            final boolean destinationLoaded) {
+        if (!rewards.travelUnlocked()) {
+            return "Travel unlocks after 256 visited chunks.";
+        }
+        if (!sourcePowered) {
+            return "This Atlas is not powered by the current budget.";
+        }
+        if (!sourceTravel) {
+            return "Turn on T for this Atlas to use travel.";
+        }
+        if (!destinationTravel) {
+            return "Destination Atlas has T turned off.";
+        }
+        if (!destinationPowered) {
+            return "Destination Atlas is not powered by the current budget.";
+        }
+        if (!destinationLoaded) {
+            return "Destination Atlas is saved but not loaded.";
+        }
+        return "Travel to this Atlas.";
     }
 
     private static Vec3 findArrival(final ServerLevel level, final ServerPlayer player, final BlockPos atlasPos) {

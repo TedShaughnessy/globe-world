@@ -1,7 +1,6 @@
 package globe.world.network;
 
 import globe.world.GlobeWorld;
-import globe.world.atlas.GlobeAtlasSurvey;
 import globe.world.atlas.GlobeAtlasSurveyState;
 import globe.world.atlas.GlobeDiscoveryRewards;
 import globe.world.map.GlobeMapSavedData;
@@ -19,12 +18,10 @@ public record GlobeMapSnapshotPayload(
         byte[] colors,
         boolean surveyMode,
         int biomesVisited,
-        int visitedCells,
-        int totalCells,
-        byte[] visitedCellBits) implements CustomPacketPayload {
+        int visitedChunks,
+        int targetChunks) implements CustomPacketPayload {
     private static final int MAX_TEXTURE_BYTES = GlobeMapSavedData.RESOLUTION * GlobeMapSavedData.RESOLUTION;
     private static final int MAX_DISCOVERED_BYTES = (MAX_TEXTURE_BYTES + 7) / 8;
-    private static final int MAX_VISITED_CELL_BYTES = (GlobeAtlasSurvey.COVERAGE_CELL_COUNT + 7) / 8;
 
     public static final Type<GlobeMapSnapshotPayload> TYPE = new Type<>(
             Identifier.fromNamespaceAndPath(GlobeWorld.MOD_ID, "globe_map_snapshot"));
@@ -35,7 +32,6 @@ public record GlobeMapSnapshotPayload(
     public GlobeMapSnapshotPayload {
         discovered = discovered == null ? new byte[0] : discovered;
         colors = colors == null ? new byte[0] : colors;
-        visitedCellBits = visitedCellBits == null ? new byte[0] : visitedCellBits;
     }
 
     public static GlobeMapSnapshotPayload from(final GlobeMapSavedData data) {
@@ -56,9 +52,8 @@ public record GlobeMapSnapshotPayload(
                 data.copyColors(),
                 surveyMode,
                 rewards.biomesVisited(),
-                rewards.visitedCells(),
-                rewards.totalCells(),
-                surveyMode ? survey.copyVisitedCells() : new byte[0]);
+                rewards.visitedChunks(),
+                rewards.targetChunks());
     }
 
     @Override
@@ -75,9 +70,8 @@ public record GlobeMapSnapshotPayload(
         byte[] colors = input.readByteArray(MAX_TEXTURE_BYTES);
         boolean surveyMode = input.readBoolean();
         int biomesVisited = input.readVarInt();
-        int visitedCells = input.readVarInt();
-        int totalCells = input.readVarInt();
-        byte[] visitedCellBits = input.readByteArray(MAX_VISITED_CELL_BYTES);
+        int visitedChunks = input.readVarInt();
+        int targetChunks = input.readVarInt();
         return new GlobeMapSnapshotPayload(
                 dimension,
                 tileSizeBlocks,
@@ -87,9 +81,8 @@ public record GlobeMapSnapshotPayload(
                 colors,
                 surveyMode,
                 biomesVisited,
-                visitedCells,
-                totalCells,
-                visitedCellBits);
+                visitedChunks,
+                targetChunks);
     }
 
     private void write(final FriendlyByteBuf output) {
@@ -101,8 +94,7 @@ public record GlobeMapSnapshotPayload(
         output.writeByteArray(this.colors);
         output.writeBoolean(this.surveyMode);
         output.writeVarInt(this.biomesVisited);
-        output.writeVarInt(this.visitedCells);
-        output.writeVarInt(this.totalCells);
-        output.writeByteArray(this.visitedCellBits);
+        output.writeVarInt(this.visitedChunks);
+        output.writeVarInt(this.targetChunks);
     }
 }

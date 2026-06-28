@@ -15,8 +15,8 @@ public record GlobeDiscoveryRewards(
         double discoveredAreaBlocks,
         boolean surveyMode,
         int biomesVisited,
-        int visitedCells,
-        int totalCells,
+        int visitedChunks,
+        int targetChunks,
         int totalPoints,
         int radiusCap,
         boolean complete,
@@ -24,8 +24,9 @@ public record GlobeDiscoveryRewards(
         List<Integer> milestoneTenths) {
     public static final GlobeDiscoveryRewards EMPTY = new GlobeDiscoveryRewards(
             0, 0.0D, 0.0D, false, 0, 0, 0, 0, 0, false, false, List.of());
-    private static final int LARGE_TRAVEL_BIOMES = 8;
-    private static final int LARGE_TRAVEL_CELLS = 16;
+    private static final int LARGE_CHUNKS_PER_POINT = 64;
+    private static final int LARGE_BIOMES_PER_POINT = 10;
+    private static final int LARGE_COMPLETED_BIOME_BONUS = 2;
 
     public static GlobeDiscoveryRewards get(final ServerLevel level) {
         if (!Level.OVERWORLD.equals(level.dimension())) {
@@ -99,14 +100,17 @@ public record GlobeDiscoveryRewards(
             final int tileSizeChunks) {
         GlobeAtlasSurveyState survey = GlobeAtlasSurveyState.getIfPresent(level, tiling).orElse(null);
         int biomesVisited = survey == null ? 0 : survey.biomeCount();
-        int visitedCells = survey == null ? 0 : survey.visitedCells();
-        int totalCells = survey == null ? GlobeAtlasSurvey.COVERAGE_CELL_COUNT : survey.totalCells();
-        double visitedCellPercent = totalCells <= 0 ? 0.0D : visitedCells * 100.0D / totalCells;
-        double visitedAreaBlocks = visitedCellPercent / 100.0D * tiling.tileSizeBlocks() * (double)tiling.tileSizeBlocks();
+        int visitedChunks = survey == null ? 0 : survey.visitedChunks();
+        int targetChunks = GlobeAtlasSurvey.TRAVEL_CHUNKS;
+        double visitedChunkPercent = Math.min(100.0D, visitedChunks * 100.0D / targetChunks);
+        double visitedAreaBlocks = visitedChunks * 16.0D * 16.0D;
 
-        int biomePoints = Math.min(biomesVisited, 16);
-        int cellPoints = Math.min(visitedCells / 4, 16);
-        int totalPoints = biomePoints + cellPoints;
+        int biomePoints = biomesVisited / LARGE_BIOMES_PER_POINT;
+        if (survey != null && survey.completedBiomes()) {
+            biomePoints += LARGE_COMPLETED_BIOME_BONUS;
+        }
+        int chunkPoints = Math.min(visitedChunks / LARGE_CHUNKS_PER_POINT, 16);
+        int totalPoints = biomePoints + chunkPoints;
         int radiusCap = 0;
         if (totalPoints > 0) {
             radiusCap = 64;
@@ -121,15 +125,15 @@ public record GlobeDiscoveryRewards(
             }
         }
 
-        boolean travelUnlocked = biomesVisited >= LARGE_TRAVEL_BIOMES && visitedCells >= LARGE_TRAVEL_CELLS;
+        boolean travelUnlocked = visitedChunks >= GlobeAtlasSurvey.TRAVEL_CHUNKS;
         return new GlobeDiscoveryRewards(
-                visitedCells,
-                visitedCellPercent,
+                visitedChunks,
+                visitedChunkPercent,
                 visitedAreaBlocks,
                 true,
                 biomesVisited,
-                visitedCells,
-                totalCells,
+                visitedChunks,
+                targetChunks,
                 totalPoints,
                 radiusCap,
                 false,
@@ -140,8 +144,9 @@ public record GlobeDiscoveryRewards(
     private static List<Integer> milestoneTenths(final int tileSizeChunks, final int tileSizeBlocks) {
         List<Integer> milestones = new ArrayList<>();
         if (tileSizeChunks > GlobeAtlasSurvey.LARGE_TILE_CUTOFF_CHUNKS) {
-            for (int point = 1; point <= 8; point++) {
-                addMilestone(milestones, point * 125);
+            int maxChunkPoints = GlobeAtlasSurvey.TRAVEL_CHUNKS / LARGE_CHUNKS_PER_POINT;
+            for (int point = 1; point <= maxChunkPoints; point++) {
+                addMilestone(milestones, point * 1000 / maxChunkPoints);
             }
             return List.copyOf(milestones);
         }

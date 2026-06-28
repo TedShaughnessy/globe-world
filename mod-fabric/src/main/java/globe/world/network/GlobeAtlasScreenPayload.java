@@ -23,8 +23,8 @@ public record GlobeAtlasScreenPayload(
         double discoveredPercent,
         boolean surveyMode,
         int biomesVisited,
-        int visitedCells,
-        int totalCells,
+        int visitedChunks,
+        int targetChunks,
         List<Integer> milestoneTenths,
         boolean complete,
         boolean travelUnlocked,
@@ -62,8 +62,8 @@ public record GlobeAtlasScreenPayload(
         double discoveredPercent = input.readDouble();
         boolean surveyMode = input.readBoolean();
         int biomesVisited = input.readVarInt();
-        int visitedCells = input.readVarInt();
-        int totalCells = input.readVarInt();
+        int visitedChunks = input.readVarInt();
+        int targetChunks = input.readVarInt();
         int milestoneCount = Math.min(input.readVarInt(), MAX_MILESTONES);
         List<Integer> milestoneTenths = new ArrayList<>(milestoneCount);
         for (int i = 0; i < milestoneCount; i++) {
@@ -89,8 +89,8 @@ public record GlobeAtlasScreenPayload(
                 discoveredPercent,
                 surveyMode,
                 biomesVisited,
-                visitedCells,
-                totalCells,
+                visitedChunks,
+                targetChunks,
                 milestoneTenths,
                 complete,
                 travelUnlocked,
@@ -110,8 +110,8 @@ public record GlobeAtlasScreenPayload(
         output.writeDouble(this.discoveredPercent);
         output.writeBoolean(this.surveyMode);
         output.writeVarInt(this.biomesVisited);
-        output.writeVarInt(this.visitedCells);
-        output.writeVarInt(this.totalCells);
+        output.writeVarInt(this.visitedChunks);
+        output.writeVarInt(this.targetChunks);
         output.writeVarInt(Math.min(this.milestoneTenths.size(), MAX_MILESTONES));
         for (int milestone : this.milestoneTenths.stream().limit(MAX_MILESTONES).toList()) {
             output.writeVarInt(milestone);
@@ -125,19 +125,21 @@ public record GlobeAtlasScreenPayload(
         }
     }
 
-    public record Destination(BlockPos pos, boolean available, String label) {
+    public record Destination(BlockPos pos, boolean available, String label, String detail) {
         public Destination {
             label = truncate(label);
+            detail = truncate(detail);
         }
 
         private static Destination read(final FriendlyByteBuf input) {
-            return new Destination(input.readBlockPos(), input.readBoolean(), input.readUtf(64));
+            return new Destination(input.readBlockPos(), input.readBoolean(), input.readUtf(64), input.readUtf(64));
         }
 
         private void write(final FriendlyByteBuf output) {
             output.writeBlockPos(this.pos);
             output.writeBoolean(this.available);
             output.writeUtf(this.label, 64);
+            output.writeUtf(this.detail, 64);
         }
     }
 

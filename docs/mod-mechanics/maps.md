@@ -78,11 +78,12 @@ leave holes in the toroidal projection until players reveal them.
 
 For tiles above `512` chunks wide, the Atlas switches to survey mode instead of
 presenting the `512x512` texture as a literal whole-world map. `GlobeAtlasSurveyState`
-stores shared visited biome ids and a coarse `64x64` wrapped grid of canonical
-cells reached by non-spectator players. The tracker imports completed criteria
+stores shared visited biome ids, unique canonical chunks reached by
+non-spectator players, and whether vanilla biome completion has been imported.
+The tracker imports completed criteria
 from vanilla's `minecraft:adventure/adventuring_time` advancement when present,
 samples the player's current canonical Overworld biome, and marks the player's
-current canonical survey cell as visited.
+current canonical chunk as visited.
 
 Large survey tiles do not render Atlas projections. Placed projector holograms,
 held projector holograms, the projection power-screen button, and sneak-use
@@ -130,12 +131,15 @@ Tiny tiles receive no points until full completion; small tiles require at least
 half discovery; larger tiles can earn points from absolute explored area.
 
 In survey mode, `GlobeDiscoveryRewards` derives points and radius caps from
-visited biome count and visited survey cells. Linked Atlas travel unlocks when
-the shared survey has at least eight visited biomes and at least sixteen visited
-cells. The travel-network toggle can be saved before that unlock on large
-tiles, so players can prepare destinations while still building survey progress.
-The Mastered Atlas advancement remains full-map completion behavior for tiles
-where literal projection is enabled.
+visited biome count and visited canonical chunks. Chunk progress is fixed across
+all large tile sizes: linked Atlas travel unlocks when the shared survey has at
+least `256` visited chunks, so single-biome worlds can still unlock travel.
+Chunks award one point per `64` unique chunks, while biomes award one point per
+ten visited biomes with an extra two-point bonus when vanilla Adventuring Time
+biome completion is imported. The travel-network toggle can be saved before
+that unlock on large tiles, so players can prepare destinations while still
+building survey progress. The Mastered Atlas advancement remains full-map
+completion behavior for tiles where literal projection is enabled.
 
 `GlobeAtlasPowerState` is saved Overworld state keyed by canonical Atlas block
 position. Loaded Atlas block entities mirror their saved loadout and custom
@@ -160,12 +164,14 @@ selection is icon-based, each effect has a neighboring level II toggle, radius
 uses matching `R`, `II`, and `III` toggle buttons, and the projection and travel
 buttons use the same symbol-control style on literal-map tiles. Discovery is shown as a progress bar
 with point/radius milestone markers derived from `GlobeDiscoveryRewards`;
-budget, radius cap, and current cost are shown alongside it on literal-map
+budget, radius cap, and current usage are shown alongside it on literal-map
 tiles. In survey mode, the projection button is hidden and the status area shows
-visited-cell progress, visited biomes, current cost, and travel unlock state. Linked-travel
-destinations live on a separate destination tab that is enabled only when this
-Atlas is powered with the `T` travel-network toggle selected and the current
-progression mode has unlocked travel.
+chunk progress toward the travel target, visited biomes, point budget, and current usage.
+The destinations tab lists saved Atlases by name and canonical location even
+when travel is unavailable. Destination rows are enabled only when this Atlas
+and the destination are loaded, powered, travel-enabled, and the current
+progression mode has unlocked travel; disabled rows explain the blocking
+condition in their tooltip.
 
 Full discovery creates the Mastered Atlas state and unlocks linked Atlas
 travel on literal-map tiles, and the shared completion state awards the

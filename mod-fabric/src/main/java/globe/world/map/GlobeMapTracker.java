@@ -147,7 +147,7 @@ public final class GlobeMapTracker {
         }
 
         AdvancementProgress progress = player.getAdvancements().getOrStartProgress(advancement);
-        boolean changed = false;
+        boolean changed = progress.isDone() && survey.recordCompletedBiomes();
         for (String criterion : progress.getCompletedCriteria()) {
             Identifier biomeId = Identifier.tryParse(criterion);
             if (biomeId != null) {
@@ -165,7 +165,7 @@ public final class GlobeMapTracker {
             final double y,
             final double canonicalZ) {
         Holder<Biome> biome = level.getBiome(BlockPos.containing(canonicalX, y, canonicalZ));
-        boolean changed = survey.recordVisitedCell(tiling, canonicalX, canonicalZ);
+        boolean changed = survey.recordVisitedChunk(tiling, canonicalX, canonicalZ);
         return changed | biome.unwrapKey()
                 .map(ResourceKey::identifier)
                 .map(survey::recordBiome)
