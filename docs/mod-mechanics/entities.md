@@ -79,7 +79,9 @@ deterministic scan over canonical chunks, preserving vanilla-style dry-land,
 fluid, heightmap, and player-collision checks. If no dry land exists in the
 canonical tile, it falls back to a collision-free surface, then a vertical fixup
 of the canonical spawn suggestion, then a logged generator-height tile-center
-last resort. Initial world-spawn metadata is canonicalized before it is saved.
+last resort. The chunk scan is generated lazily in wrapped-distance order so
+large configured tiles do not allocate a full tile-sized chunk list during world
+load. Initial world-spawn metadata is canonicalized before it is saved.
 
 Bed, respawn-anchor, and forced respawn validation canonicalize the saved
 `RespawnConfig` position at use time. The saved command metadata can remain raw,
