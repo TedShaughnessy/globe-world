@@ -90,12 +90,8 @@ public class GlobeAtlasPowerScreen extends Screen {
         this.addRenderableWidget(new RangeButton(powerX, powerY, 1));
         this.addRenderableWidget(new RangeButton(powerX + 28, powerY, 2));
         this.addRenderableWidget(new RangeButton(powerX + 56, powerY, 3));
-        if (this.data.surveyMode()) {
-            this.addRenderableWidget(new TravelButton(powerX, powerY + 28));
-        } else {
-            this.addRenderableWidget(new ProjectionButton(powerX, powerY + 28));
-            this.addRenderableWidget(new TravelButton(powerX + 28, powerY + 28));
-        }
+        this.addRenderableWidget(new ProjectionButton(powerX, powerY + 28));
+        this.addRenderableWidget(new TravelButton(powerX + 28, powerY + 28));
     }
 
     @Override
@@ -410,7 +406,7 @@ public class GlobeAtlasPowerScreen extends Screen {
                 this.data.pos(),
                 loadout,
                 this.currentName(),
-                !this.data.surveyMode() && projectionEnabled));
+                projectionEnabled));
     }
 
     private enum Tab {

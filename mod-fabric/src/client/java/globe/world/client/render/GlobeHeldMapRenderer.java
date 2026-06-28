@@ -5,12 +5,15 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import globe.world.GlobeWorldBlocks;
 import globe.world.atlas.GlobeAtlasSurvey;
+import globe.world.network.GlobeAtlasSurveyWindowPayload;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.core.SectionPos;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -52,19 +55,15 @@ public final class GlobeHeldMapRenderer {
 
         DimensionTiling tiling = DimensionTiling.forLevel(client.level);
         if (!tiling.enabled()
-                || GlobeAtlasSurvey.surveyMode(tiling)
                 || !Level.OVERWORLD.equals(client.level.dimension())) {
             return;
         }
 
         double centerX = CoordUtil.wrapBlock(tiling, client.player.getX());
         double centerZ = CoordUtil.wrapBlock(tiling, client.player.getZ());
-        int mapSpanBlocks = mapSpanBlocks(tiling.tileSizeBlocks());
-        Identifier texture = GlobeMapTextureCache.updateHeldViewportForCurrentDimension(
-                centerX,
-                centerZ,
-                mapSpanBlocks,
-                tiling.tileSizeBlocks());
+        Identifier texture = GlobeAtlasSurvey.surveyMode(tiling)
+                ? surveyTexture(tiling, centerX, centerZ)
+                : literalTexture(tiling, centerX, centerZ);
         if (texture == null) {
             return;
         }
@@ -81,6 +80,24 @@ public final class GlobeHeldMapRenderer {
                 RenderTypes.textSeeThrough(texture),
                 (pose, buffer) -> renderProjection(buffer, pose, FULL_BRIGHT_LIGHT));
         poseStack.popPose();
+    }
+
+    private static Identifier literalTexture(final DimensionTiling tiling, final double centerX, final double centerZ) {
+        int mapSpanBlocks = mapSpanBlocks(tiling.tileSizeBlocks());
+        return GlobeMapTextureCache.updateHeldViewportForCurrentDimension(
+                centerX,
+                centerZ,
+                mapSpanBlocks,
+                tiling.tileSizeBlocks());
+    }
+
+    private static Identifier surveyTexture(final DimensionTiling tiling, final double centerX, final double centerZ) {
+        int centerChunkX = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(centerX)));
+        int centerChunkZ = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(centerZ)));
+        return GlobeAtlasSurveyTextureCache.heldTextureForCurrentDimension(
+                centerChunkX,
+                centerChunkZ,
+                GlobeAtlasSurveyWindowPayload.HELD_WINDOW_CHUNKS);
     }
 
     private static void renderProjection(

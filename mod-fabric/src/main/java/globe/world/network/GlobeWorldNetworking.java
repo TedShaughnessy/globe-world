@@ -33,6 +33,7 @@ public final class GlobeWorldNetworking {
         PayloadTypeRegistry.clientboundPlay().register(GlobeWorldSettingsPayload.TYPE, GlobeWorldSettingsPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(GlobeEntityAliasCommandPayload.TYPE, GlobeEntityAliasCommandPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(GlobeMapSnapshotPayload.TYPE, GlobeMapSnapshotPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(GlobeAtlasSurveyWindowPayload.TYPE, GlobeAtlasSurveyWindowPayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(GlobeAtlasScreenPayload.TYPE, GlobeAtlasScreenPayload.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GlobeAtlasUpdatePayload.TYPE, GlobeAtlasUpdatePayload.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GlobeAtlasTravelPayload.TYPE, GlobeAtlasTravelPayload.CODEC);

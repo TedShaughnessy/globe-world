@@ -79,30 +79,59 @@ leave holes in the toroidal projection until players reveal them.
 For tiles above `512` chunks wide, the Atlas switches to survey mode instead of
 presenting the `512x512` texture as a literal whole-world map. `GlobeAtlasSurveyState`
 stores shared visited biome ids, unique canonical chunks reached by
-non-spectator players, and whether vanilla biome completion has been imported.
-The tracker imports completed criteria
-from vanilla's `minecraft:adventure/adventuring_time` advancement when present,
-samples the player's current canonical Overworld biome, and marks the player's
-current canonical chunk as visited.
+non-spectator players, per-visited-chunk representative biome ids, and whether
+vanilla biome completion has been imported. Older saves that only have visited
+chunk positions keep those chunks as discovered survey cells with unknown biome
+color until a player revisits them. The tracker imports completed criteria from
+vanilla's `minecraft:adventure/adventuring_time` advancement when present, then
+records a small disk of already-loaded canonical chunks around each player.
+Biome ids are sampled from loaded chunks only, so large-tile survey discovery
+does not force new world generation. After each survey reveal, a bounded local
+gap-fill pass marks small enclosed holes near the player, using biome ids when
+the chunk is loaded and an unknown-biome fill otherwise.
 
-Large survey tiles do not render Atlas projections. Placed projector holograms,
-held projector holograms, the projection power-screen button, and sneak-use
-projection toggling are disabled above the cutoff. New Atlas Projector block
-entities also default their local projection state to hidden.
+Survey projection uses `GlobeAtlasSurveyWindowPayload`, not the whole-map
+`GlobeMapSnapshotPayload`. Payloads carry centered chunk windows with a
+discovered bitset, a biome-id palette, per-cell palette indexes, and simple
+player/Atlas markers. Window construction walks saved survey entries and wraps
+chunk coordinates into the requested window; it does not force-load or generate
+chunks for display. Held survey windows are `128x128` chunks centered on the
+current player's canonical chunk. Placed survey windows are `512x512` chunks
+centered on loaded, projection-enabled Atlas Projectors near the receiving
+player, capped per sync tick and rate-limited by center chunk and survey
+revision.
+
+The client uploads survey windows through `GlobeAtlasSurveyTextureCache`, which
+is separate from the literal map texture cache. Undiscovered chunks render as a
+faint hologram fill, discovered chunks without biome ids render grey-blue, and
+known-biome chunks use a stable deterministic biome color palette. Grid lines
+and Atlas markers are baked into the dynamic survey texture. Held survey
+windows omit a player marker because the player is already fixed at the center
+of the projection. The held survey cache keeps the last rounded projection
+texture while a newly centered held survey payload is still in flight, so
+first-person rendering does not blink off on chunk-center changes.
 
 When held in first person, Atlas Projector items keep the ordinary block-item
 hand pose and render a separate translucent projection above the held projector.
 `GlobeHeldMapRenderer` samples a player-centered window from the shared
 projector texture, so the projection moves under the player instead of moving a
 player icon across a fixed map. The held literal-map window uses vanilla-style
-spans from `128`, `256`, `512`, `1024`, and `2048` blocks. In survey mode, the
-held renderer does not submit a projection.
+spans from `128`, `256`, `512`, `1024`, and `2048` blocks and bakes in the
+same holographic grid language as survey windows, with an adaptive chunk grid
+and a brighter center cross. In survey mode, the held renderer uses a rounded,
+softly faded copy of the current `128x128` chunk player-centered survey-window
+texture instead of resampling the literal Atlas texture.
 
-The placed Atlas hologram uses the same large-tile scale, so the torus grows
+On literal-map tiles, the placed Atlas hologram uses the same large-tile scale,
+so the torus grows
 with the held window instead of staying at the small-world size. The hologram
 center rises with the scaled minor radius so large projections stay above the
 projector block, and block-entity render culling is expanded for large
-projections. The held viewport texture is sampled in canonical world axes
+projections. In survey mode, placed Atlases render a quieter shallow square
+domed holographic survey surface centered on that Atlas' canonical chunk
+instead of the torus, with the corners participating in the curvature.
+
+The held viewport texture is sampled in canonical world axes
 instead of being resampled for player yaw; the projected surface then rotates
 with the player so the top of the projection is always the direction the player
 is facing, letting map pixels become diagonal on screen. After both hands submit
@@ -146,9 +175,10 @@ position. Loaded Atlas block entities mirror their saved loadout and custom
 name into this state, and removed Atlases drop their reservation. Each loadout
 spends points on radius tier, selected effects, per-effect level II upgrades,
 and the travel-network toggle. The projection toggle is local presentation
-state and is free on literal-map tiles. The power screen greys out upgrades whose candidate
-loadout would exceed the shared budget, while still allowing players to turn
-existing powers off. If saved loadouts exceed the current budget after a
+state and is free on literal-map and survey-mode tiles. The power screen greys
+out upgrades whose candidate loadout would exceed the shared budget, while
+still allowing players to turn existing powers off. If saved loadouts exceed
+the current budget after a
 settings or discovery-state change, the deterministic powered subset is chosen
 by most recently edited Atlas first, then canonical block-position order.
 
@@ -162,11 +192,12 @@ The client Atlas power screen draws a compact grey in-game panel without the
 vanilla beacon payment slot, confirmation row, inventory, or hotbar. Effect
 selection is icon-based, each effect has a neighboring level II toggle, radius
 uses matching `R`, `II`, and `III` toggle buttons, and the projection and travel
-buttons use the same symbol-control style on literal-map tiles. Discovery is shown as a progress bar
+buttons use the same symbol-control style. Discovery is shown as a progress bar
 with point/radius milestone markers derived from `GlobeDiscoveryRewards`;
 budget, radius cap, and current usage are shown alongside it on literal-map
-tiles. In survey mode, the projection button is hidden and the status area shows
-chunk progress toward the travel target, visited biomes, point budget, and current usage.
+tiles. The projection button remains available in survey mode and controls the
+biome survey projection. The survey status area shows chunk progress
+toward the travel target, visited biomes, point budget, and current usage.
 The destinations tab lists saved Atlases by name and canonical location even
 when travel is unavailable. Destination rows are enabled only when this Atlas
 and the destination are loaded, powered, travel-enabled, and the current
@@ -210,6 +241,7 @@ rules are not part of the current reward scope.
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasPowers.java`
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasSurvey.java`
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasSurveyState.java`
+- `mod-fabric/src/main/java/globe/world/atlas/GlobeAtlasSurveyWindows.java`
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeDiscoveryRewards.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapSavedData.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapTracker.java`
@@ -217,11 +249,13 @@ rules are not part of the current reward scope.
 - `mod-fabric/src/main/java/globe/world/network/GlobeAtlasScreenPayload.java`
 - `mod-fabric/src/main/java/globe/world/network/GlobeAtlasTravelPayload.java`
 - `mod-fabric/src/main/java/globe/world/network/GlobeAtlasUpdatePayload.java`
+- `mod-fabric/src/main/java/globe/world/network/GlobeAtlasSurveyWindowPayload.java`
 - `mod-fabric/src/main/java/globe/world/network/GlobeMapSnapshotPayload.java`
 - `mod-fabric/src/client/java/globe/world/client/GlobeAtlasPowerScreen.java`
 - `mod-fabric/src/client/java/globe/world/client/mixin/ItemInHandRendererMixin.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeBlockEntityRenderer.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeHeldMapRenderer.java`
+- `mod-fabric/src/client/java/globe/world/client/render/GlobeAtlasSurveyTextureCache.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeToroidMesh.java`
 - `mod-fabric/src/client/java/globe/world/client/render/GlobeMapTextureCache.java`
 

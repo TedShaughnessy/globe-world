@@ -137,7 +137,7 @@ public final class GlobeAtlasPowers {
         BlockPos canonicalPos = CoordUtil.wrapBlockPos(DimensionTiling.forDimension(Level.OVERWORLD), rawPos);
         String name = sanitizeName(payload.name(), canonicalPos);
         atlas.setAtlasName(name);
-        atlas.setProjectionEnabled(!rewards.surveyMode() && payload.projectionEnabled());
+        atlas.setProjectionEnabled(payload.projectionEnabled());
         atlas.setLoadout(loadout, true);
         state.update(level, rawPos, loadout, name, !loadout.equals(currentLoadout));
         sendScreen(player, rawPos);
@@ -239,8 +239,7 @@ public final class GlobeAtlasPowers {
         String name = blockEntity instanceof GlobeBlockEntity atlas
                 ? atlasDisplayName(atlas.atlasName(), canonicalPos)
                 : atlasDisplayName(entry.map(GlobeAtlasPowerState.Entry::name).orElse(""), canonicalPos);
-        boolean projectionEnabled = !rewards.surveyMode()
-                && (!(blockEntity instanceof GlobeBlockEntity atlas) || atlas.projectionEnabled());
+        boolean projectionEnabled = !(blockEntity instanceof GlobeBlockEntity atlas) || atlas.projectionEnabled();
         int spentPoints = state.spentPoints();
         boolean powered = state.isPowered(rawPos, rewards);
         return new GlobeAtlasScreenPayload(

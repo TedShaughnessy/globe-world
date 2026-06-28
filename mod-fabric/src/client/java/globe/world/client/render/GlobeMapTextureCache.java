@@ -17,6 +17,9 @@ public final class GlobeMapTextureCache {
     private static final int HELD_UNKNOWN_COLOR = 0x30385A66;
     private static final int HELD_DISCOVERED_ALPHA = 0xD8;
     private static final int EMPTY_DISCOVERED_COLOR = 0xFF6C6047;
+    private static final int HELD_GRID_COLOR = 0x226DC7D8;
+    private static final int HELD_CENTER_GRID_COLOR = 0x55D8F8FF;
+    private static final int CHUNK_SIZE_BLOCKS = 16;
 
     private static Identifier dimension;
     private static int resolution;
@@ -149,6 +152,7 @@ public final class GlobeMapTextureCache {
         double blockRadius = spanBlocks * 0.5D;
         double pixelCenter = HELD_VIEWPORT_RESOLUTION * 0.5D;
         double fadeStart = 0.86D;
+        int gridSpacingBlocks = heldGridSpacingBlocks(spanBlocks);
 
         for (int y = 0; y < HELD_VIEWPORT_RESOLUTION; y++) {
             double normalizedForward = (pixelCenter - (y + 0.5D)) / pixelCenter;
@@ -167,7 +171,9 @@ public final class GlobeMapTextureCache {
                 int sourceX = pixelForBlock(blockX, tileSizeBlocks);
                 int sourceZ = pixelForBlock(blockZ, tileSizeBlocks);
                 int color = sourcePixels.getPixel(sourceX, sourceZ);
-                targetPixels.setPixel(x, y, withAlpha(color, Math.round(alpha(color) * edgeFade(radius, fadeStart))));
+                color = withAlpha(color, Math.round(alpha(color) * edgeFade(radius, fadeStart)));
+                color = applyHeldGrid(color, blockX, blockZ, normalizedRight, normalizedForward, gridSpacingBlocks, spanBlocks);
+                targetPixels.setPixel(x, y, color);
             }
         }
     }
@@ -187,6 +193,40 @@ public final class GlobeMapTextureCache {
 
     private static double positiveModulo(final double value, final double modulus) {
         return value - Math.floor(value / modulus) * modulus;
+    }
+
+    private static int heldGridSpacingBlocks(final int spanBlocks) {
+        int visibleChunks = Math.max(1, (int)Math.ceil(spanBlocks / (double)CHUNK_SIZE_BLOCKS));
+        int spacingChunks = 1;
+        while (visibleChunks / spacingChunks > 16) {
+            spacingChunks *= 2;
+        }
+        return spacingChunks * CHUNK_SIZE_BLOCKS;
+    }
+
+    private static int applyHeldGrid(
+            final int color,
+            final double blockX,
+            final double blockZ,
+            final double normalizedRight,
+            final double normalizedForward,
+            final int gridSpacingBlocks,
+            final int spanBlocks) {
+        double pixelBlocks = spanBlocks / (double)HELD_VIEWPORT_RESOLUTION;
+        if (Math.abs(normalizedRight) <= 1.0D / HELD_VIEWPORT_RESOLUTION
+                || Math.abs(normalizedForward) <= 1.0D / HELD_VIEWPORT_RESOLUTION) {
+            return blend(color, HELD_CENTER_GRID_COLOR);
+        }
+        if (nearGridLine(blockX, gridSpacingBlocks, pixelBlocks)
+                || nearGridLine(blockZ, gridSpacingBlocks, pixelBlocks)) {
+            return blend(color, HELD_GRID_COLOR);
+        }
+        return color;
+    }
+
+    private static boolean nearGridLine(final double block, final int spacingBlocks, final double pixelBlocks) {
+        double wrapped = positiveModulo(block + spacingBlocks * 0.5D, spacingBlocks) - spacingBlocks * 0.5D;
+        return Math.abs(wrapped) <= Math.max(0.5D, pixelBlocks * 0.45D);
     }
 
     private static float edgeFade(final double radius, final double fadeStart) {
@@ -215,6 +255,15 @@ public final class GlobeMapTextureCache {
 
     private static int withAlpha(final int color, final int alpha) {
         return (color & 0x00FFFFFF) | (alpha << 24);
+    }
+
+    private static int blend(final int base, final int overlay) {
+        int alpha = overlay >>> 24;
+        int inverse = 255 - alpha;
+        int r = (((base >> 16) & 0xFF) * inverse + ((overlay >> 16) & 0xFF) * alpha) / 255;
+        int g = (((base >> 8) & 0xFF) * inverse + ((overlay >> 8) & 0xFF) * alpha) / 255;
+        int b = ((base & 0xFF) * inverse + (overlay & 0xFF) * alpha) / 255;
+        return (base & 0xFF000000) | (r << 16) | (g << 8) | b;
     }
 
     private static boolean isDiscovered(final byte[] discovered, final int index) {

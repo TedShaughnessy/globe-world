@@ -4,9 +4,7 @@ import com.mojang.serialization.MapCodec;
 import globe.world.GlobeWorldBlocks;
 import globe.world.atlas.GlobeAtlasPowerState;
 import globe.world.atlas.GlobeAtlasPowers;
-import globe.world.atlas.GlobeAtlasSurvey;
 import globe.world.block.entity.GlobeBlockEntity;
-import globe.world.util.DimensionTiling;
 import java.util.Map;
 import java.util.function.Function;
 import net.minecraft.core.BlockPos;
@@ -147,12 +145,7 @@ public class GlobeBlock extends BaseEntityBlock {
 
         if (level.getBlockEntity(pos) instanceof GlobeBlockEntity globe) {
             if (player.isShiftKeyDown()) {
-                boolean projectionEnabled = false;
-                if (!GlobeAtlasSurvey.surveyMode(DimensionTiling.forLevel(level))) {
-                    projectionEnabled = globe.toggleProjection();
-                } else {
-                    globe.setProjectionEnabled(false);
-                }
+                boolean projectionEnabled = globe.toggleProjection();
                 level.playSound(
                         null,
                         pos,
