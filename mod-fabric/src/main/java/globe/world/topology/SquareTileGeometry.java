@@ -2,6 +2,7 @@ package globe.world.topology;
 
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -11,14 +12,66 @@ import java.util.List;
 
 public final class SquareTileGeometry implements TileGeometry {
     private final DimensionTiling tiling;
+    private final LatticeBasis latticeBasis;
+    private final List<BoundarySegment> boundarySegments;
 
     public SquareTileGeometry(DimensionTiling tiling) {
         this.tiling = tiling;
+        int tileChunks = tiling.tileSizeChunks();
+        int tileBlocks = tiling.tileSizeBlocks();
+        double min = -tileBlocks / 2.0D;
+        double max = min + tileBlocks;
+        this.latticeBasis = new LatticeBasis(new ChunkPos(tileChunks, 0), new ChunkPos(0, tileChunks));
+        this.boundarySegments = List.of(
+                new BoundarySegment(min, min, min, max, Direction.WEST, new LatticeCoordinate(-1, 0)),
+                new BoundarySegment(max, min, max, max, Direction.EAST, new LatticeCoordinate(1, 0)),
+                new BoundarySegment(min, min, max, min, Direction.NORTH, new LatticeCoordinate(0, -1)),
+                new BoundarySegment(min, max, max, max, Direction.SOUTH, new LatticeCoordinate(0, 1)));
     }
 
     @Override
     public DimensionTiling tiling() {
         return tiling;
+    }
+
+    @Override
+    public String geometryRevision() {
+        return "square-v1";
+    }
+
+    @Override
+    public LatticeBasis latticeBasis() {
+        return latticeBasis;
+    }
+
+    @Override
+    public LatticeCoordinate latticeCoordinate(ChunkPos raw) {
+        if (!tiling.enabled()) {
+            return LatticeCoordinate.ORIGIN;
+        }
+        ChunkPos canonical = canonicalChunk(raw.x(), raw.z());
+        int tileChunks = tileSizeChunks();
+        return new LatticeCoordinate(
+                (raw.x() - canonical.x()) / tileChunks,
+                (raw.z() - canonical.z()) / tileChunks);
+    }
+
+    @Override
+    public List<LatticeCoordinate> neighboringTiles() {
+        return List.of(
+                new LatticeCoordinate(-1, -1),
+                new LatticeCoordinate(0, -1),
+                new LatticeCoordinate(1, -1),
+                new LatticeCoordinate(-1, 0),
+                new LatticeCoordinate(1, 0),
+                new LatticeCoordinate(-1, 1),
+                new LatticeCoordinate(0, 1),
+                new LatticeCoordinate(1, 1));
+    }
+
+    @Override
+    public List<BoundarySegment> boundarySegments() {
+        return boundarySegments;
     }
 
     @Override

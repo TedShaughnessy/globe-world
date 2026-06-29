@@ -227,12 +227,15 @@ Client diagnostics are intentionally targeted:
 
 - `F3+Y`: Globe debug overlay and tile-border renderer, including current
   Overworld/Nether tile widths, Nether portal ratio, natural-spawn settings,
-  and a one-ring alias tile-border renderer around the camera plus the
-  canonical tile even when it is outside that ring. The renderer draws one
-  vertical line at each tile corner plus a horizontal border around each tile at
-  the player's nearest block height. Canonical tile borders are green; alias tile
-  borders are blue. It also shows the saved world-spawn marker plus active
-  exclusion radius. Placed globe projector objects store an attachment face,
+  canonical chunk, lattice alias/translation, geometry revision, and nearest
+  exact seam. Square worlds retain the one-ring rectangular border renderer:
+  vertical corner lines and a horizontal border at the player's nearest block
+  height, with green canonical borders and blue aliases. Hex worlds draw the
+  exact chunk-staircase boundary for the camera tile and its six lattice
+  neighbors plus the canonical tile. Opposite seam relations share colors and
+  are labeled `±A`, `±B`, and `±(A-B)`. It also shows the saved world-spawn
+  marker plus active exclusion radius; the marker uses the geometry's
+  viewer-nearest alias. Placed globe projector objects store an attachment face,
   horizontal facing, and projection enabled flag, so their base hitbox and large
   torus hologram project away from the floor, wall, or ceiling they were placed
   on. Right-click toggles the hologram projection on or off. When enabled, they

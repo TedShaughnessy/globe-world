@@ -19,6 +19,7 @@ import globe.world.diagnostics.DiagnosticsChannel;
 import globe.world.diagnostics.GlobeDiagnostics;
 import globe.world.entity.ActorLocalTargetView;
 import globe.world.entity.ActorLocalTargets;
+import globe.world.topology.TileGeometry;
 import globe.world.topology.TopologyContext;
 import globe.world.topology.TopologyContexts;
 import globe.world.util.CoordUtil;
@@ -54,7 +55,9 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 public final class GlobeDebugCommands {
     private static final DynamicCommandExceptionType INVALID_DAY_NIGHT_MODE = new DynamicCommandExceptionType(
@@ -103,15 +106,29 @@ public final class GlobeDebugCommands {
                         .then(Commands.argument("inset", IntegerArgumentType.integer(0))
                                 .executes(context -> teleportPlayerToNearestBorder(
                                         context.getSource(),
-                                        IntegerArgumentType.getInteger(context, "inset")))))
+                                        IntegerArgumentType.getInteger(context, "inset"))))
+                        .then(Commands.literal("seam")
+                                .then(Commands.argument("direction", StringArgumentType.word())
+                                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                                                List.of("a+", "a-", "b+", "b-", "c+", "c-"),
+                                                builder))
+                                        .executes(context -> teleportPlayerToSeam(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "direction"),
+                                                1))
+                                        .then(Commands.argument("inset", IntegerArgumentType.integer(0))
+                                                .executes(context -> teleportPlayerToSeam(
+                                                        context.getSource(),
+                                                        StringArgumentType.getString(context, "direction"),
+                                                        IntegerArgumentType.getInteger(context, "inset")))))))
                 .then(Commands.literal("teleport_alias")
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
-                        .then(Commands.argument("tileX", IntegerArgumentType.integer())
-                                .then(Commands.argument("tileZ", IntegerArgumentType.integer())
+                        .then(Commands.argument("k", IntegerArgumentType.integer())
+                                .then(Commands.argument("l", IntegerArgumentType.integer())
                                         .executes(context -> teleportPlayerToAlias(
                                                 context.getSource(),
-                                                IntegerArgumentType.getInteger(context, "tileX"),
-                                                IntegerArgumentType.getInteger(context, "tileZ"))))))
+                                                IntegerArgumentType.getInteger(context, "k"),
+                                                IntegerArgumentType.getInteger(context, "l"))))))
                 .then(Commands.literal("end_portal")
                         .executes(context -> printEndPortal(context.getSource(), false))
                         .then(Commands.literal("validate")
@@ -245,6 +262,9 @@ public final class GlobeDebugCommands {
         ChunkPos chunk = player.chunkPosition();
         BlockPos canonicalPos = topology.canonicalBlock(pos);
         ChunkPos canonicalChunk = topology.canonicalChunk(chunk);
+        TileGeometry.LatticeCoordinate latticeCoordinate = topology.latticeCoordinate(chunk);
+        ChunkPos latticeTranslation = topology.latticeTranslation(latticeCoordinate);
+        TileGeometry.LatticeBasis latticeBasis = topology.latticeBasis();
         int configuredSimulationDistance = source.getServer().getPlayerList().getSimulationDistance();
         int effectiveSimulationDistance = GlobeDistanceCaps.effectiveSimulationDistance(tiling, configuredSimulationDistance);
 
@@ -269,11 +289,17 @@ public final class GlobeDebugCommands {
                 pos.getX(), pos.getY(), pos.getZ(),
                 canonicalPos.getX(), canonicalPos.getY(), canonicalPos.getZ())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "World chunk=%d %d canon chunk=%d %d tile alias=%+d %+d in canon tile=%s",
+                "World chunk=%d %d canon chunk=%d %d lattice=(%+d,%+d) translation=%+d %+d in canon tile=%s",
                 chunk.x(), chunk.z(),
                 canonicalChunk.x(), canonicalChunk.z(),
-                topology.tileAliasChunkX(chunk.x()), topology.tileAliasChunkX(chunk.z()),
+                latticeCoordinate.k(), latticeCoordinate.l(),
+                latticeTranslation.x(), latticeTranslation.z(),
                 yesNo(topology.isCanonical(pos)))), false);
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Geometry=%s basis A=%+d %+d B=%+d %+d",
+                topology.geometryRevision(),
+                latticeBasis.a().x(), latticeBasis.a().z(),
+                latticeBasis.b().x(), latticeBasis.b().z())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Longitude offset=%.1f ticks local_solar_day=%.1f ticks",
                 CoordUtil.longitudeOffsetTicks(tiling, player.getX()),
@@ -289,20 +315,20 @@ public final class GlobeDebugCommands {
             return 0;
         }
 
-        BorderDistances distances = borderDistances(topology, player.getX(), player.getZ());
+        Vec3 canonical = topology.canonicalBlock(player.position());
+        TileGeometry.BoundaryHit nearest = topology.nearestBoundary(player.position());
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "Canonical X/Z=%.3f %.3f tile=%d blocks",
-                distances.canonicalX(),
-                distances.canonicalZ(),
-                topology.tileSizeBlocks())), false);
+                "Canonical X/Z=%.3f %.3f geometry=%s",
+                canonical.x(),
+                canonical.z(),
+                topology.geometryRevision())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "Distance to border: west=%.3f east=%.3f north=%.3f south=%.3f nearest=%s %.3f blocks",
-                distances.west(),
-                distances.east(),
-                distances.north(),
-                distances.south(),
-                distances.nearestName(),
-                distances.nearestDistance())), false);
+                "Distance to seams: %s; nearest=%s %.3f blocks at %.3f %.3f",
+                seamDistanceSummary(topology, canonical),
+                nearest.segment().outsideAlias().seamLabel(),
+                nearest.distance(),
+                nearest.boundaryX(),
+                nearest.boundaryZ())), false);
         return 1;
     }
 
@@ -424,6 +450,8 @@ public final class GlobeDebugCommands {
         BlockPos canonicalPos = topology.canonicalBlock(rawPos);
         ChunkPos rawChunk = ChunkPos.containing(rawPos);
         ChunkPos canonicalChunk = ChunkPos.containing(canonicalPos);
+        TileGeometry.LatticeCoordinate lattice = topology.latticeCoordinate(rawChunk);
+        ChunkPos translation = topology.latticeTranslation(lattice);
         TopologyContext.AliasMutationAccess mutationAccess = topology.aliasMutationAccess(level, rawPos);
         LevelChunk loadedCanonicalChunk = level.getChunkSource().getChunkNow(canonicalChunk.x(), canonicalChunk.z());
 
@@ -436,11 +464,13 @@ public final class GlobeDebugCommands {
                 formatBlock(rawPos),
                 formatChunk(rawChunk))), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "Canonical block=%s chunk=%s tile alias=%+d %+d",
+                "Canonical block=%s chunk=%s lattice=(%+d,%+d) translation=%+d %+d",
                 formatBlock(canonicalPos),
                 formatChunk(canonicalChunk),
-                topology.tileAliasBlockX(rawPos.getX()),
-                topology.tileAliasBlockX(rawPos.getZ()))), false);
+                lattice.k(),
+                lattice.l(),
+                translation.x(),
+                translation.z())), false);
 
         if (loadedCanonicalChunk == null) {
             source.sendSuccess(() -> Component.literal("Canonical chunk is not loaded; block state and block entity were not read."), false);
@@ -486,31 +516,30 @@ public final class GlobeDebugCommands {
 
     private static int teleportPlayerToCanonicalPosition(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        DimensionTiling tiling = DimensionTiling.forLevel(player.level());
-        if (!tiling.enabled()) {
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        if (!topology.enabled()) {
             source.sendFailure(Component.literal("Current dimension is not tiled."));
             return 0;
         }
 
-        double canonicalX = CoordUtil.wrapBlock(tiling, player.getX());
-        double canonicalZ = CoordUtil.wrapBlock(tiling, player.getZ());
+        Vec3 canonical = topology.canonicalBlock(player.position());
         double oldX = player.getX();
         double oldZ = player.getZ();
 
-        if (canonicalX == oldX && canonicalZ == oldZ) {
+        if (canonical.x() == oldX && canonical.z() == oldZ) {
             source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                     "Already in canonical tile at %.3f %.3f %.3f",
                     player.getX(), player.getY(), player.getZ())), false);
             return 0;
         }
 
-        if (!teleportPlayer(player, canonicalX, player.getY(), canonicalZ)) {
+        if (!teleportPlayer(player, canonical.x(), canonical.y(), canonical.z())) {
             source.sendFailure(Component.literal("Canonical position is outside valid teleport bounds."));
             return 0;
         }
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Teleported to canonical position %.3f %.3f %.3f from X/Z %.3f %.3f",
-                canonicalX, player.getY(), canonicalZ, oldX, oldZ)), false);
+                canonical.x(), canonical.y(), canonical.z(), oldX, oldZ)), false);
         return 1;
     }
 
@@ -522,61 +551,97 @@ public final class GlobeDebugCommands {
             return 0;
         }
 
-        int clampedInset = Math.min(inset, topology.tileSizeBlocks() - 1);
-        BorderDistances distances = borderDistances(topology, player.getX(), player.getZ());
-        double targetX = distances.canonicalX();
-        double targetZ = distances.canonicalZ();
-        double min = tileMin(topology);
-        double max = tileMaxExclusive(topology);
-        switch (distances.nearestName()) {
-            case "west" -> targetX = min + clampedInset;
-            case "east" -> targetX = max - 1 - clampedInset;
-            case "north" -> targetZ = min + clampedInset;
-            case "south" -> targetZ = max - 1 - clampedInset;
-            default -> {
-            }
-        }
-
-        if (!teleportPlayer(player, targetX, player.getY(), targetZ)) {
-            source.sendFailure(Component.literal("Border test position is outside valid teleport bounds."));
-            return 0;
-        }
-        double finalTargetX = targetX;
-        double finalTargetZ = targetZ;
-        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "Teleported to %s border inset=%d at %.3f %.3f %.3f",
-                distances.nearestName(),
-                clampedInset,
-                finalTargetX,
-                player.getY(),
-                finalTargetZ)), false);
-        return 1;
+        return teleportPlayerToBoundaryHit(
+                source,
+                player,
+                topology,
+                topology.nearestBoundary(player.position()),
+                inset);
     }
 
-    private static int teleportPlayerToAlias(CommandSourceStack source, int tileX, int tileZ) throws CommandSyntaxException {
+    private static int teleportPlayerToSeam(
+            CommandSourceStack source,
+            String direction,
+            int inset) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        DimensionTiling tiling = DimensionTiling.forLevel(player.level());
-        if (!tiling.enabled()) {
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        if (!topology.enabled()) {
             source.sendFailure(Component.literal("Current dimension is not tiled."));
             return 0;
         }
 
-        int period = tiling.tileSizeBlocks();
-        double canonicalX = CoordUtil.wrapBlock(tiling, player.getX());
-        double canonicalZ = CoordUtil.wrapBlock(tiling, player.getZ());
-        double targetX = canonicalX + (double) tileX * period;
-        double targetZ = canonicalZ + (double) tileZ * period;
-        if (!teleportPlayer(player, targetX, player.getY(), targetZ)) {
+        TileGeometry.LatticeCoordinate requested = seamCoordinate(direction);
+        if (requested == null) {
+            source.sendFailure(Component.literal(
+                    "Unknown seam direction: " + direction + " (expected a+, a-, b+, b-, c+, or c-)"));
+            return 0;
+        }
+
+        Vec3 canonical = topology.canonicalBlock(player.position());
+        TileGeometry.BoundaryHit hit = topology.boundarySegments().stream()
+                .filter(segment -> segment.outsideAlias().equals(requested))
+                .map(segment -> segment.hitFrom(canonical))
+                .min(java.util.Comparator.comparingDouble(TileGeometry.BoundaryHit::distance))
+                .orElse(null);
+        if (hit == null) {
+            source.sendFailure(Component.literal(
+                    "Seam " + requested.seamLabel() + " does not exist for " + topology.geometryRevision() + "."));
+            return 0;
+        }
+        return teleportPlayerToBoundaryHit(source, player, topology, hit, inset);
+    }
+
+    private static int teleportPlayerToBoundaryHit(
+            CommandSourceStack source,
+            ServerPlayer player,
+            TopologyContext topology,
+            TileGeometry.BoundaryHit hit,
+            int inset) {
+        int clampedInset = Math.min(inset, topology.tileSizeBlocks() - 1);
+        Vec3 target = hit.segment().insidePoint(player.getY(), clampedInset);
+        if (!topology.isCanonical(BlockPos.containing(target))) {
+            source.sendFailure(Component.literal(String.format(Locale.ROOT,
+                    "Inset %d crosses outside the canonical mask at seam %s; use a smaller inset.",
+                    clampedInset,
+                    hit.segment().outsideAlias().seamLabel())));
+            return 0;
+        }
+        if (!teleportPlayer(player, target.x(), target.y(), target.z())) {
+            source.sendFailure(Component.literal("Seam test position is outside valid teleport bounds."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Teleported to seam %s inset=%d at %.3f %.3f %.3f",
+                hit.segment().outsideAlias().seamLabel(),
+                clampedInset,
+                target.x(),
+                target.y(),
+                target.z())), false);
+        return 1;
+    }
+
+    private static int teleportPlayerToAlias(CommandSourceStack source, int k, int l) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        if (!topology.enabled()) {
+            source.sendFailure(Component.literal("Current dimension is not tiled."));
+            return 0;
+        }
+
+        TileGeometry.LatticeCoordinate coordinate = new TileGeometry.LatticeCoordinate(k, l);
+        Vec3 canonical = topology.canonicalBlock(player.position());
+        Vec3 target = topology.translatedAlias(canonical, coordinate);
+        if (!teleportPlayer(player, target.x(), target.y(), target.z())) {
             source.sendFailure(Component.literal("Alias position is outside valid teleport bounds."));
             return 0;
         }
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                "Teleported to tile alias %+d %+d at %.3f %.3f %.3f",
-                tileX,
-                tileZ,
-                targetX,
-                player.getY(),
-                targetZ)), false);
+                "Teleported to lattice alias (%+d,%+d) at %.3f %.3f %.3f",
+                k,
+                l,
+                target.x(),
+                target.y(),
+                target.z())), false);
         return 1;
     }
 
@@ -835,38 +900,36 @@ public final class GlobeDebugCommands {
         return value == null || value.isEmpty() ? "none" : value;
     }
 
-    private static BorderDistances borderDistances(TopologyContext topology, double x, double z) {
-        double canonicalX = topology.canonicalBlockX(x);
-        double canonicalZ = topology.canonicalBlockX(z);
-        double min = tileMin(topology);
-        double max = tileMaxExclusive(topology);
-        double west = canonicalX - min;
-        double east = max - canonicalX;
-        double north = canonicalZ - min;
-        double south = max - canonicalZ;
-        String nearestName = "west";
-        double nearestDistance = west;
-        if (east < nearestDistance) {
-            nearestName = "east";
-            nearestDistance = east;
+    private static String seamDistanceSummary(TopologyContext topology, Vec3 canonical) {
+        Map<String, Double> minimums = new TreeMap<>();
+        for (TileGeometry.BoundarySegment segment : topology.boundarySegments()) {
+            minimums.merge(
+                    segment.outsideAlias().seamLabel(),
+                    segment.hitFrom(canonical).distance(),
+                    Math::min);
         }
-        if (north < nearestDistance) {
-            nearestName = "north";
-            nearestDistance = north;
+        StringBuilder summary = new StringBuilder();
+        for (Map.Entry<String, Double> entry : minimums.entrySet()) {
+            if (!summary.isEmpty()) {
+                summary.append(' ');
+            }
+            summary.append(entry.getKey())
+                    .append('=')
+                    .append(String.format(Locale.ROOT, "%.3f", entry.getValue()));
         }
-        if (south < nearestDistance) {
-            nearestName = "south";
-            nearestDistance = south;
-        }
-        return new BorderDistances(canonicalX, canonicalZ, west, east, north, south, nearestName, nearestDistance);
+        return summary.toString();
     }
 
-    private static double tileMin(TopologyContext topology) {
-        return -topology.tileSizeBlocks() / 2.0D;
-    }
-
-    private static double tileMaxExclusive(TopologyContext topology) {
-        return tileMin(topology) + topology.tileSizeBlocks();
+    private static TileGeometry.LatticeCoordinate seamCoordinate(String direction) {
+        return switch (direction.toLowerCase(Locale.ROOT)) {
+            case "a+", "+a" -> new TileGeometry.LatticeCoordinate(1, 0);
+            case "a-", "-a" -> new TileGeometry.LatticeCoordinate(-1, 0);
+            case "b+", "+b" -> new TileGeometry.LatticeCoordinate(0, 1);
+            case "b-", "-b" -> new TileGeometry.LatticeCoordinate(0, -1);
+            case "c+", "+c" -> new TileGeometry.LatticeCoordinate(1, -1);
+            case "c-", "-c" -> new TileGeometry.LatticeCoordinate(-1, 1);
+            default -> null;
+        };
     }
 
     private static String tileSummary(DimensionTiling tiling) {
@@ -883,15 +946,4 @@ public final class GlobeDebugCommands {
         );
     }
 
-    private record BorderDistances(
-            double canonicalX,
-            double canonicalZ,
-            double west,
-            double east,
-            double north,
-            double south,
-            String nearestName,
-            double nearestDistance
-    ) {
-    }
 }

@@ -13,8 +13,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -155,6 +158,47 @@ class TileGeometryTest {
                     .stream()
                     .anyMatch(box -> box.inflate(1.0E-7D).contains(canonicalCenter));
             assertTrue(covered, "query boxes missed alias " + translation);
+        }
+    }
+
+    @Test
+    void squareAndHexExposeExactLatticeCoordinates() {
+        TileGeometry square = TileGeometry.create(
+                new DimensionTiling(TilingMode.SQUARE, true, 16, TerrainMode.COMPACT_TORUS));
+        HexTileGeometry geometry = hex(16);
+
+        assertEquals(
+                new TileGeometry.LatticeCoordinate(2, -3),
+                square.latticeCoordinate(new ChunkPos(32, -48)));
+
+        for (TileGeometry.LatticeCoordinate coordinate : geometry.neighboringTiles()) {
+            ChunkPos translation = geometry.latticeTranslation(coordinate);
+            assertEquals(coordinate, geometry.latticeCoordinate(translation));
+            assertEquals(
+                    new ChunkPos(0, 0),
+                    geometry.canonicalChunk(translation.x(), translation.z()));
+        }
+    }
+
+    @Test
+    void hexBoundarySegmentsMatchChunkMaskAndCoverSixSeams() {
+        HexTileGeometry geometry = hex(16);
+        Set<String> seamLabels = geometry.boundarySegments().stream()
+                .map(segment -> segment.outsideAlias().seamLabel())
+                .collect(Collectors.toSet());
+
+        assertEquals(Set.of("+A", "-A", "+B", "-B", "+(A-B)", "-(A-B)"), seamLabels);
+        for (TileGeometry.BoundarySegment segment : geometry.boundarySegments()) {
+            Vec3 inside = segment.insidePoint(64.0D, 0.0D);
+            Vec3 outside = new Vec3(
+                    segment.midpointX() + segment.outward().getStepX() * 0.5D,
+                    64.0D,
+                    segment.midpointZ() + segment.outward().getStepZ() * 0.5D);
+            BlockPos insideBlock = BlockPos.containing(inside);
+            BlockPos outsideBlock = BlockPos.containing(outside);
+
+            assertTrue(geometry.isCanonicalBlock(insideBlock), "inside " + segment);
+            assertFalse(geometry.isCanonicalBlock(outsideBlock), "outside " + segment);
         }
     }
 

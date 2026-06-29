@@ -1,5 +1,17 @@
 # Hexagonal Tiles
 
+Status: the experimental runtime topology MVP is implemented. Chunk/block
+ownership, alias loading and packets, mutations, core entity/query helpers,
+game events, explosions, and bounded worldgen ownership use `TileGeometry`.
+The first-run scope is preserved in
+[Hexagonal tiles first run](hexagonal-tiles-first-run.md).
+
+The next milestone is **hex product integration without seamless generation**:
+make the topology inspectable, give the Atlas a real lattice projection, remove
+remaining square-only coordinate assumptions from non-worldgen systems, and
+define a save-stable geometry contract. Visible terrain seams remain acceptable
+throughout this milestone.
+
 ## Goal
 
 Add an optional hexagonal wrapped topology where the canonical world tile is a
@@ -21,6 +33,27 @@ until the topology, atlas projection, and seam behavior are proven.
   terrain in seam bands as long as opposite edges converge cleanly.
 - Do not implement from-scratch toroidal pathfinding as part of the first hex
   milestone.
+
+## Current Geometry Decision
+
+The implemented mask has narrow tips at the top and bottom when X is drawn
+horizontally and Z vertically. This differs from the original left/right-pointed
+sketch, but the topology is otherwise valid and already has runtime coverage.
+
+The debug slice freezes this orientation as geometry revision
+`hex-top-bottom-v1` before adding persistent Atlas projection data:
+
+- it avoids rotating an already working runtime topology;
+- lattice `A = (width, 0)` gives the Atlas a natural horizontal cycle;
+- lattice `B = (width / 2, height)` gives the second oblique cycle;
+- local solar time can use lattice U as a periodic longitude;
+- debug labels and tests can name the six translations `+A`, `-A`, `+B`,
+  `-B`, `+(A-B)`, and `-(A-B)`.
+
+Any future mask change must use a new geometry revision and an explicit
+migration. Orientation, tie-breaking, size normalization, lattice vectors, and
+chunk-mask ownership are save contracts rather than incidental implementation
+details.
 
 ## Shape Requirements
 
@@ -46,51 +79,191 @@ in hex-lattice coordinates.
 
 ## Topology Model
 
-The current topology code wraps X and Z independently. Hex mode needs a 2D tile
-geometry abstraction so callers ask geometry questions instead of composing
-one-axis helpers.
+`TileGeometry`, `SquareTileGeometry`, `HexTileGeometry`, and the
+`TopologyContext` delegation boundary now exist. The remaining work is to make
+the geometry describe itself to diagnostics, projections, and systems that
+still need lattice coordinates.
 
-Introduce a small geometry boundary, for example `TileGeometry`, with square
-and hex implementations. It should provide:
+Add geometry-neutral value objects or methods for:
 
-- `canonicalChunk(rawX, rawZ)`;
-- `canonicalBlock(rawX, y, rawZ)`;
-- `isCanonicalChunk(x, z)` and `isCanonicalBlock(pos)`;
-- `aliasVector(raw, canonical)`;
-- `nearestAlias(canonical, viewer)`;
-- `wrappedDelta(a, b)` and wrapped distance helpers;
-- `canonicalQueryBoxes(visibleBox)` or an equivalent chunk/entity query splitter;
-- atlas projection helpers from canonical block/chunk coordinates to torus UV.
+- a geometry/projection revision suitable for persistent-data compatibility;
+- canonical chunk count and canonical block area;
+- canonical chunk bounds and iteration over the canonical chunk mask;
+- lattice basis vectors in chunks and blocks;
+- the integer lattice coordinate `(k, l)` and translation vector taking a raw
+  position to its canonical owner;
+- exposed chunk-edge boundary segments, grouped into the three paired seam
+  relations;
+- normalized torus coordinates and their inverse, as described in
+  [Atlas Projection](#atlas-projection).
 
-`TopologyContext` should delegate to this geometry instead of calling
-`CoordUtil.wrapChunk(...)`, `CoordUtil.wrapBlock(...)`, and
-`CoordUtil.virtualChunk(...)` axis by axis. `CoordUtil` can keep square-friendly
-compatibility helpers, but hex-aware code should use 2D methods.
+Do not make callers cast to `HexTileGeometry`. Square geometry should implement
+the same descriptive API with its ordinary orthogonal basis.
 
 ## Runtime Systems
 
-After the geometry boundary exists, update runtime paths that currently assume
-rectangular independent periods:
+The runtime MVP covers the main ownership and alias paths. A residual
+square-helper audit is still required outside seamless generation. In
+particular, a whole position must not be canonicalized or virtualized by calling
+an X helper once for X and once for Z.
 
-1. Chunk lookup and packet relabeling: canonical chunk ownership, alias tickets,
-   loaded-alias tracking, full chunk packets, unload packets, block updates,
-   biome resends, and light updates.
-2. Player and entity placement: login, respawn, teleport canonicalization,
-   entity storage canonicalization, passenger positioning, and viewer-nearest
-   packet aliases.
-3. Entity and block queries: wrapped distance, broad-phase entity query boxes,
-   raycast target frames, projectile sweeps, collision checks, explosions,
-   sensors, and interaction reach.
-4. Ticks and mutations: block updates, scheduled ticks, random ticks, fluids,
-   POI access, block entities, and alias mutation guards.
-5. Diagnostics: `/globeworld pos`, border-distance commands, teleport-to-edge
-   commands, alias reporting, and seam testing helpers need hex terms instead
-   of square border terms.
+Audit and migrate these non-worldgen groups:
 
-The broad entity-query splitter is a specific risk: square mode currently
-splits a visible `AABB` into independent X and Z canonical intervals. Hex mode
-needs either chunk-mask based splitting or a small set of shifted query boxes
-covering all lattice aliases touched by the visible box.
+1. Atlas discovery, power state, effect radii, travel, survey state/windows,
+   held rendering, and projector rendering.
+2. World spawn search/fallbacks, respawn helpers, portal placement, lodestones,
+   compasses, fishing-line endpoints, filled-map marker aliases, and other
+   player-facing targets.
+3. Natural-spawn and player-distance helpers that still use one-axis wrapping.
+4. Client debug HUD, tile border renderer, world-spawn marker, and any
+   presentation code that derives a square tile index.
+5. Commands that still implement canonicalization, border distance, or alias
+   selection directly with `CoordUtil`.
+
+Worldgen seed/noise/structure call sites are tracked separately below. A
+mechanical `CoordUtil.wrap*`, `virtual*`, and `wrappedDistance*` search should be
+kept as an audit tool, but each match must be classified: a genuine scalar-axis
+policy is different from an accidental split of a two-dimensional identity
+operation.
+
+## Debug Tile Visuals And Test Commands
+
+Diagnostics should be the first post-MVP implementation slice. They make every
+later Atlas and gameplay test cheaper.
+
+Status: the initial slice is implemented. Geometry now exposes its revision,
+lattice basis/coordinates/translations, and exact boundary segments. Commands
+and the HUD report that shared data, and `F3+Y` renders the exact hex staircase,
+the camera tile's neighbor ring, paired seam colors/labels, and the
+geometry-correct world-spawn alias. The optional selected-chunk ownership
+arrow/fill mode remains a later diagnostic enhancement.
+
+### Client Overlay
+
+Replace the square-only `GlobeTileBorderRenderer` path in hex mode with a
+geometry-driven overlay:
+
+- draw the exact chunk-composed canonical boundary, including its staircase
+  edges, at player height;
+- draw the nearest ring of six alias boundaries from lattice translations;
+- color opposite seams as pairs and label them `±A`, `±B`, and `±(A-B)`;
+- optionally fill canonical chunks faintly or mark chunk centers so ownership
+  and tie-break boundaries are visible;
+- virtualize the world-spawn marker with `nearestAlias(...)`;
+- keep the existing square renderer unchanged through the same descriptive
+  geometry API.
+
+An ideal second debug mode shows a selected raw chunk, its canonical owner, its
+`(k, l)` lattice coordinate, and the translation between them. This is more
+useful for diagnosing packet/query bugs than a decorative continuous hex
+outline.
+
+### Commands And HUD
+
+Make the existing commands topology-aware:
+
+- `/globeworld pos` reports raw and canonical positions/chunks, lattice
+  coordinate `(k, l)`, translation vector, geometry revision, and whether the
+  chunk is in the canonical mask;
+- replace square tile-X/tile-Z alias reporting in hex mode with `(k, l)`;
+- make `/globeworld teleport_canon` use `TopologyContext.canonicalBlock(...)`;
+- make `/globeworld teleport_alias <k> <l>` apply the geometry basis;
+- add a seam form of the border teleport command that accepts one of the six
+  named seam directions and an inset, while retaining the square command
+  behavior;
+- report distance to the actual discrete boundary, not to the rectangular
+  bounds around the mask;
+- make the F3/debug HUD show the same canonical owner, lattice coordinate, and
+  nearest seam information as the server command.
+
+Add deterministic seam test locations for all six edge directions and the
+mask's vertex/tie regions. The command should keep Y when safe and clearly
+report the raw and canonical destination.
+
+## Atlas Projection
+
+The Atlas remains a torus. Its texture is a rectangular parameterization of
+the quotient, not a literal rectangular X/Z crop of the canonical chunk mask.
+
+Introduce a projection boundary owned by or derived from `TileGeometry`. It
+must provide:
+
+- canonical/raw block and chunk position to normalized `(u, v)`;
+- normalized `(u, v)` or Atlas pixel to one deterministic canonical sample
+  position;
+- world-space local-window samples to Atlas UV;
+- wrapped UV/cell deltas for markers and reveal windows;
+- canonical chunk count, block area, and a stable projection identity.
+
+For the implemented hex lattice, use the `A/B` basis. Conceptually, with
+`A = (width, 0)` and `B = (width / 2, height)`, solve
+`position = u*A + v*B`, wrap `u` and `v` modulo one, and canonicalize the
+inverse representative through `TileGeometry`. This makes all translations by
+`A`, `B`, and `A-B` land on the same Atlas coordinate. Define pixel-center and
+boundary tie rules in unit tests rather than relying on floating-point accident.
+
+Square mode should use the same projection API and preserve its current output.
+The client torus mesh can continue using rectangular UVs; the changed meaning
+of the texture supplies the oblique hex-lattice projection.
+
+### Atlas Data And Behavior Migration
+
+Move these systems onto the projection:
+
+- literal-map discovery and reveal-radius checks;
+- pixel-to-world sampling and refresh-on-block-change;
+- completion percentage and discovered physical area;
+- player and Atlas markers;
+- held player-centered windows;
+- placed torus textures;
+- survey visited-chunk canonicalization, windows, and markers;
+- travel-node discovery checks;
+- reward thresholds that currently assume `tileSize * tileSize`;
+- Atlas power canonical positions and wrapped effect/travel distance.
+
+Local held/survey windows should remain world-readable: sample a player-centered
+X/Z window, then project each sample through the lattice mapping. Do not treat a
+rectangular crop of the UV texture as a rectangular crop of world X/Z in hex
+mode.
+
+The hex canonical area is the lattice determinant (`width * height` chunks for
+the current basis), not necessarily `tileSize * tileSize`. Survey cutoffs,
+travel targets, area rewards, and progress text must use canonical chunk
+count/area.
+
+### Save Compatibility
+
+`GlobeMapSavedData` and `GlobeAtlasSurveyState` currently identify their layout
+primarily by tile size. That is insufficient once square and hex worlds of the
+same configured width have different projections.
+
+Persist at least:
+
+- tiling mode;
+- geometry/projection revision;
+- normalized size and lattice dimensions;
+- texture resolution where applicable.
+
+On mismatch, either perform an explicit projection migration or create fresh
+discovery data with a visible log message. Never silently interpret square
+pixels as hex UVs. Atlas power entries keyed by canonical block position also
+need a deliberate mode/orientation migration policy if runtime topology changes
+are supported.
+
+### Atlas Tests
+
+Add tests proving:
+
+- `position -> UV` is invariant under both lattice basis translations;
+- `UV/pixel -> canonical sample -> UV/pixel` round-trips under the documented
+  tie rule;
+- every canonical chunk maps exactly once into a discrete lattice-domain test
+  grid;
+- reveal radii and refreshes cross all six seams;
+- held windows and markers select the viewer-nearest copy;
+- completion area and survey travel targets use canonical area;
+- square projection output and existing square save matching remain unchanged;
+- square and hex saves with the same configured width cannot be confused.
 
 ## Worldgen Plan
 
@@ -138,64 +311,90 @@ The edge blend contract is:
 - External worldgen-provider support beyond the current conservative behavior
   for synthetic regions.
 
-## Atlas Plan
+## Other Product Integration
 
-The Atlas can remain a toroidal projection because a translated hex tile with
-paired opposite sides is still topologically a torus. The implementation should
-not treat the Atlas texture as literal square X/Z space in hex mode.
+### Local Solar Time
 
-Add a projection layer:
+World X is not a valid hex longitude by itself because the oblique `B`
+translation changes X while referring to the same canonical place. Use lattice
+U as the recommended longitude axis. It is periodic under both basis
+translations and matches the horizontal Atlas cycle. Route sky, lightmap,
+sleep/spawn gates, clocks, debug output, and other local-time users through one
+geometry-aware longitude helper.
 
-- canonical block/chunk to lattice UV;
-- lattice UV to representative canonical block/chunk for sampling;
-- canonical block to Atlas pixel;
-- Atlas pixel to canonical sample position;
-- wrapped distance on the Atlas for reveal radii and travel-node cells.
+### Settings And Explanations
 
-The client torus mesh can continue to render rectangular UVs. In hex mode those
-UVs represent the parallelogram lattice domain whose opposite sides identify
-the hex edge pairs. Unknown pixels, survey-mode textures, held Atlas windows,
-travel-node markers, and refresh-on-block-change should all use the projection
-layer instead of direct `x/z -> pixel` math.
+- Keep hex visibly experimental until the non-generation acceptance matrix
+  passes.
+- Describe `tile_size` as normalized approximate width and also show the
+  resulting width, height, and canonical chunk count.
+- Explain that terrain seams are expected during this milestone.
+- Keep Nether hex disabled unless it is promoted into a separate tested
+  milestone.
+- If topology can be changed after world creation, warn when a change would
+  invalidate Atlas projection data or canonical ownership.
+
+### Performance
+
+Before calling the non-generation integration complete, profile:
+
+- alias enumeration on minimum-size tiles at large view distance;
+- broad entity/query splitting near vertices;
+- the debug overlay with multiple alias outlines;
+- literal Atlas resampling and held-window updates;
+- survey windows on heavily explored saves;
+- many players or Atlases clustered across several seam aliases.
 
 ## Configuration And Compatibility
 
-- Add `HEX` to `TilingMode`.
-- Save hex mode through the existing topology settings without changing square
+- `HEX` is saved through the existing topology settings without changing square
   save semantics.
-- Sanitize hex tile sizes separately from square tile sizes. Hex sizes may need
-  stronger constraints than "even chunk count" to preserve the two-chunk tips
-  and paired edge spans.
-- In hex mode, force `TerrainMode.EDGE_BLEND` for Overworld and Nether wrapped
-  dimensions.
+- Hex tile sizes are normalized separately from square sizes.
+- Hex Overworld terrain resolves to `TerrainMode.EDGE_BLEND`.
+- Nether hex is currently disabled; do not imply otherwise in commands or UI.
 - Existing square worlds remain valid and keep their terrain mode.
 - Commands and UI should make it clear that hex mode is experimental until the
   manual seam matrix passes.
 
 ## Suggested Milestones
 
-1. Define the discrete hex chunk mask, lattice vectors, size constraints, and
-   canonical mapping rules. Add pure unit tests for chunk/block canonicalization,
-   alias vectors, nearest aliases, and wrapped distances.
-2. Introduce the tile-geometry abstraction and migrate `TopologyContext` to it
-   while keeping square behavior byte-for-byte equivalent where practical.
-3. Implement hex runtime chunk ownership and packet aliasing behind the new
-   mode. Validate block placement, chunk loading, and player canonicalization.
-4. Update entity queries, raycasts, explosions, ticking, and mutation guards to
-   use geometry-aware wrapped distance and alias selection.
-5. Implement hex-aware `GenerationWindow`, spillover classification, and
-   positional random wrapping.
-6. Implement hex edge blend terrain and test all six edges plus six corners on
-   small tiles.
-7. Add the Atlas projection layer and switch literal-map discovery, survey
-   cells, held rendering, and travel-node cells to geometry-aware UVs.
-8. Audit structures and forced progression structures near all hex edges.
-9. Add user-facing settings, diagnostics, and manual seam checklist entries.
+Completed MVP:
+
+1. Define the discrete mask, lattice vectors, size normalization, canonical
+   mapping, and geometry tests.
+2. Introduce `TileGeometry` and route core `TopologyContext` operations through
+   it.
+3. Implement runtime chunk ownership, packet aliases, mutations, and the main
+   entity/query/event/explosion paths.
+
+Next, outside seamless generation:
+
+1. ~~Freeze orientation and add the geometry descriptor/revision contract.~~
+2. ~~Implement truthful tile visuals, lattice-aware commands, and HUD output.~~
+3. Add the shared square/hex Atlas projection with property tests.
+4. Version Atlas/survey saved data and migrate literal discovery, sampling,
+   refresh, markers, held windows, and placed torus rendering.
+5. Migrate survey mode, Atlas rewards, powers, and travel to geometry-aware
+   canonicalization, area, and distance.
+6. Audit the remaining non-worldgen square-helper call sites: spawn/respawn,
+   portals, lodestones/compasses, fishing, filled maps, spawning/distance, and
+   client presentation.
+7. Choose lattice-U local solar time and migrate all local-time consumers.
+8. Run the six-seam non-generation acceptance matrix and profile tiny tiles.
+
+Later generation track:
+
+1. Complete hex-aware positional randomness, feature/carver/structure
+   ownership, and spillover audits.
+2. Implement six-edge/corner terrain blending.
+3. Audit structures and forced-progression structures near every seam.
+4. Consider Nether hex only after Overworld behavior is stable.
 
 ## Test Matrix
 
-Minimum manual validation before calling hex mode playable:
+Minimum manual validation for the non-generation integration milestone:
 
+- debug boundary, alias labels, commands, and HUD agree at every seam;
 - block placement and breaking across all six visible edges;
 - chunk load/unload and full chunk packet aliases across edges and at corners;
 - player walking, teleporting, sleeping, respawning, and portal travel near
@@ -204,22 +403,33 @@ Minimum manual validation before calling hex mode playable:
   edge direction;
 - scheduled ticks, random ticks, fluids, light updates, and block entities near
   edge pairs;
-- terrain continuity across all six edges and each corner region;
-- trees, ores, decorations, carvers, and structures crossing edges;
 - Atlas discovery, held projection, placed torus, travel-node display, and
   refresh-on-block-change in hex mode;
-- Nether hex mode with its own tile size and portal scale;
+- Atlas save/reload, mode mismatch handling, and multiplayer shared discovery;
+- local solar time is identical at all aliases of the same canonical position;
+- lodestones, compasses, fishing lines, filled-map markers, and world-spawn
+  markers choose the nearest visible alias;
+- minimum-size tile stress with high view distance and several players;
+- Nether remains square/disabled and portal travel from a hex Overworld is
+  coherent;
 - End dimension remains untiled.
+
+Later generation acceptance adds:
+
+- terrain continuity across all six edges and each corner region;
+- trees, ores, decorations, carvers, and structures crossing every seam;
+- deterministic generation and matching biome/surface/cave results at all
+  lattice-equivalent positions.
 
 ## Open Questions
 
-- What exact hex size parameter should the UI expose: radius in chunks, edge
-  length in chunks, width in chunks, or approximate area?
-- Should Nether hex mode be allowed immediately, or should Overworld hex mode
-  ship first?
-- Should local solar time follow lattice U, world X, or a configurable
-  longitude axis in hex mode?
+- Whether the debug overlay should default to the exact staircase boundary or
+  show a simplified continuous hex in addition to the exact boundary.
+- Whether existing Atlas discovery should reset or be explicitly migrated when
+  topology/projection identity changes.
+- What exact hex size parameter the UI should eventually expose: approximate
+  width (current behavior), radius, edge length, or canonical chunk count.
 - How much non-rectangular canonical chunk storage can vanilla chunk-distance
   and simulation-distance logic tolerate before caps need hex-specific rules?
-- Should the first Atlas view show the parallelogram lattice domain directly,
-  or mask/annotate the hex fundamental domain on the texture?
+- Whether the Atlas should optionally annotate the hex Voronoi domain and its
+  paired seams over the rectangular lattice UV texture.

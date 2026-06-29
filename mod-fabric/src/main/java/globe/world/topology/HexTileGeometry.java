@@ -3,6 +3,7 @@ package globe.world.topology;
 import globe.world.config.TopologySettings;
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.AABB;
@@ -25,6 +26,8 @@ public final class HexTileGeometry implements TileGeometry {
     private final int heightBlocks;
     private final Bounds canonicalChunkBounds;
     private final AABB canonicalBlockBounds;
+    private final LatticeBasis latticeBasis;
+    private final List<BoundarySegment> boundarySegments;
 
     public HexTileGeometry(DimensionTiling tiling) {
         this.tiling = tiling;
@@ -42,11 +45,52 @@ public final class HexTileGeometry implements TileGeometry {
                 (canonicalChunkBounds.maxX() + 1) * 16.0D,
                 Double.POSITIVE_INFINITY,
                 (canonicalChunkBounds.maxZ() + 1) * 16.0D);
+        this.latticeBasis = new LatticeBasis(latticeA(), latticeB());
+        this.boundarySegments = computeBoundarySegments();
     }
 
     @Override
     public DimensionTiling tiling() {
         return tiling;
+    }
+
+    @Override
+    public String geometryRevision() {
+        return "hex-top-bottom-v1";
+    }
+
+    @Override
+    public LatticeBasis latticeBasis() {
+        return latticeBasis;
+    }
+
+    @Override
+    public LatticeCoordinate latticeCoordinate(ChunkPos raw) {
+        if (!tiling.enabled()) {
+            return LatticeCoordinate.ORIGIN;
+        }
+        ChunkPos canonical = canonicalChunk(raw.x(), raw.z());
+        int dx = raw.x() - canonical.x();
+        int dz = raw.z() - canonical.z();
+        int l = dz / heightChunks;
+        int k = (dx - l * halfWidthChunks) / widthChunks;
+        return new LatticeCoordinate(k, l);
+    }
+
+    @Override
+    public List<LatticeCoordinate> neighboringTiles() {
+        return List.of(
+                new LatticeCoordinate(1, 0),
+                new LatticeCoordinate(-1, 0),
+                new LatticeCoordinate(0, 1),
+                new LatticeCoordinate(0, -1),
+                new LatticeCoordinate(1, -1),
+                new LatticeCoordinate(-1, 1));
+    }
+
+    @Override
+    public List<BoundarySegment> boundarySegments() {
+        return boundarySegments;
     }
 
     public int widthChunks() {
@@ -346,6 +390,44 @@ public final class HexTileGeometry implements TileGeometry {
             return new Bounds(0, 0, 0, 0);
         }
         return new Bounds(minX, minZ, maxX, maxZ);
+    }
+
+    private List<BoundarySegment> computeBoundarySegments() {
+        List<BoundarySegment> segments = new ArrayList<>();
+        for (int z = canonicalChunkBounds.minZ(); z <= canonicalChunkBounds.maxZ(); z++) {
+            for (int x = canonicalChunkBounds.minX(); x <= canonicalChunkBounds.maxX(); x++) {
+                ChunkPos owner = new ChunkPos(x, z);
+                if (!isCanonicalChunk(owner)) {
+                    continue;
+                }
+                addBoundarySegment(segments, owner, Direction.NORTH);
+                addBoundarySegment(segments, owner, Direction.SOUTH);
+                addBoundarySegment(segments, owner, Direction.WEST);
+                addBoundarySegment(segments, owner, Direction.EAST);
+            }
+        }
+        return List.copyOf(segments);
+    }
+
+    private void addBoundarySegment(List<BoundarySegment> segments, ChunkPos owner, Direction outward) {
+        ChunkPos outside = new ChunkPos(owner.x() + outward.getStepX(), owner.z() + outward.getStepZ());
+        if (isCanonicalChunk(outside)) {
+            return;
+        }
+
+        double minX = owner.getMinBlockX();
+        double minZ = owner.getMinBlockZ();
+        double maxX = minX + 16.0D;
+        double maxZ = minZ + 16.0D;
+        LatticeCoordinate outsideAlias = latticeCoordinate(outside);
+        BoundarySegment segment = switch (outward) {
+            case NORTH -> new BoundarySegment(minX, minZ, maxX, minZ, outward, outsideAlias);
+            case SOUTH -> new BoundarySegment(minX, maxZ, maxX, maxZ, outward, outsideAlias);
+            case WEST -> new BoundarySegment(minX, minZ, minX, maxZ, outward, outsideAlias);
+            case EAST -> new BoundarySegment(maxX, minZ, maxX, maxZ, outward, outsideAlias);
+            default -> throw new IllegalArgumentException("Hex boundary direction must be horizontal: " + outward);
+        };
+        segments.add(segment);
     }
 
     private static int hexHeightChunks(int widthChunks) {

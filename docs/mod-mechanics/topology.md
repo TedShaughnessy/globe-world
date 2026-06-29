@@ -46,6 +46,21 @@ Experimental hex worlds use `HexTileGeometry`, which defines a chunk-composed
 canonical mask plus two lattice translation vectors; the third edge-pair
 translation is derived from those vectors.
 
+The geometry also exposes diagnostic metadata without requiring callers to cast
+to its square or hex implementation:
+
+- a save-facing geometry revision (`square-v1` or `hex-top-bottom-v1`);
+- lattice basis vectors `A` and `B`;
+- the integer lattice coordinate `(k, l)` for a raw chunk;
+- the corresponding `k*A + l*B` translation;
+- exact exposed chunk-edge boundary segments and the neighboring alias reached
+  across each segment.
+
+Boundary segments label the six hex seam directions as `±A`, `±B`, and
+`±(A-B)`. The command and client debug paths consume this shared description,
+so displayed boundaries and alias coordinates use the same ownership decisions
+as runtime canonicalization.
+
 `TopologyContext` is the named runtime boundary for this math. It wraps a
 dimension and its effective `DimensionTiling`, then delegates whole-position
 questions to `TileGeometry` through frame-named helpers such as

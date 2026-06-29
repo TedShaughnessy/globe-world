@@ -38,6 +38,38 @@ public final class TopologyContext {
         return geometry;
     }
 
+    public String geometryRevision() {
+        return geometry().geometryRevision();
+    }
+
+    public TileGeometry.LatticeBasis latticeBasis() {
+        return geometry().latticeBasis();
+    }
+
+    public TileGeometry.LatticeCoordinate latticeCoordinate(ChunkPos raw) {
+        return geometry().latticeCoordinate(raw);
+    }
+
+    public List<TileGeometry.LatticeCoordinate> neighboringTiles() {
+        return geometry().neighboringTiles();
+    }
+
+    public ChunkPos latticeTranslation(TileGeometry.LatticeCoordinate coordinate) {
+        return geometry().latticeTranslation(coordinate);
+    }
+
+    public Vec3 translatedAlias(Vec3 canonical, TileGeometry.LatticeCoordinate coordinate) {
+        return geometry().translatedAlias(canonical, coordinate);
+    }
+
+    public List<TileGeometry.BoundarySegment> boundarySegments() {
+        return geometry().boundarySegments();
+    }
+
+    public TileGeometry.BoundaryHit nearestBoundary(Vec3 raw) {
+        return geometry().nearestBoundary(raw);
+    }
+
     public boolean enabled() {
         return tiling.enabled();
     }
