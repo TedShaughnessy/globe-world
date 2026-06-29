@@ -52,12 +52,12 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final String CURVATURE_TOOLTIP = "Curves the terrain. Comfortable is a gentler curve; "
             + "Realistic uses the full globe curve for the tile.";
     private static final String SQUARE_TILE_SHAPE_TOOLTIP = "Uses the established square tile with independent X/Z wrapping.";
-    private static final String HEX_TILE_SHAPE_TOOLTIP = "Experimental. Uses a six-edge chunk-composed hex tile. "
-            + "Tile width is at least 8 chunks and a multiple of four. Terrain continuity, structures, the Atlas, "
-            + "and local solar time are not fully hex-aware yet.";
-    private static final String OFFSET_SQUARE_TILE_SHAPE_TOOLTIP = "Experimental. Uses square tiles whose east/west "
-            + "neighbors are shifted north/south by half a tile. Tile width is always an even number of chunks and "
-            + "terrain uses continuous edge blending.";
+    private static final String HEX_TILE_SHAPE_TOOLTIP = "Uses a six-edge chunk-composed hex tile. "
+            + "Tile width is at least 8 chunks and a multiple of four. "
+            + "Experimental v1 hex worlds are incompatible with corrected v2 ownership; "
+            + "use a backup or create a new world.";
+    private static final String OFFSET_SQUARE_TILE_SHAPE_TOOLTIP = "Uses square tiles whose east/west "
+            + "neighbors are shifted north/south by half a tile. Tile width is always an even number of chunks";
     private static final String DAY_LENGTH_TOOLTIP = "Scales the length of the Minecraft day night cycle";
     private static final String ALLOW_MOBS_AT_WORLD_SPAWN_TOOLTIP = "Allows natural mobs to spawn inside vanilla's 24-block world-spawn exclusion.";
     private static final String PLAYER_MOB_SPAWN_EXCLUSION_TOOLTIP = "Minimum natural-spawn distance from the nearest non-spectator player.";

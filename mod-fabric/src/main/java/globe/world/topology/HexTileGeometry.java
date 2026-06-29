@@ -10,9 +10,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public final class HexTileGeometry implements TileGeometry {
@@ -63,7 +61,7 @@ public final class HexTileGeometry implements TileGeometry {
 
     @Override
     public String geometryRevision() {
-        return "hex-east-west-v1";
+        return "hex-east-west-v2";
     }
 
     @Override
@@ -139,7 +137,7 @@ public final class HexTileGeometry implements TileGeometry {
         if (!tiling.enabled()) {
             return new ChunkPos(rawX, rawZ);
         }
-        LatticeOffset offset = nearestChunkLattice(rawX + 0.5D, rawZ + 0.5D);
+        LatticeOffset offset = nearestChunkOwnerLattice(rawX + 0.5D, rawZ + 0.5D);
         return new ChunkPos(rawX - offset.xChunks(), rawZ - offset.zChunks());
     }
 
@@ -171,7 +169,7 @@ public final class HexTileGeometry implements TileGeometry {
 
     @Override
     public boolean isCanonicalChunk(ChunkPos pos) {
-        return !tiling.enabled() || nearestChunkLattice(pos.x() + 0.5D, pos.z() + 0.5D).isOrigin();
+        return !tiling.enabled() || nearestChunkOwnerLattice(pos.x() + 0.5D, pos.z() + 0.5D).isOrigin();
     }
 
     @Override
@@ -186,7 +184,7 @@ public final class HexTileGeometry implements TileGeometry {
         if (!tiling.enabled()) {
             return canonical;
         }
-        LatticeOffset offset = nearestChunkLattice(
+        LatticeOffset offset = nearestChunkAliasLattice(
                 viewer.x() + 0.5D - (canonical.x() + 0.5D),
                 viewer.z() + 0.5D - (canonical.z() + 0.5D));
         return new ChunkPos(canonical.x() + offset.xChunks(), canonical.z() + offset.zChunks());
@@ -266,30 +264,7 @@ public final class HexTileGeometry implements TileGeometry {
             return List.of(visibleBox);
         }
 
-        if (visibleBox.getXsize() >= widthBlocks || visibleBox.getZsize() >= heightBlocks) {
-            return List.of(canonicalBlockBoundsForY(visibleBox.minY, visibleBox.maxY));
-        }
-
-        Vec3 center = visibleBox.getCenter();
-        LatticeOffset base = nearestBlockLattice(center.x(), center.z());
-        int radius = queryOffsetRadius(visibleBox);
-        Map<String, AABB> boxes = new LinkedHashMap<>();
-        for (int dk = -radius; dk <= radius; dk++) {
-            for (int dl = -radius; dl <= radius; dl++) {
-                LatticeOffset offset = LatticeOffset.from(
-                        base.k() + dk,
-                        base.l() + dl,
-                        horizontalSpacingChunks,
-                        heightChunks,
-                        halfHeightChunks);
-                AABB canonicalCandidate = visibleBox.move(-offset.xBlocks(), 0.0D, -offset.zBlocks());
-                if (!intersectsCanonicalBounds(canonicalCandidate)) {
-                    continue;
-                }
-                boxes.putIfAbsent(boxKey(canonicalCandidate), canonicalCandidate);
-            }
-        }
-        return boxes.isEmpty() ? List.of(canonicalBox(visibleBox)) : List.copyOf(boxes.values());
+        return LatticeMath.canonicalQueryBoxes(visibleBox, canonicalBlockBounds, latticeBasis);
     }
 
     public List<BlockPos> aliasesAround(BlockPos canonical, Vec3 viewer, int radius) {
@@ -340,30 +315,30 @@ public final class HexTileGeometry implements TileGeometry {
         return boxes;
     }
 
-    private AABB canonicalBlockBoundsForY(double minY, double maxY) {
-        return new AABB(
-                canonicalBlockBounds.minX,
-                minY,
-                canonicalBlockBounds.minZ,
-                canonicalBlockBounds.maxX,
-                maxY,
-                canonicalBlockBounds.maxZ);
+    private LatticeOffset nearestChunkOwnerLattice(double x, double z) {
+        return nearestLattice(
+                x,
+                z,
+                horizontalSpacingChunks,
+                heightChunks,
+                halfHeightChunks,
+                horizontalSpacingChunks,
+                heightChunks,
+                halfHeightChunks,
+                TieBreak.OWNERSHIP);
     }
 
-    private boolean intersectsCanonicalBounds(AABB box) {
-        return box.maxX > canonicalBlockBounds.minX
-                && box.minX < canonicalBlockBounds.maxX
-                && box.maxZ > canonicalBlockBounds.minZ
-                && box.minZ < canonicalBlockBounds.maxZ;
-    }
-
-    private int queryOffsetRadius(AABB box) {
-        double span = Math.max(box.getXsize() / Math.max(1, widthBlocks), box.getZsize() / Math.max(1, heightBlocks));
-        return Math.max(NEAREST_SEARCH_RADIUS, (int) Math.ceil(span) + NEAREST_SEARCH_RADIUS);
-    }
-
-    private LatticeOffset nearestChunkLattice(double x, double z) {
-        return nearestLattice(x, z, horizontalSpacingChunks, heightChunks, halfHeightChunks);
+    private LatticeOffset nearestChunkAliasLattice(double x, double z) {
+        return nearestLattice(
+                x,
+                z,
+                horizontalSpacingChunks,
+                heightChunks,
+                halfHeightChunks,
+                horizontalSpacingChunks,
+                heightChunks,
+                halfHeightChunks,
+                TieBreak.PRESENTATION);
     }
 
     private LatticeOffset nearestBlockLattice(double x, double z) {
@@ -375,11 +350,8 @@ public final class HexTileGeometry implements TileGeometry {
                 halfHeightBlocks,
                 horizontalSpacingChunks,
                 heightChunks,
-                halfHeightChunks);
-    }
-
-    private static LatticeOffset nearestLattice(double x, double z, int width, int height, int halfHeight) {
-        return nearestLattice(x, z, width, height, halfHeight, width, height, halfHeight);
+                halfHeightChunks,
+                TieBreak.PRESENTATION);
     }
 
     private static LatticeOffset nearestLattice(
@@ -390,7 +362,8 @@ public final class HexTileGeometry implements TileGeometry {
             int unitHalfHeight,
             int chunkWidth,
             int chunkHeight,
-            int chunkHalfHeight) {
+            int chunkHalfHeight,
+            TieBreak tieBreak) {
         double approxK = x / (double) unitWidth;
         double approxL = (z - approxK * unitHalfHeight) / (double) unitHeight;
         int centerK = (int) Math.rint(approxK);
@@ -405,7 +378,9 @@ public final class HexTileGeometry implements TileGeometry {
                 double dz = z - offsetZ;
                 double distance = dx * dx + dz * dz;
                 LatticeOffset candidate = LatticeOffset.from(k, l, chunkWidth, chunkHeight, chunkHalfHeight);
-                if (best == null || distance < bestDistance || (distance == bestDistance && candidate.compareTo(best) < 0)) {
+                if (best == null
+                        || distance < bestDistance
+                        || distance == bestDistance && tieBreak.compare(candidate, best) < 0) {
                     best = candidate;
                     bestDistance = distance;
                 }
@@ -480,14 +455,39 @@ public final class HexTileGeometry implements TileGeometry {
         return height % 2 == 0 ? height : height + 1;
     }
 
-    private static String boxKey(AABB box) {
-        return box.minX + "," + box.minY + "," + box.minZ + "," + box.maxX + "," + box.maxY + "," + box.maxZ;
-    }
-
     private record Bounds(int minX, int minZ, int maxX, int maxZ) {
     }
 
-    private record LatticeOffset(int k, int l, int xChunks, int zChunks) implements Comparable<LatticeOffset> {
+    private enum TieBreak {
+        OWNERSHIP {
+            @Override
+            int compare(LatticeOffset a, LatticeOffset b) {
+                int kComparison = Integer.compare(a.k(), b.k());
+                return kComparison != 0 ? kComparison : Integer.compare(a.l(), b.l());
+            }
+        },
+        PRESENTATION {
+            @Override
+            int compare(LatticeOffset a, LatticeOffset b) {
+                int originComparison = Boolean.compare(!a.isOrigin(), !b.isOrigin());
+                if (originComparison != 0) {
+                    return originComparison;
+                }
+                int lengthComparison = Long.compare(
+                        (long) a.k() * a.k() + (long) a.l() * a.l(),
+                        (long) b.k() * b.k() + (long) b.l() * b.l());
+                if (lengthComparison != 0) {
+                    return lengthComparison;
+                }
+                int kComparison = Integer.compare(a.k(), b.k());
+                return kComparison != 0 ? kComparison : Integer.compare(a.l(), b.l());
+            }
+        };
+
+        abstract int compare(LatticeOffset a, LatticeOffset b);
+    }
+
+    private record LatticeOffset(int k, int l, int xChunks, int zChunks) {
         private static final LatticeOffset ORIGIN = new LatticeOffset(0, 0, 0, 0);
 
         private static LatticeOffset from(int k, int l, int widthChunks, int heightChunks, int halfHeightChunks) {
@@ -507,20 +507,6 @@ public final class HexTileGeometry implements TileGeometry {
 
         private int zBlocks() {
             return zChunks * 16;
-        }
-
-        @Override
-        public int compareTo(LatticeOffset other) {
-            int originComparison = Boolean.compare(!isOrigin(), !other.isOrigin());
-            if (originComparison != 0) {
-                return originComparison;
-            }
-            int lengthComparison = Integer.compare(k * k + l * l, other.k * other.k + other.l * other.l);
-            if (lengthComparison != 0) {
-                return lengthComparison;
-            }
-            int kComparison = Integer.compare(k, other.k);
-            return kComparison != 0 ? kComparison : Integer.compare(l, other.l);
         }
     }
 }

@@ -15,7 +15,9 @@ import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -224,6 +226,16 @@ class TileGeometryTest {
     }
 
     @Test
+    void offsetSquareQuerySpanningOnePeriodPreservesTheNarrowAxis() {
+        OffsetSquareTileGeometry geometry = offsetSquare(2);
+        AABB visible = new AABB(-16.0D, 0.0D, -1.0D, 16.0D, 1.0D, 1.0D);
+        List<AABB> boxes = geometry.canonicalQueryBoxes(visible);
+
+        assertTrue(containsPoint(boxes, 0.0D, 0.5D, 0.0D));
+        assertFalse(containsPoint(boxes, 0.0D, 0.5D, 10.0D));
+    }
+
+    @Test
     void offsetSquareLongitudeAndAtlasProjectionAreLatticeInvariant() {
         OffsetSquareTileGeometry geometry = offsetSquare(16);
         AtlasTorusProjection projection = AtlasTorusProjection.create(geometry.tiling());
@@ -303,7 +315,7 @@ class TileGeometryTest {
         assertEquals(8, geometry.widthChunks());
         assertEquals(8, geometry.heightChunks());
         assertEquals(6, geometry.horizontalSpacingChunks());
-        assertEquals("hex-east-west-v1", geometry.geometryRevision());
+        assertEquals("hex-east-west-v2", geometry.geometryRevision());
         assertEquals(48, canonicalChunks);
         assertEquals(List.of(2, 6, 8, 8, 8, 8, 6, 2), columnHeights);
         assertEquals(new ChunkPos(6, 4), geometry.latticeA());
@@ -329,6 +341,76 @@ class TileGeometryTest {
             ChunkPos rawAlias = new ChunkPos(canonical.x() + translation.x(), canonical.z() + translation.z());
             assertEquals(canonical, geometry.canonicalChunk(rawAlias.x(), rawAlias.z()));
         }
+    }
+
+    @Test
+    void everySupportedHexWidthHasOneTranslationInvariantOwnerPerOrbit() {
+        List<TileGeometry.LatticeCoordinate> translations = List.of(
+                new TileGeometry.LatticeCoordinate(1, 0),
+                new TileGeometry.LatticeCoordinate(-1, 0),
+                new TileGeometry.LatticeCoordinate(0, 1),
+                new TileGeometry.LatticeCoordinate(0, -1),
+                new TileGeometry.LatticeCoordinate(1, -1),
+                new TileGeometry.LatticeCoordinate(-1, 1),
+                new TileGeometry.LatticeCoordinate(3, -4),
+                new TileGeometry.LatticeCoordinate(-7, 5));
+        Random random = new Random(0x48455856324L);
+        List<Integer> widths = new ArrayList<>();
+        for (int width = 8; width <= 256; width += 4) {
+            widths.add(width);
+        }
+        widths.addAll(List.of(320, 512));
+
+        for (int width : widths) {
+            HexTileGeometry geometry = hex(width);
+            int maskChunks = 0;
+            for (int x = -width; x <= width; x++) {
+                for (int z = -geometry.heightChunks(); z <= geometry.heightChunks(); z++) {
+                    ChunkPos owner = new ChunkPos(x, z);
+                    if (!geometry.isCanonicalChunk(owner)) {
+                        continue;
+                    }
+                    maskChunks++;
+                    assertEquals(owner, geometry.canonicalChunk(x, z));
+                    for (TileGeometry.LatticeCoordinate coordinate : translations) {
+                        ChunkPos translation = geometry.latticeTranslation(coordinate);
+                        ChunkPos raw = new ChunkPos(owner.x() + translation.x(), owner.z() + translation.z());
+                        assertEquals(owner, geometry.canonicalChunk(raw.x(), raw.z()));
+                        assertEquals(coordinate, geometry.latticeCoordinate(raw));
+                        assertEquals(translation, geometry.latticeTranslation(geometry.latticeCoordinate(raw)));
+
+                        BlockPos ownerBlock = new BlockPos(owner.getMinBlockX() + 7, 80, owner.getMinBlockZ() + 11);
+                        BlockPos rawBlock = ownerBlock.offset(translation.x() * 16, 0, translation.z() * 16);
+                        assertEquals(
+                                ownerBlock,
+                                geometry.canonicalBlock(rawBlock.getX(), rawBlock.getY(), rawBlock.getZ()));
+                    }
+                }
+            }
+            assertEquals(geometry.canonicalChunkCount(), maskChunks, "mask area at width " + width);
+
+            for (int sample = 0; sample < 64; sample++) {
+                ChunkPos raw = new ChunkPos(
+                        random.nextInt(width * 10 + 1) - width * 5,
+                        random.nextInt(geometry.heightChunks() * 10 + 1) - geometry.heightChunks() * 5);
+                ChunkPos owner = geometry.canonicalChunk(raw.x(), raw.z());
+                TileGeometry.LatticeCoordinate shift = translations.get(random.nextInt(translations.size()));
+                ChunkPos translation = geometry.latticeTranslation(shift);
+                assertEquals(
+                        owner,
+                        geometry.canonicalChunk(raw.x() + translation.x(), raw.z() + translation.z()));
+            }
+        }
+    }
+
+    @Test
+    void widthTwelveHexBoundaryTieHasOneOwner() {
+        HexTileGeometry geometry = hex(12);
+
+        assertEquals(new ChunkPos(4, 2), geometry.canonicalChunk(4, 2));
+        assertEquals(new ChunkPos(4, 2), geometry.canonicalChunk(-5, -3));
+        assertEquals(new TileGeometry.LatticeCoordinate(-1, 0), geometry.latticeCoordinate(new ChunkPos(-5, -3)));
+        assertEquals(90, geometry.canonicalChunkCount());
     }
 
     @Test
@@ -379,6 +461,63 @@ class TileGeometryTest {
                     .anyMatch(box -> box.inflate(1.0E-7D).contains(canonicalCenter));
             assertTrue(covered, "query boxes missed alias " + translation);
         }
+    }
+
+    @Test
+    void hexQuerySpanningOneBoundingWidthPreservesTheNarrowAxis() {
+        HexTileGeometry geometry = hex(8);
+        AABB visible = new AABB(-64.0D, 0.0D, -1.0D, 64.0D, 1.0D, 1.0D);
+        List<AABB> boxes = geometry.canonicalQueryBoxes(visible);
+
+        assertTrue(containsPoint(boxes, 0.0D, 0.5D, 0.0D));
+        assertTrue(geometry.isCanonicalChunk(new ChunkPos(0, 2)));
+        assertFalse(containsPoint(boxes, 8.0D, 0.5D, 40.0D));
+    }
+
+    @Test
+    void coupledQuerySlicesMatchBruteForceAliasPoints() {
+        for (TileGeometry geometry : List.of(offsetSquare(8), hex(8))) {
+            double period = geometry.tileSizeBlocks();
+            List<AABB> visibleBoxes = List.of(
+                    new AABB(-period * 0.5D - 2.0D, 0.0D, -2.0D,
+                            -period * 0.5D + 2.0D, 1.0D, 2.0D),
+                    new AABB(-period * 0.5D, 0.0D, -1.0D,
+                            period * 0.5D, 1.0D, 1.0D),
+                    new AABB(-1.0D, 0.0D, -period * 0.5D,
+                            1.0D, 1.0D, period * 0.5D),
+                    new AABB(-period * 0.5D - 0.5D, 0.0D, -3.0D,
+                            period * 0.5D + 0.5D, 1.0D, 3.0D));
+            List<Vec3> canonicalSamples = canonicalChunkCenters(geometry, 16);
+            for (AABB visible : visibleBoxes) {
+                List<AABB> slices = geometry.canonicalQueryBoxes(visible);
+                for (Vec3 sample : canonicalSamples) {
+                    assertEquals(
+                            hasVisibleAlias(geometry, visible, sample, 8),
+                            containsPoint(slices, sample.x(), sample.y(), sample.z()),
+                            "query mismatch for " + geometry.geometryRevision() + ", " + visible + ", " + sample);
+                }
+            }
+        }
+    }
+
+    @Test
+    void dualBasisRadiiIncludeNearCancellingLatticeAliases() {
+        HexTileGeometry hex = hex(8);
+        LatticeMath.CoefficientRadii hexRadii = LatticeMath.coefficientRadii(hex.latticeBasis(), 960.0D);
+        LatticeMath.CoefficientBounds hexBounds =
+                LatticeMath.coefficientBounds(hex.latticeBasis(), 0.0D, 0.0D, 960.0D);
+
+        assertEquals(10, hexRadii.k());
+        assertEquals(10, hexRadii.l());
+        assertTrue(hexBounds.contains(10, -5));
+
+        OffsetSquareTileGeometry offset = offsetSquare(2);
+        LatticeMath.CoefficientRadii offsetRadii =
+                LatticeMath.coefficientRadii(offset.latticeBasis(), 320.0D);
+        LatticeMath.CoefficientBounds offsetBounds =
+                LatticeMath.coefficientBounds(offset.latticeBasis(), 0.0D, 0.0D, 320.0D);
+        assertTrue(offsetRadii.k() >= 10);
+        assertTrue(offsetBounds.contains(10, -5));
     }
 
     @Test
@@ -526,6 +665,42 @@ class TileGeometryTest {
 
     private static ChunkPos delta(ChunkPos from, ChunkPos to) {
         return new ChunkPos(to.x() - from.x(), to.z() - from.z());
+    }
+
+    private static List<Vec3> canonicalChunkCenters(TileGeometry geometry, int range) {
+        List<Vec3> centers = new ArrayList<>();
+        for (int x = -range; x <= range; x++) {
+            for (int z = -range; z <= range; z++) {
+                ChunkPos chunk = new ChunkPos(x, z);
+                if (geometry.isCanonicalChunk(chunk)) {
+                    centers.add(new Vec3(chunk.getMiddleBlockX(), 0.5D, chunk.getMiddleBlockZ()));
+                }
+            }
+        }
+        return centers;
+    }
+
+    private static boolean hasVisibleAlias(
+            TileGeometry geometry,
+            AABB visible,
+            Vec3 canonical,
+            int coordinateRadius) {
+        for (int k = -coordinateRadius; k <= coordinateRadius; k++) {
+            for (int l = -coordinateRadius; l <= coordinateRadius; l++) {
+                Vec3 alias = geometry.translatedAlias(canonical, new TileGeometry.LatticeCoordinate(k, l));
+                if (containsPoint(List.of(visible), alias.x(), alias.y(), alias.z())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsPoint(List<AABB> boxes, double x, double y, double z) {
+        return boxes.stream().anyMatch(box ->
+                x >= box.minX && x < box.maxX
+                        && y >= box.minY && y < box.maxY
+                        && z >= box.minZ && z < box.maxZ);
     }
 
     private static void assertUnitPointEquals(

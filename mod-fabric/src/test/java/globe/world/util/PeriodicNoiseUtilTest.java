@@ -79,9 +79,12 @@ class PeriodicNoiseUtilTest {
     @Test
     void minimumHexOverlappingBandsStayFiniteAndInvariant() {
         HexTileGeometry tile = hex(8);
+        LatticeBlendGeometry blend = tile.blendGeometry().orElseThrow();
         PeriodicNoiseUtil.HorizontalSampler sampler =
                 (translatedX, translatedZ) -> Math.sin(translatedX * 0.01D) + Math.cos(translatedZ * 0.02D);
 
+        assertTrue(blend.inradius() < blend.blendWidth());
+        assertTrue(contributorCount(tile.tiling(), 0.0D, 0.0D) > 1);
         for (int x = -128; x <= 128; x += 17) {
             for (int z = -128; z <= 128; z += 19) {
                 double value = sample(tile.tiling(), x, z, sampler);
@@ -96,6 +99,15 @@ class PeriodicNoiseUtilTest {
                         1.0E-11D);
             }
         }
+    }
+
+    @Test
+    void widthTwelveHexHasAnUnblendedInterior() {
+        HexTileGeometry tile = hex(12);
+        LatticeBlendGeometry blend = tile.blendGeometry().orElseThrow();
+
+        assertTrue(blend.inradius() > blend.blendWidth());
+        assertEquals(1, contributorCount(tile.tiling(), 0.0D, 0.0D));
     }
 
     @Test

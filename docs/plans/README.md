@@ -30,6 +30,10 @@ point for current behavior and modded code anchors.
 
 ## Implemented / Retired Notes
 
+- [Coupled-tiling correctness follow-ups](tiling-correctness-followups.md):
+  implemented translation-invariant hex v2 ownership, exact coupled-lattice
+  broad-query decomposition, dual-basis visual alias bounds, and automated
+  regression coverage; manual acceptance remains.
 - [Offset square tiling](offset-square-tiling.md): implemented even-width
   Overworld topology with alternating half-offset columns, coupled-lattice
   aliases, edge-blended terrain, local-time invariance, Atlas integration, and

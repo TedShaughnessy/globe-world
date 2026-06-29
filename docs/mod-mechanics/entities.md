@@ -108,6 +108,10 @@ actor-local hitbox, wrapped distances, same-level status, and aliasing status.
 Broad query helpers route through `TopologicalEntityQueries`, which splits
 visible-frame lookup boxes across canonical tile edges, dedupes canonical
 entity identity, and adds alias-frame server players.
+Coupled-lattice queries derive the complete candidate `(k,l)` range from both
+query axes and clip each translated slice to canonical bounds. A query that
+wraps fully in X but remains narrow in Z (or vice versa) therefore cannot admit
+entities outside the untouched quotient direction.
 `TopologicalCollisionQueries` is the narrower collision adapter for audited
 block triggers and placement/collision callers. It filters those deduped
 candidates against the entity's nearest visible alias box instead of changing
@@ -256,6 +260,14 @@ presentation-only copies in the one-tile ring around the camera for small tile
 worlds. These copies share the same real client entity id and are culled by
 entity view distance, alias ring limit, frustum, and compiled-section
 visibility. Alias-aware picking returns the canonical entity.
+
+For coupled lattices, the render-radius search bounds `k` and `l`
+independently with the dual-basis altitudes. This remains complete when large
+opposite coefficients partially cancel in an oblique basis. Entity-box padding
+is included before the coefficient bounds are rounded up, and the final
+point-to-box distance test removes candidates outside the actual render
+radius. A finite alias-ring setting remains an intentional cap; unlimited
+rings enumerate every in-radius lattice alias.
 
 See [Client](client.md) for render toggles, snap-on-rebase behavior, and Iris
 curvature interaction.

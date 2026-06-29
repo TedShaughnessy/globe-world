@@ -9,9 +9,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -243,32 +241,7 @@ public final class OffsetSquareTileGeometry implements TileGeometry {
         if (!tiling.enabled()) {
             return List.of(visibleBox);
         }
-        if (visibleBox.getXsize() >= widthBlocks || visibleBox.getZsize() >= widthBlocks) {
-            return List.of(canonicalBoundsForY(visibleBox.minY, visibleBox.maxY));
-        }
-
-        Vec3 center = visibleBox.getCenter();
-        LatticeCoordinate base = nearestLattice(center.x(), center.z(), widthBlocks, halfWidthBlocks);
-        int radius = Math.max(
-                NEAREST_SEARCH_RADIUS,
-                (int) Math.ceil(Math.max(visibleBox.getXsize(), visibleBox.getZsize()) / widthBlocks)
-                        + NEAREST_SEARCH_RADIUS);
-        Map<String, AABB> boxes = new LinkedHashMap<>();
-        for (int dk = -radius; dk <= radius; dk++) {
-            for (int dl = -radius; dl <= radius; dl++) {
-                LatticeCoordinate coordinate = new LatticeCoordinate(base.k() + dk, base.l() + dl);
-                ChunkPos translation = latticeTranslation(coordinate);
-                AABB candidate = visibleBox.move(
-                        -translation.x() * 16.0D,
-                        0.0D,
-                        -translation.z() * 16.0D);
-                AABB clipped = clipToCanonicalBounds(candidate);
-                if (clipped != null) {
-                    boxes.putIfAbsent(boxKey(clipped), clipped);
-                }
-            }
-        }
-        return boxes.isEmpty() ? List.of(canonicalBox(visibleBox)) : List.copyOf(boxes.values());
+        return LatticeMath.canonicalQueryBoxes(visibleBox, canonicalBlockBounds, latticeBasis);
     }
 
     @Override
@@ -334,26 +307,6 @@ public final class OffsetSquareTileGeometry implements TileGeometry {
         return best;
     }
 
-    private AABB canonicalBoundsForY(double minY, double maxY) {
-        return new AABB(
-                canonicalBlockBounds.minX,
-                minY,
-                canonicalBlockBounds.minZ,
-                canonicalBlockBounds.maxX,
-                maxY,
-                canonicalBlockBounds.maxZ);
-    }
-
-    private AABB clipToCanonicalBounds(AABB box) {
-        double minX = Math.max(box.minX, canonicalBlockBounds.minX);
-        double minZ = Math.max(box.minZ, canonicalBlockBounds.minZ);
-        double maxX = Math.min(box.maxX, canonicalBlockBounds.maxX);
-        double maxZ = Math.min(box.maxZ, canonicalBlockBounds.maxZ);
-        return maxX > minX && maxZ > minZ
-                ? new AABB(minX, box.minY, minZ, maxX, box.maxY, maxZ)
-                : null;
-    }
-
     private static int compareCoordinates(LatticeCoordinate a, LatticeCoordinate b) {
         int originComparison = Boolean.compare(!a.isOrigin(), !b.isOrigin());
         if (originComparison != 0) {
@@ -369,7 +322,4 @@ public final class OffsetSquareTileGeometry implements TileGeometry {
         return kComparison != 0 ? kComparison : Integer.compare(a.l(), b.l());
     }
 
-    private static String boxKey(AABB box) {
-        return box.minX + "," + box.minY + "," + box.minZ + "," + box.maxX + "," + box.maxY + "," + box.maxZ;
-    }
 }

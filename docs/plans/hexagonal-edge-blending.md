@@ -168,6 +168,12 @@ band. If minimum hexes cannot retain a useful safe interior at that width,
 correct seamless output takes priority and the limitation should be documented
 rather than introducing a discontinuity.
 
+Implemented result: width `8` has an approximately `57.7`-block ideal-cell
+inradius and the blend width clamps to `64`, so it is a fully blended
+micro-hex with overlapping bands and no one-contributor safe interior. Width
+`12` is the smallest supported hex with a safe interior. The width-`8` result
+remains finite and invariant under both lattice translations.
+
 ## Sampling API
 
 `PeriodicNoiseUtil.samplePlane(first, second, ...)` is too ambiguous for this

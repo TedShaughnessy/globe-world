@@ -38,7 +38,8 @@ until the topology, atlas projection, and seam behavior are proven.
 
 The implemented mask has narrow tips at the left and right when X is drawn
 horizontally and Z vertically, matching the original east/west orientation.
-This orientation is geometry revision `hex-east-west-v1`:
+This orientation and its translation-invariant ownership rule are geometry
+revision `hex-east-west-v2`:
 
 - saved `tile_size` remains the approximate tip-to-tip width;
 - horizontal lattice spacing is three quarters of that width;
@@ -50,12 +51,17 @@ This orientation is geometry revision `hex-east-west-v1`:
 - debug labels and tests name the six translations `+A`, `-A`, `+B`, `-B`,
   `+(A-B)`, and `-(A-B)`.
 
-Any future mask change must use a new geometry revision and an explicit
-migration. Orientation, tie-breaking, size normalization, lattice vectors, and
-chunk-mask ownership are save contracts rather than incidental implementation
-details. The transition from the earlier experimental north/south mask does not
-migrate its canonical ownership; the new revision causes persisted Atlas
-layouts to be rejected and recreated instead of misinterpreted.
+Exact nearest-center ties use lexicographic lattice-coordinate order, which is
+preserved when both candidates are translated by the same `(k,l)`. Viewer
+presentation uses a separate origin-preferring nearest-alias tie. Orientation,
+tie-breaking, size normalization, lattice vectors, and chunk-mask ownership
+are save contracts rather than incidental implementation details.
+
+Experimental `hex-east-west-v1` canonical worlds are not migrated. Back them up
+and create a new v2 world; the old settings did not persist enough revision
+information to detect and safely retain v1 ownership. Persisted Atlas and
+survey layouts do include the projection identity and are rejected/recreated
+when the geometry revision changes.
 
 ## Shape Requirements
 
@@ -95,8 +101,9 @@ in hex-lattice coordinates.
   [Atlas Projection](#atlas-projection).
 
 Square geometry implements the same descriptive API with its ordinary
-orthogonal basis. Runtime callers generally avoid casting to `HexTileGeometry`;
-the specialized visual entity alias enumerator is the current exception.
+orthogonal basis. Runtime callers avoid casting to `HexTileGeometry`; shared
+coupled-lattice query decomposition and visual-alias coefficient bounds live in
+`LatticeMath`.
 
 ## Runtime Systems
 

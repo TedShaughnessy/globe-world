@@ -52,7 +52,7 @@ The geometry also exposes diagnostic metadata without requiring callers to cast
 to a concrete geometry implementation:
 
 - a save-facing geometry revision (`square-v1`,
-  `offset-square-north-south-v1`, or `hex-east-west-v1`);
+  `offset-square-north-south-v1`, or `hex-east-west-v2`);
 - lattice basis vectors `A` and `B`;
 - the integer lattice coordinate `(k, l)` for a raw chunk;
 - the corresponding `k*A + l*B` translation;
@@ -135,6 +135,22 @@ applies the same whole-chunk translation to the block-local coordinate. Nearest
 visible aliases are chosen with a bounded candidate search around the viewer
 rather than closed-form math.
 
+Hex ownership uses a translation-invariant half-open rule at exact Voronoi
+ties: candidate lattice coordinates are ordered lexicographically by `(k,l)`.
+Adding the same lattice translation to both tied candidates preserves that
+ordering, so every lattice orbit has exactly one owner. Viewer-nearest alias
+presentation deliberately uses a separate origin-preferring tie policy; a
+presentation tie cannot change canonical identity.
+
+This corrected ownership contract is geometry revision `hex-east-west-v2`.
+Experimental `hex-east-west-v1` worlds are not migrated and must be treated as
+incompatible: back them up and create a new v2 world rather than reusing their
+canonical state. The pre-release settings did not persist a per-world geometry
+revision, so automatic v1 detection is not reliable. The world-settings hex
+tooltip carries the same warning. Atlas and survey projection identities embed
+the geometry revision, causing v1 projection data to be rejected and recreated
+under v2.
+
 For the minimum saved width of `8` chunks, the normalized mask has `48`
 canonical chunks. Its lattice translations are `(6, 4)`, `(0, 8)`, and
 `(6, -4)` chunks, or `(96, 64)`, `(0, 128)`, and `(96, -64)` blocks. The
@@ -163,6 +179,13 @@ boxes. It keeps vanilla entity identity and predicates, but gathers candidates
 from every canonical slice touched by a visible-frame query box. A query near
 the canonical tile edge is split across the wrapped X/Z edges instead of only
 wrapping the box center.
+
+For coupled hex and offset-square lattices, `LatticeMath` transforms the
+complete query and canonical bounds into lattice-coordinate ranges, translates
+the query through every potentially intersecting frame, clips each slice, and
+deduplicates equal slices. Spanning one raw X or Z period does not broaden the
+other quotient direction. The complete canonical bounds are returned only
+when a translated query is proven to cover them in both dimensions.
 
 The helper dedupes by entity identity, includes canonical non-player storage,
 and adds server players whose nearest visible alias intersects the query box.
@@ -243,6 +266,7 @@ eight Nether blocks map to one Overworld block.
 - `mod-fabric/src/main/java/globe/world/topology/SquareTileGeometry.java`
 - `mod-fabric/src/main/java/globe/world/topology/OffsetSquareTileGeometry.java`
 - `mod-fabric/src/main/java/globe/world/topology/HexTileGeometry.java`
+- `mod-fabric/src/main/java/globe/world/topology/LatticeMath.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContexts.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologicalEntityQueries.java`

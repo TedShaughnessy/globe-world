@@ -49,6 +49,13 @@ inradius, clamped to 64–256 blocks. Minimum hexes can therefore have overlappi
 bands; normalization handles every contributing cell without a side or vertex
 priority.
 
+A width-`8` hex has an ideal-cell inradius of about `57.7` blocks, below the
+`64`-block minimum blend width. It is intentionally supported as a fully
+blended micro-hex with no one-contributor safe interior and a higher relative
+sampling cost. Width `12` is the smallest supported hex with an unblended
+interior. These size characteristics do not alter the lattice basis or the
+translation-invariant blend result.
+
 `PeriodicNoiseUtil.sampleHorizontal(...)` evaluates a product of symmetric
 smoothstep gates for each nearby lattice representative. It samples vanilla at
 `p - t` only when that representative has nonzero weight, then normalizes the
