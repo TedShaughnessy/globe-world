@@ -2,6 +2,7 @@ package globe.world.topology;
 
 import globe.world.atlas.GlobeAtlasSurveyWindows;
 import globe.world.config.TilingMode;
+import globe.world.config.TopologySettings;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.TerrainMode;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,6 +42,218 @@ class TileGeometryTest {
         assertEquals(4.0D, geometry.wrappedDistanceSqr(new Vec3(127, 0, 0), new Vec3(-127, 0, 0)));
         assertEquals(256, geometry.longitudePeriodBlocks());
         assertEquals(-128.0D, geometry.canonicalLongitude(128.0D));
+    }
+
+    @Test
+    void offsetSquareSanitizesWidthsAndOwnsExactSquare() {
+        for (int configured : List.of(2, 7, 16, 31)) {
+            OffsetSquareTileGeometry geometry = offsetSquare(configured);
+            int width = geometry.tileSizeChunks();
+            int half = width / 2;
+            int canonicalChunks = 0;
+
+            assertTrue(width >= 2);
+            assertEquals(0, width % 2);
+            assertEquals(configured % 2 == 0 ? configured : configured + 1, width);
+            for (int x = -width * 2; x <= width * 2; x++) {
+                for (int z = -width * 2; z <= width * 2; z++) {
+                    ChunkPos canonical = geometry.canonicalChunk(x, z);
+                    assertTrue(canonical.x() >= -half && canonical.x() < half);
+                    assertTrue(canonical.z() >= -half && canonical.z() < half);
+                }
+            }
+            for (int x = -half; x < half; x++) {
+                for (int z = -half; z < half; z++) {
+                    ChunkPos canonical = new ChunkPos(x, z);
+                    assertTrue(geometry.isCanonicalChunk(canonical));
+                    assertEquals(canonical, geometry.canonicalChunk(x, z));
+                    canonicalChunks++;
+                }
+            }
+            assertEquals(width * width, canonicalChunks);
+            assertEquals(width * width, geometry.canonicalChunkCount());
+        }
+    }
+
+    @Test
+    void offsetSquareConfigurationForcesEdgeBlendAndKeepsNetherSquareOnly() {
+        TopologySettings settings = TopologySettings.DEFAULT
+                .withMode(TilingMode.OFFSET_SQUARE)
+                .withTileSize(7)
+                .withTerrainMode(TerrainMode.COMPACT_TORUS)
+                .withNetherMode(TilingMode.OFFSET_SQUARE);
+        DimensionTiling tiling = new DimensionTiling(
+                settings.mode(),
+                settings.enabled(),
+                settings.tileSize(),
+                settings.terrainMode());
+
+        assertTrue(settings.enabled());
+        assertFalse(settings.netherEnabled());
+        assertTrue(settings.forceMissingStronghold());
+        assertTrue(settings.avoidWaterOnlySeeds());
+        assertEquals(8, settings.tileSize());
+        assertEquals(TerrainMode.EDGE_BLEND, settings.terrainMode());
+        assertEquals(TerrainMode.EDGE_BLEND, tiling.terrainMode());
+    }
+
+    @Test
+    void offsetSquareUsesSpecifiedBasisAndExactLatticeCoordinates() {
+        OffsetSquareTileGeometry geometry = offsetSquare(16);
+        TileGeometry.LatticeBasis basis = geometry.latticeBasis();
+
+        assertEquals("offset-square-north-south-v1", geometry.geometryRevision());
+        assertEquals(new ChunkPos(16, 8), basis.a());
+        assertEquals(new ChunkPos(0, 16), basis.b());
+        for (TileGeometry.LatticeCoordinate coordinate : List.of(
+                new TileGeometry.LatticeCoordinate(0, 0),
+                new TileGeometry.LatticeCoordinate(1, 0),
+                new TileGeometry.LatticeCoordinate(0, 1),
+                new TileGeometry.LatticeCoordinate(1, -1),
+                new TileGeometry.LatticeCoordinate(-3, 4),
+                new TileGeometry.LatticeCoordinate(5, -7))) {
+            ChunkPos translation = geometry.latticeTranslation(coordinate);
+            assertEquals(coordinate, geometry.latticeCoordinate(translation));
+            assertEquals(new ChunkPos(0, 0), geometry.canonicalChunk(translation.x(), translation.z()));
+        }
+    }
+
+    @Test
+    void offsetSquareCanonicalizationPreservesChunkAndBlockLocalCoordinates() {
+        OffsetSquareTileGeometry geometry = offsetSquare(16);
+        BlockPos canonical = new BlockPos(7, 80, 11);
+
+        for (TileGeometry.LatticeCoordinate coordinate : geometry.neighboringTiles()) {
+            ChunkPos translation = geometry.latticeTranslation(coordinate);
+            BlockPos raw = canonical.offset(translation.x() * 16, 0, translation.z() * 16);
+            assertEquals(canonical, geometry.canonicalBlock(raw.getX(), raw.getY(), raw.getZ()));
+
+            Vec3 rawVector = new Vec3(raw.getX() + 0.375D, 80.625D, raw.getZ() + 0.875D);
+            assertEquals(
+                    new Vec3(canonical.getX() + 0.375D, 80.625D, canonical.getZ() + 0.875D),
+                    geometry.canonicalBlock(rawVector));
+        }
+    }
+
+    @Test
+    void offsetSquareHalfOpenBoundariesChooseDeterministicOwners() {
+        OffsetSquareTileGeometry geometry = offsetSquare(16);
+
+        assertEquals(new ChunkPos(-8, -8), geometry.canonicalChunk(8, 0));
+        assertEquals(new TileGeometry.LatticeCoordinate(1, 0), geometry.latticeCoordinate(new ChunkPos(8, 0)));
+        assertEquals(new ChunkPos(-8, 7), geometry.canonicalChunk(8, -1));
+        assertEquals(new TileGeometry.LatticeCoordinate(1, -1), geometry.latticeCoordinate(new ChunkPos(8, -1)));
+        assertEquals(new ChunkPos(7, -8), geometry.canonicalChunk(-9, 0));
+        assertEquals(new TileGeometry.LatticeCoordinate(-1, 1), geometry.latticeCoordinate(new ChunkPos(-9, 0)));
+        assertEquals(new ChunkPos(7, 7), geometry.canonicalChunk(-9, -1));
+        assertEquals(new TileGeometry.LatticeCoordinate(-1, 0), geometry.latticeCoordinate(new ChunkPos(-9, -1)));
+    }
+
+    @Test
+    void offsetSquareNearestAliasesAndWrappedDistanceUseCompletePositions() {
+        OffsetSquareTileGeometry geometry = offsetSquare(16);
+        ChunkPos canonical = new ChunkPos(0, 0);
+        for (TileGeometry.LatticeCoordinate coordinate : geometry.neighboringTiles()) {
+            ChunkPos translation = geometry.latticeTranslation(coordinate);
+            assertEquals(translation, geometry.nearestAlias(canonical, translation));
+        }
+
+        Vec3 a = new Vec3(3.25D, 70.0D, 6.75D);
+        ChunkPos translation = geometry.latticeTranslation(new TileGeometry.LatticeCoordinate(1, -1));
+        Vec3 b = new Vec3(
+                translation.x() * 16.0D + 4.25D,
+                73.0D,
+                translation.z() * 16.0D + 8.75D);
+        assertEquals(14.0D, geometry.wrappedDistanceSqr(a, b));
+        assertEquals(geometry.wrappedDistanceSqr(a, b), geometry.wrappedDistanceSqr(b, a));
+    }
+
+    @Test
+    void offsetSquareBoundarySegmentsDescribeAllSixNeighbors() {
+        OffsetSquareTileGeometry geometry = offsetSquare(16);
+        Set<String> seamLabels = geometry.boundarySegments().stream()
+                .map(segment -> segment.outsideAlias().seamLabel())
+                .collect(Collectors.toSet());
+
+        assertEquals(6, geometry.boundarySegments().size());
+        assertEquals(Set.of("+A", "-A", "+B", "-B", "+(A-B)", "-(A-B)"), seamLabels);
+        for (TileGeometry.BoundarySegment segment : geometry.boundarySegments()) {
+            Vec3 inside = segment.insidePoint(64.0D, 0.0D);
+            Vec3 outside = new Vec3(
+                    segment.midpointX() + segment.outward().getStepX() * 0.5D,
+                    64.0D,
+                    segment.midpointZ() + segment.outward().getStepZ() * 0.5D);
+            assertTrue(geometry.isCanonicalBlock(BlockPos.containing(inside)));
+            assertFalse(geometry.isCanonicalBlock(BlockPos.containing(outside)));
+        }
+    }
+
+    @Test
+    void offsetSquareQueryBoxesCoverBothFramesAtEastWestTJunctions() {
+        OffsetSquareTileGeometry geometry = offsetSquare(16);
+        double edge = geometry.tileSizeBlocks() * 0.5D;
+        for (double x : List.of(-edge, edge)) {
+            AABB visible = new AABB(x - 2.0D, 60.0D, -2.0D, x + 2.0D, 68.0D, 2.0D);
+            List<AABB> boxes = geometry.canonicalQueryBoxes(visible);
+
+            assertTrue(boxes.size() >= 3, "expected canonical plus both offset neighbor frames at x=" + x);
+            assertTrue(boxes.stream().anyMatch(box -> box.minZ < 0.0D));
+            assertTrue(boxes.stream().anyMatch(box -> box.maxZ > 0.0D));
+            assertTrue(boxes.stream().allMatch(box ->
+                    box.minX >= -edge && box.maxX <= edge && box.minZ >= -edge && box.maxZ <= edge));
+        }
+    }
+
+    @Test
+    void offsetSquareQueryBoxesCoverAllSixNeighborFrames() {
+        OffsetSquareTileGeometry geometry = offsetSquare(16);
+        Vec3 canonicalCenter = new Vec3(8.0D, 64.0D, 8.0D);
+
+        for (TileGeometry.LatticeCoordinate coordinate : geometry.neighboringTiles()) {
+            ChunkPos translation = geometry.latticeTranslation(coordinate);
+            Vec3 visibleCenter = canonicalCenter.add(
+                    translation.x() * 16.0D,
+                    0.0D,
+                    translation.z() * 16.0D);
+            AABB visibleBox = AABB.ofSize(visibleCenter, 3.0D, 3.0D, 3.0D);
+            assertTrue(
+                    geometry.canonicalQueryBoxes(visibleBox).stream()
+                            .anyMatch(box -> box.inflate(1.0E-7D).contains(canonicalCenter)),
+                    "query boxes missed " + coordinate.seamLabel());
+        }
+    }
+
+    @Test
+    void offsetSquareLongitudeAndAtlasProjectionAreLatticeInvariant() {
+        OffsetSquareTileGeometry geometry = offsetSquare(16);
+        AtlasTorusProjection projection = AtlasTorusProjection.create(geometry.tiling());
+        Vec3 point = new Vec3(37.25D, 0.0D, -51.75D);
+        AtlasTorusProjection.UnitPoint pixelPoint = projection.project(point);
+        double solarOffset = CoordUtil.longitudeOffsetTicks(geometry.tiling(), point.x());
+
+        assertEquals(geometry.tileSizeBlocks(), geometry.longitudePeriodBlocks());
+        assertNotEquals(
+                projection.identity(),
+                AtlasTorusProjection.create(new DimensionTiling(
+                        TilingMode.SQUARE,
+                        true,
+                        16,
+                        TerrainMode.EDGE_BLEND)).identity());
+        assertNotEquals(projection.identity(), AtlasTorusProjection.create(hex(16).tiling()).identity());
+        for (TileGeometry.LatticeCoordinate coordinate : geometry.neighboringTiles()) {
+            ChunkPos translation = geometry.latticeTranslation(coordinate);
+            assertEquals(
+                    solarOffset,
+                    CoordUtil.longitudeOffsetTicks(
+                            geometry.tiling(),
+                            point.x() + translation.x() * 16.0D),
+                    1.0E-9D);
+            assertUnitPointEquals(
+                    pixelPoint,
+                    projection.project(
+                            point.x() + translation.x() * 16.0D,
+                            point.z() + translation.z() * 16.0D));
+        }
     }
 
     @Test
@@ -303,6 +517,11 @@ class TileGeometryTest {
 
     private static HexTileGeometry hex(int tileSizeChunks) {
         return new HexTileGeometry(new DimensionTiling(TilingMode.HEX, true, tileSizeChunks, TerrainMode.EDGE_BLEND));
+    }
+
+    private static OffsetSquareTileGeometry offsetSquare(int tileSizeChunks) {
+        return new OffsetSquareTileGeometry(
+                new DimensionTiling(TilingMode.OFFSET_SQUARE, true, tileSizeChunks, TerrainMode.EDGE_BLEND));
     }
 
     private static ChunkPos delta(ChunkPos from, ChunkPos to) {

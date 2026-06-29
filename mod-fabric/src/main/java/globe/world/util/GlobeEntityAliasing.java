@@ -1,7 +1,5 @@
 package globe.world.util;
 
-import globe.world.config.TilingMode;
-import globe.world.topology.HexTileGeometry;
 import globe.world.topology.TileGeometry;
 import globe.world.topology.TopologyContext;
 import globe.world.topology.TopologyContexts;
@@ -176,8 +174,8 @@ public final class GlobeEntityAliasing {
         if (maxOffset <= 0) {
             return List.of();
         }
-        if (tiling.mode() == TilingMode.HEX) {
-            return visualHexOffsets(
+        if (TileGeometry.create(tiling).coupledLattice()) {
+            return visualLatticeOffsets(
                     tiling,
                     sourceBox,
                     entityBox,
@@ -222,7 +220,7 @@ public final class GlobeEntityAliasing {
         return offsets;
     }
 
-    private static List<AliasOffset> visualHexOffsets(
+    private static List<AliasOffset> visualLatticeOffsets(
             DimensionTiling tiling,
             AABB sourceBox,
             AABB entityBox,
@@ -230,10 +228,10 @@ public final class GlobeEntityAliasing {
             double renderRadius,
             double padding,
             int ringLimit) {
-        HexTileGeometry geometry = (HexTileGeometry) TileGeometry.create(tiling);
+        TileGeometry geometry = TileGeometry.create(tiling);
         AABB canonicalSourceBox = geometry.canonicalBox(sourceBox);
         int maxOffset = (int) Math.ceil(
-                (renderRadius + padding) / (geometry.horizontalSpacingChunks() * 16.0D));
+                (renderRadius + padding) / minimumLatticeSpacingBlocks(geometry.latticeBasis()));
         int latticeRadius = ringLimit == Integer.MAX_VALUE
                 ? maxOffset
                 : Math.min(maxOffset, ringLimit);
@@ -284,7 +282,7 @@ public final class GlobeEntityAliasing {
 
         double rawDx = newPos.x - oldPos.x;
         double rawDz = newPos.z - oldPos.z;
-        if (tiling.mode() == TilingMode.HEX) {
+        if (TileGeometry.create(tiling).coupledLattice()) {
             TopologyContext topology = TopologyContexts.forLevel(level);
             Vec3 canonicalOld = topology.canonicalBlock(oldPos);
             Vec3 canonicalNew = topology.canonicalBlock(newPos);
@@ -308,6 +306,13 @@ public final class GlobeEntityAliasing {
         double residualSqr = residualX * residualX + residualZ * residualZ;
         double rawHorizontalSqr = rawDx * rawDx + rawDz * rawDz;
         return residualSqr <= 16.0D && residualSqr * 16.0D < rawHorizontalSqr;
+    }
+
+    private static double minimumLatticeSpacingBlocks(TileGeometry.LatticeBasis basis) {
+        double a = Math.hypot(basis.a().x(), basis.a().z());
+        double b = Math.hypot(basis.b().x(), basis.b().z());
+        double c = Math.hypot(basis.a().x() - basis.b().x(), basis.a().z() - basis.b().z());
+        return Math.max(16.0D, Math.min(a, Math.min(b, c)) * 16.0D);
     }
 
     private static Entity aliasOffsetSource(Entity entity) {

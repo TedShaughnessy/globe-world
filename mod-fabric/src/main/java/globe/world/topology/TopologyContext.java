@@ -51,6 +51,10 @@ public final class TopologyContext {
         return geometry().blendGeometry();
     }
 
+    public boolean coupledLattice() {
+        return geometry().coupledLattice();
+    }
+
     public TileGeometry.LatticeCoordinate latticeCoordinate(ChunkPos raw) {
         return geometry().latticeCoordinate(raw);
     }

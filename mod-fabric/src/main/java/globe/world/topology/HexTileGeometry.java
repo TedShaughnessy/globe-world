@@ -77,6 +77,11 @@ public final class HexTileGeometry implements TileGeometry {
     }
 
     @Override
+    public boolean coupledLattice() {
+        return true;
+    }
+
+    @Override
     public LatticeCoordinate latticeCoordinate(ChunkPos raw) {
         if (!tiling.enabled()) {
             return LatticeCoordinate.ORIGIN;

@@ -55,6 +55,9 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final String HEX_TILE_SHAPE_TOOLTIP = "Experimental. Uses a six-edge chunk-composed hex tile. "
             + "Tile width is at least 8 chunks and a multiple of four. Terrain continuity, structures, the Atlas, "
             + "and local solar time are not fully hex-aware yet.";
+    private static final String OFFSET_SQUARE_TILE_SHAPE_TOOLTIP = "Experimental. Uses square tiles whose east/west "
+            + "neighbors are shifted north/south by half a tile. Tile width is always an even number of chunks and "
+            + "terrain uses continuous edge blending.";
     private static final String DAY_LENGTH_TOOLTIP = "Scales the length of the Minecraft day night cycle";
     private static final String ALLOW_MOBS_AT_WORLD_SPAWN_TOOLTIP = "Allows natural mobs to spawn inside vanilla's 24-block world-spawn exclusion.";
     private static final String PLAYER_MOB_SPAWN_EXCLUSION_TOOLTIP = "Minimum natural-spawn distance from the nearest non-spectator player.";
@@ -242,7 +245,7 @@ public class GlobeWorldSettingsControls implements Layout {
                         GlobeWorldSettingsControls::tilingModeLabel,
                         currentTopology().mode()
                 )
-                .withValues(List.of(TilingMode.SQUARE, TilingMode.HEX))
+                .withValues(List.of(TilingMode.SQUARE, TilingMode.OFFSET_SQUARE, TilingMode.HEX))
                 .withTooltip(mode -> tooltip(tilingModeTooltip(mode)))
                 .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Overworld Tile Shape"),
                         (button, mode) -> setTopology(currentTopology().withMode(mode)));
@@ -533,11 +536,19 @@ public class GlobeWorldSettingsControls implements Layout {
     }
 
     private static Component tilingModeLabel(TilingMode mode) {
-        return Component.literal(mode == TilingMode.HEX ? "Hex (Experimental)" : mode.displayName());
+        return Component.literal(switch (mode) {
+            case OFFSET_SQUARE -> "Offset Square (Experimental)";
+            case HEX -> "Hex (Experimental)";
+            case DISABLED, SQUARE -> mode.displayName();
+        });
     }
 
     private static String tilingModeTooltip(TilingMode mode) {
-        return mode == TilingMode.HEX ? HEX_TILE_SHAPE_TOOLTIP : SQUARE_TILE_SHAPE_TOOLTIP;
+        return switch (mode) {
+            case OFFSET_SQUARE -> OFFSET_SQUARE_TILE_SHAPE_TOOLTIP;
+            case HEX -> HEX_TILE_SHAPE_TOOLTIP;
+            case DISABLED, SQUARE -> SQUARE_TILE_SHAPE_TOOLTIP;
+        };
     }
 
     private static String dayCycleTooltip(DayNightCycleMode mode) {
@@ -700,7 +711,9 @@ public class GlobeWorldSettingsControls implements Layout {
             setTileFieldValue(customTileField, topology.tileSize());
         }
         overworldTopologyButton.setValue(topology.terrainMode());
-        overworldTopologyButton.active = editable && topology.mode() != TilingMode.HEX;
+        overworldTopologyButton.active = editable
+                && topology.mode() != TilingMode.HEX
+                && topology.mode() != TilingMode.OFFSET_SQUARE;
         overworldInfo.setMessage(overworldInfo(topology));
         overworldCurvatureSlider.setPercent(presentation.curvaturePercent());
         overworldCurvatureSlider.active = topology.enabled();

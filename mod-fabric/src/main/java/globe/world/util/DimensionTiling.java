@@ -15,14 +15,15 @@ public record DimensionTiling(TilingMode mode, boolean enabled, int tileSizeChun
 
     public DimensionTiling {
         mode = mode == null ? TilingMode.DISABLED : mode;
-        enabled = enabled && (mode == TilingMode.SQUARE || mode == TilingMode.HEX);
+        enabled = enabled
+                && (mode == TilingMode.SQUARE || mode == TilingMode.OFFSET_SQUARE || mode == TilingMode.HEX);
         tileSizeChunks = enabled
                 ? TopologySettings.sanitizeTileSize(mode, tileSizeChunks)
                 : Math.max(1, tileSizeChunks);
         if (!enabled) {
             mode = TilingMode.DISABLED;
             terrainMode = TerrainMode.DISABLED;
-        } else if (mode == TilingMode.HEX) {
+        } else if (mode == TilingMode.HEX || mode == TilingMode.OFFSET_SQUARE) {
             terrainMode = TerrainMode.EDGE_BLEND;
         } else if (terrainMode == null || terrainMode == TerrainMode.AUTO || terrainMode == TerrainMode.DISABLED) {
             terrainMode = TerrainMode.forOverworldTileSize(tileSizeChunks);
@@ -67,7 +68,7 @@ public record DimensionTiling(TilingMode mode, boolean enabled, int tileSizeChun
     }
 
     private static TerrainMode resolveTerrainMode(TilingMode mode, TerrainMode configured, TerrainMode fallback) {
-        if (mode == TilingMode.HEX) {
+        if (mode == TilingMode.HEX || mode == TilingMode.OFFSET_SQUARE) {
             return TerrainMode.EDGE_BLEND;
         }
         return configured == null || configured == TerrainMode.AUTO || configured == TerrainMode.DISABLED

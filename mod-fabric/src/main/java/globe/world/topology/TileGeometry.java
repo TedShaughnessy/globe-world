@@ -16,10 +16,11 @@ import java.util.concurrent.ConcurrentMap;
 
 public interface TileGeometry {
     static TileGeometry create(DimensionTiling tiling) {
-        return TileGeometryCache.GEOMETRIES.computeIfAbsent(tiling, key ->
-                key.mode() == TilingMode.HEX
-                        ? new HexTileGeometry(key)
-                        : new SquareTileGeometry(key));
+        return TileGeometryCache.GEOMETRIES.computeIfAbsent(tiling, key -> switch (key.mode()) {
+            case OFFSET_SQUARE -> new OffsetSquareTileGeometry(key);
+            case HEX -> new HexTileGeometry(key);
+            case DISABLED, SQUARE -> new SquareTileGeometry(key);
+        });
     }
 
     DimensionTiling tiling();
@@ -30,6 +31,10 @@ public interface TileGeometry {
 
     default Optional<LatticeBlendGeometry> blendGeometry() {
         return Optional.empty();
+    }
+
+    default boolean coupledLattice() {
+        return false;
     }
 
     LatticeCoordinate latticeCoordinate(ChunkPos raw);

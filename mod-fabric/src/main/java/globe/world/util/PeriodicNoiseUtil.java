@@ -1,6 +1,5 @@
 package globe.world.util;
 
-import globe.world.config.TilingMode;
 import globe.world.mixin.ImprovedNoiseAccessor;
 import globe.world.mixin.NormalNoiseAccessor;
 import globe.world.mixin.PerlinNoiseAccessor;
@@ -55,7 +54,7 @@ public class PeriodicNoiseUtil {
         if (scale == 0.0D) {
             return sampler.sample(0.0D, 0.0D);
         }
-        if (tiling.mode() == TilingMode.HEX) {
+        if (TileGeometry.create(tiling).blendGeometry().isPresent()) {
             return sampleHorizontal(
                     firstCoord,
                     secondCoord,
@@ -89,11 +88,11 @@ public class PeriodicNoiseUtil {
         }
 
         TerrainMode mode = tiling.terrainMode();
-        if (tiling.mode() == TilingMode.HEX && mode == TerrainMode.EDGE_BLEND) {
+        if (mode == TerrainMode.EDGE_BLEND && TileGeometry.create(tiling).blendGeometry().isPresent()) {
             LatticeBlendGeometry geometry = TileGeometry.create(tiling)
                     .blendGeometry()
                     .orElseThrow();
-            return sampleHexEdgeBlendedPlane(blockX, blockZ, geometry, sampler);
+            return sampleLatticeEdgeBlendedPlane(blockX, blockZ, geometry, sampler);
         }
         if (mode == TerrainMode.EDGE_BLEND || mode == TerrainMode.PERIODIC_LATTICE) {
             return sampleEdgeBlendedPlane(blockX, blockZ, period, sampler);
@@ -138,7 +137,8 @@ public class PeriodicNoiseUtil {
         }
 
         DimensionTiling tiling = DimensionTiling.currentOrOverworld();
-        if (tiling.mode() != TilingMode.HEX
+        boolean latticeBlend = TileGeometry.create(tiling).blendGeometry().isPresent();
+        if (!latticeBlend
                 && (!tiling.enabled() || tiling.terrainMode() != TerrainMode.PERIODIC_LATTICE || scale == 0.0)) {
             return samplePlane(
                     blockZ,
@@ -146,7 +146,7 @@ public class PeriodicNoiseUtil {
                     scale,
                     (noiseX, noiseY) -> noise.getValue(noiseX, noiseY, fixedZ));
         }
-        if (tiling.mode() == TilingMode.HEX) {
+        if (latticeBlend) {
             return sampleHorizontal(
                     blockX,
                     blockZ,
@@ -405,7 +405,7 @@ public class PeriodicNoiseUtil {
         return value;
     }
 
-    private static double sampleHexEdgeBlendedPlane(
+    private static double sampleLatticeEdgeBlendedPlane(
             double blockX,
             double blockZ,
             LatticeBlendGeometry geometry,
@@ -433,7 +433,7 @@ public class PeriodicNoiseUtil {
         }
 
         if (!(totalWeight > 0.0D) || !Double.isFinite(totalWeight)) {
-            throw new IllegalStateException("Hex blend produced no finite contributors");
+            throw new IllegalStateException("Lattice blend produced no finite contributors");
         }
         return weightedValue / totalWeight;
     }

@@ -1,7 +1,6 @@
 package globe.world.client;
 
 import globe.world.config.GlobeConfig;
-import globe.world.config.TilingMode;
 import globe.world.topology.TileGeometry;
 import globe.world.topology.TopologyContext;
 import globe.world.topology.TopologyContexts;
@@ -72,8 +71,8 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
         int maxY = this.minecraft.level.getMaxY() + 1;
         double borderY = Math.clamp(Math.round(cameraEntity.getY()), minY + 0.05D, maxY - 0.05D);
 
-        if (tiling.mode() == TilingMode.HEX) {
-            drawHexTiles(cameraEntity, topology, borderY);
+        if (topology.coupledLattice()) {
+            drawLatticeTiles(cameraEntity, topology, borderY);
         } else {
             drawSquareTiles(cameraEntity, tiling, minY, maxY, borderY);
         }
@@ -101,7 +100,7 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
         drawTile(canonicalMin, tileBlocks, 0, 0, minY, maxY, borderY, CANONICAL_TILE_COLOR, false);
     }
 
-    private static void drawHexTiles(Entity cameraEntity, TopologyContext topology, double borderY) {
+    private static void drawLatticeTiles(Entity cameraEntity, TopologyContext topology, double borderY) {
         TileGeometry.LatticeCoordinate current = topology.latticeCoordinate(cameraEntity.chunkPosition());
         Set<TileGeometry.LatticeCoordinate> nearby = new LinkedHashSet<>();
         nearby.add(current);
@@ -111,13 +110,13 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
 
         for (TileGeometry.LatticeCoordinate coordinate : nearby) {
             if (!coordinate.isOrigin()) {
-                drawHexBoundary(cameraEntity, topology, coordinate, borderY, false, coordinate.equals(current));
+                drawLatticeBoundary(cameraEntity, topology, coordinate, borderY, false, coordinate.equals(current));
             }
         }
-        drawHexBoundary(cameraEntity, topology, TileGeometry.LatticeCoordinate.ORIGIN, borderY, true, current.isOrigin());
+        drawLatticeBoundary(cameraEntity, topology, TileGeometry.LatticeCoordinate.ORIGIN, borderY, true, current.isOrigin());
     }
 
-    private static void drawHexBoundary(
+    private static void drawLatticeBoundary(
             Entity cameraEntity,
             TopologyContext topology,
             TileGeometry.LatticeCoordinate coordinate,

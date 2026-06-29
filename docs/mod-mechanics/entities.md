@@ -79,8 +79,8 @@ Player and world spawn search is tile-bounded in tiled dimensions.
 deterministic scan over the geometry's canonical lattice area, preserving
 vanilla-style dry-land, fluid, heightmap, and player-collision checks. The scan
 canonicalizes two-dimensional chunk candidates and stops after the lattice
-determinant's canonical chunk count, so square and hex masks cover their real
-owners exactly once. If no dry land exists in the canonical tile, it falls back
+determinant's canonical chunk count, so square, offset-square, and hex owners
+are covered exactly once. If no dry land exists in the canonical tile, it falls back
 to a collision-free surface, then a vertical fixup of the canonical spawn
 suggestion, then a logged generator-height canonical-origin last resort. The
 chunk scan is generated lazily and tracks only canonical keys rather than

@@ -189,11 +189,11 @@ Standalone remote players can also render one ring of client-only copies around
 the camera for small tile worlds. The local camera player and mounted player
 stacks are skipped.
 
-Square worlds enumerate independent X/Z tile offsets. Experimental hex worlds
-enumerate the geometry's lattice translations instead, so diagonal visual
-copies use the same `(horizontal spacing, half height)` shift as the terrain chunks
-beneath them. Whole-tile packet rebases use the same geometry-aware equivalence
-test to prevent an entity from interpolating between hex aliases.
+Square worlds enumerate independent X/Z tile offsets. Experimental
+offset-square and hex worlds enumerate the geometry's lattice translations
+instead, so diagonal visual copies use the same coupled shift as the terrain
+chunks beneath them. Whole-tile packet rebases use the same geometry-aware
+equivalence test to prevent an entity from interpolating between lattice aliases.
 
 The aliases use the same real client entity id and are culled by vanilla entity
 view distance, the configured camera tile-ring limit for non-player entities,

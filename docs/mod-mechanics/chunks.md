@@ -17,10 +17,10 @@ copy and would unload or ignore visible aliases.
 
 Server chunk lookup resolves requested chunk coordinates to canonical chunk
 owners before loading or returning a chunk. Square worlds wrap X/Z
-independently; experimental hex worlds resolve ownership through the discrete
-hex chunk mask and lattice in `TileGeometry`. Runtime lookup, packet relabeling,
-alias tracking, and canonical alias tickets resolve those owners through
-`TopologyContext`.
+independently; experimental offset-square and hex worlds resolve ownership
+through their coupled lattice in `TileGeometry` (with hex additionally using a
+discrete mask). Runtime lookup, packet relabeling, alias tracking, and canonical
+alias tickets resolve those owners through `TopologyContext`.
 Alias chunk lifecycle events keep the matching canonical chunk available through
 ref-counted mod tickets.
 

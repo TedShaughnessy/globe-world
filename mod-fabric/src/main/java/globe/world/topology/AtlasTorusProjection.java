@@ -7,8 +7,8 @@ import net.minecraft.world.phys.Vec3;
  * Rectangular Atlas coordinates for a world's lattice quotient.
  *
  * <p>The texture remains an ordinary rectangular torus. For square worlds its
- * U/V axes are world X/Z. For hex worlds they are coefficients of the A/B
- * lattice basis, so every lattice alias has exactly the same texture
+ * U/V axes are world X/Z. For coupled lattice worlds they are coefficients of
+ * the A/B basis, so every lattice alias has exactly the same texture
  * coordinate.</p>
  */
 public final class AtlasTorusProjection {

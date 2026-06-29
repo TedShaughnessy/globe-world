@@ -120,6 +120,25 @@ public final class GlobeDebugCommands {
                                                 .executes(context -> teleportPlayerToSeam(
                                                         context.getSource(),
                                                         StringArgumentType.getString(context, "direction"),
+                                                        IntegerArgumentType.getInteger(context, "inset"))))))
+                        .then(Commands.literal("point")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                                                List.of(
+                                                        "north", "south",
+                                                        "east_north", "east_south",
+                                                        "west_north", "west_south",
+                                                        "east_junction", "west_junction",
+                                                        "northeast", "northwest", "southeast", "southwest"),
+                                                builder))
+                                        .executes(context -> teleportPlayerToOffsetSquarePoint(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "name"),
+                                                1))
+                                        .then(Commands.argument("inset", IntegerArgumentType.integer(0))
+                                                .executes(context -> teleportPlayerToOffsetSquarePoint(
+                                                        context.getSource(),
+                                                        StringArgumentType.getString(context, "name"),
                                                         IntegerArgumentType.getInteger(context, "inset")))))))
                 .then(Commands.literal("teleport_alias")
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
@@ -302,7 +321,7 @@ public final class GlobeDebugCommands {
                 latticeBasis.b().x(), latticeBasis.b().z())), false);
         topology.blendGeometry().ifPresent(blend ->
                 source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
-                        "Ideal hex blend: width=%.1f blocks inradius=%.1f blocks signed_distance=%.1f blocks",
+                        "Ideal lattice blend: width=%.1f blocks inradius=%.1f blocks signed_distance=%.1f blocks",
                         blend.blendWidth(),
                         blend.inradius(),
                         blend.signedDistance(pos.getX(), pos.getZ(), latticeCoordinate.k(), latticeCoordinate.l()))), false));
@@ -619,6 +638,103 @@ public final class GlobeDebugCommands {
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Teleported to seam %s inset=%d at %.3f %.3f %.3f",
                 hit.segment().outsideAlias().seamLabel(),
+                clampedInset,
+                target.x(),
+                target.y(),
+                target.z())), false);
+        return 1;
+    }
+
+    private static int teleportPlayerToOffsetSquarePoint(
+            CommandSourceStack source,
+            String name,
+            int inset) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        if (!topology.enabled()) {
+            source.sendFailure(Component.literal("Current dimension is not tiled."));
+            return 0;
+        }
+        if (!"offset-square-north-south-v1".equals(topology.geometryRevision())) {
+            source.sendFailure(Component.literal("Named boundary points are only available in offset-square worlds."));
+            return 0;
+        }
+
+        double half = topology.tileSizeBlocks() * 0.5D;
+        int clampedInset = Math.min(inset, Math.max(0, topology.tileSizeBlocks() / 2 - 1));
+        double distance = clampedInset + 0.5D;
+        double min = -half + distance;
+        double max = half - distance;
+        double quarter = topology.tileSizeBlocks() * 0.25D;
+        double x;
+        double z;
+        switch (name.toLowerCase(Locale.ROOT)) {
+            case "north" -> {
+                x = 0.0D;
+                z = min;
+            }
+            case "south" -> {
+                x = 0.0D;
+                z = max;
+            }
+            case "east_north" -> {
+                x = max;
+                z = -quarter;
+            }
+            case "east_south" -> {
+                x = max;
+                z = quarter;
+            }
+            case "west_north" -> {
+                x = min;
+                z = -quarter;
+            }
+            case "west_south" -> {
+                x = min;
+                z = quarter;
+            }
+            case "east_junction" -> {
+                x = max;
+                z = 0.0D;
+            }
+            case "west_junction" -> {
+                x = min;
+                z = 0.0D;
+            }
+            case "northeast" -> {
+                x = max;
+                z = min;
+            }
+            case "northwest" -> {
+                x = min;
+                z = min;
+            }
+            case "southeast" -> {
+                x = max;
+                z = max;
+            }
+            case "southwest" -> {
+                x = min;
+                z = max;
+            }
+            default -> {
+                source.sendFailure(Component.literal("Unknown offset-square boundary point: " + name));
+                return 0;
+            }
+        }
+
+        Vec3 target = new Vec3(x, player.getY(), z);
+        if (!topology.isCanonical(BlockPos.containing(target))) {
+            source.sendFailure(Component.literal("Inset crosses outside the canonical offset square."));
+            return 0;
+        }
+        if (!teleportPlayer(player, target.x(), target.y(), target.z())) {
+            source.sendFailure(Component.literal("Boundary test point is outside valid teleport bounds."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                "Teleported to offset-square point %s inset=%d at %.3f %.3f %.3f",
+                name,
                 clampedInset,
                 target.x(),
                 target.y(),

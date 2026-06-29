@@ -30,6 +30,10 @@ point for current behavior and modded code anchors.
 
 ## Implemented / Retired Notes
 
+- [Offset square tiling](offset-square-tiling.md): implemented even-width
+  Overworld topology with alternating half-offset columns, coupled-lattice
+  aliases, edge-blended terrain, local-time invariance, Atlas integration, and
+  remaining manual/discrete-worldgen acceptance work.
 - [Hexagonal tiles first run](hexagonal-tiles-first-run.md): implemented as the
   experimental runtime topology slice; durable behavior lives in
   [Topology](../mod-mechanics/topology.md), [Chunks](../mod-mechanics/chunks.md),

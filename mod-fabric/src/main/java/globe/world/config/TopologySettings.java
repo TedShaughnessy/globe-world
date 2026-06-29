@@ -132,7 +132,7 @@ public record TopologySettings(
     }
 
     public boolean enabled() {
-        return mode == TilingMode.SQUARE || mode == TilingMode.HEX;
+        return mode == TilingMode.SQUARE || mode == TilingMode.OFFSET_SQUARE || mode == TilingMode.HEX;
     }
 
     public boolean netherEnabled() {
@@ -332,7 +332,7 @@ public record TopologySettings(
     }
 
     private static TerrainMode sanitizeTerrainMode(TilingMode tilingMode, TerrainMode terrainMode) {
-        if (tilingMode == TilingMode.HEX) {
+        if (tilingMode == TilingMode.HEX || tilingMode == TilingMode.OFFSET_SQUARE) {
             return TerrainMode.EDGE_BLEND;
         }
         if (tilingMode != TilingMode.SQUARE || terrainMode == null || terrainMode == TerrainMode.DISABLED) {
@@ -369,7 +369,8 @@ public record TopologySettings(
     }
 
     private static boolean defaultForceMissingStronghold(TilingMode mode, int tileSize) {
-        return (mode == TilingMode.SQUARE || mode == TilingMode.HEX) && isSmallProgressionTile(tileSize);
+        return (mode == TilingMode.SQUARE || mode == TilingMode.OFFSET_SQUARE || mode == TilingMode.HEX)
+                && isSmallProgressionTile(tileSize);
     }
 
     private static boolean defaultForceMissingNetherStructure(TilingMode mode, int tileSize) {
@@ -377,7 +378,7 @@ public record TopologySettings(
     }
 
     private static boolean defaultAvoidWaterOnlySeeds(TilingMode mode) {
-        return mode == TilingMode.SQUARE || mode == TilingMode.HEX;
+        return mode == TilingMode.SQUARE || mode == TilingMode.OFFSET_SQUARE || mode == TilingMode.HEX;
     }
 
     private static boolean isSmallProgressionTile(int tileSize) {

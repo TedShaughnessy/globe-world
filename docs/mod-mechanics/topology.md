@@ -42,21 +42,24 @@ The coordinate helper layer answers four questions:
 
 `TileGeometry` is the two-dimensional topology boundary. Square worlds use
 `SquareTileGeometry`, which preserves the original independent X/Z period.
+Offset-square worlds use `OffsetSquareTileGeometry`, which keeps square
+ownership but couples X/Z alias translations.
 Experimental hex worlds use `HexTileGeometry`, which defines a chunk-composed
 canonical mask plus two lattice translation vectors; the third edge-pair
 translation is derived from those vectors.
 
 The geometry also exposes diagnostic metadata without requiring callers to cast
-to its square or hex implementation:
+to a concrete geometry implementation:
 
-- a save-facing geometry revision (`square-v1` or `hex-east-west-v1`);
+- a save-facing geometry revision (`square-v1`,
+  `offset-square-north-south-v1`, or `hex-east-west-v1`);
 - lattice basis vectors `A` and `B`;
 - the integer lattice coordinate `(k, l)` for a raw chunk;
 - the corresponding `k*A + l*B` translation;
 - exact exposed chunk-edge boundary segments and the neighboring alias reached
   across each segment.
 
-Boundary segments label the six hex seam directions as `±A`, `±B`, and
+Coupled-lattice boundary segments label six seam directions as `±A`, `±B`, and
 `±(A-B)`. The command and client debug paths consume this shared description,
 so displayed boundaries and alias coordinates use the same ownership decisions
 as runtime canonicalization.
@@ -67,10 +70,9 @@ questions to `TileGeometry` through frame-named helpers such as
 `canonicalBlock`, `canonicalChunk`, `canonicalBox`, `virtualBlockForViewer`,
 `virtualChunkForViewer`, `virtualBoxForViewer`, `wrappedDistanceSqr`,
 `loadedAliasesFor`, and `shouldAllowAliasMutation`. Runtime block/chunk access
-helpers use these names at subsystem boundaries. `CoordUtil` still keeps
-square-friendly axis helpers for older call sites, but hex-correct code must use
-whole-position geometry methods because one axis alone is not enough to choose a
-hex owner.
+helpers use these names at subsystem boundaries. `CoordUtil` delegates
+whole-position operations to the geometry; its remaining scalar helpers are
+only suitable for genuinely one-dimensional questions such as longitude.
 
 Tile geometries are immutable and cached by effective `DimensionTiling`;
 dimension contexts are likewise cached by dimension and tiling settings. This
@@ -80,6 +82,37 @@ path that may run millions of times during initial generation.
 
 Canonicalization is used before state access. Virtualization is used when
 building viewer-facing positions, especially packets and tracking decisions.
+
+## Experimental Offset-Square Topology
+
+`TilingMode.OFFSET_SQUARE` is an Overworld-only saved mode. It normalizes
+`tile_size` to an even width `W >= 2`, forces `EDGE_BLEND`, and keeps the
+canonical chunk interval `[-W/2, W/2)` on both axes. The canonical owner
+therefore contains exactly `W * W` chunks and retains block-local coordinates.
+
+Its basis is `A = (W, W/2)` and `B = (0, W)` chunks; `A-B = (W, -W/2)`.
+East/west columns consequently alternate between aligned and half-tile-offset
+copies, while `B` remains a pure north/south translation. For raw chunk
+`(x,z)`, canonicalization uses:
+
+```text
+k = floorDiv(x + W/2, W)
+canonicalX = x - k*W
+l = floorDiv(z - k*(W/2) + W/2, W)
+canonicalZ = z - k*(W/2) - l*W
+```
+
+North and south each expose one complete boundary segment. East and west split
+at Z=0 into two half-edges leading to `±A` and `±(A-B)`; exact midpoint and
+corner ownership follows the same half-open chunk interval. Nearest aliases,
+wrapped distance, entity-query boxes, visual entity copies, packets, Atlas
+windows, projectiles, POI, portals, and worldgen access all consume complete
+X/Z positions so they cannot select incompatible axis aliases.
+
+Longitude has period `W` chunks. `A` and `A-B` change X by one period and `B`
+does not change X, keeping local solar time invariant under every seam
+translation. F3+Y renders nearby offset squares from the shared boundary
+segments and labels the six seam relations.
 
 ## Experimental Hex Topology
 
@@ -208,6 +241,7 @@ eight Nether blocks map to one Overworld block.
 - `mod-fabric/src/main/java/globe/world/util/DimensionTiling.java`
 - `mod-fabric/src/main/java/globe/world/topology/TileGeometry.java`
 - `mod-fabric/src/main/java/globe/world/topology/SquareTileGeometry.java`
+- `mod-fabric/src/main/java/globe/world/topology/OffsetSquareTileGeometry.java`
 - `mod-fabric/src/main/java/globe/world/topology/HexTileGeometry.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContexts.java`
@@ -232,6 +266,10 @@ eight Nether blocks map to one Overworld block.
   ownership, nearest aliases, wrapped distances, broad query boxes, chunk
   packet relabeling, block packet fanout, entity packet virtualization, entity
   tracking, and geometry tests.
+- Experimental Overworld offset-square topology is implemented across the same
+  geometry-driven runtime paths, shared lattice edge blend, Atlas projection,
+  settings UI, debug boundary renderer, and deterministic geometry/noise
+  tests. Manual six-seam and T-junction gameplay acceptance remains.
 - Server chunk lookup, alias tickets, random ticks, spawning collection,
   tracking, block mutation, and worldgen region access use dimension-aware
   wrapping.
@@ -258,6 +296,8 @@ eight Nether blocks map to one Overworld block.
   X/Z equivalent of their current visual alias.
 - `/globeworld teleport_border [inset]` teleports the executing player near the
   nearest canonical tile border for seam testing.
+- `/globeworld teleport_border point <name> [inset]` selects deterministic
+  offset-square edge centers, east/west half-edges, T-junctions, and corners.
 - `/globeworld teleport_alias <tileX> <tileZ>` teleports the executing player to
   a chosen whole-tile visual alias of their current canonical position.
 - `/globeworld config` reports saved tiling settings.

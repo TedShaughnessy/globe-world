@@ -56,12 +56,12 @@ reveals nearby canonical pixels through `GlobeMapSavedData.revealAround(...)`.
 This makes exploration in any alias tile discover the same canonical map
 pixels.
 
-`AtlasTorusProjection` gives square and hex topology the same rectangular
-texture contract. Square worlds retain the existing X/Z mapping. Hex worlds
-solve world positions in the geometry's lattice basis `A/B`, wrap those two
-coefficients as texture U/V, and canonicalize inverse pixel samples through
-`TileGeometry`. Translations by `A`, `B`, or `A-B` therefore land on the same
-Atlas pixel. The placed hologram remains the same torus mesh; only the
+`AtlasTorusProjection` gives every topology the same rectangular texture
+contract. Independent square worlds retain the existing X/Z mapping. Hex and
+offset-square worlds solve positions in the geometry's lattice basis `A/B`,
+wrap those coefficients as texture U/V, and canonicalize inverse pixel samples
+through `TileGeometry`. Translations by `A`, `B`, or `A-B` therefore land on
+the same Atlas pixel. The placed hologram remains the same torus mesh; only the
 world-to-texture parameterization changes.
 
 Literal-map and survey saves persist their tiling mode plus a projection
@@ -145,10 +145,12 @@ and a brighter center cross. In survey mode, the held renderer uses a rounded,
 softly faded copy of the current `128x128` chunk player-centered survey-window
 texture instead of resampling the literal Atlas texture.
 
-In hex mode the held literal window still samples a local world-X/Z patch, then
-projects every sample through the A/B torus mapping. This preserves the same
-held shape, pose, grid, fade, and world-readable motion as square mode instead
-of showing a misleading rectangular crop of oblique Atlas UV space.
+In coupled-lattice modes the held literal window still samples a local
+world-X/Z patch, then projects every sample through the A/B torus mapping. In
+offset-square mode, east/west motion therefore scrolls into the appropriate
+half-tile-shifted north/south neighbor. This preserves the same held shape,
+pose, grid, fade, and world-readable motion instead of showing a misleading
+rectangular crop of oblique Atlas UV space.
 
 On literal-map tiles, the placed Atlas hologram uses the same large-tile scale,
 so the torus grows

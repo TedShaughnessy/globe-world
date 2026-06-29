@@ -30,17 +30,19 @@ The automatic policy uses compact torus for small tiles, periodic lattice for
 clean large multiples, and edge blend for awkward medium/large sizes. Changing
 tile size resets saved explicit terrain methods back to `AUTO`.
 
-Experimental hex topology forces/resolves terrain to `EDGE_BLEND`. Its
-continuous base-terrain fields are blended across the ideal six-sided Voronoi
-cell, while whole-chunk ownership retains the exact staircase mask. Discrete
-carvers, features, and structures still rely on canonical seeds, generation
-windows, and spillover rather than numerical blending, so those stages retain
-separate seam acceptance work.
+Experimental hex and offset-square topology force/resolve terrain to
+`EDGE_BLEND`. Their continuous base-terrain fields are blended across the
+ideal six-sided lattice Voronoi cell. Hex whole-chunk ownership retains its
+staircase mask; offset-square retains its exact `W x W` owner even though its
+ideal blend cell is hexagonal. Discrete carvers, features, and structures still
+rely on canonical seeds, generation windows, and spillover rather than
+numerical blending, so those stages retain separate seam acceptance work.
 
-## Hexagonal Edge Blending
+## Coupled-Lattice Edge Blending
 
 `LatticeBlendGeometry` derives a continuous block-space cell from the same
-`A`/`B` basis used by `HexTileGeometry`. For each of the six neighbor vectors
+`A`/`B` basis used by `HexTileGeometry` or
+`OffsetSquareTileGeometry`. For each of the six neighbor vectors
 `±A`, `±B`, and `±(A-B)`, it computes the signed perpendicular distance to that
 neighbor's Voronoi half-plane. The resolved width is one quarter of the cell
 inradius, clamped to 64–256 blocks. Minimum hexes can therefore have overlapping
@@ -64,9 +66,13 @@ climate noise, shifted/cave noise, aquifer fields, legacy `BlendedNoise`,
 surface and clay-band fields, frozen-ocean/badlands fields, and noise-backed
 state/count providers. Square terrain modes retain their previous samplers.
 
+For offset-square worlds the basis is `(W, W/2)` and `(0, W)`. Translating the
+continuous field by either vector leaves it unchanged across all four square
+ownership cuts, including both east/west T-junctions.
+
 Known-unit positional random factories canonicalize a complete X/Z pair through
 `TileGeometry` in block or chunk units. Surface randomness and carver/structure
-seed calls use the same pairwise rule, preventing a hex seed from being formed
+seed calls use the same pairwise rule, preventing a coupled-lattice seed from being formed
 from independently wrapped axes. `/globeworld pos` and the debug HUD report the
 resolved blend width and signed ideal-boundary distance.
 
@@ -159,9 +165,9 @@ through wrapped `Level.setBlock` into canonical storage.
 `GenerationWindow` is the shared worldgen helper for bounded region access at
 tile edges. It gives `WorldGenRegionMixin` one vocabulary for canonical block
 reads, physical-cache alias chunk lookup, toroidal write-radius checks, physical
-cache availability, and write classification. Square worlds use independent
-X/Z periods; hex worlds resolve cache aliases and canonical destinations through
-`TopologyContext` and `TileGeometry`. It does not call live
+cache availability, and write classification. Independent square worlds use
+separate X/Z periods; hex and offset-square worlds resolve cache aliases and
+canonical destinations through `TopologyContext` and `TileGeometry`. It does not call live
 `ServerLevel.getChunk(...)`, mutate chunks directly, or replace the terrain and
 noise periodicity hooks. Manual seam testing after the extraction confirmed the
 helper preserves the existing ownership model and does not introduce durable
@@ -365,6 +371,8 @@ canonical candidate starts and warns that validation may load or generate
 - Run the six-side/six-vertex hex acceptance matrix for height, biomes, caves,
   aquifers, surfaces, discrete decorations, structures, generation order, and
   reload behavior.
+- Run the six-seam, east/west T-junction, and four-corner offset-square
+  acceptance matrix for continuous and discrete generation.
 - Validate periodicity for Nether terrain/noise and features.
 - Audit structure query and persistence paths.
 - Add a controlled virtual feature-origin pass for edge features such as monster

@@ -3,6 +3,7 @@ package globe.world.util;
 import globe.world.config.TilingMode;
 import globe.world.topology.HexTileGeometry;
 import globe.world.topology.LatticeBlendGeometry;
+import globe.world.topology.OffsetSquareTileGeometry;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
@@ -136,6 +137,54 @@ class PeriodicNoiseUtilTest {
     }
 
     @Test
+    void offsetSquareBlendIsFiniteAndInvariantUnderAllSixSeamTranslations() {
+        for (int width : new int[]{2, 8, 16, 32}) {
+            OffsetSquareTileGeometry tile = offsetSquare(width);
+            PeriodicNoiseUtil.HorizontalSampler sampler =
+                    (translatedX, translatedZ) ->
+                            Math.sin(translatedX * 0.013D) + Math.cos(translatedZ * 0.019D);
+            double x = 21.25D;
+            double z = -37.75D;
+            double expected = sample(tile.tiling(), x, z, sampler);
+
+            assertTrue(Double.isFinite(expected));
+            for (globe.world.topology.TileGeometry.LatticeCoordinate coordinate : tile.neighboringTiles()) {
+                ChunkPos translation = tile.latticeTranslation(coordinate);
+                assertEquals(
+                        expected,
+                        sample(
+                                tile.tiling(),
+                                x + translation.x() * 16.0D,
+                                z + translation.z() * 16.0D,
+                                sampler),
+                        1.0E-11D);
+            }
+        }
+    }
+
+    @Test
+    void offsetSquarePositionalFactoriesCanonicalizeCoupledPairs() {
+        OffsetSquareTileGeometry tile = offsetSquare(16);
+        PositionalRandomFactory base = RandomSource.create(54321L).forkPositional();
+        PositionalRandomFactory blocks = DimensionTiling.with(
+                tile.tiling(),
+                () -> PeriodicPositionalRandomFactory.block(base));
+        PositionalRandomFactory chunks = DimensionTiling.with(
+                tile.tiling(),
+                () -> PeriodicPositionalRandomFactory.chunk(base));
+
+        for (globe.world.topology.TileGeometry.LatticeCoordinate coordinate : tile.neighboringTiles()) {
+            ChunkPos translation = tile.latticeTranslation(coordinate);
+            assertEquals(
+                    blocks.at(7, 80, 11).nextLong(),
+                    blocks.at(7 + translation.x() * 16, 80, 11 + translation.z() * 16).nextLong());
+            assertEquals(
+                    chunks.at(3, 0, -2).nextLong(),
+                    chunks.at(3 + translation.x(), 0, -2 + translation.z()).nextLong());
+        }
+    }
+
+    @Test
     void squareEdgeBlendAndCompactTorusSamplingRemainUnchanged() {
         PeriodicNoiseUtil.PlaneSampler sampler = (first, second) ->
                 first * 0.17D + second * second * 0.003D;
@@ -190,6 +239,11 @@ class PeriodicNoiseUtilTest {
     private static HexTileGeometry hex(int tileSizeChunks) {
         return new HexTileGeometry(
                 new DimensionTiling(TilingMode.HEX, true, tileSizeChunks, TerrainMode.EDGE_BLEND));
+    }
+
+    private static OffsetSquareTileGeometry offsetSquare(int tileSizeChunks) {
+        return new OffsetSquareTileGeometry(
+                new DimensionTiling(TilingMode.OFFSET_SQUARE, true, tileSizeChunks, TerrainMode.EDGE_BLEND));
     }
 
     private static double legacySquareEdge(

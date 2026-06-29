@@ -21,10 +21,11 @@ Square world period:
 - `W_BLOCKS = W_CHUNKS * 16`.
 - Canonical zone: centered on origin, `[-W/2, W/2)` in chunk/block X/Z.
 
-Experimental hex worlds use a chunk-mask tile instead of independent X/Z
-periods. The saved `tile_size` is normalized to a valid approximate hex width;
-`TileGeometry` owns the discrete mask, lattice translations, canonical owners,
-nearest aliases, and broad query boxes.
+Experimental offset-square and hex worlds use coupled two-dimensional lattice
+translations instead of independent X/Z aliases. Offset-square keeps the
+canonical `W x W` square while shifting east/west neighbors by half a tile;
+hex uses a chunk mask. `TileGeometry` owns canonicalization, lattice
+translations, nearest aliases, and broad query boxes for both.
 
 ## Start Here
 
@@ -67,6 +68,7 @@ nearest aliases, and broad query boxes.
 | Area | Status | Mechanic file |
 | --- | --- | --- |
 | Coordinate helpers | Done | [topology.md](topology.md) |
+| Offset-square Overworld topology | Implemented; manual seam acceptance remains | [topology.md](topology.md) |
 | Dimension-specific tiling | Implemented | [topology.md](topology.md) |
 | Topological raycast primitives | Implemented | [topology.md](topology.md) |
 | Chunk lookup and packet relabeling | Done | [chunks.md](chunks.md) |

@@ -152,15 +152,8 @@ public class CoordUtil {
     }
 
     public static BlockPos wrapBlockPos(DimensionTiling tiling, BlockPos pos) {
-        if (tiling.mode() == globe.world.config.TilingMode.HEX) {
-            return TileGeometry.create(tiling).canonicalBlock(pos.getX(), pos.getY(), pos.getZ());
-        }
-        int x = wrapBlock(tiling, pos.getX());
-        int z = wrapBlock(tiling, pos.getZ());
-        if (x == pos.getX() && z == pos.getZ()) {
-            return pos;
-        }
-        return new BlockPos(x, pos.getY(), z);
+        BlockPos canonical = TileGeometry.create(tiling).canonicalBlock(pos.getX(), pos.getY(), pos.getZ());
+        return canonical.equals(pos) ? pos : canonical;
     }
 
     public static ChunkPos wrapChunkPos(ChunkPos pos) {
@@ -176,15 +169,8 @@ public class CoordUtil {
     }
 
     public static ChunkPos wrapChunkPos(DimensionTiling tiling, ChunkPos pos) {
-        if (tiling.mode() == globe.world.config.TilingMode.HEX) {
-            return TileGeometry.create(tiling).canonicalChunk(pos.x(), pos.z());
-        }
-        int x = wrapChunk(tiling, pos.x());
-        int z = wrapChunk(tiling, pos.z());
-        if (x == pos.x() && z == pos.z()) {
-            return pos;
-        }
-        return new ChunkPos(x, z);
+        ChunkPos canonical = TileGeometry.create(tiling).canonicalChunk(pos.x(), pos.z());
+        return canonical.equals(pos) ? pos : canonical;
     }
 
     public static int tileAliasChunk(int chunk) {
@@ -226,11 +212,7 @@ public class CoordUtil {
     }
 
     public static boolean isInCanonicalTile(DimensionTiling tiling, BlockPos pos) {
-        if (tiling.mode() == globe.world.config.TilingMode.HEX) {
-            return TileGeometry.create(tiling).isCanonicalBlock(pos);
-        }
-        return !tiling.enabled()
-                || (pos.getX() == wrapBlock(tiling, pos.getX()) && pos.getZ() == wrapBlock(tiling, pos.getZ()));
+        return TileGeometry.create(tiling).isCanonicalBlock(pos);
     }
 
     public static double wrappedDeltaBlock(double a, double b) {
@@ -259,14 +241,9 @@ public class CoordUtil {
     }
 
     public static double wrappedDistanceSqrXZ(DimensionTiling tiling, double ax, double az, double bx, double bz) {
-        if (tiling.mode() == globe.world.config.TilingMode.HEX) {
-            return TileGeometry.create(tiling).wrappedDistanceSqr(
-                    new Vec3(ax, 0.0D, az),
-                    new Vec3(bx, 0.0D, bz));
-        }
-        double dx = wrappedDeltaBlock(tiling, ax, bx);
-        double dz = wrappedDeltaBlock(tiling, az, bz);
-        return dx * dx + dz * dz;
+        return TileGeometry.create(tiling).wrappedDistanceSqr(
+                new Vec3(ax, 0.0D, az),
+                new Vec3(bx, 0.0D, bz));
     }
 
     public static double wrappedDistanceSqr(double ax, double ay, double az, double bx, double by, double bz) {
@@ -278,11 +255,7 @@ public class CoordUtil {
     }
 
     public static double wrappedDistanceSqr(DimensionTiling tiling, double ax, double ay, double az, double bx, double by, double bz) {
-        if (tiling.mode() == globe.world.config.TilingMode.HEX) {
-            return TileGeometry.create(tiling).wrappedDistanceSqr(new Vec3(ax, ay, az), new Vec3(bx, by, bz));
-        }
-        double dy = ay - by;
-        return wrappedDistanceSqrXZ(tiling, ax, az, bx, bz) + dy * dy;
+        return TileGeometry.create(tiling).wrappedDistanceSqr(new Vec3(ax, ay, az), new Vec3(bx, by, bz));
     }
 
     public static double wrappedDistanceSqr(Entity a, Entity b) {
@@ -298,10 +271,7 @@ public class CoordUtil {
     }
 
     public static double wrappedChunkDistanceSqr(DimensionTiling tiling, ChunkPos chunkPos, Vec3 pos) {
-        if (tiling.mode() == globe.world.config.TilingMode.HEX) {
-            return TileGeometry.create(tiling).wrappedChunkDistanceSqr(chunkPos, pos);
-        }
-        return wrappedDistanceSqrXZ(tiling, chunkPos.getMiddleBlockX(), chunkPos.getMiddleBlockZ(), pos.x, pos.z);
+        return TileGeometry.create(tiling).wrappedChunkDistanceSqr(chunkPos, pos);
     }
 
     public static double virtualBlock(double canonical, double viewer) {
@@ -344,17 +314,9 @@ public class CoordUtil {
     }
 
     public static AABB virtualAabb(DimensionTiling tiling, AABB canonical, double viewerX, double viewerZ) {
-        if (tiling.mode() == globe.world.config.TilingMode.HEX) {
-            return TileGeometry.create(tiling).virtualBoxForViewer(canonical, new Vec3(viewerX, canonical.getCenter().y(), viewerZ));
-        }
-        double centerX = (canonical.minX + canonical.maxX) * 0.5;
-        double centerZ = (canonical.minZ + canonical.maxZ) * 0.5;
-        double dx = virtualBlock(tiling, centerX, viewerX) - centerX;
-        double dz = virtualBlock(tiling, centerZ, viewerZ) - centerZ;
-        if (dx == 0.0 && dz == 0.0) {
-            return canonical;
-        }
-        return canonical.move(dx, 0.0, dz);
+        return TileGeometry.create(tiling).virtualBoxForViewer(
+                canonical,
+                new Vec3(viewerX, canonical.getCenter().y(), viewerZ));
     }
 
     public static AABB wrapAabb(Level level, AABB box) {
@@ -362,17 +324,7 @@ public class CoordUtil {
     }
 
     public static AABB wrapAabb(DimensionTiling tiling, AABB box) {
-        if (tiling.mode() == globe.world.config.TilingMode.HEX) {
-            return TileGeometry.create(tiling).canonicalBox(box);
-        }
-        double centerX = (box.minX + box.maxX) * 0.5;
-        double centerZ = (box.minZ + box.maxZ) * 0.5;
-        double dx = wrapBlock(tiling, centerX) - centerX;
-        double dz = wrapBlock(tiling, centerZ) - centerZ;
-        if (dx == 0.0 && dz == 0.0) {
-            return box;
-        }
-        return box.move(dx, 0.0, dz);
+        return TileGeometry.create(tiling).canonicalBox(box);
     }
 
     /** Returns the virtual tile of canonical coord nearest to playerCoord. */
