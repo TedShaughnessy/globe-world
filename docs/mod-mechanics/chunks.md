@@ -89,6 +89,6 @@ safe to discard because new chunk sends repopulate them.
 - Confirm alias ticket cleanup remains complete during all level shutdown paths.
 - Keep chunk load diagnostics limited to targeted warning/debug flows.
 - Prevent tiny-tile raw alias demand from producing large numbers of persisted
-  vanilla chunk records. An 8-chunk hex has only 64 canonical owners, but manual
+  vanilla chunk records. An 8-chunk hex has only 48 canonical owners, but manual
   testing with a render distance larger than the tile showed raw alias chunk
   holders creating substantial generation, save, and streaming overhead.

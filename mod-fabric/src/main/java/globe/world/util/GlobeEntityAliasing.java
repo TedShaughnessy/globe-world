@@ -183,7 +183,7 @@ public final class GlobeEntityAliasing {
                     entityBox,
                     cameraPos,
                     renderRadius,
-                    maxOffset,
+                    padding,
                     ringLimit
             );
         }
@@ -228,10 +228,12 @@ public final class GlobeEntityAliasing {
             AABB entityBox,
             Vec3 cameraPos,
             double renderRadius,
-            int maxOffset,
+            double padding,
             int ringLimit) {
         HexTileGeometry geometry = (HexTileGeometry) TileGeometry.create(tiling);
         AABB canonicalSourceBox = geometry.canonicalBox(sourceBox);
+        int maxOffset = (int) Math.ceil(
+                (renderRadius + padding) / (geometry.horizontalSpacingChunks() * 16.0D));
         int latticeRadius = ringLimit == Integer.MAX_VALUE
                 ? maxOffset
                 : Math.min(maxOffset, ringLimit);
@@ -249,11 +251,15 @@ public final class GlobeEntityAliasing {
                 continue;
             }
 
-            int latticeL = (int) Math.rint(dz / (geometry.heightChunks() * 16.0D));
+            TileGeometry.LatticeBasis basis = geometry.latticeBasis();
+            double dxChunks = dx / 16.0D;
+            double dzChunks = dz / 16.0D;
+            double determinant = basis.a().x() * (double) basis.b().z()
+                    - basis.a().z() * (double) basis.b().x();
             int latticeK = (int) Math.rint(
-                    (dx - latticeL * geometry.widthChunks() * 8.0D)
-                            / (geometry.widthChunks() * 16.0D)
-            );
+                    (dxChunks * basis.b().z() - dzChunks * basis.b().x()) / determinant);
+            int latticeL = (int) Math.rint(
+                    (basis.a().x() * dzChunks - basis.a().z() * dxChunks) / determinant);
             offsets.add(new AliasOffset(
                     latticeK,
                     latticeL,

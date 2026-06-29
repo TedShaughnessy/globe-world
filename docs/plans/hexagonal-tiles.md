@@ -9,9 +9,8 @@ The first-run scope is preserved in
 The current milestone is **hex product integration without seamless
 generation**. Topology diagnostics, the Atlas lattice projection, and the
 residual non-worldgen gameplay audit are implemented. Remaining work is broader
-Atlas seam regression coverage and a save-stable contract for any future
-geometry revision. Visible terrain seams remain acceptable throughout this
-milestone.
+Atlas seam regression coverage and the six-seam manual acceptance matrix.
+Visible terrain seams remain acceptable throughout this milestone.
 
 ## Goal
 
@@ -37,24 +36,26 @@ until the topology, atlas projection, and seam behavior are proven.
 
 ## Current Geometry Decision
 
-The implemented mask has narrow tips at the top and bottom when X is drawn
-horizontally and Z vertically. This differs from the original left/right-pointed
-sketch, but the topology is otherwise valid and already has runtime coverage.
+The implemented mask has narrow tips at the left and right when X is drawn
+horizontally and Z vertically, matching the original east/west orientation.
+This orientation is geometry revision `hex-east-west-v1`:
 
-The debug slice freezes this orientation as geometry revision
-`hex-top-bottom-v1` before adding persistent Atlas projection data:
-
-- it avoids rotating an already working runtime topology;
-- lattice `A = (width, 0)` gives the Atlas a natural horizontal cycle;
-- lattice `B = (width / 2, height)` gives the second oblique cycle;
-- local solar time can use lattice U as a periodic longitude;
-- debug labels and tests can name the six translations `+A`, `-A`, `+B`,
-  `-B`, `+(A-B)`, and `-(A-B)`.
+- saved `tile_size` remains the approximate tip-to-tip width;
+- horizontal lattice spacing is three quarters of that width;
+- lattice `A = (horizontal spacing, half height)` gives one oblique cycle;
+- lattice `B = (0, height)` gives a north/south cycle with no longitude change;
+- `A-B` gives the other oblique cycle;
+- local solar time uses horizontal lattice spacing as its X period, so all
+  aliases and every north/south line agree;
+- debug labels and tests name the six translations `+A`, `-A`, `+B`, `-B`,
+  `+(A-B)`, and `-(A-B)`.
 
 Any future mask change must use a new geometry revision and an explicit
 migration. Orientation, tie-breaking, size normalization, lattice vectors, and
 chunk-mask ownership are save contracts rather than incidental implementation
-details.
+details. The transition from the earlier experimental north/south mask does not
+migrate its canonical ownership; the new revision causes persisted Atlas
+layouts to be rejected and recreated instead of misinterpreted.
 
 ## Shape Requirements
 
@@ -73,19 +74,14 @@ polygon applied at block precision. The mask must satisfy:
   the containing chunk first, then applying the same chunk translation to the
   block-local coordinates.
 
-The first implementation should choose one orientation and keep it fixed. A
-left/right-pointed hex is the natural fit for the "left and right points"
-design constraint, while still allowing the Atlas to expose a rectangular torus
+The fixed left/right-pointed orientation satisfies the "left and right points"
+design constraint while still allowing the Atlas to expose a rectangular torus
 in hex-lattice coordinates.
 
 ## Topology Model
 
 `TileGeometry`, `SquareTileGeometry`, `HexTileGeometry`, and the
-`TopologyContext` delegation boundary now exist. The remaining work is to make
-the geometry describe itself to diagnostics, projections, and systems that
-still need lattice coordinates.
-
-Add geometry-neutral value objects or methods for:
+`TopologyContext` delegation boundary expose geometry-neutral descriptions for:
 
 - a geometry/projection revision suitable for persistent-data compatibility;
 - canonical chunk count and canonical block area;
@@ -98,8 +94,9 @@ Add geometry-neutral value objects or methods for:
 - normalized torus coordinates and their inverse, as described in
   [Atlas Projection](#atlas-projection).
 
-Do not make callers cast to `HexTileGeometry`. Square geometry should implement
-the same descriptive API with its ordinary orthogonal basis.
+Square geometry implements the same descriptive API with its ordinary
+orthogonal basis. Runtime callers generally avoid casting to `HexTileGeometry`;
+the specialized visual entity alias enumerator is the current exception.
 
 ## Runtime Systems
 
@@ -209,7 +206,7 @@ The projection boundary derived from `TileGeometry` provides:
 - canonical chunk count, block area, and a stable projection identity.
 
 For the implemented hex lattice, use the `A/B` basis. Conceptually, with
-`A = (width, 0)` and `B = (width / 2, height)`, solve
+`A = (horizontal spacing, half height)` and `B = (0, height)`, solve
 `position = u*A + v*B`, wrap `u` and `v` modulo one, and canonicalize the
 inverse representative through `TileGeometry`. This makes all translations by
 `A`, `B`, and `A-B` land on the same Atlas coordinate. Define pixel-center and
@@ -327,12 +324,11 @@ The edge blend contract is:
 
 ### Local Solar Time
 
-World X is not a valid hex longitude by itself because the oblique `B`
-translation changes X while referring to the same canonical place. Use lattice
-U as the recommended longitude axis. It is periodic under both basis
-translations and matches the horizontal Atlas cycle. Route sky, lightmap,
-sleep/spawn gates, clocks, debug output, and other local-time users through one
-geometry-aware longitude helper.
+Status: implemented through geometry-aware longitude helpers. The east/west
+orientation makes X a valid longitude: `B` preserves X, while `A` and `A-B`
+change X by one horizontal lattice period. Sky, lightmap, sleep/spawn gates,
+clocks, debug output, and other local-time users therefore agree at every alias
+and remain constant north to south.
 
 ### Settings And Explanations
 
@@ -391,7 +387,8 @@ Next, outside seamless generation:
 6. ~~Audit the remaining non-worldgen square-helper call sites: spawn/respawn,
    portals, lodestones/compasses, fishing, filled maps, spawning/distance, and
    client presentation.~~
-7. Choose lattice-U local solar time and migrate all local-time consumers.
+7. ~~Orient the hex east/west and make local solar time alias-invariant along
+   north/south lines.~~
 8. Run the six-seam non-generation acceptance matrix and profile tiny tiles.
 
 Later generation track:

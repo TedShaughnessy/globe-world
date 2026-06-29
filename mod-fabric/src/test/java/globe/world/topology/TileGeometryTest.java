@@ -2,6 +2,7 @@ package globe.world.topology;
 
 import globe.world.atlas.GlobeAtlasSurveyWindows;
 import globe.world.config.TilingMode;
+import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.TerrainMode;
 import net.minecraft.SharedConstants;
@@ -37,6 +38,8 @@ class TileGeometryTest {
         assertEquals(new BlockPos(-128, 64, 127), geometry.canonicalBlock(128, 64, -129));
         assertEquals(new ChunkPos(24, -25), geometry.nearestAlias(new ChunkPos(-8, 7), new ChunkPos(20, -20)));
         assertEquals(4.0D, geometry.wrappedDistanceSqr(new Vec3(127, 0, 0), new Vec3(-127, 0, 0)));
+        assertEquals(256, geometry.longitudePeriodBlocks());
+        assertEquals(-128.0D, geometry.canonicalLongitude(128.0D));
     }
 
     @Test
@@ -70,26 +73,28 @@ class TileGeometryTest {
     @Test
     void minimumHexHasExpectedMaskAndLattice() {
         HexTileGeometry geometry = hex(8);
-        List<Integer> rowWidths = new java.util.ArrayList<>();
+        List<Integer> columnHeights = new java.util.ArrayList<>();
         int canonicalChunks = 0;
-        for (int z = -5; z <= 4; z++) {
-            int rowWidth = 0;
-            for (int x = -4; x <= 3; x++) {
+        for (int x = -4; x <= 3; x++) {
+            int columnHeight = 0;
+            for (int z = -4; z <= 3; z++) {
                 if (geometry.isCanonicalChunk(new ChunkPos(x, z))) {
-                    rowWidth++;
+                    columnHeight++;
                     canonicalChunks++;
                 }
             }
-            rowWidths.add(rowWidth);
+            columnHeights.add(columnHeight);
         }
 
         assertEquals(8, geometry.widthChunks());
         assertEquals(8, geometry.heightChunks());
-        assertEquals(64, canonicalChunks);
-        assertEquals(List.of(2, 6, 8, 8, 8, 8, 8, 8, 6, 2), rowWidths);
-        assertEquals(new ChunkPos(8, 0), geometry.latticeA());
-        assertEquals(new ChunkPos(4, 8), geometry.latticeB());
-        assertEquals(new ChunkPos(4, -8), geometry.latticeC());
+        assertEquals(6, geometry.horizontalSpacingChunks());
+        assertEquals("hex-east-west-v1", geometry.geometryRevision());
+        assertEquals(48, canonicalChunks);
+        assertEquals(List.of(2, 6, 8, 8, 8, 8, 6, 2), columnHeights);
+        assertEquals(new ChunkPos(6, 4), geometry.latticeA());
+        assertEquals(new ChunkPos(0, 8), geometry.latticeB());
+        assertEquals(new ChunkPos(6, -4), geometry.latticeC());
     }
 
     @Test
@@ -188,7 +193,7 @@ class TileGeometryTest {
         HexTileGeometry geometry = hex(16);
 
         assertEquals(16 * 16, square.canonicalChunkCount());
-        assertEquals(16 * 14, geometry.canonicalChunkCount());
+        assertEquals(12 * 14, geometry.canonicalChunkCount());
         int maskChunks = 0;
         for (int x = -32; x <= 32; x++) {
             for (int z = -32; z <= 32; z++) {
@@ -198,6 +203,33 @@ class TileGeometryTest {
             }
         }
         assertEquals(geometry.canonicalChunkCount(), maskChunks);
+    }
+
+    @Test
+    void hexLongitudeIsConstantNorthToSouthAndAcrossEveryAlias() {
+        HexTileGeometry geometry = hex(16);
+        DimensionTiling tiling = geometry.tiling();
+        double x = 37.25D;
+        double expected = CoordUtil.longitudeOffsetTicks(tiling, x);
+
+        assertEquals(geometry.horizontalSpacingChunks() * 16, geometry.longitudePeriodBlocks());
+        assertEquals(expected, CoordUtil.longitudeOffsetTicks(tiling, x), 1.0E-12D);
+        assertEquals(
+                CoordUtil.longitudeOffsetTicks(tiling, new BlockPos(37, 64, -10_000)),
+                CoordUtil.longitudeOffsetTicks(tiling, new BlockPos(37, 64, 10_000)),
+                1.0E-12D);
+        for (ChunkPos translation : List.of(
+                geometry.latticeA(),
+                geometry.latticeB(),
+                geometry.latticeC(),
+                new ChunkPos(-geometry.latticeA().x(), -geometry.latticeA().z()),
+                new ChunkPos(-geometry.latticeB().x(), -geometry.latticeB().z()),
+                new ChunkPos(-geometry.latticeC().x(), -geometry.latticeC().z()))) {
+            assertEquals(
+                    expected,
+                    CoordUtil.longitudeOffsetTicks(tiling, x + translation.x() * 16.0D),
+                    1.0E-9D);
+        }
     }
 
     @Test
@@ -258,7 +290,7 @@ class TileGeometryTest {
                 assertEquals(new AtlasTorusProjection.Pixel(u, v), projection.pixel(sample.x(), sample.z(), 512));
             }
         }
-        assertEquals(16 * 14, projection.canonicalChunkCount());
+        assertEquals(12 * 14, projection.canonicalChunkCount());
     }
 
     @Test
@@ -266,7 +298,7 @@ class TileGeometryTest {
         DimensionTiling tiling = hex(16).tiling();
         int cell = GlobeAtlasSurveyWindows.cellIndex(tiling, 7, 0, -8, 0);
 
-        assertEquals(257 + 256 * GlobeAtlasSurveyWindows.PLACED_WINDOW_CHUNKS, cell);
+        assertEquals(253 + 263 * GlobeAtlasSurveyWindows.PLACED_WINDOW_CHUNKS, cell);
     }
 
     private static HexTileGeometry hex(int tileSizeChunks) {

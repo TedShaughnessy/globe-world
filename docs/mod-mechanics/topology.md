@@ -49,7 +49,7 @@ translation is derived from those vectors.
 The geometry also exposes diagnostic metadata without requiring callers to cast
 to its square or hex implementation:
 
-- a save-facing geometry revision (`square-v1` or `hex-top-bottom-v1`);
+- a save-facing geometry revision (`square-v1` or `hex-east-west-v1`);
 - lattice basis vectors `A` and `B`;
 - the integer lattice coordinate `(k, l)` for a raw chunk;
 - the corresponding `k*A + l*B` translation;
@@ -88,30 +88,39 @@ topology, normalizes `tile_size` to a multiple of four chunks with a minimum of
 eight chunks, and resolves terrain mode to `EDGE_BLEND`. Nether hex topology is
 not enabled yet; Nether wrapping still only activates for square mode.
 
-The first hex mask is fixed-orientation and chunk-precision. With X drawn
-horizontally and Z vertically, the implemented mask has its narrow tips at the
-top and bottom; this differs from the left/right-pointed orientation proposed in
-the original plan. It uses integer lattice translation vectors `A`, `B`, and
-`A - B`; every raw chunk chooses the nearest lattice copy and maps back to one
-canonical owner. Block canonicalization canonicalizes the containing chunk
-first and applies the same whole-chunk translation to the block-local
-coordinate. Nearest visible aliases are chosen with a bounded candidate search
-around the viewer rather than closed-form math.
+The hex mask is fixed-orientation and chunk-precision. With X drawn horizontally
+and Z vertically, its narrow tips point east and west. The configured
+`tile_size` remains the approximate tip-to-tip width. Its horizontal lattice
+spacing is three quarters of that width, while its vertical spacing is the
+nearest supported even chunk count to `sqrt(3) / 2` of the width. The basis is
+`A = (horizontal spacing, half height)` and `B = (0, height)`; `A - B` supplies
+the third edge relation.
 
-For the minimum saved width of `8` chunks, the normalized mask has `64`
-canonical chunks. Its lattice translations are `(8, 0)`, `(4, 8)`, and
-`(4, -8)` chunks, or `(128, 0)`, `(64, 128)`, and `(64, -128)` blocks. The
-canonical rows run from Z chunk `-5` through `4`: the two tip rows contain two
-chunks, the next rows contain six, and the six middle rows contain eight.
-Translating the complete mask by any of the six signed lattice vectors covers
-the neighboring copy without changing canonical ownership.
+Every raw chunk chooses the nearest lattice copy and maps back to one canonical
+owner. Block canonicalization canonicalizes the containing chunk first and
+applies the same whole-chunk translation to the block-local coordinate. Nearest
+visible aliases are chosen with a bounded candidate search around the viewer
+rather than closed-form math.
+
+For the minimum saved width of `8` chunks, the normalized mask has `48`
+canonical chunks. Its lattice translations are `(6, 4)`, `(0, 8)`, and
+`(6, -4)` chunks, or `(96, 64)`, `(0, 128)`, and `(96, -64)` blocks. The
+canonical columns run from X chunk `-4` through `3`: the two tip columns contain
+two chunks, their neighbors contain six, and the four middle columns contain
+eight. Translating the complete mask by any of the six signed lattice vectors
+covers the neighboring copy without changing canonical ownership.
+
+The geometry also defines longitude. Square worlds use their tile width. Hex
+worlds use the east/west lattice spacing, so `A` and `A-B` change X by exactly
+one solar period while `B` does not change X. Local time is therefore identical
+for every alias and remains constant along north/south lines.
 
 The first run is a runtime topology slice, not a seamless generation milestone.
 Chunk ownership, block mutation, packet relabeling, entity tracking/query
 helpers, POI broad queries, game events, explosions, and bounded worldgen
-ownership helpers use the geometry boundary. Terrain, biome, cave, feature,
-structure, local-solar-time, and Atlas projection continuity remain square-first
-or explicitly deferred for later hex work.
+ownership helpers use the geometry boundary. The Atlas projection and local
+solar time also consume the geometry lattice. Terrain, biome, cave, feature,
+and structure continuity remain deferred for later hex work.
 
 ## Topological Entity Queries
 

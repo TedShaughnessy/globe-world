@@ -95,7 +95,8 @@ public class CoordUtil {
         if (!tiling.enabled()) {
             return 0.0;
         }
-        return wrapBlock(tiling, x) * MINECRAFT_DAY_TICKS / tiling.tileSizeBlocks();
+        TileGeometry geometry = TileGeometry.create(tiling);
+        return geometry.canonicalLongitude(x) * MINECRAFT_DAY_TICKS / geometry.longitudePeriodBlocks();
     }
 
     public static double localSolarTimeTicks(Level level, BlockPos pos) {

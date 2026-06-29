@@ -82,6 +82,23 @@ public interface TileGeometry {
                         - basis.a().z() * basis.b().x());
     }
 
+    default int longitudePeriodBlocks() {
+        LatticeBasis basis = latticeBasis();
+        int periodChunks = greatestCommonDivisor(Math.abs(basis.a().x()), Math.abs(basis.b().x()));
+        if (periodChunks == 0) {
+            throw new IllegalStateException("Tile geometry must have a non-zero east/west lattice period");
+        }
+        return periodChunks * 16;
+    }
+
+    default double canonicalLongitude(double rawX) {
+        if (!enabled()) {
+            return rawX;
+        }
+        int period = longitudePeriodBlocks();
+        return rawX - Math.floor((rawX + period * 0.5D) / period) * period;
+    }
+
     default ChunkPos latticeTranslation(LatticeCoordinate coordinate) {
         return latticeBasis().translation(coordinate);
     }
@@ -194,6 +211,15 @@ public interface TileGeometry {
             double boundaryX,
             double boundaryZ,
             double distance) {
+    }
+
+    private static int greatestCommonDivisor(int a, int b) {
+        while (b != 0) {
+            int remainder = a % b;
+            a = b;
+            b = remainder;
+        }
+        return a;
     }
 }
 

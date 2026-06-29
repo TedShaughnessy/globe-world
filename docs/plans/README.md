@@ -13,9 +13,8 @@ point for current behavior and modded code anchors.
   social follow, temptation, short-range movement, and brain/social behaviors
   that still need actor-local alias handling after the owner-adjacent tameable
   fixes.
-- [Hexagonal tiles](hexagonal-tiles.md): post-MVP plan for remaining
-  non-worldgen integration, Atlas regression coverage, and later edge-blend
-  terrain continuity.
+- [Hexagonal tiles](hexagonal-tiles.md): post-MVP plan for manual/Atlas
+  regression coverage and later edge-blend terrain continuity.
 - [Large-tile Atlas biome projection follow-ups](large-tile-atlas-biome-projection.md):
   remaining UX and palette questions after implementing survey-mode
   biome-colored projections for large tiles.

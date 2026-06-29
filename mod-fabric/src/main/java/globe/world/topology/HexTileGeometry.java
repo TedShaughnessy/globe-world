@@ -19,11 +19,13 @@ public final class HexTileGeometry implements TileGeometry {
 
     private final DimensionTiling tiling;
     private final int widthChunks;
-    private final int halfWidthChunks;
+    private final int horizontalSpacingChunks;
     private final int heightChunks;
+    private final int halfHeightChunks;
     private final int widthBlocks;
-    private final int halfWidthBlocks;
+    private final int horizontalSpacingBlocks;
     private final int heightBlocks;
+    private final int halfHeightBlocks;
     private final Bounds canonicalChunkBounds;
     private final AABB canonicalBlockBounds;
     private final LatticeBasis latticeBasis;
@@ -32,11 +34,13 @@ public final class HexTileGeometry implements TileGeometry {
     public HexTileGeometry(DimensionTiling tiling) {
         this.tiling = tiling;
         this.widthChunks = TopologySettings.sanitizeHexTileSize(tiling.tileSizeChunks());
-        this.halfWidthChunks = widthChunks / 2;
+        this.horizontalSpacingChunks = widthChunks * 3 / 4;
         this.heightChunks = hexHeightChunks(widthChunks);
+        this.halfHeightChunks = heightChunks / 2;
         this.widthBlocks = widthChunks * 16;
-        this.halfWidthBlocks = halfWidthChunks * 16;
+        this.horizontalSpacingBlocks = horizontalSpacingChunks * 16;
         this.heightBlocks = heightChunks * 16;
+        this.halfHeightBlocks = halfHeightChunks * 16;
         this.canonicalChunkBounds = computeCanonicalChunkBounds();
         this.canonicalBlockBounds = new AABB(
                 canonicalChunkBounds.minX() * 16.0D,
@@ -56,7 +60,7 @@ public final class HexTileGeometry implements TileGeometry {
 
     @Override
     public String geometryRevision() {
-        return "hex-top-bottom-v1";
+        return "hex-east-west-v1";
     }
 
     @Override
@@ -72,8 +76,8 @@ public final class HexTileGeometry implements TileGeometry {
         ChunkPos canonical = canonicalChunk(raw.x(), raw.z());
         int dx = raw.x() - canonical.x();
         int dz = raw.z() - canonical.z();
-        int l = dz / heightChunks;
-        int k = (dx - l * halfWidthChunks) / widthChunks;
+        int k = dx / horizontalSpacingChunks;
+        int l = (dz - k * halfHeightChunks) / heightChunks;
         return new LatticeCoordinate(k, l);
     }
 
@@ -101,16 +105,20 @@ public final class HexTileGeometry implements TileGeometry {
         return heightChunks;
     }
 
+    public int horizontalSpacingChunks() {
+        return horizontalSpacingChunks;
+    }
+
     public ChunkPos latticeA() {
-        return new ChunkPos(widthChunks, 0);
+        return new ChunkPos(horizontalSpacingChunks, halfHeightChunks);
     }
 
     public ChunkPos latticeB() {
-        return new ChunkPos(halfWidthChunks, heightChunks);
+        return new ChunkPos(0, heightChunks);
     }
 
     public ChunkPos latticeC() {
-        return new ChunkPos(halfWidthChunks, -heightChunks);
+        return new ChunkPos(horizontalSpacingChunks, -halfHeightChunks);
     }
 
     @Override
@@ -255,7 +263,12 @@ public final class HexTileGeometry implements TileGeometry {
         Map<String, AABB> boxes = new LinkedHashMap<>();
         for (int dk = -radius; dk <= radius; dk++) {
             for (int dl = -radius; dl <= radius; dl++) {
-                LatticeOffset offset = LatticeOffset.from(base.k() + dk, base.l() + dl, widthChunks, halfWidthChunks, heightChunks);
+                LatticeOffset offset = LatticeOffset.from(
+                        base.k() + dk,
+                        base.l() + dl,
+                        horizontalSpacingChunks,
+                        heightChunks,
+                        halfHeightChunks);
                 AABB canonicalCandidate = visibleBox.move(-offset.xBlocks(), 0.0D, -offset.zBlocks());
                 if (!intersectsCanonicalBounds(canonicalCandidate)) {
                     continue;
@@ -276,7 +289,12 @@ public final class HexTileGeometry implements TileGeometry {
         List<BlockPos> aliases = new ArrayList<>();
         for (int dk = -clampedRadius; dk <= clampedRadius; dk++) {
             for (int dl = -clampedRadius; dl <= clampedRadius; dl++) {
-                LatticeOffset offset = LatticeOffset.from(base.k() + dk, base.l() + dl, widthChunks, halfWidthChunks, heightChunks);
+                LatticeOffset offset = LatticeOffset.from(
+                        base.k() + dk,
+                        base.l() + dl,
+                        horizontalSpacingChunks,
+                        heightChunks,
+                        halfHeightChunks);
                 aliases.add(canonical.offset(offset.xBlocks(), 0, offset.zBlocks()));
             }
         }
@@ -297,7 +315,12 @@ public final class HexTileGeometry implements TileGeometry {
         List<AABB> boxes = new ArrayList<>();
         for (int dk = -radius; dk <= radius; dk++) {
             for (int dl = -radius; dl <= radius; dl++) {
-                LatticeOffset offset = LatticeOffset.from(base.k() + dk, base.l() + dl, widthChunks, halfWidthChunks, heightChunks);
+                LatticeOffset offset = LatticeOffset.from(
+                        base.k() + dk,
+                        base.l() + dl,
+                        horizontalSpacingChunks,
+                        heightChunks,
+                        halfHeightChunks);
                 boxes.add(canonicalBox.move(offset.xBlocks(), 0.0D, offset.zBlocks()));
             }
         }
@@ -327,40 +350,48 @@ public final class HexTileGeometry implements TileGeometry {
     }
 
     private LatticeOffset nearestChunkLattice(double x, double z) {
-        return nearestLattice(x, z, widthChunks, halfWidthChunks, heightChunks);
+        return nearestLattice(x, z, horizontalSpacingChunks, heightChunks, halfHeightChunks);
     }
 
     private LatticeOffset nearestBlockLattice(double x, double z) {
-        return nearestLattice(x, z, widthBlocks, halfWidthBlocks, heightBlocks, widthChunks, halfWidthChunks, heightChunks);
+        return nearestLattice(
+                x,
+                z,
+                horizontalSpacingBlocks,
+                heightBlocks,
+                halfHeightBlocks,
+                horizontalSpacingChunks,
+                heightChunks,
+                halfHeightChunks);
     }
 
-    private static LatticeOffset nearestLattice(double x, double z, int width, int halfWidth, int height) {
-        return nearestLattice(x, z, width, halfWidth, height, width, halfWidth, height);
+    private static LatticeOffset nearestLattice(double x, double z, int width, int height, int halfHeight) {
+        return nearestLattice(x, z, width, height, halfHeight, width, height, halfHeight);
     }
 
     private static LatticeOffset nearestLattice(
             double x,
             double z,
             int unitWidth,
-            int unitHalfWidth,
             int unitHeight,
+            int unitHalfHeight,
             int chunkWidth,
-            int chunkHalfWidth,
-            int chunkHeight) {
-        double approxL = z / (double) unitHeight;
-        double approxK = (x - approxL * unitHalfWidth) / (double) unitWidth;
+            int chunkHeight,
+            int chunkHalfHeight) {
+        double approxK = x / (double) unitWidth;
+        double approxL = (z - approxK * unitHalfHeight) / (double) unitHeight;
         int centerK = (int) Math.rint(approxK);
         int centerL = (int) Math.rint(approxL);
         LatticeOffset best = null;
         double bestDistance = Double.POSITIVE_INFINITY;
         for (int k = centerK - NEAREST_SEARCH_RADIUS; k <= centerK + NEAREST_SEARCH_RADIUS; k++) {
             for (int l = centerL - NEAREST_SEARCH_RADIUS; l <= centerL + NEAREST_SEARCH_RADIUS; l++) {
-                int offsetX = k * unitWidth + l * unitHalfWidth;
-                int offsetZ = l * unitHeight;
+                int offsetX = k * unitWidth;
+                int offsetZ = k * unitHalfHeight + l * unitHeight;
                 double dx = x - offsetX;
                 double dz = z - offsetZ;
                 double distance = dx * dx + dz * dz;
-                LatticeOffset candidate = LatticeOffset.from(k, l, chunkWidth, chunkHalfWidth, chunkHeight);
+                LatticeOffset candidate = LatticeOffset.from(k, l, chunkWidth, chunkHeight, chunkHalfHeight);
                 if (best == null || distance < bestDistance || (distance == bestDistance && candidate.compareTo(best) < 0)) {
                     best = candidate;
                     bestDistance = distance;
@@ -446,11 +477,11 @@ public final class HexTileGeometry implements TileGeometry {
     private record LatticeOffset(int k, int l, int xChunks, int zChunks) implements Comparable<LatticeOffset> {
         private static final LatticeOffset ORIGIN = new LatticeOffset(0, 0, 0, 0);
 
-        private static LatticeOffset from(int k, int l, int widthChunks, int halfWidthChunks, int heightChunks) {
+        private static LatticeOffset from(int k, int l, int widthChunks, int heightChunks, int halfHeightChunks) {
             if (k == 0 && l == 0) {
                 return ORIGIN;
             }
-            return new LatticeOffset(k, l, k * widthChunks + l * halfWidthChunks, l * heightChunks);
+            return new LatticeOffset(k, l, k * widthChunks, k * halfHeightChunks + l * heightChunks);
         }
 
         private boolean isOrigin() {

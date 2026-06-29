@@ -191,7 +191,7 @@ stacks are skipped.
 
 Square worlds enumerate independent X/Z tile offsets. Experimental hex worlds
 enumerate the geometry's lattice translations instead, so diagonal visual
-copies use the same `(half width, hex height)` shift as the terrain chunks
+copies use the same `(horizontal spacing, half height)` shift as the terrain chunks
 beneath them. Whole-tile packet rebases use the same geometry-aware equivalence
 test to prevent an entity from interpolating between hex aliases.
 
