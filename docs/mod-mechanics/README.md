@@ -120,8 +120,9 @@ nearest aliases, and broad query boxes.
 6. Structures and feature origins: manually test villages, dungeons, and other
    feature bodies near X/Z/corner seams for visual cutoffs or missing
    block-entity side effects.
-7. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
-   tiles need the right balance between seamlessness and vanilla-looking noise.
+7. Hex worldgen acceptance: continuous base terrain is lattice-periodic, but
+   all six seams and vertices still need manual carver, feature, structure,
+   surface-side-effect, reload, and generation-order coverage.
 8. Scrolling day/night weather interaction: manually verify weather, lightning,
    night vision, and gamma with local sky/lightmap visuals.
 9. POI and village gameplay: manually test seam beds, jobs, hives, raids,

@@ -10,6 +10,7 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -26,6 +27,10 @@ public interface TileGeometry {
     String geometryRevision();
 
     LatticeBasis latticeBasis();
+
+    default Optional<LatticeBlendGeometry> blendGeometry() {
+        return Optional.empty();
+    }
 
     LatticeCoordinate latticeCoordinate(ChunkPos raw);
 

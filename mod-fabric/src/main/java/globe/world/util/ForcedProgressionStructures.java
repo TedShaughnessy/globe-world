@@ -1030,7 +1030,7 @@ public final class ForcedProgressionStructures {
     }
 
     private static ChunkPos forcedStrongholdChunk(DimensionTiling tiling) {
-        return new ChunkPos(CoordUtil.wrapChunk(tiling, 0), CoordUtil.wrapChunk(tiling, 0));
+        return CoordUtil.wrapChunkPos(tiling, new ChunkPos(0, 0));
     }
 
     private static ChunkPos forcedNetherStructureChunk(long seed, DimensionTiling tiling, long salt) {
@@ -1051,7 +1051,7 @@ public final class ForcedProgressionStructures {
         long mixed = mix(seed ^ salt ^ tileSize);
         int x = low + (int) Math.floorMod(mixed, high - low + 1);
         int z = low + (int) Math.floorMod(mix(mixed), high - low + 1);
-        return new ChunkPos(CoordUtil.wrapChunk(tiling, x), CoordUtil.wrapChunk(tiling, z));
+        return CoordUtil.wrapChunkPos(tiling, new ChunkPos(x, z));
     }
 
     private static ChunkPos forcedEdgeChunk(long seed, DimensionTiling tiling, long salt, int inset) {
@@ -1073,7 +1073,7 @@ public final class ForcedProgressionStructures {
             case 3 -> high;
             default -> along;
         };
-        return new ChunkPos(CoordUtil.wrapChunk(tiling, edge), CoordUtil.wrapChunk(tiling, other));
+        return CoordUtil.wrapChunkPos(tiling, new ChunkPos(edge, other));
     }
 
     private static boolean isCanonical(DimensionTiling tiling, ChunkPos pos) {

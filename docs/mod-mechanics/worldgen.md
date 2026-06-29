@@ -30,11 +30,45 @@ The automatic policy uses compact torus for small tiles, periodic lattice for
 clean large multiples, and edge blend for awkward medium/large sizes. Changing
 tile size resets saved explicit terrain methods back to `AUTO`.
 
-Experimental hex topology currently forces/resolves terrain to `EDGE_BLEND`,
-but this first run does not implement true six-edge terrain continuity. Hex
-worldgen ownership helpers canonicalize chunks and block writes through the
-geometry boundary, while terrain, biome, cave, feature, and structure seams may
-still be visibly discontinuous.
+Experimental hex topology forces/resolves terrain to `EDGE_BLEND`. Its
+continuous base-terrain fields are blended across the ideal six-sided Voronoi
+cell, while whole-chunk ownership retains the exact staircase mask. Discrete
+carvers, features, and structures still rely on canonical seeds, generation
+windows, and spillover rather than numerical blending, so those stages retain
+separate seam acceptance work.
+
+## Hexagonal Edge Blending
+
+`LatticeBlendGeometry` derives a continuous block-space cell from the same
+`A`/`B` basis used by `HexTileGeometry`. For each of the six neighbor vectors
+`±A`, `±B`, and `±(A-B)`, it computes the signed perpendicular distance to that
+neighbor's Voronoi half-plane. The resolved width is one quarter of the cell
+inradius, clamped to 64–256 blocks. Minimum hexes can therefore have overlapping
+bands; normalization handles every contributing cell without a side or vertex
+priority.
+
+`PeriodicNoiseUtil.sampleHorizontal(...)` evaluates a product of symmetric
+smoothstep gates for each nearby lattice representative. It samples vanilla at
+`p - t` only when that representative has nonzero weight, then normalizes the
+weighted sum. The untouched interior takes exactly one vanilla sample. Ordinary
+non-overlapping sides take two and vertices take three. Translating by either
+lattice basis vector only permutes representatives, so the result is invariant
+under all six seam translations. Candidate enumeration and weighting allocate
+no collections on the sample hot path.
+
+Physical world X/Z are translated before noise scaling, offsets, or vanilla
+input reordering. This is important for `DensityFunctions.ShiftB`, whose
+vanilla noise arguments are `(Z, X, 0)`: the lattice translation is applied to
+world `(X,Z)` first and only then reordered. The shared path covers density and
+climate noise, shifted/cave noise, aquifer fields, legacy `BlendedNoise`,
+surface and clay-band fields, frozen-ocean/badlands fields, and noise-backed
+state/count providers. Square terrain modes retain their previous samplers.
+
+Known-unit positional random factories canonicalize a complete X/Z pair through
+`TileGeometry` in block or chunk units. Surface randomness and carver/structure
+seed calls use the same pairwise rule, preventing a hex seed from being formed
+from independently wrapped axes. `/globeworld pos` and the debug HUD report the
+resolved blend width and signed ideal-boundary distance.
 
 ## Seed Preflight
 
@@ -107,9 +141,10 @@ size is at most 256 chunks and off for larger tiles.
 
 ## Implementation
 
-Terrain and biome hooks route many X/Z-dependent samples through periodic noise
-utilities or terrain-mode-aware sampling. Positional random factories are wrapped
-where the caller's coordinate unit is known. Generator phases that rely on raw
+Terrain and biome hooks route X/Z-dependent continuous samples through periodic
+noise utilities or terrain-mode-aware sampling. Positional random factories are
+wrapped where the caller's coordinate unit is known, and carver/structure seed
+calls canonicalize their complete chunk pair. Generator phases that rely on raw
 ambient `CoordUtil` calls run inside scoped dimension tiling contexts; async
 biome/noise work captures the caller's dimension context and restores it on the
 worker thread. For extreme periodic-lattice tiles, octave cell counts that
@@ -283,6 +318,7 @@ canonical candidate starts and warns that validation may load or generate
 - `mod-fabric/src/main/java/globe/world/util/TerrainMode.java`
 - `mod-fabric/src/main/java/globe/world/util/PeriodicNoiseUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/PeriodicPositionalRandomFactory.java`
+- `mod-fabric/src/main/java/globe/world/topology/LatticeBlendGeometry.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeSettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeSettingsHolder.java`
 - `mod-fabric/src/main/java/globe/world/config/TopologySettings.java`
@@ -326,6 +362,9 @@ canonical candidate starts and warns that validation may load or generate
 
 ## Open Audits
 
+- Run the six-side/six-vertex hex acceptance matrix for height, biomes, caves,
+  aquifers, surfaces, discrete decorations, structures, generation order, and
+  reload behavior.
 - Validate periodicity for Nether terrain/noise and features.
 - Audit structure query and persistence paths.
 - Add a controlled virtual feature-origin pass for edge features such as monster

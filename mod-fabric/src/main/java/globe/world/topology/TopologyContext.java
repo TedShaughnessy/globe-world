@@ -14,6 +14,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
+import java.util.Optional;
 
 public final class TopologyContext {
     private final ResourceKey<Level> dimension;
@@ -44,6 +45,10 @@ public final class TopologyContext {
 
     public TileGeometry.LatticeBasis latticeBasis() {
         return geometry().latticeBasis();
+    }
+
+    public Optional<LatticeBlendGeometry> blendGeometry() {
+        return geometry().blendGeometry();
     }
 
     public TileGeometry.LatticeCoordinate latticeCoordinate(ChunkPos raw) {

@@ -15,6 +15,9 @@ point for current behavior and modded code anchors.
   fixes.
 - [Hexagonal tiles](hexagonal-tiles.md): post-MVP plan for manual/Atlas
   regression coverage and later edge-blend terrain continuity.
+- [Seamless hexagonal edge blending](hexagonal-edge-blending.md):
+  implemented straight-sided continuous Voronoi blending plus remaining
+  discrete-worldgen and six-seam acceptance work.
 - [Large-tile Atlas biome projection follow-ups](large-tile-atlas-biome-projection.md):
   remaining UX and palette questions after implementing survey-mode
   biome-colored projections for large tiles.

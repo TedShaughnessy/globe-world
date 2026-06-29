@@ -1,7 +1,7 @@
 package globe.world.mixin;
 
-import globe.world.util.CoordUtil;
 import globe.world.util.PeriodicNoiseUtil;
+import globe.world.util.PeriodicPositionalRandomFactory;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -44,7 +44,7 @@ public class SurfaceSystemMixin {
     @Inject(method = "getSurfaceDepth", at = @At("HEAD"), cancellable = true)
     private void getPeriodicSurfaceDepth(int blockX, int blockZ, CallbackInfoReturnable<Integer> cir) {
         double noiseValue = sample(blockX, blockZ, 1.0, this.surfaceNoise);
-        RandomSource random = this.noiseRandom.at(CoordUtil.wrapBlock(blockX), 0, CoordUtil.wrapBlock(blockZ));
+        RandomSource random = PeriodicPositionalRandomFactory.block(this.noiseRandom).at(blockX, 0, blockZ);
         cir.setReturnValue((int) (noiseValue * 2.75 + 3.0 + random.nextDouble() * 0.25));
     }
 
@@ -203,7 +203,7 @@ public class SurfaceSystemMixin {
             int x,
             int y,
             int z) {
-        return randomFactory.at(CoordUtil.wrapBlock(x), y, CoordUtil.wrapBlock(z));
+        return PeriodicPositionalRandomFactory.block(randomFactory).at(x, y, z);
     }
 
     private static double sample(int blockX, int blockZ, double scale, NormalNoise noise) {

@@ -6,11 +6,11 @@ game events, explosions, and bounded worldgen ownership use `TileGeometry`.
 The first-run scope is preserved in
 [Hexagonal tiles first run](hexagonal-tiles-first-run.md).
 
-The current milestone is **hex product integration without seamless
-generation**. Topology diagnostics, the Atlas lattice projection, and the
-residual non-worldgen gameplay audit are implemented. Remaining work is broader
-Atlas seam regression coverage and the six-seam manual acceptance matrix.
-Visible terrain seams remain acceptable throughout this milestone.
+Topology diagnostics, the Atlas lattice projection, the residual non-worldgen
+gameplay audit, and seamless continuous base-terrain blending are implemented.
+Remaining work is broader Atlas regression coverage plus the six-seam manual
+acceptance matrix for discrete features, carvers, structures, and worldgen side
+effects.
 
 ## Goal
 
@@ -294,11 +294,15 @@ Hex mode supports only edge blend terrain initially.
 
 ### Edge Blend Terrain
 
-The terrain sampler should compute seam bands against the six hex edges. Inside
-the safe interior, sample vanilla-like terrain at the canonical coordinate. In
-an edge band, blend the base sample with the translated sample from the paired
-opposite edge. Near corners, blend all relevant translated copies so the three
-meeting edge-pair relations converge to the same result.
+The detailed terrain design and implementation sequence lives in
+[Seamless hexagonal edge blending](hexagonal-edge-blending.md).
+
+Status: implemented for continuous base-terrain inputs. The terrain sampler
+computes block-space seam bands against the ideal
+continuous Voronoi hex, not the exact chunk staircase. Inside the safe
+interior, it samples vanilla terrain unchanged. In an edge band, it blends
+translated vanilla samples using lattice-invariant weights. Near vertices, all
+relevant translated copies converge symmetrically.
 
 The edge blend contract is:
 
@@ -336,7 +340,8 @@ and remain constant north to south.
   passes.
 - Describe `tile_size` as normalized approximate width and also show the
   resulting width, height, and canonical chunk count.
-- Explain that terrain seams are expected during this milestone.
+- Explain that continuous base terrain is seamless while discrete worldgen
+  stages remain experimental pending the acceptance matrix.
 - Keep Nether hex disabled unless it is promoted into a separate tested
   milestone.
 - If topology can be changed after world creation, warn when a change would
@@ -395,7 +400,8 @@ Later generation track:
 
 1. Complete hex-aware positional randomness, feature/carver/structure
    ownership, and spillover audits.
-2. Implement six-edge/corner terrain blending.
+2. Implement the
+   [six-edge/corner terrain blend](hexagonal-edge-blending.md).
 3. Audit structures and forced-progression structures near every seam.
 4. Consider Nether hex only after Overworld behavior is stable.
 

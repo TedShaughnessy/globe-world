@@ -1,28 +1,52 @@
 package globe.world.util;
 
+import globe.world.topology.TileGeometry;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.PositionalRandomFactory;
 
-public record PeriodicPositionalRandomFactory(PositionalRandomFactory delegate, int horizontalPeriod) implements PositionalRandomFactory {
+public record PeriodicPositionalRandomFactory(
+        PositionalRandomFactory delegate,
+        DimensionTiling tiling,
+        CoordinateUnit coordinateUnit) implements PositionalRandomFactory {
+    public enum CoordinateUnit {
+        BLOCK,
+        CHUNK
+    }
+
     public static PositionalRandomFactory block(PositionalRandomFactory delegate) {
-        return wrap(delegate, DimensionTiling.currentOrOverworld().tileSizeBlocks());
+        return wrap(delegate, CoordinateUnit.BLOCK);
     }
 
     public static PositionalRandomFactory chunk(PositionalRandomFactory delegate) {
-        return wrap(delegate, DimensionTiling.currentOrOverworld().tileSizeChunks());
+        return wrap(delegate, CoordinateUnit.CHUNK);
     }
 
-    private static PositionalRandomFactory wrap(PositionalRandomFactory delegate, int horizontalPeriod) {
-        if (!DimensionTiling.currentOrOverworld().enabled() || horizontalPeriod <= 1 || delegate instanceof PeriodicPositionalRandomFactory) {
+    private static PositionalRandomFactory wrap(PositionalRandomFactory delegate, CoordinateUnit coordinateUnit) {
+        DimensionTiling tiling = DimensionTiling.currentOrOverworld();
+        if (!tiling.enabled()) {
             return delegate;
         }
-        return new PeriodicPositionalRandomFactory(delegate, horizontalPeriod);
+        if (delegate instanceof PeriodicPositionalRandomFactory periodic) {
+            if (periodic.tiling().equals(tiling) && periodic.coordinateUnit() == coordinateUnit) {
+                return periodic;
+            }
+            delegate = periodic.delegate();
+        }
+        return new PeriodicPositionalRandomFactory(delegate, tiling, coordinateUnit);
     }
 
     @Override
     public RandomSource at(int x, int y, int z) {
-        return this.delegate.at(wrap(x), y, wrap(z));
+        TileGeometry geometry = TileGeometry.create(this.tiling);
+        if (this.coordinateUnit == CoordinateUnit.BLOCK) {
+            BlockPos canonical = geometry.canonicalBlock(x, y, z);
+            return this.delegate.at(canonical.getX(), y, canonical.getZ());
+        }
+        ChunkPos canonical = geometry.canonicalChunk(x, z);
+        return this.delegate.at(canonical.x(), y, canonical.z());
     }
 
     @Override
@@ -43,11 +67,9 @@ public record PeriodicPositionalRandomFactory(PositionalRandomFactory delegate, 
     @Override
     public void parityConfigString(StringBuilder sb) {
         this.delegate.parityConfigString(sb);
-        sb.append(", globeWorldHorizontalPeriod: ").append(this.horizontalPeriod);
-    }
-
-    private int wrap(int coord) {
-        int half = this.horizontalPeriod / 2;
-        return Math.floorMod(coord + half, this.horizontalPeriod) - half;
+        sb.append(", globeWorldGeometry: ")
+                .append(TileGeometry.create(this.tiling).geometryRevision())
+                .append(", globeWorldCoordinateUnit: ")
+                .append(this.coordinateUnit);
     }
 }

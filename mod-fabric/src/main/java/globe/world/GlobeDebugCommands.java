@@ -300,6 +300,12 @@ public final class GlobeDebugCommands {
                 topology.geometryRevision(),
                 latticeBasis.a().x(), latticeBasis.a().z(),
                 latticeBasis.b().x(), latticeBasis.b().z())), false);
+        topology.blendGeometry().ifPresent(blend ->
+                source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
+                        "Ideal hex blend: width=%.1f blocks inradius=%.1f blocks signed_distance=%.1f blocks",
+                        blend.blendWidth(),
+                        blend.inradius(),
+                        blend.signedDistance(pos.getX(), pos.getZ(), latticeCoordinate.k(), latticeCoordinate.l()))), false));
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Longitude offset=%.1f ticks local_solar_day=%.1f ticks",
                 CoordUtil.longitudeOffsetTicks(tiling, player.getX()),

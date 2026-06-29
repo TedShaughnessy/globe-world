@@ -115,12 +115,13 @@ worlds use the east/west lattice spacing, so `A` and `A-B` change X by exactly
 one solar period while `B` does not change X. Local time is therefore identical
 for every alias and remains constant along north/south lines.
 
-The first run is a runtime topology slice, not a seamless generation milestone.
 Chunk ownership, block mutation, packet relabeling, entity tracking/query
 helpers, POI broad queries, game events, explosions, and bounded worldgen
-ownership helpers use the geometry boundary. The Atlas projection and local
-solar time also consume the geometry lattice. Terrain, biome, cave, feature,
-and structure continuity remain deferred for later hex work.
+ownership helpers use the geometry boundary. The Atlas projection, local solar
+time, and continuous base-terrain blend also consume the same geometry lattice.
+Terrain density, biome climate, caves, aquifer fields, and surfaces use an ideal
+continuous Voronoi hex rather than the ownership staircase. Discrete feature and
+structure seam acceptance remains separate worldgen work.
 
 ## Topological Entity Queries
 

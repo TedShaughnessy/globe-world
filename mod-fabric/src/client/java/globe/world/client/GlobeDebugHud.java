@@ -79,6 +79,11 @@ public final class GlobeDebugHud {
                 canonicalChunk.x(), canonicalChunk.z(), topology.isCanonical(chunk) ? "Canon" : "Alias"));
         leftLines.add(String.format(Locale.ROOT, "Lattice: (%+d,%+d), shift %+d %+d [%s]",
                 lattice.k(), lattice.l(), translation.x(), translation.z(), topology.geometryRevision()));
+        topology.blendGeometry().ifPresent(blend -> leftLines.add(String.format(
+                Locale.ROOT,
+                "Ideal blend: %.1fm wide, signed distance %.1fm",
+                blend.blendWidth(),
+                blend.signedDistance(cameraEntity.getX(), cameraEntity.getZ(), lattice.k(), lattice.l()))));
         leftLines.add(String.format(Locale.ROOT, "Render distance: configured %d, effective %d",
                 configuredRenderDistance,
                 effectiveRenderDistance));

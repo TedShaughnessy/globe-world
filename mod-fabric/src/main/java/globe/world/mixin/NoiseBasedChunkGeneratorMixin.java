@@ -3,17 +3,19 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TileGeometry;
 import globe.world.util.DimensionTiling;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.StructureManager;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.ModifyArgs;
+import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -79,27 +81,17 @@ public class NoiseBasedChunkGeneratorMixin {
         );
     }
 
-    @ModifyArg(
+    @ModifyArgs(
             method = "applyCarvers",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/world/level/levelgen/WorldgenRandom;setLargeFeatureSeed(JII)V"
-            ),
-            index = 1
+            )
     )
-    private int wrapCarverSeedX(int sourceX) {
-        return CoordUtil.wrapChunk(sourceX);
-    }
-
-    @ModifyArg(
-            method = "applyCarvers",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/level/levelgen/WorldgenRandom;setLargeFeatureSeed(JII)V"
-            ),
-            index = 2
-    )
-    private int wrapCarverSeedZ(int sourceZ) {
-        return CoordUtil.wrapChunk(sourceZ);
+    private void canonicalizeCarverSeed(Args args) {
+        ChunkPos canonical = TileGeometry.create(DimensionTiling.currentOrOverworld())
+                .canonicalChunk(args.get(1), args.get(2));
+        args.set(1, canonical.x());
+        args.set(2, canonical.z());
     }
 }

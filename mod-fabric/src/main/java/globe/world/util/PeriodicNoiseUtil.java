@@ -1,8 +1,11 @@
 package globe.world.util;
 
+import globe.world.config.TilingMode;
 import globe.world.mixin.ImprovedNoiseAccessor;
 import globe.world.mixin.NormalNoiseAccessor;
 import globe.world.mixin.PerlinNoiseAccessor;
+import globe.world.topology.LatticeBlendGeometry;
+import globe.world.topology.TileGeometry;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.DensityFunction;
@@ -39,23 +42,64 @@ public class PeriodicNoiseUtil {
         double sample(double first, double second);
     }
 
+    @FunctionalInterface
+    public interface HorizontalSampler {
+        double sample(double blockX, double blockZ);
+    }
+
     public static double samplePlane(int firstCoord, int secondCoord, double scale, PlaneSampler sampler) {
         DimensionTiling tiling = DimensionTiling.currentOrOverworld();
         if (!tiling.enabled()) {
             return sampler.sample(firstCoord * scale, secondCoord * scale);
         }
+        if (scale == 0.0D) {
+            return sampler.sample(0.0D, 0.0D);
+        }
+        if (tiling.mode() == TilingMode.HEX) {
+            return sampleHorizontal(
+                    firstCoord,
+                    secondCoord,
+                    (blockX, blockZ) -> sampler.sample(blockX * scale, blockZ * scale));
+        }
 
         int period = tiling.tileSizeBlocks();
-        if (period <= 1 || scale == 0.0) {
-            return sampler.sample(0.0, 0.0);
+        if (period <= 1 || scale == 0.0D) {
+            return sampler.sample(0.0D, 0.0D);
+        }
+        TerrainMode mode = tiling.terrainMode();
+        if (mode == TerrainMode.EDGE_BLEND || mode == TerrainMode.PERIODIC_LATTICE) {
+            return sampleEdgeBlendedPlaneScaled(firstCoord, secondCoord, period, scale, sampler);
+        }
+        return sampleCompactTorusPlaneScaled(firstCoord, secondCoord, period, scale, sampler);
+    }
+
+    public static double sampleHorizontal(int blockX, int blockZ, HorizontalSampler sampler) {
+        return sampleHorizontal((double) blockX, (double) blockZ, sampler);
+    }
+
+    public static double sampleHorizontal(double blockX, double blockZ, HorizontalSampler sampler) {
+        DimensionTiling tiling = DimensionTiling.currentOrOverworld();
+        if (!tiling.enabled()) {
+            return sampler.sample(blockX, blockZ);
+        }
+
+        int period = tiling.tileSizeBlocks();
+        if (period <= 1) {
+            return sampler.sample(blockX, blockZ);
         }
 
         TerrainMode mode = tiling.terrainMode();
+        if (tiling.mode() == TilingMode.HEX && mode == TerrainMode.EDGE_BLEND) {
+            LatticeBlendGeometry geometry = TileGeometry.create(tiling)
+                    .blendGeometry()
+                    .orElseThrow();
+            return sampleHexEdgeBlendedPlane(blockX, blockZ, geometry, sampler);
+        }
         if (mode == TerrainMode.EDGE_BLEND || mode == TerrainMode.PERIODIC_LATTICE) {
-            return sampleEdgeBlendedPlane(firstCoord, secondCoord, period, scale, sampler);
+            return sampleEdgeBlendedPlane(blockX, blockZ, period, sampler);
         }
 
-        return sampleCompactTorusPlane(firstCoord, secondCoord, period, scale, sampler);
+        return sampleCompactTorusPlane(blockX, blockZ, period, sampler);
     }
 
     public static double sampleNoiseHolderXZ(
@@ -82,11 +126,11 @@ public class PeriodicNoiseUtil {
         return sampleNormalNoiseXZ(blockX, blockZ, scale, offsetX, y, offsetZ, noise);
     }
 
-    public static double sampleNoiseHolderXY(
+    public static double sampleNoiseHolderShiftB(
             int blockX,
-            int blockY,
+            int blockZ,
             double scale,
-            double z,
+            double fixedZ,
             DensityFunction.NoiseHolder holder) {
         NormalNoise noise = holder.noise();
         if (noise == null) {
@@ -94,14 +138,28 @@ public class PeriodicNoiseUtil {
         }
 
         DimensionTiling tiling = DimensionTiling.currentOrOverworld();
-        if (!tiling.enabled() || tiling.terrainMode() != TerrainMode.PERIODIC_LATTICE || scale == 0.0) {
-            return samplePlane(blockX, blockY, scale, (x, y) -> noise.getValue(x, y, z));
+        if (tiling.mode() != TilingMode.HEX
+                && (!tiling.enabled() || tiling.terrainMode() != TerrainMode.PERIODIC_LATTICE || scale == 0.0)) {
+            return samplePlane(
+                    blockZ,
+                    blockX,
+                    scale,
+                    (noiseX, noiseY) -> noise.getValue(noiseX, noiseY, fixedZ));
+        }
+        if (tiling.mode() == TilingMode.HEX) {
+            return sampleHorizontal(
+                    blockX,
+                    blockZ,
+                    (translatedX, translatedZ) -> noise.getValue(
+                            translatedZ * scale,
+                            translatedX * scale,
+                            fixedZ));
         }
 
-        NoiseAxis x = NoiseAxis.periodic(blockX, scale, 0.0);
-        NoiseAxis y = NoiseAxis.periodic(blockY, scale, 0.0);
-        NoiseAxis fixedZ = NoiseAxis.fixed(z);
-        return sampleNormalNoise(x, y, fixedZ, noise);
+        NoiseAxis noiseX = NoiseAxis.periodic(blockZ, scale, 0.0);
+        NoiseAxis noiseY = NoiseAxis.periodic(blockX, scale, 0.0);
+        NoiseAxis noiseZ = NoiseAxis.fixed(fixedZ);
+        return sampleNormalNoise(noiseX, noiseY, noiseZ, noise);
     }
 
     public static double sampleNormalNoiseXZ(int blockX, int blockZ, double scale, double y, NormalNoise noise) {
@@ -283,8 +341,12 @@ public class PeriodicNoiseUtil {
         return Mth.lerp3(xAlpha, yAlpha, zAlpha, d000, d100, d010, d110, d001, d101, d011, d111);
     }
 
-    private static double sampleCompactTorusPlane(int firstCoord, int secondCoord, int period, double scale, PlaneSampler sampler) {
-        PeriodicPlane plane = mapPlane(firstCoord, secondCoord, period, scale);
+    private static double sampleCompactTorusPlane(
+            double blockX,
+            double blockZ,
+            int period,
+            HorizontalSampler sampler) {
+        PeriodicPlane plane = mapPlane(blockX, blockZ, period);
         return (
                 sampler.sample(plane.sinFirst(), plane.sinSecond())
                         + sampler.sample(plane.sinFirst() + 37.719, plane.cosSecond() - 11.137)
@@ -293,14 +355,35 @@ public class PeriodicNoiseUtil {
         ) * 0.25;
     }
 
-    private static double sampleEdgeBlendedPlane(
+    private static double sampleCompactTorusPlaneScaled(
             int firstCoord,
             int secondCoord,
             int period,
             double scale,
             PlaneSampler sampler) {
-        EdgeBlendAxis first = edgeBlendAxis(firstCoord, period, scale);
-        EdgeBlendAxis second = edgeBlendAxis(secondCoord, period, scale);
+        double firstAngle = TAU * firstCoord / period;
+        double secondAngle = TAU * secondCoord / period;
+        double radius = period * Math.abs(scale) / TAU;
+        double sign = Math.signum(scale);
+        double sinFirst = sign * radius * Math.sin(firstAngle);
+        double cosFirst = sign * radius * Math.cos(firstAngle);
+        double sinSecond = sign * radius * Math.sin(secondAngle);
+        double cosSecond = sign * radius * Math.cos(secondAngle);
+        return (
+                sampler.sample(sinFirst, sinSecond)
+                        + sampler.sample(sinFirst + 37.719, cosSecond - 11.137)
+                        + sampler.sample(cosFirst - 53.421, sinSecond + 19.173)
+                        + sampler.sample(cosFirst + 101.311, cosSecond + 47.619)
+        ) * 0.25D;
+    }
+
+    private static double sampleEdgeBlendedPlane(
+            double blockX,
+            double blockZ,
+            int period,
+            HorizontalSampler sampler) {
+        EdgeBlendAxis first = edgeBlendAxis(blockX, period);
+        EdgeBlendAxis second = edgeBlendAxis(blockZ, period);
         double firstWeight = first.weight();
         double secondWeight = second.weight();
 
@@ -322,9 +405,74 @@ public class PeriodicNoiseUtil {
         return value;
     }
 
-    private static EdgeBlendAxis edgeBlendAxis(int coord, int period, double scale) {
-        int canonical = wrapCoordinate(coord, period);
-        int local = canonical + period / 2;
+    private static double sampleHexEdgeBlendedPlane(
+            double blockX,
+            double blockZ,
+            LatticeBlendGeometry geometry,
+            HorizontalSampler sampler) {
+        long baseK = geometry.baseK(blockX, blockZ);
+        long baseL = geometry.baseL(blockX, blockZ);
+        int radius = geometry.candidateRadius();
+        double weightedValue = 0.0D;
+        double totalWeight = 0.0D;
+
+        for (int dk = -radius; dk <= radius; dk++) {
+            long k = baseK + dk;
+            for (int dl = -radius; dl <= radius; dl++) {
+                long l = baseL + dl;
+                double weight = geometry.weight(blockX, blockZ, k, l);
+                if (weight == 0.0D) {
+                    continue;
+                }
+
+                double translatedX = blockX - geometry.translationX(k, l);
+                double translatedZ = blockZ - geometry.translationZ(k, l);
+                weightedValue += weight * sampler.sample(translatedX, translatedZ);
+                totalWeight += weight;
+            }
+        }
+
+        if (!(totalWeight > 0.0D) || !Double.isFinite(totalWeight)) {
+            throw new IllegalStateException("Hex blend produced no finite contributors");
+        }
+        return weightedValue / totalWeight;
+    }
+
+    private static double sampleEdgeBlendedPlaneScaled(
+            int firstCoord,
+            int secondCoord,
+            int period,
+            double scale,
+            PlaneSampler sampler) {
+        EdgeBlendAxis first = edgeBlendAxis(firstCoord, period);
+        EdgeBlendAxis second = edgeBlendAxis(secondCoord, period);
+        double firstWeight = first.weight();
+        double secondWeight = second.weight();
+
+        double base = sampler.sample(first.base() * scale, second.base() * scale);
+        if (firstWeight == 0.0D && secondWeight == 0.0D) {
+            return base;
+        }
+
+        double value = base * (1.0D - firstWeight) * (1.0D - secondWeight);
+        if (firstWeight > 0.0D) {
+            value += sampler.sample(first.copy() * scale, second.base() * scale)
+                    * firstWeight * (1.0D - secondWeight);
+        }
+        if (secondWeight > 0.0D) {
+            value += sampler.sample(first.base() * scale, second.copy() * scale)
+                    * (1.0D - firstWeight) * secondWeight;
+        }
+        if (firstWeight > 0.0D && secondWeight > 0.0D) {
+            value += sampler.sample(first.copy() * scale, second.copy() * scale)
+                    * firstWeight * secondWeight;
+        }
+        return value;
+    }
+
+    private static EdgeBlendAxis edgeBlendAxis(double coord, int period) {
+        double canonical = wrapCoordinate(coord, period);
+        double local = canonical + period / 2.0D;
         int band = edgeBlendBand(period);
         double weight = 0.0;
         int copyOffset = 0;
@@ -338,12 +486,12 @@ public class PeriodicNoiseUtil {
             copyOffset = -period;
         }
 
-        return new EdgeBlendAxis(canonical * scale, (canonical + copyOffset) * scale, weight);
+        return new EdgeBlendAxis(canonical, canonical + copyOffset, weight);
     }
 
-    private static int wrapCoordinate(int coord, int period) {
+    private static double wrapCoordinate(double coord, int period) {
         int half = period / 2;
-        return Math.floorMod(coord + half, period) - half;
+        return coord - Math.floor((coord + half) / period) * period;
     }
 
     private static int edgeBlendBand(int period) {
@@ -371,17 +519,16 @@ public class PeriodicNoiseUtil {
         return gradient[0] * x + gradient[1] * y + gradient[2] * z;
     }
 
-    private static PeriodicPlane mapPlane(int firstCoord, int secondCoord, int period, double scale) {
+    private static PeriodicPlane mapPlane(double firstCoord, double secondCoord, int period) {
         double firstAngle = TAU * firstCoord / period;
         double secondAngle = TAU * secondCoord / period;
-        double radius = period * Math.abs(scale) / TAU;
-        double sign = Math.signum(scale);
+        double radius = period / TAU;
 
         return new PeriodicPlane(
-                sign * radius * Math.sin(firstAngle),
-                sign * radius * Math.cos(firstAngle),
-                sign * radius * Math.sin(secondAngle),
-                sign * radius * Math.cos(secondAngle)
+                radius * Math.sin(firstAngle),
+                radius * Math.cos(firstAngle),
+                radius * Math.sin(secondAngle),
+                radius * Math.cos(secondAngle)
         );
     }
 

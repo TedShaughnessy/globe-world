@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public final class HexTileGeometry implements TileGeometry {
     private static final int NEAREST_SEARCH_RADIUS = 2;
@@ -29,6 +30,7 @@ public final class HexTileGeometry implements TileGeometry {
     private final Bounds canonicalChunkBounds;
     private final AABB canonicalBlockBounds;
     private final LatticeBasis latticeBasis;
+    private final Optional<LatticeBlendGeometry> blendGeometry;
     private final List<BoundarySegment> boundarySegments;
 
     public HexTileGeometry(DimensionTiling tiling) {
@@ -50,6 +52,7 @@ public final class HexTileGeometry implements TileGeometry {
                 Double.POSITIVE_INFINITY,
                 (canonicalChunkBounds.maxZ() + 1) * 16.0D);
         this.latticeBasis = new LatticeBasis(latticeA(), latticeB());
+        this.blendGeometry = Optional.of(new LatticeBlendGeometry(this.latticeBasis));
         this.boundarySegments = computeBoundarySegments();
     }
 
@@ -66,6 +69,11 @@ public final class HexTileGeometry implements TileGeometry {
     @Override
     public LatticeBasis latticeBasis() {
         return latticeBasis;
+    }
+
+    @Override
+    public Optional<LatticeBlendGeometry> blendGeometry() {
+        return blendGeometry;
     }
 
     @Override
