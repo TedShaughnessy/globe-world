@@ -4,10 +4,13 @@ import globe.world.util.DimensionTiling;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 
 public final class TopologyContexts {
     private static final ThreadLocal<TopologyContext> CURRENT = new ThreadLocal<>();
+    private static final ConcurrentMap<ContextKey, TopologyContext> CONTEXTS = new ConcurrentHashMap<>();
 
     private TopologyContexts() {
     }
@@ -17,7 +20,11 @@ public final class TopologyContexts {
     }
 
     public static TopologyContext forDimension(ResourceKey<Level> dimension) {
-        return new TopologyContext(dimension, DimensionTiling.forDimension(dimension));
+        DimensionTiling tiling = DimensionTiling.forDimension(dimension);
+        return CONTEXTS.computeIfAbsent(
+                new ContextKey(dimension, tiling),
+                key -> new TopologyContext(key.dimension(), key.tiling())
+        );
     }
 
     public static TopologyContext currentOrOverworld() {
@@ -44,5 +51,8 @@ public final class TopologyContexts {
                 CURRENT.set(previous);
             }
         }
+    }
+
+    private record ContextKey(ResourceKey<Level> dimension, DimensionTiling tiling) {
     }
 }

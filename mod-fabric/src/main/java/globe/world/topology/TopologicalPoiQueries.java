@@ -2,7 +2,6 @@ package globe.world.topology;
 
 import com.mojang.datafixers.util.Pair;
 import globe.world.mixin.PoiRecordAccessor;
-import globe.world.util.CoordUtil;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
@@ -16,6 +15,7 @@ import net.minecraft.world.entity.ai.village.poi.PoiRecord;
 import net.minecraft.world.entity.ai.village.poi.PoiType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -228,22 +228,28 @@ public final class TopologicalPoiQueries {
 
         int tileSections = topology.tileSizeChunks();
         int offsetRadius = Math.max(1, Math.floorDiv(MAX_VILLAGE_DISTANCE, tileSections) + 1);
-        int canonicalX = topology.canonicalChunkX(sectionPos.x());
-        int canonicalZ = topology.canonicalChunkX(sectionPos.z());
-        int best = level.getPoiManager().sectionsToVillage(SectionPos.of(canonicalX, sectionPos.y(), canonicalZ));
-        for (int offsetX = -offsetRadius; offsetX <= offsetRadius; offsetX++) {
-            for (int offsetZ = -offsetRadius; offsetZ <= offsetRadius; offsetZ++) {
-                if (offsetX == 0 && offsetZ == 0) {
-                    continue;
-                }
-                SectionPos alias = SectionPos.of(
-                        canonicalX + offsetX * tileSections,
-                        sectionPos.y(),
-                        canonicalZ + offsetZ * tileSections);
-                best = Math.min(best, level.getPoiManager().sectionsToVillage(alias));
-                if (best == 0) {
-                    return 0;
-                }
+        ChunkPos canonicalChunk = topology.canonicalChunk(sectionPos);
+        SectionPos canonicalSection = SectionPos.of(canonicalChunk.x(), sectionPos.y(), canonicalChunk.z());
+        int best = level.getPoiManager().sectionsToVillage(canonicalSection);
+        AABB sectionBox = new AABB(
+                canonicalSection.minBlockX(),
+                0.0D,
+                canonicalSection.minBlockZ(),
+                canonicalSection.maxBlockX() + 1.0D,
+                1.0D,
+                canonicalSection.maxBlockZ() + 1.0D);
+        Vec3 viewer = Vec3.atCenterOf(sectionPos.center());
+        for (AABB aliasBox : TileGeometry.create(topology.tiling()).nearbyAliasBoxes(sectionBox, viewer, offsetRadius)) {
+            SectionPos alias = SectionPos.of(
+                    SectionPos.blockToSectionCoord(aliasBox.getCenter().x()),
+                    sectionPos.y(),
+                    SectionPos.blockToSectionCoord(aliasBox.getCenter().z()));
+            if (alias.equals(canonicalSection)) {
+                continue;
+            }
+            best = Math.min(best, level.getPoiManager().sectionsToVillage(alias));
+            if (best == 0) {
+                return 0;
             }
         }
         return best;
@@ -313,20 +319,14 @@ public final class TopologicalPoiQueries {
             return;
         }
         BlockPos visiblePos = topology.virtualBlockForViewer(canonicalPos, center.getX(), center.getZ());
-        double wrappedDistanceSqr = CoordUtil.wrappedDistanceSqr(
-                topology.tiling(),
-                center.getX(),
-                center.getY(),
-                center.getZ(),
-                canonicalPos.getX(),
-                canonicalPos.getY(),
-                canonicalPos.getZ());
+        double wrappedDistanceSqr = topology.wrappedDistanceSqr(center.getCenter(), canonicalPos.getCenter());
         candidates.add(new PoiCandidate(record, canonicalPos, visiblePos, wrappedDistanceSqr));
     }
 
     private static boolean inWrappedSquare(TopologyContext topology, BlockPos pos, BlockPos center, int radius) {
-        double dx = Math.abs(topology.wrappedDeltaX(pos.getX(), center.getX()));
-        double dz = Math.abs(topology.wrappedDeltaX(pos.getZ(), center.getZ()));
+        BlockPos visible = topology.virtualBlockForViewer(topology.canonicalBlock(pos), center.getX(), center.getZ());
+        double dx = Math.abs(visible.getX() - center.getX());
+        double dz = Math.abs(visible.getZ() - center.getZ());
         return dx <= radius && dz <= radius;
     }
 

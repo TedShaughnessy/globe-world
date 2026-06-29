@@ -121,43 +121,7 @@ public final class TopologicalEntityQueries {
         if (!context.enabled()) {
             return List.of(visibleBox);
         }
-
-        List<Interval> xIntervals = canonicalIntervals(context.tileSizeBlocks(), visibleBox.minX, visibleBox.maxX);
-        List<Interval> zIntervals = canonicalIntervals(context.tileSizeBlocks(), visibleBox.minZ, visibleBox.maxZ);
-        List<AABB> boxes = new ArrayList<>(xIntervals.size() * zIntervals.size());
-        for (Interval x : xIntervals) {
-            for (Interval z : zIntervals) {
-                AABB canonicalBox = new AABB(x.min(), visibleBox.minY, z.min(), x.max(), visibleBox.maxY, z.max());
-                if (sameBox(canonicalBox, visibleBox)) {
-                    boxes.add(visibleBox);
-                } else {
-                    boxes.add(canonicalBox);
-                }
-            }
-        }
-        return boxes;
-    }
-
-    private static List<Interval> canonicalIntervals(int tileSize, double min, double max) {
-        double canonicalMin = -tileSize / 2.0D;
-        double canonicalMax = canonicalMin + tileSize;
-        if (max - min >= tileSize) {
-            return List.of(new Interval(canonicalMin, canonicalMax));
-        }
-
-        int firstOffset = (int)Math.floor((min - canonicalMax) / tileSize);
-        int lastOffset = (int)Math.floor((max - canonicalMin) / tileSize);
-        List<Interval> intervals = new ArrayList<>();
-        for (int offset = firstOffset; offset <= lastOffset; offset++) {
-            double shiftedMin = min - offset * (double)tileSize;
-            double shiftedMax = max - offset * (double)tileSize;
-            double intervalMin = Math.max(shiftedMin, canonicalMin);
-            double intervalMax = Math.min(shiftedMax, canonicalMax);
-            if (intervalMax > intervalMin) {
-                intervals.add(new Interval(intervalMin, intervalMax));
-            }
-        }
-        return intervals.isEmpty() ? List.of(new Interval(min, max)) : intervals;
+        return TileGeometry.create(context.tiling()).canonicalQueryBoxes(visibleBox);
     }
 
     private static void addAliasPlayers(
@@ -221,15 +185,4 @@ public final class TopologicalEntityQueries {
         }
     }
 
-    private static boolean sameBox(AABB a, AABB b) {
-        return a.minX == b.minX
-                && a.minY == b.minY
-                && a.minZ == b.minZ
-                && a.maxX == b.maxX
-                && a.maxY == b.maxY
-                && a.maxZ == b.maxZ;
-    }
-
-    private record Interval(double min, double max) {
-    }
 }

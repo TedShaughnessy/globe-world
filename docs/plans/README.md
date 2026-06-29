@@ -15,9 +15,6 @@ point for current behavior and modded code anchors.
   fixes.
 - [Hexagonal tiles](hexagonal-tiles.md): plan for a chunk-composed hex topology
   with toroidal Atlas projection and edge-blend-only terrain continuity.
-- [Hexagonal tiles first run](hexagonal-tiles-first-run.md): concrete
-  implementation slice for experimental hex runtime topology while deferring
-  seamless generation.
 - [Large-tile Atlas biome projection follow-ups](large-tile-atlas-biome-projection.md):
   remaining UX and palette questions after implementing survey-mode
   biome-colored projections for large tiles.
@@ -27,3 +24,12 @@ point for current behavior and modded code anchors.
 - [Seam-behavior checklist](seam-behavior-checklist.md): manual regression
   matrix and automation candidates for preserving seam behavior during future
   work.
+
+## Implemented / Retired Notes
+
+- [Hexagonal tiles first run](hexagonal-tiles-first-run.md): implemented as the
+  experimental runtime topology slice; durable behavior lives in
+  [Topology](../mod-mechanics/topology.md), [Chunks](../mod-mechanics/chunks.md),
+  and [Worldgen](../mod-mechanics/worldgen.md). Seamless hex generation, Atlas
+  projection, and structure continuity remain in the broader
+  [Hexagonal tiles](hexagonal-tiles.md) plan.

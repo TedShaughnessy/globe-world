@@ -66,7 +66,7 @@ public final class WorldEventPacketUtil {
 
     public static Vec3 virtualizePos(ServerLevel level, Vec3 pos, ServerPlayer viewer) {
         TopologyContext topology = TopologyContexts.forLevel(level);
-        Vec3 canonical = new Vec3(topology.canonicalBlockX(pos.x()), pos.y(), topology.canonicalBlockX(pos.z()));
+        Vec3 canonical = topology.canonicalBlock(pos);
         return topology.virtualBlockForViewer(canonical, viewer.position());
     }
 

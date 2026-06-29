@@ -310,11 +310,9 @@ public final class GlobeDebugCommands {
         Entity root = entity.getRootVehicle();
         BlockPos pos = entity.blockPosition();
         ChunkPos chunk = entity.chunkPosition();
-        DimensionTiling tiling = DimensionTiling.forLevel(entity.level());
-        double canonX = CoordUtil.wrapBlock(tiling, entity.getX());
-        double canonZ = CoordUtil.wrapBlock(tiling, entity.getZ());
-        int canonChunkX = CoordUtil.wrapChunk(tiling, chunk.x());
-        int canonChunkZ = CoordUtil.wrapChunk(tiling, chunk.z());
+        TopologyContext topology = TopologyContexts.forLevel(entity.level());
+        Vec3 canonicalPos = topology.canonicalBlock(entity.position());
+        ChunkPos canonicalChunk = topology.canonicalChunk(chunk);
 
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Entity %d %s uuid=%s dimension=%s",
@@ -329,8 +327,8 @@ public final class GlobeDebugCommands {
                 chunk.x(), chunk.z())), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Canonical position=%.3f %.3f %.3f canonical chunk=%d %d in canon tile=%s",
-                canonX, entity.getY(), canonZ,
-                canonChunkX, canonChunkZ,
+                canonicalPos.x(), canonicalPos.y(), canonicalPos.z(),
+                canonicalChunk.x(), canonicalChunk.z(),
                 yesNo(isCanonical(entity)))), false);
         source.sendSuccess(() -> Component.literal(String.format(Locale.ROOT,
                 "Canonicalized continuously=%s passenger=%s root=%d %s passengers=%d removed=%s",
@@ -769,8 +767,8 @@ public final class GlobeDebugCommands {
     }
 
     private static boolean isCanonical(Entity entity) {
-        return entity.getX() == CoordUtil.wrapBlock(entity.level(), entity.getX())
-                && entity.getZ() == CoordUtil.wrapBlock(entity.level(), entity.getZ());
+        Vec3 canonical = TopologyContexts.forLevel(entity.level()).canonicalBlock(entity.position());
+        return entity.getX() == canonical.x() && entity.getZ() == canonical.z();
     }
 
     private static DayNightCycleMode dayNightMode(CommandContext<CommandSourceStack> context, String name)
@@ -807,10 +805,7 @@ public final class GlobeDebugCommands {
     }
 
     private static BlockPos canonicalBlockPos(Entity entity) {
-        return new BlockPos(
-                CoordUtil.wrapBlock(entity.level(), entity.blockPosition().getX()),
-                entity.blockPosition().getY(),
-                CoordUtil.wrapBlock(entity.level(), entity.blockPosition().getZ()));
+        return TopologyContexts.forLevel(entity.level()).canonicalBlock(entity.blockPosition());
     }
 
     private static String formatBlock(BlockPos pos) {
@@ -880,7 +875,8 @@ public final class GlobeDebugCommands {
         }
         return String.format(
                 Locale.ROOT,
-                "%d chunks / %d blocks, %s terrain",
+                "%s, %d chunks / %d blocks, %s terrain",
+                tiling.mode().displayName(),
                 tiling.tileSizeChunks(),
                 tiling.tileSizeBlocks(),
                 tiling.terrainMode().displayName()

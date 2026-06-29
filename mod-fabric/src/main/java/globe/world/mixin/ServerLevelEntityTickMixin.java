@@ -2,7 +2,8 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.DimensionTiling;
 import globe.world.util.EntityCanonicalizer;
 import net.minecraft.server.level.ServerChunkCache;
@@ -42,16 +43,14 @@ public class ServerLevelEntityTickMixin {
             return entityChunk;
         }
 
-        ChunkPos canonicalChunk = CoordUtil.wrapChunkPos(tiling, entityChunk);
+        TopologyContext topology = TopologyContexts.forLevel(entity.level());
+        ChunkPos canonicalChunk = topology.canonicalChunk(entityChunk);
         for (ServerPlayer player : this.players) {
             if (player.level() != entity.level()) {
                 continue;
             }
 
-            ChunkPos playerChunk = player.chunkPosition();
-            int virtualX = CoordUtil.virtualChunk(tiling, canonicalChunk.x(), playerChunk.x());
-            int virtualZ = CoordUtil.virtualChunk(tiling, canonicalChunk.z(), playerChunk.z());
-            ChunkPos virtualChunk = new ChunkPos(virtualX, virtualZ);
+            ChunkPos virtualChunk = topology.virtualChunkForViewer(canonicalChunk, player);
             if (this.chunkSource.chunkMap.getDistanceManager().inEntityTickingRange(virtualChunk.pack())) {
                 return virtualChunk;
             }

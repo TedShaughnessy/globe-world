@@ -2,13 +2,15 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.EntityPacketUtil;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
 import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
+import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -55,10 +57,12 @@ public class ChunkMapTrackedEntityMixin {
     )
     private Vec3 wrapTrackingDelta(Vec3 playerPos, Vec3 entityPos, Operation<Vec3> original) {
         Vec3 delta = original.call(playerPos, entityPos);
+        TopologyContext topology = TopologyContexts.forLevel(this.entity.level());
+        Vec3 visibleEntityPos = topology.virtualBlockForViewer(topology.canonicalBlock(entityPos), playerPos);
         return new Vec3(
-            CoordUtil.wrappedDeltaBlock(this.entity.level(), playerPos.x, entityPos.x),
+            playerPos.x - visibleEntityPos.x,
             delta.y,
-            CoordUtil.wrappedDeltaBlock(this.entity.level(), playerPos.z, entityPos.z)
+            playerPos.z - visibleEntityPos.z
         );
     }
 
@@ -75,13 +79,12 @@ public class ChunkMapTrackedEntityMixin {
             int chunkX,
             int chunkZ,
             Operation<Boolean> original) {
-        ChunkPos playerChunk = player.chunkPosition();
-        int virtualX = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkX), playerChunk.x());
-        int virtualZ = CoordUtil.virtualChunk(player.level(), CoordUtil.wrapChunk(player.level(), chunkZ), playerChunk.z());
-        if (virtualX != chunkX || virtualZ != chunkZ) {
-            return player.getChunkTrackingView().contains(virtualX, virtualZ);
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        ChunkPos virtualChunk = topology.virtualChunkForViewer(topology.canonicalChunk(chunkX, chunkZ), player);
+        if (virtualChunk.x() != chunkX || virtualChunk.z() != chunkZ) {
+            return player.getChunkTrackingView().contains(virtualChunk.x(), virtualChunk.z());
         }
-        return original.call(chunkMap, player, virtualX, virtualZ);
+        return original.call(chunkMap, player, virtualChunk.x(), virtualChunk.z());
     }
 
     @Inject(method = "updatePlayer", at = @At("TAIL"))
@@ -149,17 +152,12 @@ public class ChunkMapTrackedEntityMixin {
         Vec3 trackingPosition = this.entity.trackingPosition();
         UUID playerId = player.getUUID();
         Vec3 previousTrackingPosition = this.globeWorld$lastTrackingPositionByPlayer.get(playerId);
-        int offsetX = CoordUtil.virtualBlockTileOffset(
-                player.level(),
-                trackingPosition.x,
-                player.getX()
-        );
-        int offsetZ = CoordUtil.virtualBlockTileOffset(
-                player.level(),
-                trackingPosition.z,
-                player.getZ()
-        );
-        long virtualTileOffset = new ChunkPos(offsetX, offsetZ).pack();
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        Vec3 canonicalTrackingPosition = topology.canonicalBlock(trackingPosition);
+        Vec3 virtualTrackingPosition = topology.virtualBlockForViewer(canonicalTrackingPosition, player.position());
+        long virtualTileOffset = new ChunkPos(
+                SectionPos.blockToSectionCoord((int) Math.floor(virtualTrackingPosition.x - canonicalTrackingPosition.x)),
+                SectionPos.blockToSectionCoord((int) Math.floor(virtualTrackingPosition.z - canonicalTrackingPosition.z))).pack();
         Long previous = this.globeWorld$lastVirtualTileOffsetByPlayer.get(playerId);
         boolean offsetChanged = previous != null && previous != virtualTileOffset;
         boolean entityMoved = previousTrackingPosition != null

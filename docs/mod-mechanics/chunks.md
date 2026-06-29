@@ -15,9 +15,12 @@ copy and would unload or ignore visible aliases.
 
 ## Implementation
 
-Server chunk lookup wraps requested X/Z to canonical chunk coordinates before
-loading or returning a chunk. Runtime lookup, packet relabeling, alias tracking,
-and canonical alias tickets resolve those owners through `TopologyContext`.
+Server chunk lookup resolves requested chunk coordinates to canonical chunk
+owners before loading or returning a chunk. Square worlds wrap X/Z
+independently; experimental hex worlds resolve ownership through the discrete
+hex chunk mask and lattice in `TileGeometry`. Runtime lookup, packet relabeling,
+alias tracking, and canonical alias tickets resolve those owners through
+`TopologyContext`.
 Alias chunk lifecycle events keep the matching canonical chunk available through
 ref-counted mod tickets.
 
@@ -28,8 +31,8 @@ becomes `min(configured, max(2, ceil(tileSizeChunks / 2)))`. Untiled
 dimensions use the configured value unchanged. Vanilla's simulation tracker
 spreads across all eight neighboring chunks with the same cost, so this radius
 is enough to reach every wrapped chunk in the canonical tile, including corners,
-when the configured simulation distance is at least that large. Globe World does
-not rewrite
+when the configured simulation distance is at least that large. In hex mode the
+same cap is conservative rather than shape-exact. Globe World does not rewrite
 login or simulation-distance update packets, so clients still receive vanilla's
 configured global simulation distance; v1 keeps client-side simulation range
 uncapped to avoid per-dimension packet complexity.
@@ -60,6 +63,8 @@ safe to discard because new chunk sends repopulate them.
 - `mod-fabric/src/main/java/globe/world/util/CanonicalChunkTickets.java`
 - `mod-fabric/src/main/java/globe/world/util/ChunkAliasTracker.java`
 - `mod-fabric/src/main/java/globe/world/util/ChunkPacketUtil.java`
+- `mod-fabric/src/main/java/globe/world/topology/TileGeometry.java`
+- `mod-fabric/src/main/java/globe/world/topology/HexTileGeometry.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/GlobeDistanceCaps.java`
@@ -83,3 +88,7 @@ safe to discard because new chunk sends repopulate them.
 
 - Confirm alias ticket cleanup remains complete during all level shutdown paths.
 - Keep chunk load diagnostics limited to targeted warning/debug flows.
+- Prevent tiny-tile raw alias demand from producing large numbers of persisted
+  vanilla chunk records. An 8-chunk hex has only 64 canonical owners, but manual
+  testing with a render distance larger than the tile showed raw alias chunk
+  holders creating substantial generation, save, and streaming overhead.

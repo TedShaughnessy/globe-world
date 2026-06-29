@@ -40,20 +40,63 @@ The coordinate helper layer answers four questions:
 - What is the shortest wrapped X/Z distance between two positions?
 - Where should a canonical object be rendered relative to a specific viewer?
 
-`CoordUtil` is the single source for wrapping and virtual-coordinate math. It
-supports raw helpers, level-aware helpers, dimension-aware helpers, and helpers
-that use the current worldgen/scoped tiling context.
+`TileGeometry` is the two-dimensional topology boundary. Square worlds use
+`SquareTileGeometry`, which preserves the original independent X/Z period.
+Experimental hex worlds use `HexTileGeometry`, which defines a chunk-composed
+canonical mask plus two lattice translation vectors; the third edge-pair
+translation is derived from those vectors.
 
-`TopologyContext` is the named boundary for this math. It wraps a dimension and
-its effective `DimensionTiling`, then exposes frame-named helpers such as
-`canonicalBlock`, `canonicalChunk`, `virtualBlockForViewer`,
-`virtualChunkForViewer`, `wrappedDistanceSqr`, `loadedAliasesFor`, and
-`shouldAllowAliasMutation`. Runtime block/chunk access helpers use these names
-at subsystem boundaries, while `CoordUtil` remains the underlying source of the
-arithmetic.
+`TopologyContext` is the named runtime boundary for this math. It wraps a
+dimension and its effective `DimensionTiling`, then delegates whole-position
+questions to `TileGeometry` through frame-named helpers such as
+`canonicalBlock`, `canonicalChunk`, `canonicalBox`, `virtualBlockForViewer`,
+`virtualChunkForViewer`, `virtualBoxForViewer`, `wrappedDistanceSqr`,
+`loadedAliasesFor`, and `shouldAllowAliasMutation`. Runtime block/chunk access
+helpers use these names at subsystem boundaries. `CoordUtil` still keeps
+square-friendly axis helpers for older call sites, but hex-correct code must use
+whole-position geometry methods because one axis alone is not enough to choose a
+hex owner.
+
+Tile geometries are immutable and cached by effective `DimensionTiling`;
+dimension contexts are likewise cached by dimension and tiling settings. This
+is required for hex worldgen performance because building `HexTileGeometry`
+derives the canonical mask bounds, while block/chunk canonicalization is a hot
+path that may run millions of times during initial generation.
 
 Canonicalization is used before state access. Virtualization is used when
 building viewer-facing positions, especially packets and tracking decisions.
+
+## Experimental Hex Topology
+
+`TilingMode.HEX` can be saved for the Overworld. At runtime it is enabled
+topology, normalizes `tile_size` to a multiple of four chunks with a minimum of
+eight chunks, and resolves terrain mode to `EDGE_BLEND`. Nether hex topology is
+not enabled yet; Nether wrapping still only activates for square mode.
+
+The first hex mask is fixed-orientation and chunk-precision. With X drawn
+horizontally and Z vertically, the implemented mask has its narrow tips at the
+top and bottom; this differs from the left/right-pointed orientation proposed in
+the original plan. It uses integer lattice translation vectors `A`, `B`, and
+`A - B`; every raw chunk chooses the nearest lattice copy and maps back to one
+canonical owner. Block canonicalization canonicalizes the containing chunk
+first and applies the same whole-chunk translation to the block-local
+coordinate. Nearest visible aliases are chosen with a bounded candidate search
+around the viewer rather than closed-form math.
+
+For the minimum saved width of `8` chunks, the normalized mask has `64`
+canonical chunks. Its lattice translations are `(8, 0)`, `(4, 8)`, and
+`(4, -8)` chunks, or `(128, 0)`, `(64, 128)`, and `(64, -128)` blocks. The
+canonical rows run from Z chunk `-5` through `4`: the two tip rows contain two
+chunks, the next rows contain six, and the six middle rows contain eight.
+Translating the complete mask by any of the six signed lattice vectors covers
+the neighboring copy without changing canonical ownership.
+
+The first run is a runtime topology slice, not a seamless generation milestone.
+Chunk ownership, block mutation, packet relabeling, entity tracking/query
+helpers, POI broad queries, game events, explosions, and bounded worldgen
+ownership helpers use the geometry boundary. Terrain, biome, cave, feature,
+structure, local-solar-time, and Atlas projection continuity remain square-first
+or explicitly deferred for later hex work.
 
 ## Topological Entity Queries
 
@@ -138,6 +181,9 @@ eight Nether blocks map to one Overworld block.
 
 - `mod-fabric/src/main/java/globe/world/util/CoordUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/DimensionTiling.java`
+- `mod-fabric/src/main/java/globe/world/topology/TileGeometry.java`
+- `mod-fabric/src/main/java/globe/world/topology/SquareTileGeometry.java`
+- `mod-fabric/src/main/java/globe/world/topology/HexTileGeometry.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContexts.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologicalEntityQueries.java`
@@ -155,6 +201,10 @@ eight Nether blocks map to one Overworld block.
 
 - Runtime chunk, block, entity packet, and waypoint packet paths use dimension
   context.
+- Experimental Overworld hex topology is implemented for runtime chunk/block
+  ownership, nearest aliases, wrapped distances, broad query boxes, chunk
+  packet relabeling, block packet fanout, entity packet virtualization, entity
+  tracking, and geometry tests.
 - Server chunk lookup, alias tickets, random ticks, spawning collection,
   tracking, block mutation, and worldgen region access use dimension-aware
   wrapping.

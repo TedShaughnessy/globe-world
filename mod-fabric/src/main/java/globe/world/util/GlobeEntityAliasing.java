@@ -1,5 +1,10 @@
 package globe.world.util;
 
+import globe.world.config.TilingMode;
+import globe.world.topology.HexTileGeometry;
+import globe.world.topology.TileGeometry;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Leashable;
 import net.minecraft.world.entity.player.Player;
@@ -171,6 +176,17 @@ public final class GlobeEntityAliasing {
         if (maxOffset <= 0) {
             return List.of();
         }
+        if (tiling.mode() == TilingMode.HEX) {
+            return visualHexOffsets(
+                    tiling,
+                    sourceBox,
+                    entityBox,
+                    cameraPos,
+                    renderRadius,
+                    maxOffset,
+                    ringLimit
+            );
+        }
 
         int minOffsetX = -maxOffset;
         int maxOffsetX = maxOffset;
@@ -206,6 +222,49 @@ public final class GlobeEntityAliasing {
         return offsets;
     }
 
+    private static List<AliasOffset> visualHexOffsets(
+            DimensionTiling tiling,
+            AABB sourceBox,
+            AABB entityBox,
+            Vec3 cameraPos,
+            double renderRadius,
+            int maxOffset,
+            int ringLimit) {
+        HexTileGeometry geometry = (HexTileGeometry) TileGeometry.create(tiling);
+        AABB canonicalSourceBox = geometry.canonicalBox(sourceBox);
+        int latticeRadius = ringLimit == Integer.MAX_VALUE
+                ? maxOffset
+                : Math.min(maxOffset, ringLimit);
+        double renderRadiusSqr = renderRadius * renderRadius;
+        List<AliasOffset> offsets = new ArrayList<>();
+        for (AABB aliasBox : geometry.nearbyAliasBoxes(canonicalSourceBox, cameraPos, latticeRadius)) {
+            double dx = aliasBox.minX - sourceBox.minX;
+            double dz = aliasBox.minZ - sourceBox.minZ;
+            if (Math.abs(dx) < 1.0E-7D && Math.abs(dz) < 1.0E-7D) {
+                continue;
+            }
+
+            AABB sourceAliasBox = sourceBox.move(dx, 0.0D, dz);
+            if (distanceToBoxSqr(cameraPos, sourceAliasBox) > renderRadiusSqr) {
+                continue;
+            }
+
+            int latticeL = (int) Math.rint(dz / (geometry.heightChunks() * 16.0D));
+            int latticeK = (int) Math.rint(
+                    (dx - latticeL * geometry.widthChunks() * 8.0D)
+                            / (geometry.widthChunks() * 16.0D)
+            );
+            offsets.add(new AliasOffset(
+                    latticeK,
+                    latticeL,
+                    dx,
+                    dz,
+                    entityBox.move(dx, 0.0D, dz)
+            ));
+        }
+        return offsets;
+    }
+
     public static boolean isWholeTileRebase(Level level, Vec3 oldPos, Vec3 newPos) {
         DimensionTiling tiling = DimensionTiling.forLevel(level);
         if (!tiling.enabled()) {
@@ -219,6 +278,19 @@ public final class GlobeEntityAliasing {
 
         double rawDx = newPos.x - oldPos.x;
         double rawDz = newPos.z - oldPos.z;
+        if (tiling.mode() == TilingMode.HEX) {
+            TopologyContext topology = TopologyContexts.forLevel(level);
+            Vec3 canonicalOld = topology.canonicalBlock(oldPos);
+            Vec3 canonicalNew = topology.canonicalBlock(newPos);
+            double residualX = canonicalNew.x - canonicalOld.x;
+            double residualZ = canonicalNew.z - canonicalOld.z;
+            double residualSqr = residualX * residualX + residualZ * residualZ;
+            double rawHorizontalSqr = rawDx * rawDx + rawDz * rawDz;
+            return rawHorizontalSqr > 0.0D
+                    && residualSqr <= 16.0D
+                    && residualSqr * 16.0D < rawHorizontalSqr;
+        }
+
         int tileDx = (int) Math.rint(rawDx / tileWidth);
         int tileDz = (int) Math.rint(rawDz / tileWidth);
         if (tileDx == 0 && tileDz == 0) {

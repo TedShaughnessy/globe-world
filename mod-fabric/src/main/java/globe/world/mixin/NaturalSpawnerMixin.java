@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.sugar.Local;
 import globe.world.config.GameplaySettings;
 import globe.world.config.GlobeConfig;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.GlobeNaturalSpawning;
@@ -62,7 +63,7 @@ public class NaturalSpawnerMixin {
             ChunkPos pos,
             net.minecraft.util.RandomSource random,
             CallbackInfo ci) {
-        if (!CoordUtil.wrapChunkPos(level.getLevel(), pos).equals(pos)) {
+        if (!TopologyContexts.forLevel(level.getLevel()).isCanonical(pos)) {
             ci.cancel();
         }
     }
@@ -96,7 +97,7 @@ public class NaturalSpawnerMixin {
             NaturalSpawner.SpawnPredicate extraTest,
             NaturalSpawner.AfterSpawnCallback spawnCallback,
             Operation<Void> original) {
-        original.call(mobCategory, level, canonicalChunk(level, chunk), CoordUtil.wrapBlockPos(level, start), extraTest, spawnCallback);
+        original.call(mobCategory, level, canonicalChunk(level, chunk), TopologyContexts.forLevel(level).canonicalBlock(start), extraTest, spawnCallback);
     }
 
     @ModifyVariable(
@@ -117,7 +118,7 @@ public class NaturalSpawnerMixin {
         )
     )
     private static ChunkPos wrapLocalMobCapChunk(LevelChunk chunk, Operation<ChunkPos> original) {
-        return CoordUtil.wrapChunkPos(chunk.getLevel(), original.call(chunk));
+        return TopologyContexts.forLevel(chunk.getLevel()).canonicalChunk(original.call(chunk));
     }
 
     @WrapOperation(
@@ -128,7 +129,7 @@ public class NaturalSpawnerMixin {
         )
     )
     private static ChunkPos wrapRandomSpawnChunk(LevelChunk chunk, Operation<ChunkPos> original) {
-        return CoordUtil.wrapChunkPos(chunk.getLevel(), original.call(chunk));
+        return TopologyContexts.forLevel(chunk.getLevel()).canonicalChunk(original.call(chunk));
     }
 
     @WrapOperation(
@@ -139,7 +140,7 @@ public class NaturalSpawnerMixin {
         )
     )
     private static ChunkPos wrapCountedMobChunk(LevelChunk chunk, Operation<ChunkPos> original) {
-        return CoordUtil.wrapChunkPos(chunk.getLevel(), original.call(chunk));
+        return TopologyContexts.forLevel(chunk.getLevel()).canonicalChunk(original.call(chunk));
     }
 
     @ModifyVariable(
@@ -249,11 +250,10 @@ public class NaturalSpawnerMixin {
 
     private static LevelChunk canonicalChunk(ServerLevel level, ChunkAccess chunk) {
         ChunkPos pos = chunk.getPos();
-        int wx = CoordUtil.wrapChunk(level, pos.x());
-        int wz = CoordUtil.wrapChunk(level, pos.z());
-        if (wx == pos.x() && wz == pos.z() && chunk instanceof LevelChunk levelChunk) {
+        ChunkPos canonical = TopologyContexts.forLevel(level).canonicalChunk(pos);
+        if (canonical.equals(pos) && chunk instanceof LevelChunk levelChunk) {
             return levelChunk;
         }
-        return level.getChunk(wx, wz);
+        return level.getChunk(canonical.x(), canonical.z());
     }
 }

@@ -15,11 +15,16 @@ virtual aliases. Server-side reads and writes canonicalize X/Z before touching
 state, while outbound packets are relabeled so clients can render aliases at the
 ordinary world coordinates they are tracking.
 
-World period:
+Square world period:
 
 - `W_CHUNKS`: configured tile width in chunks, normalized to an even number.
 - `W_BLOCKS = W_CHUNKS * 16`.
 - Canonical zone: centered on origin, `[-W/2, W/2)` in chunk/block X/Z.
+
+Experimental hex worlds use a chunk-mask tile instead of independent X/Z
+periods. The saved `tile_size` is normalized to a valid approximate hex width;
+`TileGeometry` owns the discrete mask, lattice translations, canonical owners,
+nearest aliases, and broad query boxes.
 
 ## Start Here
 

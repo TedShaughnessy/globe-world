@@ -2,6 +2,8 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import globe.world.topology.TopologicalCollisionQueries;
 import globe.world.util.CoordUtil;
 import net.minecraft.server.level.ServerLevel;
@@ -11,6 +13,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -47,7 +50,7 @@ public class ExperienceOrbAliasMixin {
     )
     private double useNearestAliasPlayerX(Player player, Operation<Double> original) {
         Entity orb = this.globeWorld$self();
-        return orb.getX() + CoordUtil.wrappedDeltaBlock(orb.level(), original.call(player), orb.getX());
+        return this.globeWorld$nearestAlias(player, orb).x();
     }
 
     @WrapOperation(
@@ -59,7 +62,7 @@ public class ExperienceOrbAliasMixin {
     )
     private double useNearestAliasPlayerZ(Player player, Operation<Double> original) {
         Entity orb = this.globeWorld$self();
-        return orb.getZ() + CoordUtil.wrappedDeltaBlock(orb.level(), original.call(player), orb.getZ());
+        return this.globeWorld$nearestAlias(player, orb).z();
     }
 
     @WrapOperation(
@@ -97,6 +100,12 @@ public class ExperienceOrbAliasMixin {
     @Unique
     private ExperienceOrb globeWorld$self() {
         return (ExperienceOrb)(Object)this;
+    }
+
+    @Unique
+    private Vec3 globeWorld$nearestAlias(Entity target, Entity viewer) {
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        return topology.virtualBlockForViewer(topology.canonicalBlock(target.position()), viewer.position());
     }
 
     @Unique

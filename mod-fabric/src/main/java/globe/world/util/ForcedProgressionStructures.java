@@ -1077,8 +1077,7 @@ public final class ForcedProgressionStructures {
     }
 
     private static boolean isCanonical(DimensionTiling tiling, ChunkPos pos) {
-        return CoordUtil.wrapChunk(tiling, pos.x()) == pos.x()
-                && CoordUtil.wrapChunk(tiling, pos.z()) == pos.z();
+        return CoordUtil.wrapChunkPos(tiling, pos).equals(pos);
     }
 
     private static long mix(long value) {

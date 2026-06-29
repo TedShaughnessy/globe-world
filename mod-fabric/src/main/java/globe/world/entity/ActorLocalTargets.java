@@ -4,7 +4,7 @@ import globe.world.topology.TopologyContext;
 import globe.world.topology.TopologyContexts;
 import globe.world.topology.TopologicalEntityQueries;
 import globe.world.topology.TopologicalRaycasts;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TileGeometry;
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
@@ -31,11 +31,7 @@ public final class ActorLocalTargets {
         boolean sameLevel = actor.level() == target.level();
         boolean aliasingEnabled = canAlias(actor, target);
         TopologyContext context = TopologyContexts.forLevel(target.level());
-        Vec3 canonicalPosition = new Vec3(
-                context.canonicalBlockX(target.getX()),
-                target.getY(),
-                context.canonicalBlockX(target.getZ())
-        );
+        Vec3 canonicalPosition = context.canonicalBlock(new Vec3(target.getX(), target.getY(), target.getZ()));
         AABB canonicalBox = context.canonicalBox(target.getBoundingBox());
         return new ActorLocalTargetView(
                 actor,
@@ -201,7 +197,7 @@ public final class ActorLocalTargets {
         }
 
         TopologyContext topology = TopologyContexts.forLevel(level);
-        Vec3 canonical = new Vec3(topology.canonicalBlockX(targetX), targetY, topology.canonicalBlockX(targetZ));
+        Vec3 canonical = topology.canonicalBlock(new Vec3(targetX, targetY, targetZ));
         return topology.virtualBlockForViewer(canonical, new Vec3(actorX, actorY, actorZ));
     }
 
@@ -224,12 +220,10 @@ public final class ActorLocalTargets {
             return Set.of(center);
         }
 
-        int tileSize = tiling.tileSizeBlocks();
         Set<BlockPos> positions = new LinkedHashSet<>();
-        for (int tileX = -tileRadius; tileX <= tileRadius; tileX++) {
-            for (int tileZ = -tileRadius; tileZ <= tileRadius; tileZ++) {
-                positions.add(center.offset(tileX * tileSize, 0, tileZ * tileSize));
-            }
+        AABB unitBox = AABB.ofSize(center.getCenter(), 1.0D, 1.0D, 1.0D);
+        for (AABB aliasBox : TileGeometry.create(tiling).nearbyAliasBoxes(unitBox, actor.position(), tileRadius)) {
+            positions.add(BlockPos.containing(aliasBox.getCenter()));
         }
         return positions;
     }
@@ -260,12 +254,10 @@ public final class ActorLocalTargets {
             return Set.of(nearest);
         }
 
-        int tileSize = topology.tileSizeBlocks();
         Set<BlockPos> positions = new LinkedHashSet<>();
-        for (int tileX = -ENTITY_TARGET_ALIAS_RADIUS; tileX <= ENTITY_TARGET_ALIAS_RADIUS; tileX++) {
-            for (int tileZ = -ENTITY_TARGET_ALIAS_RADIUS; tileZ <= ENTITY_TARGET_ALIAS_RADIUS; tileZ++) {
-                positions.add(nearest.offset(tileX * tileSize, 0, tileZ * tileSize));
-            }
+        AABB unitBox = AABB.ofSize(nearest.getCenter(), 1.0D, 1.0D, 1.0D);
+        for (AABB aliasBox : TileGeometry.create(topology.tiling()).nearbyAliasBoxes(unitBox, actor.position(), ENTITY_TARGET_ALIAS_RADIUS)) {
+            positions.add(BlockPos.containing(aliasBox.getCenter()));
         }
         return positions;
     }
@@ -276,7 +268,10 @@ public final class ActorLocalTargets {
             double dz = actor.getZ() - target.getZ();
             return dx * dx + dz * dz;
         }
-        return CoordUtil.wrappedDistanceSqrXZ(actor.level(), actor.getX(), actor.getZ(), target.getX(), target.getZ());
+        TopologyContext topology = TopologyContexts.forLevel(actor.level());
+        return topology.wrappedDistanceSqr(
+                new Vec3(actor.getX(), 0.0D, actor.getZ()),
+                new Vec3(target.getX(), 0.0D, target.getZ()));
     }
 
     public static AABB canonicalQueryBox(Level level, AABB rawBox) {

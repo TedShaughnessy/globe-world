@@ -2,7 +2,8 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.EntityCanonicalizer;
 import globe.world.util.GlobeEntityAliasing;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,8 +32,12 @@ public class EntityPassengerPositionMixin {
             Operation<Void> original) {
         Entity vehicle = (Entity) (Object) this;
         if (passenger instanceof ServerPlayer && EntityCanonicalizer.shouldCanonicalizeContinuously(vehicle)) {
-            x = CoordUtil.virtualBlock(vehicle.level(), CoordUtil.wrapBlock(vehicle.level(), x), passenger.getX());
-            z = CoordUtil.virtualBlock(vehicle.level(), CoordUtil.wrapBlock(vehicle.level(), z), passenger.getZ());
+            TopologyContext topology = TopologyContexts.forLevel(vehicle.level());
+            Vec3 visiblePosition = topology.virtualBlockForViewer(
+                    topology.canonicalBlock(new Vec3(x, y, z)),
+                    passenger.position());
+            x = visiblePosition.x();
+            z = visiblePosition.z();
         }
         if (vehicle.level().isClientSide()
                 && !(passenger instanceof Player)

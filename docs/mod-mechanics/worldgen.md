@@ -30,6 +30,12 @@ The automatic policy uses compact torus for small tiles, periodic lattice for
 clean large multiples, and edge blend for awkward medium/large sizes. Changing
 tile size resets saved explicit terrain methods back to `AUTO`.
 
+Experimental hex topology currently forces/resolves terrain to `EDGE_BLEND`,
+but this first run does not implement true six-edge terrain continuity. Hex
+worldgen ownership helpers canonicalize chunks and block writes through the
+geometry boundary, while terrain, biome, cave, feature, and structure seams may
+still be visibly discontinuous.
+
 ## Seed Preflight
 
 `TopologySettings.avoid_water_only_seeds` is a create-time heuristic for random
@@ -118,7 +124,9 @@ through wrapped `Level.setBlock` into canonical storage.
 `GenerationWindow` is the shared worldgen helper for bounded region access at
 tile edges. It gives `WorldGenRegionMixin` one vocabulary for canonical block
 reads, physical-cache alias chunk lookup, toroidal write-radius checks, physical
-cache availability, and write classification. It does not call live
+cache availability, and write classification. Square worlds use independent
+X/Z periods; hex worlds resolve cache aliases and canonical destinations through
+`TopologyContext` and `TileGeometry`. It does not call live
 `ServerLevel.getChunk(...)`, mutate chunks directly, or replace the terrain and
 noise periodicity hooks. Manual seam testing after the extraction confirmed the
 helper preserves the existing ownership model and does not introduce durable

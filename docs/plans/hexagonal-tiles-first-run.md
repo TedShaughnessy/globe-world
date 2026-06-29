@@ -1,5 +1,13 @@
 # Hexagonal Tiles First Run
 
+Status: implemented as the experimental runtime topology slice. The durable
+behavior is documented in
+[Topology](../mod-mechanics/topology.md),
+[Chunks](../mod-mechanics/chunks.md), and
+[Worldgen](../mod-mechanics/worldgen.md). This note is kept as historical scope
+for the first milestone; remaining hex terrain, Atlas, structure, and polish
+work continues in [Hexagonal tiles](hexagonal-tiles.md).
+
 ## Goal
 
 Implement an experimental first pass of hexagonal tiles where runtime topology
@@ -224,6 +232,8 @@ The first run is successful when a manually configured hex world can:
 
 ## Deferred Follow-Ups
 
+- Reconcile the implemented top/bottom-pointed X/Z mask with the planned
+  left/right-pointed orientation before treating the shape as final.
 - Six-edge and corner edge-blend terrain.
 - Hex-aware Atlas projection.
 - Structure starts, references, and piece placement across hex seams.

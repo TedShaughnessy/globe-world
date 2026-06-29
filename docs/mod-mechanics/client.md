@@ -98,12 +98,16 @@ are not a stable API.
 
 `GlobeWorldSettingsControls` backs both the create-world Globe World tab and the
 in-world options screen. Its interactive controls include hover tooltips for
-custom topology methods, Overworld and Nether curvature, day-length multiplier,
-day/night behavior, natural-spawn exclusions, and forced progression-structure
-toggles.
+custom tile shape and topology methods, Overworld and Nether curvature,
+day-length multiplier, day/night behavior, natural-spawn exclusions, and forced
+progression-structure toggles. Custom world creation exposes Square and
+experimental Hex Overworld tile shapes. Selecting Hex normalizes the tile width
+to its supported minimum/multiple and forces the terrain method to Edge Blend;
+Nether tiling remains square-only.
 The controls mutate the split `GlobeSettings` sections directly: topology
-controls update `TopologySettings`, including even-chunk normalization for
-custom Overworld and Nether tile sizes; curvature controls update
+controls update `TopologySettings`, including shape-specific normalization for
+custom Overworld tile sizes and even-chunk normalization for the Nether;
+curvature controls update
 `PresentationSettings`; and day/night controls update `GameplaySettings`.
 In remote multiplayer, the in-world screen shows the synced server settings as
 read-only; local clients cannot silently edit only their own `GlobeConfig`.
@@ -147,14 +151,14 @@ preset slider from reverse `1:32` through `1:32`. A custom-mode `Tile Nether`
 toggle disables the Nether inputs when Nether wrapping is off. Changing the custom
 Overworld tile size refreshes the default Nether tile size; changing the portal
 ratio does not alter Nether tile size or terrain mode.
-In custom create-world mode, explicit Overworld and Nether topology methods are
-available next to the corresponding size controls; changing the Overworld tile
-size resets only the Overworld topology method, while changing the Nether tile
-size resets the Nether topology method back to `Auto`. Custom tile-size inputs
-normalize to the supported minimum of 2 chunks before settings are saved, so
-world creation never receives a one-chunk tile. Tile sizes up to 256 chunks
-default forced progression structures on for the matching dimension; larger
-effective tile sizes default them off.
+In custom create-world mode, explicit Overworld tile shape and Overworld/Nether
+terrain topology methods are available next to the corresponding size controls;
+changing the Overworld tile size resets only the Overworld terrain method,
+while changing the Nether tile size resets the Nether terrain method back to
+`Auto`. Square custom tile-size inputs normalize to the supported minimum of 2
+even chunks. Hex inputs normalize to a minimum of 8 chunks and a multiple of
+four. Tile sizes up to 256 chunks default forced progression structures on for
+the matching dimension; larger effective tile sizes default them off.
 
 ## Shader Packs
 
@@ -184,6 +188,12 @@ so passengers and vehicles stay together in every visual copy.
 Standalone remote players can also render one ring of client-only copies around
 the camera for small tile worlds. The local camera player and mounted player
 stacks are skipped.
+
+Square worlds enumerate independent X/Z tile offsets. Experimental hex worlds
+enumerate the geometry's lattice translations instead, so diagonal visual
+copies use the same `(half width, hex height)` shift as the terrain chunks
+beneath them. Whole-tile packet rebases use the same geometry-aware equivalence
+test to prevent an entity from interpolating between hex aliases.
 
 The aliases use the same real client entity id and are culled by vanilla entity
 view distance, the configured camera tile-ring limit for non-player entities,
