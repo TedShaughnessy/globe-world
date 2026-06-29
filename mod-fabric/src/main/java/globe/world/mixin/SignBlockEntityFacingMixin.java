@@ -2,7 +2,8 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
@@ -23,11 +24,7 @@ public class SignBlockEntityFacingMixin {
             Operation<BlockPos> original,
             Player player) {
         BlockPos pos = original.call(sign);
-        int virtualX = (int) CoordUtil.virtualBlock(player.level(), pos.getX(), player.getX());
-        int virtualZ = (int) CoordUtil.virtualBlock(player.level(), pos.getZ(), player.getZ());
-        if (virtualX == pos.getX() && virtualZ == pos.getZ()) {
-            return pos;
-        }
-        return new BlockPos(virtualX, pos.getY(), virtualZ);
+        TopologyContext topology = TopologyContexts.forLevel(player.level());
+        return topology.virtualBlockForViewer(topology.canonicalBlock(pos), player.position());
     }
 }

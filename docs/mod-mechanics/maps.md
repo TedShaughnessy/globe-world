@@ -2,9 +2,9 @@
 
 ## What
 
-Filled maps remain fixed coordinate objects, but player positions are evaluated
-through tiled aliases. In tiled dimensions, the player icon uses the alias of the
-player's canonical X/Z that is closest to the map center.
+Filled maps remain fixed coordinate objects, but sampled positions and
+decorations are evaluated through tiled aliases. In tiled dimensions, each
+position uses the alias of its canonical X/Z that is closest to the map center.
 
 ## Why
 
@@ -20,10 +20,13 @@ Map pixel refresh in `MapItem.update(...)` uses the held map center as the
 viewer coordinate for player X/Z. The player's raw position is first
 canonicalized, then moved to the virtual tile nearest `centerX`/`centerZ`.
 
-Player decorations in `MapItemSavedData.tickCarriedBy(...)` use the same
-center-relative alias rule before vanilla calculates whether the icon is on-map,
-off-map, or off-limits. This applies to tracked player icons only; banners,
-frames, and static exploration markers keep their stored map coordinates.
+`MapItemSavedData.addDecoration(...)` applies the same center-relative alias
+rule before vanilla calculates whether an icon is on-map, off-map, or
+off-limits. It covers player, banner, item-frame, and static exploration
+decorations while leaving their stored canonical identities unchanged. Banner
+toggle range checks use the visible map-centered alias, and pixel refresh
+canonicalizes banner-validation columns before comparing them with stored
+markers.
 
 `ClientboundMapItemDataPacket` is therefore covered upstream: map-local pixels
 and tracked-player decorations are corrected before vanilla builds the packet,

@@ -2,6 +2,8 @@ package globe.world.util;
 
 import globe.world.GlobeWorld;
 import globe.world.config.GlobeConfig;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
@@ -44,7 +46,7 @@ public final class EndPortalFallback {
         EndPortalProgressionState state = EndPortalProgressionState.get(level);
         BlockPos saved = state.fallbackPortalPos();
         return saved != null
-                && CoordUtil.isInCanonicalTile(DimensionTiling.forLevel(level), saved)
+                && TopologyContexts.forLevel(level).isCanonical(saved)
                 && validEyeMask(state.fallbackEyeMask());
     }
 
@@ -53,21 +55,21 @@ public final class EndPortalFallback {
         EndPortalAvailability.Report report = EndPortalAvailability.classify(level);
         state.recordClassification(report, GlobeConfig.settingsVersion());
 
-        DimensionTiling tiling = DimensionTiling.forLevel(level);
+        TopologyContext topology = TopologyContexts.forLevel(level);
         BlockPos saved = state.fallbackPortalPos();
-        if (saved != null && CoordUtil.isInCanonicalTile(tiling, saved) && validEyeMask(state.fallbackEyeMask())) {
+        if (saved != null && topology.isCanonical(saved) && validEyeMask(state.fallbackEyeMask())) {
             return state;
         }
 
-        BlockPos portalPos = choosePortalPos(level, tiling, player);
+        BlockPos portalPos = choosePortalPos(level, topology, player);
         state.setFallbackPortalPos(portalPos);
         state.setFallbackEyeMask(randomEyeMask(level, portalPos));
         return state;
     }
 
     public static boolean buildOrRepairPortal(ServerLevel level, BlockPos portalPos, int eyeMask) {
-        DimensionTiling tiling = DimensionTiling.forLevel(level);
-        BlockPos center = CoordUtil.wrapBlockPos(tiling, portalPos);
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        BlockPos center = topology.canonicalBlock(portalPos);
         loadPortalChunks(level, center);
 
         boolean changed = false;
@@ -75,7 +77,7 @@ public final class EndPortalFallback {
             for (int dx = -CLEAR_RADIUS; dx <= CLEAR_RADIUS; dx++) {
                 for (int dz = -CLEAR_RADIUS; dz <= CLEAR_RADIUS; dz++) {
                     BlockPos pos = center.offset(dx, dy, dz);
-                    if (!CoordUtil.isInCanonicalTile(tiling, pos)) {
+                    if (!topology.isCanonical(pos)) {
                         GlobeWorld.LOGGER.warn("Skipping fallback End portal clear outside canonical tile at {}", pos);
                         continue;
                     }
@@ -94,7 +96,7 @@ public final class EndPortalFallback {
         for (int dx = -FRAME_RADIUS; dx <= FRAME_RADIUS; dx++) {
             for (int dz = -FRAME_RADIUS; dz <= FRAME_RADIUS; dz++) {
                 BlockPos pos = center.offset(dx, 0, dz);
-                if (!CoordUtil.isInCanonicalTile(tiling, pos)) {
+                if (!topology.isCanonical(pos)) {
                     GlobeWorld.LOGGER.warn("Skipping fallback End portal write outside canonical tile at {}", pos);
                     continue;
                 }
@@ -107,23 +109,43 @@ public final class EndPortalFallback {
         return changed;
     }
 
-    private static BlockPos choosePortalPos(ServerLevel level, DimensionTiling tiling, Player player) {
-        int min = -tiling.tileSizeBlocks() / 2;
-        int max = min + tiling.tileSizeBlocks() - 1;
-        int safeMin = min + CLEAR_RADIUS;
-        int safeMax = max - CLEAR_RADIUS;
-        if (safeMin > safeMax) {
-            safeMin = min + FRAME_RADIUS;
-            safeMax = max - FRAME_RADIUS;
-        }
-
-        BlockPos playerPos = CoordUtil.wrapBlockPos(tiling, player.blockPosition());
-        int x = Mth.clamp(playerPos.getX(), safeMin, safeMax);
-        int z = Mth.clamp(playerPos.getZ(), safeMin, safeMax);
+    private static BlockPos choosePortalPos(ServerLevel level, TopologyContext topology, Player player) {
+        BlockPos playerPos = topology.canonicalBlock(player.blockPosition());
         int minY = level.getMinY() + 4;
         int maxY = level.getMinY() + level.getHeight() - CLEAR_HEIGHT - 1;
         int y = Mth.clamp(playerPos.getY(), minY, Math.max(minY, maxY));
-        return new BlockPos(x, y, z);
+        BlockPos preferred = playerPos.atY(y);
+        if (canFitPortal(topology, preferred)) {
+            return preferred;
+        }
+
+        for (int radius = 1; radius <= topology.tileSizeBlocks(); radius++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                int dz = radius - Math.abs(dx);
+                BlockPos north = topology.canonicalBlock(preferred.offset(dx, 0, -dz));
+                if (canFitPortal(topology, north)) {
+                    return north;
+                }
+                if (dz != 0) {
+                    BlockPos south = topology.canonicalBlock(preferred.offset(dx, 0, dz));
+                    if (canFitPortal(topology, south)) {
+                        return south;
+                    }
+                }
+            }
+        }
+        return preferred;
+    }
+
+    private static boolean canFitPortal(TopologyContext topology, BlockPos center) {
+        for (int dx = -CLEAR_RADIUS; dx <= CLEAR_RADIUS; dx++) {
+            for (int dz = -CLEAR_RADIUS; dz <= CLEAR_RADIUS; dz++) {
+                if (!topology.isCanonical(center.offset(dx, 0, dz))) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static int randomEyeMask(ServerLevel level, BlockPos portalPos) {
@@ -144,7 +166,7 @@ public final class EndPortalFallback {
     }
 
     private static Vec3 signalTarget(ServerLevel level, BlockPos portalPos) {
-        BlockPos canonicalPortalPos = CoordUtil.wrapBlockPos(level, portalPos);
+        BlockPos canonicalPortalPos = TopologyContexts.forLevel(level).canonicalBlock(portalPos);
         return new Vec3(
                 canonicalPortalPos.getX(),
                 canonicalPortalPos.getY(),
@@ -159,7 +181,7 @@ public final class EndPortalFallback {
         int maxChunkZ = SectionPos.blockToSectionCoord(center.getZ() + CLEAR_RADIUS);
         for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
             for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
-                ChunkPos canonical = CoordUtil.wrapChunkPos(level, new ChunkPos(chunkX, chunkZ));
+                ChunkPos canonical = TopologyContexts.forLevel(level).canonicalChunk(chunkX, chunkZ);
                 level.getChunk(canonical.x(), canonical.z());
             }
         }

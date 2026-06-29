@@ -255,13 +255,15 @@ available.
 When tiling is enabled and neither vanilla nor forced stronghold progression is
 available, or when structure generation is disabled, `EnderEyeItemMixin`
 replaces a thrown Eye of Ender with a fallback path: `EndPortalFallback` chooses
-and persists one canonical position centered on the throwing player, repairs a
-5x5 End portal frame with a deterministic random subset of eyes already
-inserted, then spawns a normal Eye of Ender. The eye entity and its flight
-target stay in canonical server coordinates so entity storage canonicalization
-cannot desynchronize the projectile from its target; entity packets still render
-the eye through the nearest visual alias for the throwing player. The fallback
-path preserves vanilla item use, stat, sound, and advancement side effects.
+and persists one canonical position near the throwing player, moving inward
+when necessary until the complete repair footprint is inside the square or hex
+canonical mask. It repairs a 5x5 End portal frame with a deterministic random
+subset of eyes already inserted, then spawns a normal Eye of Ender. The eye
+entity and its flight target stay in canonical server coordinates so entity
+storage canonicalization cannot desynchronize the projectile from its target;
+entity packets still render the eye through the nearest visual alias for the
+throwing player. The fallback path preserves vanilla item use, stat, sound, and
+advancement side effects.
 Once a fallback portal has been assigned, later Overworld Eye of Ender throws use
 it only while vanilla or forced stronghold progression is still unavailable, so
 a saved emergency portal does not mask a later-valid stronghold path.

@@ -82,6 +82,10 @@ public final class TopologyContext {
         return tiling.tileSizeBlocks();
     }
 
+    public int canonicalChunkCount() {
+        return geometry().canonicalChunkCount();
+    }
+
     public int canonicalChunkX(int rawX) {
         return CoordUtil.wrapChunk(tiling, rawX);
     }

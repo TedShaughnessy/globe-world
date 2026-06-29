@@ -7,11 +7,11 @@ import com.llamalad7.mixinextras.sugar.Local;
 import globe.world.config.GameplaySettings;
 import globe.world.config.GlobeConfig;
 import globe.world.topology.TopologyContexts;
-import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.GlobeNaturalSpawning;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Position;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.server.level.ServerLevel;
@@ -107,7 +107,8 @@ public class NaturalSpawnerMixin {
         index = 3
     )
     private static BlockPos wrapSpawnPosition(BlockPos pos) {
-        return CoordUtil.wrapBlockPos(pos);
+        return globe.world.topology.TileGeometry.create(DimensionTiling.currentOrOverworld())
+                .canonicalBlock(pos.getX(), pos.getY(), pos.getZ());
     }
 
     @WrapOperation(
@@ -143,40 +144,22 @@ public class NaturalSpawnerMixin {
         return TopologyContexts.forLevel(chunk.getLevel()).canonicalChunk(original.call(chunk));
     }
 
-    @ModifyVariable(
-        method = "getRandomPosWithin(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/chunk/LevelChunk;)Lnet/minecraft/core/BlockPos;",
-        at = @At("STORE"),
-        index = 3
-    )
-    private static int wrapRandomSpawnX(int x) {
-        return CoordUtil.wrapBlock(x);
-    }
-
-    @ModifyVariable(
-        method = "getRandomPosWithin(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/chunk/LevelChunk;)Lnet/minecraft/core/BlockPos;",
-        at = @At("STORE"),
-        index = 4
-    )
-    private static int wrapRandomSpawnZ(int z) {
-        return CoordUtil.wrapBlock(z);
-    }
-
-    @ModifyVariable(
+    @WrapOperation(
         method = "spawnCategoryForPosition(Lnet/minecraft/world/entity/MobCategory;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/NaturalSpawner$SpawnPredicate;Lnet/minecraft/world/level/NaturalSpawner$AfterSpawnCallback;)V",
-        at = @At("STORE"),
-        index = 13
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/core/BlockPos$MutableBlockPos;set(III)Lnet/minecraft/core/BlockPos$MutableBlockPos;"
+        )
     )
-    private static int wrapSpawnCandidateX(int x) {
-        return CoordUtil.wrapBlock(x);
-    }
-
-    @ModifyVariable(
-        method = "spawnCategoryForPosition(Lnet/minecraft/world/entity/MobCategory;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/ChunkAccess;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/NaturalSpawner$SpawnPredicate;Lnet/minecraft/world/level/NaturalSpawner$AfterSpawnCallback;)V",
-        at = @At("STORE"),
-        index = 14
-    )
-    private static int wrapSpawnCandidateZ(int z) {
-        return CoordUtil.wrapBlock(z);
+    private static BlockPos.MutableBlockPos canonicalizeSpawnCandidate(
+            BlockPos.MutableBlockPos pos,
+            int x,
+            int y,
+            int z,
+            Operation<BlockPos.MutableBlockPos> original,
+            @Local(argsOnly = true) ServerLevel level) {
+        BlockPos canonical = TopologyContexts.forLevel(level).canonicalBlock(x, y, z);
+        return original.call(pos, canonical.getX(), canonical.getY(), canonical.getZ());
     }
 
     @WrapOperation(
@@ -187,7 +170,9 @@ public class NaturalSpawnerMixin {
         )
     )
     private static double wrapSpawnPointDistance(Player player, double x, double y, double z, Operation<Double> original) {
-        return CoordUtil.wrappedDistanceSqr(player.level(), player.getX(), player.getY(), player.getZ(), x, y, z);
+        return TopologyContexts.forLevel(player.level()).wrappedDistanceSqr(
+                player.position(),
+                new Vec3(x, y, z));
     }
 
     @ModifyConstant(
@@ -221,14 +206,9 @@ public class NaturalSpawnerMixin {
         if (!DimensionTiling.forLevel(level).enabled()) {
             return original.call(spawnPos, candidate, distance);
         }
-        return CoordUtil.wrappedDistanceSqr(
-                level,
-                spawnPos.getX() + 0.5,
-                spawnPos.getY() + 0.5,
-                spawnPos.getZ() + 0.5,
-                candidate.x(),
-                candidate.y(),
-                candidate.z()) < distance * distance;
+        return TopologyContexts.forLevel(level).wrappedDistanceSqr(
+                Vec3.atCenterOf(spawnPos),
+                new Vec3(candidate.x(), candidate.y(), candidate.z())) < distance * distance;
     }
 
     @WrapOperation(

@@ -1,7 +1,7 @@
 package globe.world.mixin;
 
-import globe.world.util.CoordUtil;
-import globe.world.util.DimensionTiling;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -17,8 +17,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class LodestoneTrackerMixin {
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
     private void validateCanonicalLodestone(ServerLevel level, CallbackInfoReturnable<LodestoneTracker> cir) {
-        DimensionTiling tiling = DimensionTiling.forLevel(level);
-        if (!tiling.enabled()) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        if (!topology.enabled()) {
             return;
         }
 
@@ -28,7 +28,7 @@ public class LodestoneTrackerMixin {
             return;
         }
 
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(tiling, target.get().pos());
+        BlockPos canonicalPos = topology.canonicalBlock(target.get().pos());
         boolean valid = level.isInWorldBounds(canonicalPos)
                 && level.getPoiManager().existsAtPosition(PoiTypes.LODESTONE, canonicalPos);
         cir.setReturnValue(valid ? tracker : new LodestoneTracker(Optional.empty(), true));

@@ -51,8 +51,9 @@ entity-ticking or when any visible alias of that canonical chunk is
 entity-ticking. Alias chunks only satisfy the range gate; they do not create
 duplicate entity ticks. Despawn checks use wrapped player distance.
 
-Natural spawning stores candidates in canonical chunks, wraps candidate
-positions and player-distance checks, counts mob caps by canonical chunk, and
+Natural spawning stores candidates in canonical chunks, canonicalizes each
+complete X/Z candidate through `TopologyContext`, wraps player-distance checks,
+counts mob caps by canonical chunk, and
 dedupes spawning chunks by canonical key. Chunk-generation mob spawns are
 cancelled for non-canonical chunks. Local mob-cap player lookup opens vanilla's
 raw `DistanceManager.hasPlayersNearby(...)` prefilter when a canonical chunk is
@@ -75,13 +76,16 @@ checks are unchanged.
 
 Player and world spawn search is tile-bounded in tiled dimensions.
 `GlobeSpawnFinder` replaces `PlayerSpawnFinder`'s raw radius search with a
-deterministic scan over canonical chunks, preserving vanilla-style dry-land,
-fluid, heightmap, and player-collision checks. If no dry land exists in the
-canonical tile, it falls back to a collision-free surface, then a vertical fixup
-of the canonical spawn suggestion, then a logged generator-height tile-center
-last resort. The chunk scan is generated lazily in wrapped-distance order so
-large configured tiles do not allocate a full tile-sized chunk list during world
-load. Initial world-spawn metadata is canonicalized before it is saved.
+deterministic scan over the geometry's canonical lattice area, preserving
+vanilla-style dry-land, fluid, heightmap, and player-collision checks. The scan
+canonicalizes two-dimensional chunk candidates and stops after the lattice
+determinant's canonical chunk count, so square and hex masks cover their real
+owners exactly once. If no dry land exists in the canonical tile, it falls back
+to a collision-free surface, then a vertical fixup of the canonical spawn
+suggestion, then a logged generator-height canonical-origin last resort. The
+chunk scan is generated lazily and tracks only canonical keys rather than
+allocating a sorted tile-sized chunk list during world load. Initial world-spawn
+metadata is canonicalized before it is saved.
 
 Bed, respawn-anchor, and forced respawn validation canonicalize the saved
 `RespawnConfig` position at use time. The saved command metadata can remain raw,
@@ -235,12 +239,14 @@ source dimension, and chunk visibility checks test the receiver-facing virtual
 chunk.
 
 Fishing bobbers remain canonical non-player entities, but owner-relative
-fishing logic uses wrapped X/Z math. `FishingHookMixin` keeps vanilla's held-rod
+fishing logic uses whole-position topology math. `FishingHookMixin` keeps vanilla's held-rod
 and permission checks while replacing the owner distance gate with wrapped
 distance, so an alias-frame player does not immediately discard a canonical
 bobber. Retrieval pullback for caught loot and hooked entities also uses the
-shortest wrapped X/Z delta toward the owner while preserving vanilla Y motion,
-loot tables, durability, and open-water behavior.
+nearest lattice alias toward the owner while preserving vanilla Y motion, loot
+tables, durability, and open-water behavior. `FishingHookRendererMixin` applies
+the same single alias choice to the client line endpoint, including oblique hex
+translations.
 
 ## Visual Aliases
 
@@ -332,7 +338,7 @@ canonicalized but currently sit outside canonical X/Z.
   `PistonMovingBlockEntityQueryMixin`.
 - Player interaction and presentation:
   `PlayerInteractionRangeMixin`, `PlayerItemPickupMixin`,
-  `FishingHookMixin`,
+  `FishingHookMixin`, `FishingHookRendererMixin`,
   `GlobeEntityAliasing`, `GlobeEntityAliasMode`, `GlobeVisualAliasUtil`,
   `LevelRendererMixin`, `ClientPacketListenerMixin`,
   `GlobeCurvedRaycast`, `WaypointPacketUtil`,

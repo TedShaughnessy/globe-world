@@ -107,10 +107,7 @@ public final class AtlasTorusProjection {
     }
 
     public int canonicalChunkCount() {
-        TileGeometry.LatticeBasis basis = this.geometry.latticeBasis();
-        return Math.abs(
-                basis.a().x() * basis.b().z()
-                        - basis.a().z() * basis.b().x());
+        return this.geometry.canonicalChunkCount();
     }
 
     public double canonicalBlockArea() {

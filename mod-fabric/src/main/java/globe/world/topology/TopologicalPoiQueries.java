@@ -31,6 +31,27 @@ public final class TopologicalPoiQueries {
     private TopologicalPoiQueries() {
     }
 
+    public static void ensureLoadedAndValid(ServerLevel level, BlockPos center, int radius) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        if (!topology.enabled()) {
+            level.getPoiManager().ensureLoadedAndValid(level, center, radius);
+            return;
+        }
+
+        AABB visibleSquare = new AABB(
+                center.getX() - radius,
+                center.getY(),
+                center.getZ() - radius,
+                center.getX() + radius + 1.0D,
+                center.getY() + 1.0D,
+                center.getZ() + radius + 1.0D);
+        for (AABB canonicalBox : TopologicalEntityQueries.canonicalQueryBoxes(topology, visibleSquare)) {
+            BlockPos boxCenter = BlockPos.containing(canonicalBox.getCenter());
+            int boxRadius = (int)Math.ceil(Math.max(canonicalBox.getXsize(), canonicalBox.getZsize()) * 0.5D);
+            level.getPoiManager().ensureLoadedAndValid(level, boxCenter, boxRadius);
+        }
+    }
+
     public static Stream<PoiRecord> recordsInRange(
             ServerLevel level,
             Predicate<Holder<PoiType>> type,

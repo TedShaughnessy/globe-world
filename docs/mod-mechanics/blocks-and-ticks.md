@@ -111,7 +111,9 @@ identity. The per-caller policy and regression cases live in
 Lodestone compass tracking validates the lodestone point of interest at the
 canonical target position in tiled dimensions. This keeps compasses bound to an
 alias lodestone from being cleared just because the stored `GlobalPos` is
-outside the canonical tile.
+outside the canonical tile. On the client, lodestone, recovery, and world-spawn
+compass targets choose one whole-position alias nearest the item owner, so hex
+needles can point across oblique seams without mixing independent X/Z aliases.
 
 ## Key Files
 
@@ -146,6 +148,7 @@ outside the canonical tile.
 - `mod-fabric/src/main/java/globe/world/mixin/PlayerListBroadcastMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ServerLevelWorldEventMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/LodestoneTrackerMixin.java`
+- `mod-fabric/src/client/java/globe/world/client/mixin/CompassAngleStateMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/PlayerInteractionRangeMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ServerGamePacketListenerImplMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/SignBlockEntityFacingMixin.java`

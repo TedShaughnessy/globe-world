@@ -2,7 +2,6 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.CoordUtil;
 import globe.world.topology.TopologyContext;
 import globe.world.topology.TopologyContexts;
 import net.minecraft.world.entity.Entity;
@@ -23,7 +22,7 @@ public class FishingHookMixin {
             )
     )
     private double globeWorld$useWrappedOwnerDistance(FishingHook hook, Entity owner, Operation<Double> original) {
-        return CoordUtil.wrappedDistanceSqr(hook, owner);
+        return TopologyContexts.forLevel(hook.level()).wrappedDistanceSqr(hook.position(), owner.position());
     }
 
     @WrapOperation(

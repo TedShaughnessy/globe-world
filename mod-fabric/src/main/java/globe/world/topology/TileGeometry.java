@@ -75,6 +75,13 @@ public interface TileGeometry {
         return tiling().tileSizeBlocks();
     }
 
+    default int canonicalChunkCount() {
+        LatticeBasis basis = latticeBasis();
+        return Math.abs(
+                basis.a().x() * basis.b().z()
+                        - basis.a().z() * basis.b().x());
+    }
+
     default ChunkPos latticeTranslation(LatticeCoordinate coordinate) {
         return latticeBasis().translation(coordinate);
     }

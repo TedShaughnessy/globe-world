@@ -7,10 +7,11 @@ The first-run scope is preserved in
 [Hexagonal tiles first run](hexagonal-tiles-first-run.md).
 
 The current milestone is **hex product integration without seamless
-generation**. Topology diagnostics and the Atlas lattice projection are
-implemented. Remaining work is the residual non-worldgen audit, broader Atlas
-seam regression coverage, and a save-stable contract for any future geometry
-revision. Visible terrain seams remain acceptable throughout this milestone.
+generation**. Topology diagnostics, the Atlas lattice projection, and the
+residual non-worldgen gameplay audit are implemented. Remaining work is broader
+Atlas seam regression coverage and a save-stable contract for any future
+geometry revision. Visible terrain seams remain acceptable throughout this
+milestone.
 
 ## Goal
 
@@ -102,23 +103,27 @@ the same descriptive API with its ordinary orthogonal basis.
 
 ## Runtime Systems
 
-The runtime MVP covers the main ownership and alias paths. A residual
-square-helper audit is still required outside seamless generation. In
-particular, a whole position must not be canonicalized or virtualized by calling
-an X helper once for X and once for Z.
-
-Audit and migrate these non-worldgen groups:
+Status: the residual non-worldgen square-helper audit is implemented. Whole
+positions are canonicalized and virtualized through `TileGeometry` rather than
+by choosing X and Z aliases independently. The completed groups were:
 
 1. Atlas discovery, power state, effect radii, travel, survey state/windows,
    held rendering, and projector rendering.
 2. World spawn search/fallbacks, respawn helpers, portal placement, lodestones,
    compasses, fishing-line endpoints, filled-map marker aliases, and other
    player-facing targets.
-3. Natural-spawn and player-distance helpers that still use one-axis wrapping.
+3. Natural-spawn and player-distance helpers that still used one-axis wrapping.
 4. Client debug HUD, tile border renderer, world-spawn marker, and any
    presentation code that derives a square tile index.
-5. Commands that still implement canonicalization, border distance, or alias
+5. Commands that implemented canonicalization, border distance, or alias
    selection directly with `CoordUtil`.
+
+The gameplay slice includes geometry-area spawn search, paired natural-spawn
+candidate canonicalization, Nether portal POI loading/search across seams,
+hex-safe End fallback placement, compass targets, fishing pull and rendered
+line endpoints, all filled-map decoration classes, banner validation, and sign
+facing. Remaining `CoordUtil` scalar uses are either explicit scalar policies
+(such as longitude) or deferred worldgen seed/noise/structure work below.
 
 Worldgen seed/noise/structure call sites are tracked separately below. A
 mechanical `CoordUtil.wrap*`, `virtual*`, and `wrappedDistance*` search should be
@@ -378,14 +383,14 @@ Next, outside seamless generation:
 
 1. ~~Freeze orientation and add the geometry descriptor/revision contract.~~
 2. ~~Implement truthful tile visuals, lattice-aware commands, and HUD output.~~
-3. Add the shared square/hex Atlas projection with property tests.
-4. Version Atlas/survey saved data and migrate literal discovery, sampling,
-   refresh, markers, held windows, and placed torus rendering.
-5. Migrate survey mode, Atlas rewards, powers, and travel to geometry-aware
-   canonicalization, area, and distance.
-6. Audit the remaining non-worldgen square-helper call sites: spawn/respawn,
+3. ~~Add the shared square/hex Atlas projection with property tests.~~
+4. ~~Version Atlas/survey saved data and migrate literal discovery, sampling,
+   refresh, markers, held windows, and placed torus rendering.~~
+5. ~~Migrate survey mode, Atlas rewards, powers, and travel to geometry-aware
+   canonicalization, area, and distance.~~
+6. ~~Audit the remaining non-worldgen square-helper call sites: spawn/respawn,
    portals, lodestones/compasses, fishing, filled maps, spawning/distance, and
-   client presentation.
+   client presentation.~~
 7. Choose lattice-U local solar time and migrate all local-time consumers.
 8. Run the six-seam non-generation acceptance matrix and profile tiny tiles.
 

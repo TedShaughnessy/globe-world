@@ -3,7 +3,7 @@ package globe.world.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import globe.world.config.GlobeConfig;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.PortalDiagnostics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -67,9 +68,12 @@ public class NetherPortalBlockMixin {
         }
 
         double teleportationScale = GlobeConfig.netherPortalTeleportationScale(currentLevel, newLevel);
-        double sourceX = CoordUtil.wrapBlock(currentLevel, entity.getX());
-        double sourceZ = CoordUtil.wrapBlock(currentLevel, entity.getZ());
-        BlockPos approximateExit = original.call(worldBorder, sourceX * teleportationScale, y, sourceZ * teleportationScale);
-        return CoordUtil.wrapBlockPos(newLevel, approximateExit);
+        Vec3 canonicalSource = TopologyContexts.forLevel(currentLevel).canonicalBlock(entity.position());
+        BlockPos approximateExit = original.call(
+                worldBorder,
+                canonicalSource.x() * teleportationScale,
+                y,
+                canonicalSource.z() * teleportationScale);
+        return TopologyContexts.forLevel(newLevel).canonicalBlock(approximateExit);
     }
 }

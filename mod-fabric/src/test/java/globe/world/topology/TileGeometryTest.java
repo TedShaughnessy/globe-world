@@ -182,6 +182,25 @@ class TileGeometryTest {
     }
 
     @Test
+    void canonicalChunkCountUsesTheGeometryLatticeArea() {
+        TileGeometry square = TileGeometry.create(
+                new DimensionTiling(TilingMode.SQUARE, true, 16, TerrainMode.COMPACT_TORUS));
+        HexTileGeometry geometry = hex(16);
+
+        assertEquals(16 * 16, square.canonicalChunkCount());
+        assertEquals(16 * 14, geometry.canonicalChunkCount());
+        int maskChunks = 0;
+        for (int x = -32; x <= 32; x++) {
+            for (int z = -32; z <= 32; z++) {
+                if (geometry.isCanonicalChunk(new ChunkPos(x, z))) {
+                    maskChunks++;
+                }
+            }
+        }
+        assertEquals(geometry.canonicalChunkCount(), maskChunks);
+    }
+
+    @Test
     void hexBoundarySegmentsMatchChunkMaskAndCoverSixSeams() {
         HexTileGeometry geometry = hex(16);
         Set<String> seamLabels = geometry.boundarySegments().stream()

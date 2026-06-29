@@ -202,6 +202,7 @@ eight Nether blocks map to one Overworld block.
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContext.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologyContexts.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologicalEntityQueries.java`
+- `mod-fabric/src/main/java/globe/world/topology/TopologicalPoiQueries.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologicalRaycasts.java`
 - `mod-fabric/src/main/java/globe/world/topology/TopologicalExplosions.java`
 - `mod-fabric/src/main/java/globe/world/config/TopologySettings.java`
@@ -210,6 +211,7 @@ eight Nether blocks map to one Overworld block.
 - `mod-fabric/src/main/java/globe/world/mixin/WorldGenSettingsMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/ServerLevelTicksDimensionMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/NetherPortalBlockMixin.java`
+- `mod-fabric/src/main/java/globe/world/mixin/PortalForcerMixin.java`
 - `mod-fabric/src/main/java/globe/world/mixin/PortalProcessorMixin.java`
 
 ## Implemented Paths
@@ -229,10 +231,13 @@ eight Nether blocks map to one Overworld block.
 - Scheduled tick containers are tagged with their `ServerLevel` dimension when
   exposed by `ServerLevel`.
 - Nether portal approximate exits canonicalize the source X/Z before applying
-  Globe World's configured Overworld/Nether portal scale, then wrap the target
-  dimension before portal search/creation. Other dimension pairs keep vanilla's
-  dimension scale. This keeps different aliases of the same source portal from
-  creating separate scaled target portals.
+  Globe World's configured Overworld/Nether portal scale, then canonicalize the
+  target dimension before portal search/creation. Existing-portal POI loading
+  and lookup split the visible search square through the geometry, dedupe
+  canonical portal records, and rank them by wrapped distance. Other dimension
+  pairs keep vanilla's dimension scale. This keeps different aliases of the
+  same source portal from creating separate scaled target portals and lets all
+  six hex seams find the same nearby canonical portal.
 - `/globeworld pos` reports the current dimension's effective tiling, current
   alias, canonical position, longitude offset, and local solar day tick.
 - `/globeworld border_distance` reports distance from the executing player's

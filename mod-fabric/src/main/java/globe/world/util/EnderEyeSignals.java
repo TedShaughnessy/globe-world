@@ -1,5 +1,6 @@
 package globe.world.util;
 
+import globe.world.topology.TopologyContexts;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -31,11 +32,12 @@ public final class EnderEyeSignals {
         player.startUsingItem(hand);
 
         ItemStack stack = player.getItemInHand(hand);
+        Vec3 canonicalPlayer = TopologyContexts.forLevel(level).canonicalBlock(player.position());
         EyeOfEnder eye = new EyeOfEnder(
                 level,
-                CoordUtil.wrapBlock(level, player.getX()),
-                player.getY(0.5),
-                CoordUtil.wrapBlock(level, player.getZ())
+                canonicalPlayer.x(),
+                canonicalPlayer.y() + player.getBbHeight() * 0.5D,
+                canonicalPlayer.z()
         );
         eye.setItem(stack);
         eye.signalTo(signalTarget);
