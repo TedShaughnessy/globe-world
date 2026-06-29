@@ -36,7 +36,7 @@ ideal six-sided lattice Voronoi cell. Hex whole-chunk ownership retains its
 staircase mask; offset-square retains its exact `W x W` owner even though its
 ideal blend cell is hexagonal. Discrete carvers, features, and structures still
 rely on canonical seeds, generation windows, and spillover rather than
-numerical blending, so those stages retain separate seam acceptance work.
+numerical blending; they were validated separately from the scalar blend.
 
 ## Coupled-Lattice Edge Blending
 
@@ -375,9 +375,6 @@ canonical candidate starts and warns that validation may load or generate
 
 ## Open Audits
 
-- Run the six-side/six-vertex hex acceptance matrix for height, biomes, caves,
-  aquifers, surfaces, discrete decorations, structures, generation order, and
-  reload behavior.
 - Run the six-seam, east/west T-junction, and four-corner offset-square
   acceptance matrix for continuous and discrete generation.
 - Validate periodicity for Nether terrain/noise and features.
