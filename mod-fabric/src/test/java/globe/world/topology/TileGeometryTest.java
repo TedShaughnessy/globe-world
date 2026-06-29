@@ -1,5 +1,6 @@
 package globe.world.topology;
 
+import globe.world.atlas.GlobeAtlasSurveyWindows;
 import globe.world.config.TilingMode;
 import globe.world.util.DimensionTiling;
 import globe.world.util.TerrainMode;
@@ -202,11 +203,65 @@ class TileGeometryTest {
         }
     }
 
+    @Test
+    void squareAtlasProjectionPreservesExistingWorldAxes() {
+        DimensionTiling tiling = new DimensionTiling(TilingMode.SQUARE, true, 16, TerrainMode.COMPACT_TORUS);
+        AtlasTorusProjection projection = AtlasTorusProjection.create(tiling);
+
+        assertEquals(new AtlasTorusProjection.UnitPoint(0.0D, 0.0D), projection.project(-128.0D, -128.0D));
+        assertEquals(new AtlasTorusProjection.UnitPoint(0.5D, 0.5D), projection.project(0.0D, 0.0D));
+        assertEquals(new AtlasTorusProjection.Pixel(256, 256), projection.pixel(0.0D, 0.0D, 512));
+    }
+
+    @Test
+    void hexAtlasProjectionIsInvariantUnderBothLatticeTranslations() {
+        HexTileGeometry geometry = hex(16);
+        AtlasTorusProjection projection = AtlasTorusProjection.create(geometry.tiling());
+        Vec3 point = new Vec3(37.25D, 0.0D, -51.75D);
+        AtlasTorusProjection.UnitPoint expected = projection.project(point);
+
+        for (ChunkPos translation : List.of(geometry.latticeA(), geometry.latticeB(), geometry.latticeC())) {
+            assertUnitPointEquals(
+                    expected,
+                    projection.project(
+                            point.x() + translation.x() * 16.0D,
+                            point.z() + translation.z() * 16.0D));
+        }
+    }
+
+    @Test
+    void atlasPixelCentersRoundTripThroughCanonicalHexSamples() {
+        AtlasTorusProjection projection = AtlasTorusProjection.create(hex(16).tiling());
+
+        for (int v : List.of(0, 1, 127, 255, 511)) {
+            for (int u : List.of(0, 1, 127, 255, 511)) {
+                Vec3 sample = projection.canonicalPixelCenter(u, v, 512);
+                assertEquals(new AtlasTorusProjection.Pixel(u, v), projection.pixel(sample.x(), sample.z(), 512));
+            }
+        }
+        assertEquals(16 * 14, projection.canonicalChunkCount());
+    }
+
+    @Test
+    void hexSurveyMarkersUseTheViewerNearestLatticeCopy() {
+        DimensionTiling tiling = hex(16).tiling();
+        int cell = GlobeAtlasSurveyWindows.cellIndex(tiling, 7, 0, -8, 0);
+
+        assertEquals(257 + 256 * GlobeAtlasSurveyWindows.PLACED_WINDOW_CHUNKS, cell);
+    }
+
     private static HexTileGeometry hex(int tileSizeChunks) {
         return new HexTileGeometry(new DimensionTiling(TilingMode.HEX, true, tileSizeChunks, TerrainMode.EDGE_BLEND));
     }
 
     private static ChunkPos delta(ChunkPos from, ChunkPos to) {
         return new ChunkPos(to.x() - from.x(), to.z() - from.z());
+    }
+
+    private static void assertUnitPointEquals(
+            final AtlasTorusProjection.UnitPoint expected,
+            final AtlasTorusProjection.UnitPoint actual) {
+        assertEquals(expected.u(), actual.u(), 1.0E-12D);
+        assertEquals(expected.v(), actual.v(), 1.0E-12D);
     }
 }

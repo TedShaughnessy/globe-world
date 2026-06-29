@@ -7,7 +7,8 @@ import com.google.common.collect.Multisets;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import globe.world.GlobeWorld;
-import globe.world.util.CoordUtil;
+import globe.world.config.TilingMode;
+import globe.world.topology.AtlasTorusProjection;
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -25,12 +26,13 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
+import net.minecraft.world.phys.Vec3;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class GlobeMapSavedData extends SavedData {
-    public static final int CURRENT_VERSION = 1;
+    public static final int CURRENT_VERSION = 2;
     public static final int RESOLUTION = 512;
     private static final int PIXEL_COUNT = RESOLUTION * RESOLUTION;
     private static final double COMPLETION_ROUND_UP_PERCENT = 99.0D;
@@ -41,8 +43,10 @@ public class GlobeMapSavedData extends SavedData {
             Identifier.fromNamespaceAndPath(GlobeWorld.MOD_ID, "globe_map"),
             GlobeMapSavedData::empty,
             RecordCodecBuilder.create(instance -> instance.group(
-                    Codec.INT.optionalFieldOf("version", CURRENT_VERSION).forGetter(data -> data.version),
+                    Codec.INT.optionalFieldOf("version", 1).forGetter(data -> data.version),
                     Codec.INT.fieldOf("tileSizeBlocks").forGetter(data -> data.tileSizeBlocks),
+                    TilingMode.CODEC.optionalFieldOf("tilingMode", TilingMode.SQUARE).forGetter(data -> data.tilingMode),
+                    Codec.STRING.optionalFieldOf("projection", "legacy-square-xz-v1").forGetter(data -> data.projectionIdentity),
                     Codec.INT.optionalFieldOf("resolution", RESOLUTION).forGetter(data -> data.resolution),
                     Codec.BYTE_BUFFER.fieldOf("discovered").forGetter(data -> ByteBuffer.wrap(data.discovered)),
                     Codec.BYTE_BUFFER.fieldOf("colors").forGetter(data -> ByteBuffer.wrap(data.colors)),
@@ -52,6 +56,8 @@ public class GlobeMapSavedData extends SavedData {
 
     private final int version;
     private final int tileSizeBlocks;
+    private final TilingMode tilingMode;
+    private final String projectionIdentity;
     private final int resolution;
     private final byte[] discovered;
     private final byte[] colors;
@@ -59,28 +65,50 @@ public class GlobeMapSavedData extends SavedData {
     private int revision = 1;
 
     private GlobeMapSavedData() {
-        this(CURRENT_VERSION, RESOLUTION, RESOLUTION, new byte[DISCOVERED_BYTES], new byte[PIXEL_COUNT], 0);
+        this(
+                CURRENT_VERSION,
+                RESOLUTION,
+                TilingMode.SQUARE,
+                "square-v1:32,0:0,32:atlas-ab-v1",
+                RESOLUTION,
+                new byte[DISCOVERED_BYTES],
+                new byte[PIXEL_COUNT],
+                0);
     }
 
     private GlobeMapSavedData(
             final int version,
             final int tileSizeBlocks,
+            final TilingMode tilingMode,
+            final String projectionIdentity,
             final int resolution,
             final ByteBuffer discovered,
             final ByteBuffer colors,
             final int fillCursor) {
-        this(version, tileSizeBlocks, resolution, copyBytes(discovered), copyBytes(colors), fillCursor);
+        this(
+                version,
+                tileSizeBlocks,
+                tilingMode,
+                projectionIdentity,
+                resolution,
+                copyBytes(discovered),
+                copyBytes(colors),
+                fillCursor);
     }
 
     private GlobeMapSavedData(
             final int version,
             final int tileSizeBlocks,
+            final TilingMode tilingMode,
+            final String projectionIdentity,
             final int resolution,
             final byte[] discovered,
             final byte[] colors,
             final int fillCursor) {
         this.version = version;
         this.tileSizeBlocks = tileSizeBlocks;
+        this.tilingMode = tilingMode;
+        this.projectionIdentity = projectionIdentity;
         this.resolution = resolution == RESOLUTION ? RESOLUTION : RESOLUTION;
         this.discovered = normalize(discovered, DISCOVERED_BYTES);
         this.colors = normalize(colors, PIXEL_COUNT);
@@ -93,7 +121,22 @@ public class GlobeMapSavedData extends SavedData {
             return existing;
         }
 
-        GlobeMapSavedData created = new GlobeMapSavedData(CURRENT_VERSION, tiling.tileSizeBlocks(), RESOLUTION, new byte[DISCOVERED_BYTES], new byte[PIXEL_COUNT], 0);
+        AtlasTorusProjection projection = AtlasTorusProjection.create(tiling);
+        if (existing != null) {
+            GlobeWorld.LOGGER.warn(
+                    "Resetting Atlas map data because projection {} does not match {}",
+                    existing.projectionIdentity,
+                    projection.identity());
+        }
+        GlobeMapSavedData created = new GlobeMapSavedData(
+                CURRENT_VERSION,
+                tiling.tileSizeBlocks(),
+                tiling.mode(),
+                projection.identity(),
+                RESOLUTION,
+                new byte[DISCOVERED_BYTES],
+                new byte[PIXEL_COUNT],
+                0);
         level.getDataStorage().set(TYPE, created);
         return created;
     }
@@ -117,43 +160,40 @@ public class GlobeMapSavedData extends SavedData {
             return false;
         }
 
-        double canonicalX = CoordUtil.wrapBlock(tiling, x);
-        double canonicalZ = CoordUtil.wrapBlock(tiling, z);
-        int centerPixelX = this.pixelForCanonicalBlock(canonicalX);
-        int centerPixelZ = this.pixelForCanonicalBlock(canonicalZ);
-        int pixelRadius = Math.min((int)Math.ceil(radiusBlocks * (double)this.resolution / this.tileSizeBlocks) + 1, this.resolution / 2);
+        AtlasTorusProjection projection = AtlasTorusProjection.create(tiling);
+        Vec3 canonicalCenter = projection.geometry().canonicalBlock(new Vec3(x, 0.0D, z));
+        AtlasTorusProjection.Pixel centerPixel = projection.pixel(canonicalCenter.x(), canonicalCenter.z(), this.resolution);
+        AtlasTorusProjection.PixelRadius pixelRadius = projection.pixelRadius(radiusBlocks, this.resolution);
         double radiusSqr = (double)radiusBlocks * radiusBlocks;
         int sampledPixels = 0;
         boolean changed = false;
 
-        for (int dz = -pixelRadius; dz <= pixelRadius; dz++) {
-            int pz = Math.floorMod(centerPixelZ + dz, this.resolution);
-            double pixelZ = this.canonicalBlockCenter(pz);
-            double blockDz = CoordUtil.wrappedDeltaBlock(tiling, pixelZ, canonicalZ);
-            for (int dx = -pixelRadius; dx <= pixelRadius; dx++) {
+        for (int dv = -pixelRadius.v(); dv <= pixelRadius.v(); dv++) {
+            int pv = Math.floorMod(centerPixel.v() + dv, this.resolution);
+            for (int du = -pixelRadius.u(); du <= pixelRadius.u(); du++) {
                 if (sampledPixels >= pixelBudget) {
                     return this.finishReveal(changed);
                 }
 
-                int px = Math.floorMod(centerPixelX + dx, this.resolution);
-                int index = px + pz * this.resolution;
+                int pu = Math.floorMod(centerPixel.u() + du, this.resolution);
+                int index = pu + pv * this.resolution;
                 if (this.isDiscovered(index)) {
                     continue;
                 }
 
-                double pixelX = this.canonicalBlockCenter(px);
-                double blockDx = CoordUtil.wrappedDeltaBlock(tiling, pixelX, canonicalX);
-                if (blockDx * blockDx + blockDz * blockDz > radiusSqr) {
+                Vec3 pixelCenter = projection.canonicalPixelCenter(pu, pv, this.resolution);
+                if (projection.geometry().wrappedDistanceSqr(canonicalCenter, pixelCenter) > radiusSqr) {
                     continue;
                 }
 
-                changed |= this.sampleAndUpdatePixel(level, px, pz);
+                changed |= this.sampleAndUpdatePixel(level, projection, pu, pv);
                 sampledPixels++;
             }
         }
 
         if (sampledPixels < pixelBudget) {
-            changed |= this.fillExplorationGaps(level, pixelRadius + 1, pixelBudget - sampledPixels);
+            int gapRadius = Math.max(pixelRadius.u(), pixelRadius.v()) + 1;
+            changed |= this.fillExplorationGaps(level, projection, gapRadius, pixelBudget - sampledPixels);
         }
 
         return this.finishReveal(changed);
@@ -164,13 +204,13 @@ public class GlobeMapSavedData extends SavedData {
             return false;
         }
 
-        int px = this.pixelForCanonicalBlock(CoordUtil.wrapBlock(tiling, pos.getX()));
-        int pz = this.pixelForCanonicalBlock(CoordUtil.wrapBlock(tiling, pos.getZ()));
-        if (!this.isDiscovered(px, pz)) {
+        AtlasTorusProjection projection = AtlasTorusProjection.create(tiling);
+        AtlasTorusProjection.Pixel pixel = projection.pixel(pos.getX(), pos.getZ(), this.resolution);
+        if (!this.isDiscovered(pixel.u(), pixel.v())) {
             return false;
         }
 
-        return this.finishReveal(this.sampleAndUpdatePixel(level, px, pz));
+        return this.finishReveal(this.sampleAndUpdatePixel(level, projection, pixel.u(), pixel.v()));
     }
 
     public Identifier dimensionId() {
@@ -186,7 +226,7 @@ public class GlobeMapSavedData extends SavedData {
     }
 
     public int revision() {
-        return this.revision;
+        return 31 * this.revision + this.projectionIdentity.hashCode();
     }
 
     public byte[] copyDiscovered() {
@@ -216,8 +256,9 @@ public class GlobeMapSavedData extends SavedData {
         return PIXEL_COUNT;
     }
 
-    public double discoveredAreaBlocks() {
-        return this.discoveredPixels() / (double)PIXEL_COUNT * this.tileSizeBlocks * (double)this.tileSizeBlocks;
+    public double discoveredAreaBlocks(final DimensionTiling tiling) {
+        return this.discoveredPixels() / (double)PIXEL_COUNT
+                * AtlasTorusProjection.create(tiling).canonicalBlockArea();
     }
 
     public boolean complete() {
@@ -232,9 +273,9 @@ public class GlobeMapSavedData extends SavedData {
             return true;
         }
 
-        int px = this.pixelForCanonicalBlock(CoordUtil.wrapBlock(tiling, pos.getX()));
-        int pz = this.pixelForCanonicalBlock(CoordUtil.wrapBlock(tiling, pos.getZ()));
-        return this.isDiscovered(px, pz);
+        AtlasTorusProjection.Pixel pixel = AtlasTorusProjection.create(tiling)
+                .pixel(pos.getX(), pos.getZ(), this.resolution);
+        return this.isDiscovered(pixel.u(), pixel.v());
     }
 
     private static GlobeMapSavedData empty() {
@@ -242,39 +283,38 @@ public class GlobeMapSavedData extends SavedData {
     }
 
     private boolean matches(final DimensionTiling tiling) {
+        if (this.resolution != RESOLUTION || this.tileSizeBlocks != tiling.tileSizeBlocks()) {
+            return false;
+        }
+        if (this.version == 1) {
+            return tiling.mode() == TilingMode.SQUARE;
+        }
+        AtlasTorusProjection projection = AtlasTorusProjection.create(tiling);
         return this.version == CURRENT_VERSION
-                && this.resolution == RESOLUTION
-                && this.tileSizeBlocks == tiling.tileSizeBlocks();
+                && this.tilingMode == tiling.mode()
+                && this.projectionIdentity.equals(projection.identity());
     }
 
-    private int canonicalBlock(final int pixel) {
-        double normalized = (pixel + 0.5D) / this.resolution;
-        return Mth.floor(normalized * this.tileSizeBlocks - this.tileSizeBlocks / 2.0D);
-    }
-
-    private double canonicalBlockCenter(final int pixel) {
-        double normalized = (pixel + 0.5D) / this.resolution;
-        return normalized * this.tileSizeBlocks - this.tileSizeBlocks / 2.0D;
-    }
-
-    private int pixelForCanonicalBlock(final double block) {
-        double normalized = (block + this.tileSizeBlocks / 2.0D) / this.tileSizeBlocks;
-        return Math.floorMod(Mth.floor(normalized * this.resolution), this.resolution);
-    }
-
-    private int samplePixelColor(final ServerLevel level, final int px, final int pz) {
-        int blockX = this.canonicalBlock(px);
-        int blockZ = this.canonicalBlock(pz);
-        int pixelBlockSize = Math.max(1, Mth.positiveCeilDiv(this.tileSizeBlocks, this.resolution));
-        int step = Math.max(1, Mth.positiveCeilDiv(pixelBlockSize, MAX_SAMPLES_PER_PIXEL_AXIS));
+    private int samplePixelColor(
+            final ServerLevel level,
+            final AtlasTorusProjection projection,
+            final int pu,
+            final int pv) {
+        int samples = Mth.clamp(
+                (int)Math.ceil(projection.maximumBasisLengthBlocks() / this.resolution),
+                1,
+                MAX_SAMPLES_PER_PIXEL_AXIS);
         Multiset<MapColor> colorCount = LinkedHashMultiset.create();
 
-        for (int dx = 0; dx < pixelBlockSize; dx += step) {
-            for (int dz = 0; dz < pixelBlockSize; dz += step) {
-                MapColor color = this.sampleColumnColor(
-                        level,
-                        this.wrapCanonicalBlock(blockX + dx),
-                        this.wrapCanonicalBlock(blockZ + dz));
+        for (int sampleV = 0; sampleV < samples; sampleV++) {
+            for (int sampleU = 0; sampleU < samples; sampleU++) {
+                Vec3 sample = projection.canonicalPixelSample(
+                        pu,
+                        pv,
+                        this.resolution,
+                        (sampleU + 0.5D) / samples,
+                        (sampleV + 0.5D) / samples);
+                MapColor color = this.sampleColumnColor(level, Mth.floor(sample.x()), Mth.floor(sample.z()));
                 if (color != null && color != MapColor.NONE) {
                     colorCount.add(color);
                 }
@@ -289,15 +329,23 @@ public class GlobeMapSavedData extends SavedData {
         return color.getPackedId(color == MapColor.WATER ? MapColor.Brightness.HIGH : MapColor.Brightness.NORMAL) & 0xFF;
     }
 
-    private boolean sampleAndUpdatePixel(final ServerLevel level, final int px, final int pz) {
-        int sampledColor = this.samplePixelColor(level, px, pz);
-        return this.updatePixel(px, pz, sampledColor < 0 ? MapColor.NONE.getPackedId(MapColor.Brightness.NORMAL) : (byte)sampledColor);
+    private boolean sampleAndUpdatePixel(
+            final ServerLevel level,
+            final AtlasTorusProjection projection,
+            final int pu,
+            final int pv) {
+        int sampledColor = this.samplePixelColor(level, projection, pu, pv);
+        return this.updatePixel(pu, pv, sampledColor < 0 ? MapColor.NONE.getPackedId(MapColor.Brightness.NORMAL) : (byte)sampledColor);
     }
 
-    private boolean fillExplorationGaps(final ServerLevel level, final int visibilityPixelRadius, final int pixelBudget) {
+    private boolean fillExplorationGaps(
+            final ServerLevel level,
+            final AtlasTorusProjection projection,
+            final int visibilityPixelRadius,
+            final int pixelBudget) {
         int discoveredPixels = this.discoveredPixels();
         if (this.isNearComplete(discoveredPixels)) {
-            return this.fillAllRemainingPixels(level);
+            return this.fillAllRemainingPixels(level, projection);
         }
         if (pixelBudget <= 0 || visibilityPixelRadius <= 0) {
             return false;
@@ -334,15 +382,15 @@ public class GlobeMapSavedData extends SavedData {
 
             for (int i = 0; i < componentSize; i++) {
                 int index = component[i];
-                int px = index % this.resolution;
-                int pz = index / this.resolution;
-                changed |= this.sampleAndUpdatePixel(level, px, pz);
+                int pu = index % this.resolution;
+                int pv = index / this.resolution;
+                changed |= this.sampleAndUpdatePixel(level, projection, pu, pv);
                 filledPixels++;
             }
             discoveredPixels += componentSize;
 
             if (this.isNearComplete(discoveredPixels)) {
-                changed |= this.fillAllRemainingPixels(level);
+                changed |= this.fillAllRemainingPixels(level, projection);
                 return changed;
             }
         }
@@ -350,13 +398,15 @@ public class GlobeMapSavedData extends SavedData {
         return changed;
     }
 
-    private boolean fillAllRemainingPixels(final ServerLevel level) {
+    private boolean fillAllRemainingPixels(
+            final ServerLevel level,
+            final AtlasTorusProjection projection) {
         boolean changed = false;
         for (int index = 0; index < PIXEL_COUNT; index++) {
             if (!this.isDiscovered(index)) {
-                int px = index % this.resolution;
-                int pz = index / this.resolution;
-                changed |= this.sampleAndUpdatePixel(level, px, pz);
+                int pu = index % this.resolution;
+                int pv = index / this.resolution;
+                changed |= this.sampleAndUpdatePixel(level, projection, pu, pv);
             }
         }
         return changed;
@@ -438,11 +488,6 @@ public class GlobeMapSavedData extends SavedData {
 
     private boolean isNearComplete(final int discoveredPixels) {
         return discoveredPixels >= COMPLETION_ROUND_UP_PIXELS;
-    }
-
-    private int wrapCanonicalBlock(final int block) {
-        int half = this.tileSizeBlocks / 2;
-        return Math.floorMod(block + half, this.tileSizeBlocks) - half;
     }
 
     private MapColor sampleColumnColor(final ServerLevel level, final int x, final int z) {

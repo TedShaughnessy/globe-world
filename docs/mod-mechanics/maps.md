@@ -48,10 +48,24 @@ and compact vanilla map colors for the Overworld. Full snapshots stay at this
 size because clientbound custom payloads are capped at `1,048,576` bytes, and a
 larger whole-tile texture would exceed that once discovery data is included. For
 tiles up to `512` chunks wide, `GlobeMapTracker` scans Overworld players on a
-short server cadence, canonicalizes their X/Z positions with
-`CoordUtil.wrapBlock(...)`, and reveals nearby canonical pixels through
-`GlobeMapSavedData.revealAround(...)`. This makes exploration in any alias tile
-discover the same canonical map pixels.
+short server cadence, canonicalizes their positions through `TileGeometry`, and
+reveals nearby canonical pixels through `GlobeMapSavedData.revealAround(...)`.
+This makes exploration in any alias tile discover the same canonical map
+pixels.
+
+`AtlasTorusProjection` gives square and hex topology the same rectangular
+texture contract. Square worlds retain the existing X/Z mapping. Hex worlds
+solve world positions in the geometry's lattice basis `A/B`, wrap those two
+coefficients as texture U/V, and canonicalize inverse pixel samples through
+`TileGeometry`. Translations by `A`, `B`, or `A-B` therefore land on the same
+Atlas pixel. The placed hologram remains the same torus mesh; only the
+world-to-texture parameterization changes.
+
+Literal-map and survey saves persist their tiling mode plus a projection
+identity containing the geometry revision and normalized lattice basis. Legacy
+square saves remain valid. A layout mismatch creates fresh discovery data and
+logs a warning instead of interpreting pixels or visited chunks under the
+wrong topology.
 
 Discovery is shared world state. It is not per-player and is not stored on
 individual Atlas Projector block entities. The tracker skips spectator players,
@@ -99,7 +113,10 @@ lookups for heavily explored saves; it does not force-load or generate chunks
 for display. Held survey windows are `128x128` chunks centered on the current
 player's canonical chunk. Placed survey windows are `512x512` chunks centered on
 loaded, projection-enabled Atlas Projectors near the receiving player, capped
-per sync tick and rate-limited by center chunk and survey revision.
+per sync tick and rate-limited by center chunk and survey revision. These local
+windows remain ordinary player-readable X/Z views: each visible window cell is
+canonicalized as a whole two-dimensional chunk position, and markers use the
+viewer-nearest lattice alias.
 
 The client uploads survey windows through `GlobeAtlasSurveyTextureCache`, which
 is separate from the literal map texture cache. Undiscovered chunks render as a
@@ -124,6 +141,11 @@ same holographic grid language as survey windows, with an adaptive chunk grid
 and a brighter center cross. In survey mode, the held renderer uses a rounded,
 softly faded copy of the current `128x128` chunk player-centered survey-window
 texture instead of resampling the literal Atlas texture.
+
+In hex mode the held literal window still samples a local world-X/Z patch, then
+projects every sample through the A/B torus mapping. This preserves the same
+held shape, pose, grid, fade, and world-readable motion as square mode instead
+of showing a misleading rectangular crop of oblique Atlas UV space.
 
 On literal-map tiles, the placed Atlas hologram uses the same large-tile scale,
 so the torus grows
@@ -173,7 +195,8 @@ half discovery; larger tiles can earn points from absolute explored area.
 
 In survey mode, `GlobeDiscoveryRewards` derives points and radius caps from
 visited biome count and visited canonical chunks. Linked Atlas travel unlocks
-when the shared survey has visited `90%` of the canonical tile's chunks, capped
+when the shared survey has visited `90%` of the lattice determinant's canonical
+chunk count, capped
 at `12800` chunks for very large tiles.
 Chunks award one point per `64` unique chunks, while biomes award one point per
 ten visited biomes with an extra two-point bonus when vanilla Adventuring Time
@@ -193,11 +216,14 @@ still allowing players to turn existing powers off. If saved loadouts exceed
 the current budget after a
 settings or discovery-state change, the deterministic powered subset is chosen
 by most recently edited Atlas first, then canonical block-position order.
+When topology changes, saved power entries are deterministically
+recanonicalized through the new geometry; a priority collision keeps the most
+recently edited entry.
 
 The first reward effect set is speed, haste, and jump boost. Loaded powered
 Atlases periodically apply their selected level I or level II effects to
-non-spectator players inside the selected radius using wrapped X/Z distance, so
-players across a canonical edge can still qualify. Unloaded Atlases keep
+non-spectator players inside the selected radius using the geometry's wrapped
+distance, so players across any canonical edge can still qualify. Unloaded Atlases keep
 reserving budget through saved state, but they do not apply effects.
 
 The client Atlas power screen draws a compact, widened grey in-game panel without the
@@ -262,6 +288,7 @@ rules are not part of the current reward scope.
 - `mod-fabric/src/main/java/globe/world/atlas/GlobeDiscoveryRewards.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapSavedData.java`
 - `mod-fabric/src/main/java/globe/world/map/GlobeMapTracker.java`
+- `mod-fabric/src/main/java/globe/world/topology/AtlasTorusProjection.java`
 - `mod-fabric/src/main/resources/data/globe-world/advancement/mastered_atlas.json`
 - `mod-fabric/src/main/java/globe/world/network/GlobeAtlasScreenPayload.java`
 - `mod-fabric/src/main/java/globe/world/network/GlobeAtlasTravelPayload.java`

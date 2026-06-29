@@ -13,9 +13,9 @@ point for current behavior and modded code anchors.
   social follow, temptation, short-range movement, and brain/social behaviors
   that still need actor-local alias handling after the owner-adjacent tameable
   fixes.
-- [Hexagonal tiles](hexagonal-tiles.md): post-MVP plan for hex diagnostics,
-  toroidal Atlas projection, remaining non-worldgen integration, and later
-  edge-blend terrain continuity.
+- [Hexagonal tiles](hexagonal-tiles.md): post-MVP plan for remaining
+  non-worldgen integration, Atlas regression coverage, and later edge-blend
+  terrain continuity.
 - [Large-tile Atlas biome projection follow-ups](large-tile-atlas-biome-projection.md):
   remaining UX and palette questions after implementing survey-mode
   biome-colored projections for large tiles.
@@ -31,6 +31,6 @@ point for current behavior and modded code anchors.
 - [Hexagonal tiles first run](hexagonal-tiles-first-run.md): implemented as the
   experimental runtime topology slice; durable behavior lives in
   [Topology](../mod-mechanics/topology.md), [Chunks](../mod-mechanics/chunks.md),
-  and [Worldgen](../mod-mechanics/worldgen.md). Seamless hex generation, Atlas
-  projection, and structure continuity remain in the broader
+  and [Worldgen](../mod-mechanics/worldgen.md). Seamless hex generation and
+  structure continuity remain in the broader
   [Hexagonal tiles](hexagonal-tiles.md) plan.

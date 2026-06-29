@@ -9,7 +9,7 @@ import globe.world.block.GlobeBlock;
 import globe.world.block.entity.GlobeBlockEntity;
 import globe.world.client.GlobeDebugState;
 import globe.world.network.GlobeAtlasSurveyWindowPayload;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TileGeometry;
 import globe.world.util.DimensionTiling;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.Direction;
@@ -25,6 +25,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.resources.model.sprite.SpriteGetter;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -73,8 +74,11 @@ public class GlobeBlockEntityRenderer implements BlockEntityRenderer<GlobeBlockE
         state.facing = blockEntity.getBlockState().getValue(GlobeBlock.FACING);
         if (blockEntity.getLevel() != null) {
             DimensionTiling tiling = DimensionTiling.forLevel(blockEntity.getLevel());
-            state.centerChunkX = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(blockEntity.getBlockPos().getX()));
-            state.centerChunkZ = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(blockEntity.getBlockPos().getZ()));
+            ChunkPos center = TileGeometry.create(tiling).canonicalChunk(
+                    SectionPos.blockToSectionCoord(blockEntity.getBlockPos().getX()),
+                    SectionPos.blockToSectionCoord(blockEntity.getBlockPos().getZ()));
+            state.centerChunkX = center.x();
+            state.centerChunkZ = center.z();
         }
     }
 

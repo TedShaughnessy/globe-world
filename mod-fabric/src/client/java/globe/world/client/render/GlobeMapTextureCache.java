@@ -3,6 +3,8 @@ package globe.world.client.render;
 import com.mojang.blaze3d.platform.NativeImage;
 import globe.world.GlobeWorld;
 import globe.world.network.GlobeMapSnapshotPayload;
+import globe.world.topology.AtlasTorusProjection;
+import globe.world.util.DimensionTiling;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
@@ -82,7 +84,7 @@ public final class GlobeMapTextureCache {
             final double centerX,
             final double centerZ,
             final int spanBlocks,
-            final int tileSizeBlocks) {
+            final DimensionTiling tiling) {
         Identifier source = heldTextureForCurrentDimension();
         if (source == null || heldTexture == null || resolution <= 0) {
             return null;
@@ -102,7 +104,7 @@ public final class GlobeMapTextureCache {
 
         NativeImage sourcePixels = heldTexture.getPixels();
         NativeImage targetPixels = heldViewportTexture.getPixels();
-        fillHeldViewport(sourcePixels, targetPixels, centerX, centerZ, spanBlocks, tileSizeBlocks);
+        fillHeldViewport(sourcePixels, targetPixels, centerX, centerZ, spanBlocks, tiling);
         heldViewportTexture.upload();
         return HELD_VIEWPORT_TEXTURE_ID;
     }
@@ -148,11 +150,12 @@ public final class GlobeMapTextureCache {
             final double centerX,
             final double centerZ,
             final int spanBlocks,
-            final int tileSizeBlocks) {
+            final DimensionTiling tiling) {
         double blockRadius = spanBlocks * 0.5D;
         double pixelCenter = HELD_VIEWPORT_RESOLUTION * 0.5D;
         double fadeStart = 0.86D;
         int gridSpacingBlocks = heldGridSpacingBlocks(spanBlocks);
+        AtlasTorusProjection projection = AtlasTorusProjection.create(tiling);
 
         for (int y = 0; y < HELD_VIEWPORT_RESOLUTION; y++) {
             double normalizedForward = (pixelCenter - (y + 0.5D)) / pixelCenter;
@@ -168,9 +171,8 @@ public final class GlobeMapTextureCache {
                 double blockForward = normalizedForward * blockRadius;
                 double blockX = centerX - blockRight;
                 double blockZ = centerZ + blockForward;
-                int sourceX = pixelForBlock(blockX, tileSizeBlocks);
-                int sourceZ = pixelForBlock(blockZ, tileSizeBlocks);
-                int color = sourcePixels.getPixel(sourceX, sourceZ);
+                AtlasTorusProjection.Pixel sourcePixel = projection.pixel(blockX, blockZ, resolution);
+                int color = sourcePixels.getPixel(sourcePixel.u(), sourcePixel.v());
                 color = withAlpha(color, Math.round(alpha(color) * edgeFade(radius, fadeStart)));
                 color = applyHeldGrid(color, blockX, blockZ, normalizedRight, normalizedForward, gridSpacingBlocks, spanBlocks);
                 targetPixels.setPixel(x, y, color);
@@ -184,11 +186,6 @@ public final class GlobeMapTextureCache {
                 pixels.setPixel(x, z, 0);
             }
         }
-    }
-
-    private static int pixelForBlock(final double block, final int tileSizeBlocks) {
-        double wrapped = positiveModulo(block + tileSizeBlocks / 2.0D, tileSizeBlocks);
-        return Math.floorMod((int)Math.floor(wrapped / tileSizeBlocks * resolution), resolution);
     }
 
     private static double positiveModulo(final double value, final double modulus) {

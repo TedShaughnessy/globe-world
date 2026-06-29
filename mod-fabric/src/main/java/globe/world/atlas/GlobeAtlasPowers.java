@@ -6,7 +6,7 @@ import globe.world.map.GlobeMapSavedData;
 import globe.world.network.GlobeAtlasScreenPayload;
 import globe.world.network.GlobeAtlasTravelPayload;
 import globe.world.network.GlobeAtlasUpdatePayload;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TileGeometry;
 import globe.world.util.DimensionTiling;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.ChatFormatting;
@@ -88,12 +88,12 @@ public final class GlobeAtlasPowers {
         }
 
         DimensionTiling tiling = DimensionTiling.forDimension(Level.OVERWORLD);
-        double centerX = CoordUtil.wrapBlock(tiling, rawPos.getX()) + 0.5D;
-        double centerY = rawPos.getY() + 0.5D;
-        double centerZ = CoordUtil.wrapBlock(tiling, rawPos.getZ()) + 0.5D;
+        TileGeometry geometry = TileGeometry.create(tiling);
+        BlockPos canonicalPos = geometry.canonicalBlock(rawPos.getX(), rawPos.getY(), rawPos.getZ());
+        Vec3 center = Vec3.atCenterOf(canonicalPos);
         double radiusSqr = (double)radius * radius;
         for (ServerPlayer player : level.getPlayers(player -> !player.isSpectator() && player.isAlive())) {
-            if (CoordUtil.wrappedDistanceSqr(tiling, player.getX(), player.getY(), player.getZ(), centerX, centerY, centerZ) > radiusSqr) {
+            if (geometry.wrappedDistanceSqr(player.position(), center) > radiusSqr) {
                 continue;
             }
 
@@ -134,7 +134,11 @@ public final class GlobeAtlasPowers {
             return;
         }
 
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(DimensionTiling.forDimension(Level.OVERWORLD), rawPos);
+        DimensionTiling tiling = DimensionTiling.forDimension(Level.OVERWORLD);
+        BlockPos canonicalPos = TileGeometry.create(tiling).canonicalBlock(
+                rawPos.getX(),
+                rawPos.getY(),
+                rawPos.getZ());
         String name = sanitizeName(payload.name(), canonicalPos);
         atlas.setAtlasName(name);
         atlas.setProjectionEnabled(payload.projectionEnabled());
@@ -178,8 +182,12 @@ public final class GlobeAtlasPowers {
         GlobeAtlasPowerState state = GlobeAtlasPowerState.get(level);
         Set<BlockPos> powered = state.poweredPositions(rewards);
         DimensionTiling tiling = DimensionTiling.forDimension(Level.OVERWORLD);
-        BlockPos sourcePos = CoordUtil.wrapBlockPos(tiling, sourceRawPos);
-        BlockPos destinationPos = CoordUtil.wrapBlockPos(tiling, destinationRawPos);
+        TileGeometry geometry = TileGeometry.create(tiling);
+        BlockPos sourcePos = geometry.canonicalBlock(sourceRawPos.getX(), sourceRawPos.getY(), sourceRawPos.getZ());
+        BlockPos destinationPos = geometry.canonicalBlock(
+                destinationRawPos.getX(),
+                destinationRawPos.getY(),
+                destinationRawPos.getZ());
         if (!powered.contains(sourcePos) || !powered.contains(destinationPos)) {
             return TravelCheck.denied("Both Atlases must be powered.");
         }
@@ -193,14 +201,7 @@ public final class GlobeAtlasPowers {
         }
 
         int sourceRadius = sourceEntry.get().loadout().effectiveRadius(rewards);
-        double sourceDistanceSqr = CoordUtil.wrappedDistanceSqr(
-                tiling,
-                player.getX(),
-                player.getY(),
-                player.getZ(),
-                sourcePos.getX() + 0.5D,
-                sourcePos.getY() + 0.5D,
-                sourcePos.getZ() + 0.5D);
+        double sourceDistanceSqr = geometry.wrappedDistanceSqr(player.position(), Vec3.atCenterOf(sourcePos));
         if (sourceDistanceSqr > (double)sourceRadius * sourceRadius) {
             return TravelCheck.denied("Move closer to the source Atlas.");
         }
@@ -231,7 +232,11 @@ public final class GlobeAtlasPowers {
         GlobeDiscoveryRewards rewards = GlobeDiscoveryRewards.get(level);
         GlobeAtlasPowerState state = GlobeAtlasPowerState.get(level);
         Optional<GlobeAtlasPowerState.Entry> entry = state.entry(rawPos);
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(DimensionTiling.forDimension(Level.OVERWORLD), rawPos);
+        DimensionTiling tiling = DimensionTiling.forDimension(Level.OVERWORLD);
+        BlockPos canonicalPos = TileGeometry.create(tiling).canonicalBlock(
+                rawPos.getX(),
+                rawPos.getY(),
+                rawPos.getZ());
         BlockEntity blockEntity = level.getBlockEntity(rawPos);
         GlobeAtlasLoadout loadout = entry
                 .map(GlobeAtlasPowerState.Entry::loadout)
@@ -270,7 +275,10 @@ public final class GlobeAtlasPowers {
             final GlobeAtlasPowerState state) {
         Set<BlockPos> powered = state.poweredPositions(rewards);
         DimensionTiling tiling = DimensionTiling.forDimension(Level.OVERWORLD);
-        BlockPos sourcePos = CoordUtil.wrapBlockPos(tiling, sourceRawPos);
+        BlockPos sourcePos = TileGeometry.create(tiling).canonicalBlock(
+                sourceRawPos.getX(),
+                sourceRawPos.getY(),
+                sourceRawPos.getZ());
         Optional<GlobeAtlasPowerState.Entry> sourceEntry = state.entry(sourcePos);
         boolean sourcePowered = powered.contains(sourcePos);
         boolean sourceTravel = sourceEntry.map(entry -> entry.loadout().travelNetwork()).orElse(false);

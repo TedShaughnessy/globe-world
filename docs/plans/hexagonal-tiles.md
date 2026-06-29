@@ -6,11 +6,11 @@ game events, explosions, and bounded worldgen ownership use `TileGeometry`.
 The first-run scope is preserved in
 [Hexagonal tiles first run](hexagonal-tiles-first-run.md).
 
-The next milestone is **hex product integration without seamless generation**:
-make the topology inspectable, give the Atlas a real lattice projection, remove
-remaining square-only coordinate assumptions from non-worldgen systems, and
-define a save-stable geometry contract. Visible terrain seams remain acceptable
-throughout this milestone.
+The current milestone is **hex product integration without seamless
+generation**. Topology diagnostics and the Atlas lattice projection are
+implemented. Remaining work is the residual non-worldgen audit, broader Atlas
+seam regression coverage, and a save-stable contract for any future geometry
+revision. Visible terrain seams remain acceptable throughout this milestone.
 
 ## Goal
 
@@ -182,11 +182,19 @@ report the raw and canonical destination.
 
 ## Atlas Projection
 
+Status: the initial Atlas integration is implemented. `AtlasTorusProjection`
+uses the geometry's A/B basis while preserving square X/Z output. Literal
+discovery/sampling/refresh, held local views, survey state/windows/markers,
+canonical area rewards, Atlas power radii, and travel now use whole
+two-dimensional geometry operations. Map and survey saves persist tiling mode
+and a projection identity containing the geometry revision and lattice basis;
+incompatible layouts reset with a warning, while legacy square layouts remain
+accepted.
+
 The Atlas remains a torus. Its texture is a rectangular parameterization of
 the quotient, not a literal rectangular X/Z crop of the canonical chunk mask.
 
-Introduce a projection boundary owned by or derived from `TileGeometry`. It
-must provide:
+The projection boundary derived from `TileGeometry` provides:
 
 - canonical/raw block and chunk position to normalized `(u, v)`;
 - normalized `(u, v)` or Atlas pixel to one deterministic canonical sample
@@ -250,19 +258,18 @@ pixels as hex UVs. Atlas power entries keyed by canonical block position also
 need a deliberate mode/orientation migration policy if runtime topology changes
 are supported.
 
-### Atlas Tests
+### Remaining Atlas Tests
 
-Add tests proving:
+Current unit coverage proves square axis preservation, A/B translation
+invariance, deterministic pixel-center round trips, and determinant area. Add
+broader tests proving:
 
-- `position -> UV` is invariant under both lattice basis translations;
-- `UV/pixel -> canonical sample -> UV/pixel` round-trips under the documented
-  tie rule;
 - every canonical chunk maps exactly once into a discrete lattice-domain test
   grid;
 - reveal radii and refreshes cross all six seams;
 - held windows and markers select the viewer-nearest copy;
 - completion area and survey travel targets use canonical area;
-- square projection output and existing square save matching remain unchanged;
+- existing square save matching remains unchanged;
 - square and hex saves with the same configured width cannot be confused.
 
 ## Worldgen Plan

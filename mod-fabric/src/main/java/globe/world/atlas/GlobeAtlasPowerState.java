@@ -3,7 +3,8 @@ package globe.world.atlas;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import globe.world.GlobeWorld;
-import globe.world.util.CoordUtil;
+import globe.world.topology.AtlasTorusProjection;
+import globe.world.topology.TileGeometry;
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
@@ -43,6 +44,7 @@ public class GlobeAtlasPowerState extends SavedData {
             .thenComparingInt(pos -> pos.getZ());
 
     private final Map<BlockPos, Entry> entries = new TreeMap<>(POS_ORDER);
+    private String reconciledProjectionIdentity;
 
     public GlobeAtlasPowerState() {
     }
@@ -54,7 +56,9 @@ public class GlobeAtlasPowerState extends SavedData {
     }
 
     public static GlobeAtlasPowerState get(final ServerLevel level) {
-        return level.getDataStorage().computeIfAbsent(TYPE);
+        GlobeAtlasPowerState state = level.getDataStorage().computeIfAbsent(TYPE);
+        state.recanonicalize(DimensionTiling.forDimension(Level.OVERWORLD));
+        return state;
     }
 
     public static Optional<GlobeAtlasPowerState> getIfOverworld(final ServerLevel level) {
@@ -129,9 +133,42 @@ public class GlobeAtlasPowerState extends SavedData {
         return ordered;
     }
 
+    private void recanonicalize(final DimensionTiling tiling) {
+        String projectionIdentity = AtlasTorusProjection.create(tiling).identity();
+        if (projectionIdentity.equals(this.reconciledProjectionIdentity)) {
+            return;
+        }
+        TileGeometry geometry = TileGeometry.create(tiling);
+        Map<BlockPos, Entry> migrated = new TreeMap<>(POS_ORDER);
+        boolean changed = false;
+        for (Entry entry : this.entries.values()) {
+            BlockPos canonical = geometry.canonicalBlock(
+                    entry.pos().getX(),
+                    entry.pos().getY(),
+                    entry.pos().getZ()).immutable();
+            Entry migratedEntry = canonical.equals(entry.pos())
+                    ? entry
+                    : new Entry(canonical, entry.loadout(), entry.name(), entry.priority());
+            Entry collision = migrated.get(canonical);
+            if (collision == null || migratedEntry.priority() > collision.priority()) {
+                migrated.put(canonical, migratedEntry);
+            }
+            changed |= !canonical.equals(entry.pos()) || collision != null;
+        }
+        if (changed) {
+            this.entries.clear();
+            this.entries.putAll(migrated);
+            this.setDirty();
+        }
+        this.reconciledProjectionIdentity = projectionIdentity;
+    }
+
     private BlockPos canonicalPos(final BlockPos rawPos) {
         DimensionTiling tiling = DimensionTiling.forDimension(Level.OVERWORLD);
-        return CoordUtil.wrapBlockPos(tiling, rawPos).immutable();
+        return TileGeometry.create(tiling).canonicalBlock(
+                rawPos.getX(),
+                rawPos.getY(),
+                rawPos.getZ()).immutable();
     }
 
     private static String sanitizeName(final String name) {
