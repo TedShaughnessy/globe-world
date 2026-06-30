@@ -1,7 +1,9 @@
 package globe.world.client;
 
 import globe.world.config.GlobeConfig;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TileGeometry;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.DimensionTiling;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -15,11 +17,25 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.debug.DebugRenderer.SimpleDebugRenderer {
     private static final int CANONICAL_TILE_COLOR = ARGB.color(255, 40, 230, 80);
     private static final int ALIAS_TILE_COLOR = ARGB.color(210, 80, 170, 255);
+    private static final int[] CANONICAL_SEAM_COLORS = {
+            ARGB.color(255, 75, 235, 115),
+            ARGB.color(255, 80, 180, 255),
+            ARGB.color(255, 255, 170, 70)
+    };
+    private static final int[] ALIAS_SEAM_COLORS = {
+            ARGB.color(190, 75, 235, 115),
+            ARGB.color(190, 80, 180, 255),
+            ARGB.color(190, 255, 170, 70)
+    };
     private static final int WORLD_SPAWN_COLOR = ARGB.color(255, 255, 70, 70);
     private static final int WORLD_SPAWN_ALLOWED_COLOR = ARGB.color(170, 255, 150, 80);
     private static final int WORLD_SPAWN_RADIUS_FILL = ARGB.color(35, 255, 70, 70);
@@ -44,20 +60,36 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
         if (!tiling.enabled()) {
             return;
         }
+        TopologyContext topology = TopologyContexts.forLevel(this.minecraft.level);
 
         Entity cameraEntity = this.minecraft.getCameraEntity();
         if (cameraEntity == null) {
             return;
         }
 
-        int tileBlocks = tiling.tileSizeBlocks();
-        int canonicalMin = -(tiling.tileSizeChunks() / 2) * 16;
-        int currentTileX = Math.floorDiv(cameraEntity.blockPosition().getX() - canonicalMin, tileBlocks);
-        int currentTileZ = Math.floorDiv(cameraEntity.blockPosition().getZ() - canonicalMin, tileBlocks);
         int minY = this.minecraft.level.getMinY();
         int maxY = this.minecraft.level.getMaxY() + 1;
         double borderY = Math.clamp(Math.round(cameraEntity.getY()), minY + 0.05D, maxY - 0.05D);
 
+        if (topology.coupledLattice()) {
+            drawLatticeTiles(cameraEntity, topology, borderY);
+        } else {
+            drawSquareTiles(cameraEntity, tiling, minY, maxY, borderY);
+        }
+
+        drawWorldSpawnMarker(cameraEntity, topology, minY, maxY);
+    }
+
+    private static void drawSquareTiles(
+            Entity cameraEntity,
+            DimensionTiling tiling,
+            int minY,
+            int maxY,
+            double borderY) {
+        int tileBlocks = tiling.tileSizeBlocks();
+        int canonicalMin = -(tiling.tileSizeChunks() / 2) * 16;
+        int currentTileX = Math.floorDiv(cameraEntity.blockPosition().getX() - canonicalMin, tileBlocks);
+        int currentTileZ = Math.floorDiv(cameraEntity.blockPosition().getZ() - canonicalMin, tileBlocks);
         for (int tileX = currentTileX - 1; tileX <= currentTileX + 1; tileX++) {
             for (int tileZ = currentTileZ - 1; tileZ <= currentTileZ + 1; tileZ++) {
                 if (tileX != 0 || tileZ != 0) {
@@ -66,8 +98,88 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
             }
         }
         drawTile(canonicalMin, tileBlocks, 0, 0, minY, maxY, borderY, CANONICAL_TILE_COLOR, false);
+    }
 
-        drawWorldSpawnMarker(cameraEntity, tiling, tileBlocks, minY, maxY);
+    private static void drawLatticeTiles(Entity cameraEntity, TopologyContext topology, double borderY) {
+        TileGeometry.LatticeCoordinate current = topology.latticeCoordinate(cameraEntity.chunkPosition());
+        Set<TileGeometry.LatticeCoordinate> nearby = new LinkedHashSet<>();
+        nearby.add(current);
+        for (TileGeometry.LatticeCoordinate neighbor : topology.neighboringTiles()) {
+            nearby.add(current.add(neighbor));
+        }
+
+        for (TileGeometry.LatticeCoordinate coordinate : nearby) {
+            if (!coordinate.isOrigin()) {
+                drawLatticeBoundary(cameraEntity, topology, coordinate, borderY, false, coordinate.equals(current));
+            }
+        }
+        drawLatticeBoundary(cameraEntity, topology, TileGeometry.LatticeCoordinate.ORIGIN, borderY, true, current.isOrigin());
+    }
+
+    private static void drawLatticeBoundary(
+            Entity cameraEntity,
+            TopologyContext topology,
+            TileGeometry.LatticeCoordinate coordinate,
+            double borderY,
+            boolean canonical,
+            boolean drawLabels) {
+        ChunkPosOffset offset = ChunkPosOffset.from(topology.latticeTranslation(coordinate));
+        double maxDistance = (Minecraft.getInstance().options.getEffectiveRenderDistance() + 3) * 16.0D;
+        double maxDistanceSqr = maxDistance * maxDistance;
+        Map<TileGeometry.LatticeCoordinate, LabelAccumulator> labels = drawLabels ? new HashMap<>() : Map.of();
+
+        for (TileGeometry.BoundarySegment segment : topology.boundarySegments()) {
+            double x0 = segment.x0() + offset.xBlocks();
+            double z0 = segment.z0() + offset.zBlocks();
+            double x1 = segment.x1() + offset.xBlocks();
+            double z1 = segment.z1() + offset.zBlocks();
+            if (distanceToSegmentSqr(cameraEntity.getX(), cameraEntity.getZ(), x0, z0, x1, z1) > maxDistanceSqr) {
+                continue;
+            }
+
+            int color = seamColor(segment.outsideAlias(), canonical);
+            line(
+                    x0,
+                    borderY,
+                    z0,
+                    x1,
+                    borderY,
+                    z1,
+                    color,
+                    canonical ? PLAYER_HEIGHT_BORDER_WIDTH : 2.5F);
+            if (drawLabels) {
+                labels.computeIfAbsent(segment.outsideAlias(), ignored -> new LabelAccumulator())
+                        .add((x0 + x1) * 0.5D, (z0 + z1) * 0.5D);
+            }
+        }
+
+        for (Map.Entry<TileGeometry.LatticeCoordinate, LabelAccumulator> entry : labels.entrySet()) {
+            LabelAccumulator label = entry.getValue();
+            Gizmos.billboardText(
+                    entry.getKey().seamLabel(),
+                    new Vec3(label.averageX(), borderY + 1.25D, label.averageZ()),
+                    TextGizmo.Style.forColorAndCentered(seamColor(entry.getKey(), canonical)).withScale(0.24F))
+                    .setAlwaysOnTop();
+        }
+    }
+
+    private static int seamColor(TileGeometry.LatticeCoordinate seam, boolean canonical) {
+        int pair = Math.clamp(seam.seamPair(), 0, CANONICAL_SEAM_COLORS.length - 1);
+        return canonical ? CANONICAL_SEAM_COLORS[pair] : ALIAS_SEAM_COLORS[pair];
+    }
+
+    private static double distanceToSegmentSqr(
+            double x,
+            double z,
+            double x0,
+            double z0,
+            double x1,
+            double z1) {
+        double nearestX = Math.clamp(x, Math.min(x0, x1), Math.max(x0, x1));
+        double nearestZ = Math.clamp(z, Math.min(z0, z1), Math.max(z0, z1));
+        double dx = x - nearestX;
+        double dz = z - nearestZ;
+        return dx * dx + dz * dz;
     }
 
     private static void drawTile(
@@ -146,17 +258,18 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
         return Math.min(a, b) == canonicalMin && Math.max(a, b) == canonicalMax;
     }
 
-    private void drawWorldSpawnMarker(Entity cameraEntity, DimensionTiling tiling, int tileBlocks, int minY, int maxY) {
+    private void drawWorldSpawnMarker(Entity cameraEntity, TopologyContext topology, int minY, int maxY) {
         LevelData.RespawnData respawnData = this.minecraft.level.getRespawnData();
         if (!respawnData.dimension().equals(this.minecraft.level.dimension())) {
             return;
         }
 
         BlockPos spawn = respawnData.pos();
-        double canonicalX = CoordUtil.wrapBlock(tiling, spawn.getX()) + 0.5D;
-        double canonicalZ = CoordUtil.wrapBlock(tiling, spawn.getZ()) + 0.5D;
-        double aliasX = nearestAlias(canonicalX, cameraEntity.getX(), tileBlocks);
-        double aliasZ = nearestAlias(canonicalZ, cameraEntity.getZ(), tileBlocks);
+        Vec3 canonicalSpawn = topology.canonicalBlock(
+                new Vec3(spawn.getX() + 0.5D, spawn.getY(), spawn.getZ() + 0.5D));
+        Vec3 visibleSpawn = topology.virtualBlockForViewer(canonicalSpawn, cameraEntity.position());
+        double aliasX = visibleSpawn.x();
+        double aliasZ = visibleSpawn.z();
         int color = GlobeConfig.allowMobsAtWorldSpawn() ? WORLD_SPAWN_ALLOWED_COLOR : WORLD_SPAWN_COLOR;
         line(aliasX, minY, aliasZ, aliasX, maxY, aliasZ, color, WORLD_SPAWN_MARKER_WIDTH);
 
@@ -174,11 +287,33 @@ public class GlobeTileBorderRenderer implements net.minecraft.client.renderer.de
                 TextGizmo.Style.forColorAndCentered(color).withScale(0.28F)).setAlwaysOnTop();
     }
 
-    private static double nearestAlias(double canonicalCoordinate, double cameraCoordinate, int tileBlocks) {
-        return canonicalCoordinate + (double) Math.round((cameraCoordinate - canonicalCoordinate) / (double) tileBlocks) * (double) tileBlocks;
-    }
-
     private static void line(double x0, double y0, double z0, double x1, double y1, double z1, int color, float width) {
         Gizmos.line(new Vec3(x0, y0, z0), new Vec3(x1, y1, z1), color, width);
+    }
+
+    private record ChunkPosOffset(double xBlocks, double zBlocks) {
+        private static ChunkPosOffset from(net.minecraft.world.level.ChunkPos chunks) {
+            return new ChunkPosOffset(chunks.x() * 16.0D, chunks.z() * 16.0D);
+        }
+    }
+
+    private static final class LabelAccumulator {
+        private double x;
+        private double z;
+        private int count;
+
+        private void add(double x, double z) {
+            this.x += x;
+            this.z += z;
+            this.count++;
+        }
+
+        private double averageX() {
+            return count == 0 ? 0.0D : x / count;
+        }
+
+        private double averageZ() {
+            return count == 0 ? 0.0D : z / count;
+        }
     }
 }

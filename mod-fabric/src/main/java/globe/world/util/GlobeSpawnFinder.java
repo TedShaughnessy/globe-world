@@ -1,6 +1,9 @@
 package globe.world.util;
 
 import globe.world.GlobeWorld;
+import globe.world.topology.TileGeometry;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -27,7 +30,10 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public final class GlobeSpawnFinder {
@@ -38,29 +44,29 @@ public final class GlobeSpawnFinder {
     }
 
     public static CompletableFuture<Vec3> findSpawn(ServerLevel level, BlockPos spawnSuggestion) {
-        DimensionTiling tiling = DimensionTiling.forLevel(level);
-        if (!tiling.enabled()) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        if (!topology.enabled()) {
             return null;
         }
 
-        BlockPos canonicalSuggestion = CoordUtil.wrapBlockPos(tiling, spawnSuggestion);
+        BlockPos canonicalSuggestion = topology.canonicalBlock(spawnSuggestion);
         if (!level.dimensionType().hasSkyLight() || level.getServer().getWorldData().getGameType() == GameType.ADVENTURE) {
             return CompletableFuture.completedFuture(fixupSpawnHeightInTile(level, canonicalSuggestion));
         }
 
-        SpawnSearch search = new SpawnSearch(level, tiling, canonicalSuggestion);
+        SpawnSearch search = new SpawnSearch(level, topology, canonicalSuggestion);
         search.scheduleNext();
         return search.future;
     }
 
     @Nullable
     public static BlockPos findSpawnPosInChunk(ServerLevel level, ChunkPos chunkPos) {
-        DimensionTiling tiling = DimensionTiling.forLevel(level);
-        if (!tiling.enabled()) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        if (!topology.enabled()) {
             return null;
         }
 
-        ChunkPos canonicalChunk = CoordUtil.wrapChunkPos(tiling, chunkPos);
+        ChunkPos canonicalChunk = topology.canonicalChunk(chunkPos);
         if (SharedConstants.debugVoidTerrain(canonicalChunk)) {
             return null;
         }
@@ -69,13 +75,13 @@ public final class GlobeSpawnFinder {
     }
 
     public static BlockPos findInitialSpawnInCanonicalTile(ServerLevel level, ChunkPos spawnChunk) {
-        DimensionTiling tiling = DimensionTiling.forLevel(level);
-        if (!tiling.enabled()) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        if (!topology.enabled()) {
             return null;
         }
 
-        BlockPos suggestion = CoordUtil.wrapBlockPos(tiling, spawnChunk.getWorldPosition().offset(8, 0, 8));
-        CanonicalChunkSearch chunks = orderedCanonicalChunks(tiling, suggestion);
+        BlockPos suggestion = topology.canonicalBlock(spawnChunk.getWorldPosition().offset(8, 0, 8));
+        CanonicalChunkSearch chunks = orderedCanonicalChunks(topology, suggestion);
         for (ChunkPos chunk : chunks) {
             BlockPos pos = findDryLandInChunk(level, chunk);
             if (pos != null) {
@@ -90,11 +96,11 @@ public final class GlobeSpawnFinder {
             }
         }
 
-        return BlockPos.containing(lastResort(level, tiling));
+        return BlockPos.containing(lastResort(level, topology));
     }
 
     public static LevelData.RespawnData canonicalRespawnData(ServerLevel level, LevelData.RespawnData respawnData) {
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(level, respawnData.pos());
+        BlockPos canonicalPos = TopologyContexts.forLevel(level).canonicalBlock(respawnData.pos());
         if (canonicalPos.equals(respawnData.pos()) && respawnData.dimension().equals(level.dimension())) {
             return respawnData;
         }
@@ -120,18 +126,20 @@ public final class GlobeSpawnFinder {
 
     @Nullable
     public static Vec3 findVillageSiegeSpawnPositionNear(ServerLevel level, BlockPos referencePosition, RandomSource random) {
-        DimensionTiling tiling = DimensionTiling.forLevel(level);
-        if (!tiling.enabled()) {
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        if (!topology.enabled()) {
             return null;
         }
 
         for (int i = 0; i < EVENT_SPAWN_ATTEMPTS; i++) {
             int rawX = referencePosition.getX() + random.nextInt(16) - 8;
             int rawZ = referencePosition.getZ() + random.nextInt(16) - 8;
-            int x = CoordUtil.wrapBlock(tiling, rawX);
-            int z = CoordUtil.wrapBlock(tiling, rawZ);
-            int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
-            BlockPos candidate = new BlockPos(x, y, z);
+            BlockPos canonicalSample = topology.canonicalBlock(rawX, referencePosition.getY(), rawZ);
+            int y = level.getHeight(
+                    Heightmap.Types.WORLD_SURFACE,
+                    canonicalSample.getX(),
+                    canonicalSample.getZ());
+            BlockPos candidate = canonicalSample.atY(y);
             if (level.isVillage(candidate)
                     && net.minecraft.world.entity.monster.Monster.checkMonsterSpawnRules(
                             EntityType.ZOMBIE, level, net.minecraft.world.entity.EntitySpawnReason.EVENT, candidate, random)) {
@@ -156,15 +164,18 @@ public final class GlobeSpawnFinder {
             return null;
         }
 
-        BlockPos sampleReference = visibleReference(level, tiling, referencePosition);
+        TileGeometry geometry = TileGeometry.create(tiling);
+        BlockPos sampleReference = visibleReference(level, geometry, referencePosition);
         SpawnPlacementType placementType = SpawnPlacements.getPlacementType(entityType);
         for (int i = 0; i < EVENT_SPAWN_ATTEMPTS; i++) {
             int rawX = sampleReference.getX() + random.nextInt(radius * 2) - radius;
             int rawZ = sampleReference.getZ() + random.nextInt(radius * 2) - radius;
-            int x = CoordUtil.wrapBlock(tiling, rawX);
-            int z = CoordUtil.wrapBlock(tiling, rawZ);
-            int y = level.getHeight(SpawnPlacements.getHeightmapType(entityType), x, z);
-            BlockPos candidate = new BlockPos(x, y, z);
+            BlockPos canonicalSample = geometry.canonicalBlock(rawX, sampleReference.getY(), rawZ);
+            int y = level.getHeight(
+                    SpawnPlacements.getHeightmapType(entityType),
+                    canonicalSample.getX(),
+                    canonicalSample.getZ());
+            BlockPos candidate = canonicalSample.atY(y);
             if (placementType.isSpawnPositionOk(level, candidate, entityType)) {
                 return candidate;
             }
@@ -173,22 +184,18 @@ public final class GlobeSpawnFinder {
         return null;
     }
 
-    private static BlockPos visibleReference(LevelReader level, DimensionTiling tiling, BlockPos referencePosition) {
+    private static BlockPos visibleReference(LevelReader level, TileGeometry geometry, BlockPos referencePosition) {
         if (!(level instanceof ServerLevel serverLevel)) {
             return referencePosition;
         }
 
+        TopologyContext topology = TopologyContexts.forLevel(serverLevel);
         Player nearestPlayer = null;
         double nearestDistance = Double.MAX_VALUE;
         for (ServerPlayer player : serverLevel.players()) {
-            double distance = CoordUtil.wrappedDistanceSqr(
-                    tiling,
-                    player.getX(),
-                    player.getY(),
-                    player.getZ(),
-                    referencePosition.getX() + 0.5,
-                    referencePosition.getY() + 0.5,
-                    referencePosition.getZ() + 0.5);
+            double distance = topology.wrappedDistanceSqr(
+                    player.position(),
+                    Vec3.atCenterOf(referencePosition));
             if (distance < nearestDistance) {
                 nearestDistance = distance;
                 nearestPlayer = player;
@@ -198,9 +205,11 @@ public final class GlobeSpawnFinder {
         if (nearestPlayer == null) {
             return referencePosition;
         }
-        int x = (int)CoordUtil.virtualBlock(tiling, referencePosition.getX(), nearestPlayer.getX());
-        int z = (int)CoordUtil.virtualBlock(tiling, referencePosition.getZ(), nearestPlayer.getZ());
-        return new BlockPos(x, referencePosition.getY(), z);
+        BlockPos canonical = geometry.canonicalBlock(
+                referencePosition.getX(),
+                referencePosition.getY(),
+                referencePosition.getZ());
+        return geometry.nearestAlias(canonical, nearestPlayer.position());
     }
 
     @Nullable
@@ -267,8 +276,9 @@ public final class GlobeSpawnFinder {
 
     private static Vec3 fixupSpawnHeightInTile(CollisionGetter level, BlockPos spawnPos) {
         BlockPos canonicalSpawnPos = level instanceof net.minecraft.world.level.Level levelWithDimension
-                ? CoordUtil.wrapBlockPos(levelWithDimension, spawnPos)
-                : CoordUtil.wrapBlockPos(spawnPos);
+                ? TopologyContexts.forLevel(levelWithDimension).canonicalBlock(spawnPos)
+                : TileGeometry.create(DimensionTiling.currentOrOverworld())
+                        .canonicalBlock(spawnPos.getX(), spawnPos.getY(), spawnPos.getZ());
         BlockPos.MutableBlockPos mutablePos = canonicalSpawnPos.mutable();
 
         while (!noCollisionNoLiquid(level, mutablePos) && mutablePos.getY() < level.getMaxY()) {
@@ -285,9 +295,10 @@ public final class GlobeSpawnFinder {
         return Vec3.atBottomCenterOf(mutablePos);
     }
 
-    private static Vec3 lastResort(ServerLevel level, DimensionTiling tiling) {
-        int x = CoordUtil.wrapBlock(tiling, 0);
-        int z = CoordUtil.wrapBlock(tiling, 0);
+    private static Vec3 lastResort(ServerLevel level, TopologyContext topology) {
+        BlockPos origin = topology.canonicalBlock(BlockPos.ZERO);
+        int x = origin.getX();
+        int z = origin.getZ();
         int y = level.getChunkSource().getGenerator().getSpawnHeight(level);
         if (y < level.getMinY()) {
             y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
@@ -305,22 +316,22 @@ public final class GlobeSpawnFinder {
         return level.noCollision(null, PLAYER_DIMENSIONS.makeBoundingBox(pos.getBottomCenter()));
     }
 
-    private static CanonicalChunkSearch orderedCanonicalChunks(DimensionTiling tiling, BlockPos suggestion) {
-        return new CanonicalChunkSearch(tiling, suggestion);
+    private static CanonicalChunkSearch orderedCanonicalChunks(TopologyContext topology, BlockPos suggestion) {
+        return new CanonicalChunkSearch(topology, suggestion);
     }
 
     private static final class SpawnSearch {
         private final ServerLevel level;
-        private final DimensionTiling tiling;
+        private final TopologyContext topology;
         private final BlockPos suggestion;
         private final Iterator<ChunkPos> chunks;
         private final CompletableFuture<Vec3> future = new CompletableFuture<>();
 
-        private SpawnSearch(ServerLevel level, DimensionTiling tiling, BlockPos suggestion) {
+        private SpawnSearch(ServerLevel level, TopologyContext topology, BlockPos suggestion) {
             this.level = level;
-            this.tiling = tiling;
+            this.topology = topology;
             this.suggestion = suggestion;
-            this.chunks = orderedCanonicalChunks(tiling, suggestion).iterator();
+            this.chunks = orderedCanonicalChunks(topology, suggestion).iterator();
         }
 
         private void scheduleNext() {
@@ -350,7 +361,7 @@ public final class GlobeSpawnFinder {
         }
 
         private void completeFallback() {
-            for (ChunkPos chunk : orderedCanonicalChunks(this.tiling, this.suggestion)) {
+            for (ChunkPos chunk : orderedCanonicalChunks(this.topology, this.suggestion)) {
                 BlockPos pos = findSafeSurfaceInChunk(this.level, chunk);
                 if (pos != null) {
                     this.future.complete(Vec3.atBottomCenterOf(pos));
@@ -360,44 +371,36 @@ public final class GlobeSpawnFinder {
 
             Vec3 fixedSuggestion = fixupSpawnHeightInTile(this.level, this.suggestion);
             BlockPos fixedBlock = BlockPos.containing(fixedSuggestion);
-            if (CoordUtil.isInCanonicalTile(this.tiling, fixedBlock) && noCollision(this.level, fixedBlock)) {
+            if (this.topology.isCanonical(fixedBlock) && noCollision(this.level, fixedBlock)) {
                 this.future.complete(fixedSuggestion);
                 return;
             }
 
-            this.future.complete(lastResort(this.level, this.tiling));
+            this.future.complete(lastResort(this.level, this.topology));
         }
     }
 
     private static final class CanonicalChunkSearch implements Iterable<ChunkPos> {
-        private final DimensionTiling tiling;
-        private final int tileSize;
-        private final int halfTileSize;
-        private final long totalChunks;
+        private final TopologyContext topology;
+        private final int totalChunks;
         private final ChunkPos suggestionChunk;
 
-        private CanonicalChunkSearch(DimensionTiling tiling, BlockPos suggestion) {
-            this.tiling = tiling;
-            this.tileSize = tiling.tileSizeChunks();
-            this.halfTileSize = this.tileSize / 2;
-            this.totalChunks = (long)this.tileSize * (long)this.tileSize;
-            this.suggestionChunk = CoordUtil.wrapChunkPos(
-                    tiling,
-                    new ChunkPos(
-                            SectionPos.blockToSectionCoord(suggestion.getX()),
-                            SectionPos.blockToSectionCoord(suggestion.getZ())));
+        private CanonicalChunkSearch(TopologyContext topology, BlockPos suggestion) {
+            this.topology = topology;
+            this.totalChunks = topology.canonicalChunkCount();
+            this.suggestionChunk = topology.canonicalChunk(
+                    SectionPos.blockToSectionCoord(suggestion.getX()),
+                    SectionPos.blockToSectionCoord(suggestion.getZ()));
         }
 
         @Override
         public Iterator<ChunkPos> iterator() {
             return new Iterator<>() {
-                private long emitted;
+                private final Set<Long> seen = new HashSet<>();
+                private final ArrayList<ChunkPos> candidates = new ArrayList<>();
+                private int emitted;
                 private int distance;
-                private int xDistance;
-                private int[] xs = new int[0];
-                private int[] zs = new int[0];
                 private int candidateIndex;
-                private boolean hasCandidateSet;
 
                 @Override
                 public boolean hasNext() {
@@ -410,58 +413,36 @@ public final class GlobeSpawnFinder {
                         throw new NoSuchElementException();
                     }
 
-                    while (!this.hasCandidateSet || this.candidateIndex >= this.xs.length * this.zs.length) {
-                        this.prepareNextCandidateSet();
+                    while (this.candidateIndex >= this.candidates.size()) {
+                        this.prepareNextRing();
                     }
 
-                    int zCount = this.zs.length;
-                    int x = this.xs[this.candidateIndex / zCount];
-                    int z = this.zs[this.candidateIndex % zCount];
-                    this.candidateIndex++;
                     this.emitted++;
-                    return new ChunkPos(x, z);
+                    return this.candidates.get(this.candidateIndex++);
                 }
 
-                private void prepareNextCandidateSet() {
-                    while (true) {
-                        int maxXDistance = Math.min(this.distance, CanonicalChunkSearch.this.halfTileSize);
-                        if (this.xDistance > maxXDistance) {
-                            this.distance++;
-                            this.xDistance = 0;
-                            continue;
+                private void prepareNextRing() {
+                    this.candidates.clear();
+                    this.candidateIndex = 0;
+                    int radius = this.distance++;
+                    for (int dx = -radius; dx <= radius; dx++) {
+                        int dz = radius - Math.abs(dx);
+                        this.add(dx, -dz);
+                        if (dz != 0) {
+                            this.add(dx, dz);
                         }
+                    }
+                }
 
-                        int zDistance = this.distance - this.xDistance;
-                        if (zDistance <= CanonicalChunkSearch.this.halfTileSize) {
-                            this.xs = coordinatesAtDistance(
-                                    CanonicalChunkSearch.this.suggestionChunk.x(),
-                                    this.xDistance);
-                            this.zs = coordinatesAtDistance(
-                                    CanonicalChunkSearch.this.suggestionChunk.z(),
-                                    zDistance);
-                            this.candidateIndex = 0;
-                            this.hasCandidateSet = true;
-                            this.xDistance++;
-                            return;
-                        }
-
-                        this.xDistance++;
+                private void add(int dx, int dz) {
+                    ChunkPos canonical = CanonicalChunkSearch.this.topology.canonicalChunk(
+                            CanonicalChunkSearch.this.suggestionChunk.x() + dx,
+                            CanonicalChunkSearch.this.suggestionChunk.z() + dz);
+                    if (this.seen.add(canonical.pack())) {
+                        this.candidates.add(canonical);
                     }
                 }
             };
-        }
-
-        private int[] coordinatesAtDistance(int origin, int distance) {
-            if (distance == 0) {
-                return new int[] { origin };
-            }
-
-            int negative = CoordUtil.wrapChunk(this.tiling, origin - distance);
-            int positive = CoordUtil.wrapChunk(this.tiling, origin + distance);
-            if (negative == positive) {
-                return new int[] { negative };
-            }
-            return negative < positive ? new int[] { negative, positive } : new int[] { positive, negative };
         }
     }
 }

@@ -15,11 +15,17 @@ virtual aliases. Server-side reads and writes canonicalize X/Z before touching
 state, while outbound packets are relabeled so clients can render aliases at the
 ordinary world coordinates they are tracking.
 
-World period:
+Square world period:
 
 - `W_CHUNKS`: configured tile width in chunks, normalized to an even number.
 - `W_BLOCKS = W_CHUNKS * 16`.
 - Canonical zone: centered on origin, `[-W/2, W/2)` in chunk/block X/Z.
+
+Experimental offset-square and hex worlds use coupled two-dimensional lattice
+translations instead of independent X/Z aliases. Offset-square keeps the
+canonical `W x W` square while shifting east/west neighbors by half a tile;
+hex uses a chunk mask. `TileGeometry` owns canonicalization, lattice
+translations, nearest aliases, and broad query boxes for both.
 
 ## Start Here
 
@@ -62,6 +68,7 @@ World period:
 | Area | Status | Mechanic file |
 | --- | --- | --- |
 | Coordinate helpers | Done | [topology.md](topology.md) |
+| Offset-square Overworld topology | Implemented; manual seam acceptance remains | [topology.md](topology.md) |
 | Dimension-specific tiling | Implemented | [topology.md](topology.md) |
 | Topological raycast primitives | Implemented | [topology.md](topology.md) |
 | Chunk lookup and packet relabeling | Done | [chunks.md](chunks.md) |
@@ -115,8 +122,9 @@ World period:
 6. Structures and feature origins: manually test villages, dungeons, and other
    feature bodies near X/Z/corner seams for visual cutoffs or missing
    block-entity side effects.
-7. Terrain periodicity: tiny tiles are necessarily stylized; medium and large
-   tiles need the right balance between seamlessness and vanilla-looking noise.
+7. Hex worldgen acceptance: continuous base terrain is lattice-periodic, but
+   all six seams and vertices still need manual carver, feature, structure,
+   surface-side-effect, reload, and generation-order coverage.
 8. Scrolling day/night weather interaction: manually verify weather, lightning,
    night vision, and gamma with local sky/lightmap visuals.
 9. POI and village gameplay: manually test seam beds, jobs, hives, raids,

@@ -2,6 +2,8 @@ package globe.world.util;
 
 import globe.world.diagnostics.DiagnosticsChannel;
 import globe.world.diagnostics.GlobeDiagnostics;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
@@ -71,7 +73,7 @@ public final class WorldGenSpillover {
         private final Map<Key, Queue> pendingWrites = new HashMap<>();
 
         public synchronized void enqueue(ServerLevel level, BlockPos pos, BlockState expectedState, BlockState state, int flags) {
-            BlockPos wrapped = CoordUtil.wrapBlockPos(level, pos).immutable();
+            BlockPos wrapped = TopologyContexts.forLevel(level).canonicalBlock(pos).immutable();
             ChunkPos chunkPos = new ChunkPos(
                     SectionPos.blockToSectionCoord(wrapped.getX()),
                     SectionPos.blockToSectionCoord(wrapped.getZ())
@@ -94,8 +96,8 @@ public final class WorldGenSpillover {
 
         public synchronized void applyToChunk(ServerLevel level, ChunkAccess chunk) {
             ChunkPos chunkPos = chunk.getPos();
-            if (CoordUtil.wrapChunk(level, chunkPos.x()) != chunkPos.x()
-                    || CoordUtil.wrapChunk(level, chunkPos.z()) != chunkPos.z()) {
+            TopologyContext topology = TopologyContexts.forLevel(level);
+            if (!topology.isCanonical(chunkPos)) {
                 return;
             }
 

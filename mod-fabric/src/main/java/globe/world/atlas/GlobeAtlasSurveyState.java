@@ -3,7 +3,9 @@ package globe.world.atlas;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import globe.world.GlobeWorld;
-import globe.world.util.CoordUtil;
+import globe.world.config.TilingMode;
+import globe.world.topology.AtlasTorusProjection;
+import globe.world.topology.TileGeometry;
 import globe.world.util.DimensionTiling;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -24,14 +26,16 @@ import java.util.TreeSet;
 import java.util.function.LongConsumer;
 
 public class GlobeAtlasSurveyState extends SavedData {
-    private static final int CURRENT_VERSION = 1;
+    private static final int CURRENT_VERSION = 2;
     private static final Codec<ChunkBiomeEntry> CHUNK_BIOME_CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.LONG.fieldOf("chunk").forGetter(ChunkBiomeEntry::chunk),
             Identifier.CODEC.fieldOf("biome").forGetter(ChunkBiomeEntry::biome)
     ).apply(instance, ChunkBiomeEntry::new));
     private static final Codec<GlobeAtlasSurveyState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            Codec.INT.optionalFieldOf("version", CURRENT_VERSION).forGetter(data -> data.version),
+            Codec.INT.optionalFieldOf("version", 1).forGetter(data -> data.version),
             Codec.INT.fieldOf("tileSizeBlocks").forGetter(data -> data.tileSizeBlocks),
+            TilingMode.CODEC.optionalFieldOf("tilingMode", TilingMode.SQUARE).forGetter(data -> data.tilingMode),
+            Codec.STRING.optionalFieldOf("projection", "legacy-square-xz-v1").forGetter(data -> data.projectionIdentity),
             Identifier.CODEC.listOf().optionalFieldOf("visitedBiomes", List.of()).forGetter(data -> List.copyOf(data.visitedBiomes)),
             Codec.LONG.listOf().optionalFieldOf("visitedChunks", List.of()).forGetter(data -> List.copyOf(data.visitedChunks)),
             CHUNK_BIOME_CODEC.listOf().optionalFieldOf("chunkBiomes", List.of()).forGetter(data -> data.chunkBiomeEntries()),
@@ -45,6 +49,8 @@ public class GlobeAtlasSurveyState extends SavedData {
 
     private final int version;
     private final int tileSizeBlocks;
+    private final TilingMode tilingMode;
+    private final String projectionIdentity;
     private final Set<Identifier> visitedBiomes = new TreeSet<>();
     private final Set<Long> visitedChunks = new TreeSet<>();
     private final Map<Long, Identifier> chunkBiomes = new TreeMap<>();
@@ -52,18 +58,30 @@ public class GlobeAtlasSurveyState extends SavedData {
     private int revision = 1;
 
     public GlobeAtlasSurveyState() {
-        this(CURRENT_VERSION, GlobeAtlasSurvey.LARGE_TILE_CUTOFF_CHUNKS * 16 + 16, List.of(), List.of(), List.of(), false);
+        this(
+                CURRENT_VERSION,
+                GlobeAtlasSurvey.LARGE_TILE_CUTOFF_CHUNKS * 16 + 16,
+                TilingMode.SQUARE,
+                "legacy-square-xz-v1",
+                List.of(),
+                List.of(),
+                List.of(),
+                false);
     }
 
     private GlobeAtlasSurveyState(
             final int version,
             final int tileSizeBlocks,
+            final TilingMode tilingMode,
+            final String projectionIdentity,
             final List<Identifier> visitedBiomes,
             final List<Long> visitedChunks,
             final List<ChunkBiomeEntry> chunkBiomes,
             final boolean completedBiomes) {
         this.version = version;
         this.tileSizeBlocks = tileSizeBlocks;
+        this.tilingMode = tilingMode;
+        this.projectionIdentity = projectionIdentity;
         this.visitedBiomes.addAll(visitedBiomes);
         this.visitedChunks.addAll(visitedChunks);
         for (ChunkBiomeEntry entry : chunkBiomes) {
@@ -79,9 +97,18 @@ public class GlobeAtlasSurveyState extends SavedData {
             return existing;
         }
 
+        AtlasTorusProjection projection = AtlasTorusProjection.create(tiling);
+        if (existing != null) {
+            GlobeWorld.LOGGER.warn(
+                    "Resetting Atlas survey data because projection {} does not match {}",
+                    existing.projectionIdentity,
+                    projection.identity());
+        }
         GlobeAtlasSurveyState created = new GlobeAtlasSurveyState(
                 CURRENT_VERSION,
                 tiling.tileSizeBlocks(),
+                tiling.mode(),
+                projection.identity(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -117,9 +144,11 @@ public class GlobeAtlasSurveyState extends SavedData {
     }
 
     public boolean recordVisitedChunk(final DimensionTiling tiling, final double x, final double z, final Identifier biomeId) {
-        int chunkX = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(x)));
-        int chunkZ = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(z)));
-        return this.recordVisitedChunk(tiling, chunkX, chunkZ, biomeId);
+        TileGeometry geometry = TileGeometry.create(tiling);
+        ChunkPos canonical = geometry.canonicalChunk(
+                SectionPos.blockToSectionCoord(Mth.floor(x)),
+                SectionPos.blockToSectionCoord(Mth.floor(z)));
+        return this.recordVisitedChunk(tiling, canonical.x(), canonical.z(), biomeId);
     }
 
     public boolean recordVisitedChunk(final DimensionTiling tiling, final int chunkX, final int chunkZ) {
@@ -127,9 +156,8 @@ public class GlobeAtlasSurveyState extends SavedData {
     }
 
     public boolean recordVisitedChunk(final DimensionTiling tiling, final int chunkX, final int chunkZ, final Identifier biomeId) {
-        int canonicalChunkX = CoordUtil.wrapChunk(tiling, chunkX);
-        int canonicalChunkZ = CoordUtil.wrapChunk(tiling, chunkZ);
-        long chunk = new ChunkPos(canonicalChunkX, canonicalChunkZ).pack();
+        ChunkPos canonical = TileGeometry.create(tiling).canonicalChunk(chunkX, chunkZ);
+        long chunk = canonical.pack();
         boolean changed = this.visitedChunks.add(chunk);
         if (biomeId != null) {
             changed |= this.visitedBiomes.add(biomeId);
@@ -145,7 +173,7 @@ public class GlobeAtlasSurveyState extends SavedData {
     }
 
     public int revision() {
-        return this.revision;
+        return 31 * this.revision + this.projectionIdentity.hashCode();
     }
 
     public int biomeCount() {
@@ -189,7 +217,15 @@ public class GlobeAtlasSurveyState extends SavedData {
     }
 
     private boolean matches(final DimensionTiling tiling) {
-        return this.version == CURRENT_VERSION && this.tileSizeBlocks == tiling.tileSizeBlocks();
+        if (this.tileSizeBlocks != tiling.tileSizeBlocks()) {
+            return false;
+        }
+        if (this.version == 1) {
+            return tiling.mode() == TilingMode.SQUARE;
+        }
+        return this.version == CURRENT_VERSION
+                && this.tilingMode == tiling.mode()
+                && this.projectionIdentity.equals(AtlasTorusProjection.create(tiling).identity());
     }
 
     private void changed() {

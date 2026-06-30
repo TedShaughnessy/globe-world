@@ -1,6 +1,8 @@
 package globe.world.util;
 
 import globe.world.entity.ActorLocalTargets;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -20,14 +22,7 @@ public final class DamageAliasUtil {
             return ActorLocalTargets.nearestAliasPosition(victim, directEntity);
         }
 
-        double x = CoordUtil.virtualBlock(
-                victim.level(),
-                CoordUtil.wrapBlock(victim.level(), sourcePosition.x),
-                victim.getX());
-        double z = CoordUtil.virtualBlock(
-                victim.level(),
-                CoordUtil.wrapBlock(victim.level(), sourcePosition.z),
-                victim.getZ());
-        return new Vec3(x, sourcePosition.y, z);
+        TopologyContext topology = TopologyContexts.forLevel(victim.level());
+        return topology.virtualBlockForViewer(topology.canonicalBlock(sourcePosition), victim.position());
     }
 }

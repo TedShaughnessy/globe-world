@@ -17,7 +17,7 @@ public abstract class LevelChunkPostProcessMixin {
     private void skipAliasPostProcessGeneration(ServerLevel level, CallbackInfo ci) {
         LevelChunk chunk = (LevelChunk) (Object) this;
         ChunkPos pos = chunk.getPos();
-        if (CoordUtil.wrapChunk(level, pos.x()) == pos.x() && CoordUtil.wrapChunk(level, pos.z()) == pos.z()) {
+        if (CoordUtil.wrapChunkPos(level, pos).equals(pos)) {
             WorldGenSpillover.applyToChunk(level, chunk);
             return;
         }

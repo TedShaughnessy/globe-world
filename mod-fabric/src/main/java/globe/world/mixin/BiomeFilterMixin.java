@@ -1,6 +1,6 @@
 package globe.world.mixin;
 
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
@@ -24,10 +24,11 @@ public class BiomeFilterMixin {
     private Holder<Biome> wrapBiomeLookup(WorldGenLevel level, BlockPos pos) {
         // getUncachedNoiseBiome samples BiomeSource directly (no chunk loading),
         // avoiding WorldGenRegion.getChunk() which throws for out-of-region chunks.
+        BlockPos canonicalPos = TopologyContexts.forLevel(level.getLevel()).canonicalBlock(pos);
         return level.getUncachedNoiseBiome(
-            QuartPos.fromBlock(CoordUtil.wrapBlock(level.getLevel(), pos.getX())),
+            QuartPos.fromBlock(canonicalPos.getX()),
             QuartPos.fromBlock(pos.getY()),
-            QuartPos.fromBlock(CoordUtil.wrapBlock(level.getLevel(), pos.getZ()))
+            QuartPos.fromBlock(canonicalPos.getZ())
         );
     }
 }

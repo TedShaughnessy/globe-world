@@ -2,9 +2,9 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import globe.world.topology.TopologyContext;
 import globe.world.topology.TopologyContexts;
 import globe.world.util.ClientActionDiagnostics;
-import globe.world.util.CoordUtil;
 import globe.world.util.EntityCanonicalizer;
 import globe.world.util.EntityPacketUtil;
 import globe.world.util.GlobeInteractionPermissions;
@@ -47,14 +47,12 @@ public class ServerGamePacketListenerImplMixin {
         Vec3 position = packet.position();
         double anchorX = vehicle == this.lastVehicle ? this.vehicleLastGoodX : vehicle.getX();
         double anchorZ = vehicle == this.lastVehicle ? this.vehicleLastGoodZ : vehicle.getZ();
-        double x = CoordUtil.virtualBlock(
-                this.player.level(),
-                CoordUtil.wrapBlock(this.player.level(), position.x),
-                anchorX);
-        double z = CoordUtil.virtualBlock(
-                this.player.level(),
-                CoordUtil.wrapBlock(this.player.level(), position.z),
-                anchorZ);
+        TopologyContext topology = TopologyContexts.forLevel(this.player.level());
+        Vec3 virtualPosition = topology.virtualBlockForViewer(
+                topology.canonicalBlock(position),
+                new Vec3(anchorX, position.y, anchorZ));
+        double x = virtualPosition.x();
+        double z = virtualPosition.z();
         if (x == position.x && z == position.z) {
             return packet;
         }

@@ -2,9 +2,9 @@
 
 ## What
 
-Scrolling day/night mode treats canonical block X as longitude. Callers can ask
-for a local solar time at a block, entity, or camera position without changing
-the level's actual clock.
+Scrolling day/night mode treats geometry-canonical east/west position as
+longitude. Callers can ask for a local solar time at a block, entity, or camera
+position without changing the level's actual clock.
 
 The shared helper lives in `CoordUtil`:
 
@@ -22,7 +22,8 @@ top of those helpers. In scrolling mode, tiled sky-light dimensions without
 fixed time can ask whether a specific block/entity position is locally bright,
 locally dark, or in the vanilla monster-burning part of the Overworld day
 cycle. Timeline-driven gameplay attributes such as villager schedules, bee
-hive behavior, and turtle egg hatch chance can also be sampled at local X.
+hive behavior, and turtle egg hatch chance can also be sampled at local
+longitude.
 
 ## Why
 
@@ -33,18 +34,21 @@ at the call site instead.
 
 ## Longitude Math
 
-The canonical tile is centered on origin. For a tiled dimension:
+The canonical longitude interval is centered on origin. For a tiled dimension:
 
 ```text
-canonicalX = wrapBlock(x)
-longitudeOffsetTicks = canonicalX / tileSizeBlocks * 24000
+canonicalLongitude = geometry.canonicalLongitude(x)
+longitudeOffsetTicks = canonicalLongitude / geometry.longitudePeriodBlocks * 24000
 localSolarTimeTicks = worldClockTicks + longitudeOffsetTicks
 localSolarDayTicks = localSolarTimeTicks mod 24000
 ```
 
-The middle of the tile has no offset. The west and east sides are approximately
-half a Minecraft day behind and ahead of the world clock, and the wrapped X seam
-maps back to the same solar phase modulo one day.
+Square geometry uses the ordinary tile width as its longitude period. The
+east/west-pointed hex geometry uses its horizontal lattice spacing. Its vertical
+`B` translation does not change X, while both diagonal translations change X by
+exactly one longitude period. Consequently, all aliases of a canonical point
+have the same local solar phase and every north/south line has one consistent
+time.
 
 For untiled dimensions the longitude offset is `0`, so local solar time matches
 the vanilla clock.

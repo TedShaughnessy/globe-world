@@ -51,7 +51,7 @@ semantics.
 | `ClientboundPlayerLookAtPacket` | `NAVIGATION_UI_NEAREST_ALIAS` | `ServerPlayerInteractionPacketMixin` | Move look-at target coordinates to the player's nearest alias. |
 | `ClientboundOpenSignEditorPacket` | `NAVIGATION_UI_NEAREST_ALIAS` | `ServerPlayerInteractionPacketMixin` | Move sign editor block position to the player's nearest alias. |
 | `ClientboundTrackedWaypointPacket` | `NAVIGATION_UI_NEAREST_ALIAS` | `WaypointPacketUtil`, waypoint mixins | Use receiver-nearest alias and wrapped range/visibility checks for block, chunk, and azimuth waypoints. |
-| `ClientboundMapItemDataPacket` | `NAVIGATION_UI_NEAREST_ALIAS` | `MapItemMixin`, `MapItemSavedDataMixin` | Map source coordinates and player decorations use nearest map aliases before packet data is built. |
+| `ClientboundMapItemDataPacket` | `NAVIGATION_UI_NEAREST_ALIAS` | `MapItemMixin`, `MapItemSavedDataMixin` | Map source coordinates and player, banner, frame, and static decorations use one map-centered nearest alias before packet data is built. |
 
 ## Code Anchors
 

@@ -5,7 +5,9 @@ import net.minecraft.util.StringRepresentable;
 
 public enum TilingMode implements StringRepresentable {
     DISABLED("disabled"),
-    SQUARE("square");
+    SQUARE("square"),
+    OFFSET_SQUARE("offset_square"),
+    HEX("hex");
 
     public static final Codec<TilingMode> CODEC = StringRepresentable.fromEnum(TilingMode::values);
 
@@ -24,6 +26,8 @@ public enum TilingMode implements StringRepresentable {
         return switch (this) {
             case DISABLED -> "Disabled";
             case SQUARE -> "Square";
+            case OFFSET_SQUARE -> "Offset Square";
+            case HEX -> "Hex";
         };
     }
 }

@@ -123,7 +123,7 @@ public class ChunkGeneratorMixin {
     }
 
     private static boolean isCanonical(net.minecraft.server.level.ServerLevel level, ChunkPos pos) {
-        return CoordUtil.wrapChunk(level, pos.x()) == pos.x() && CoordUtil.wrapChunk(level, pos.z()) == pos.z();
+        return CoordUtil.wrapChunkPos(level, pos).equals(pos);
     }
 
     private static void addToroidalStructureReferences(WorldGenLevel level, StructureManager structureManager, ChunkAccess centerChunk) {

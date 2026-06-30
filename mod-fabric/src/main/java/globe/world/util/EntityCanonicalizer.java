@@ -1,8 +1,11 @@
 package globe.world.util;
 
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 
 public final class EntityCanonicalizer {
     private EntityCanonicalizer() {
@@ -52,8 +55,9 @@ public final class EntityCanonicalizer {
             return false;
         }
 
-        double x = CoordUtil.wrapBlock(root.level(), root.getX());
-        double z = CoordUtil.wrapBlock(root.level(), root.getZ());
+        Vec3 canonical = TopologyContexts.forLevel(root.level()).canonicalBlock(root.position());
+        double x = canonical.x();
+        double z = canonical.z();
         double dx = x - root.getX();
         double dz = z - root.getZ();
         if (dx == 0.0 && dz == 0.0) {
@@ -72,8 +76,9 @@ public final class EntityCanonicalizer {
     }
 
     private static boolean canonicalizeSingle(Entity entity) {
-        double x = CoordUtil.wrapBlock(entity.level(), entity.getX());
-        double z = CoordUtil.wrapBlock(entity.level(), entity.getZ());
+        Vec3 canonical = TopologyContexts.forLevel(entity.level()).canonicalBlock(entity.position());
+        double x = canonical.x();
+        double z = canonical.z();
         if (x == entity.getX() && z == entity.getZ()) {
             return false;
         }

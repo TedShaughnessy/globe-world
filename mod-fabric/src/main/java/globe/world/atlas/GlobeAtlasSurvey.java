@@ -1,5 +1,6 @@
 package globe.world.atlas;
 
+import globe.world.topology.AtlasTorusProjection;
 import globe.world.util.DimensionTiling;
 
 public final class GlobeAtlasSurvey {
@@ -20,5 +21,10 @@ public final class GlobeAtlasSurvey {
 
     public static int travelChunks(final int tileSizeChunks) {
         return Math.min((int)Math.ceil(tileSizeChunks * (double)tileSizeChunks * TRAVEL_TILE_FRACTION), MAX_TRAVEL_CHUNKS);
+    }
+
+    public static int travelChunks(final DimensionTiling tiling) {
+        int canonicalChunks = AtlasTorusProjection.create(tiling).canonicalChunkCount();
+        return Math.min((int)Math.ceil(canonicalChunks * TRAVEL_TILE_FRACTION), MAX_TRAVEL_CHUNKS);
     }
 }

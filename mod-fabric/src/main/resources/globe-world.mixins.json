@@ -125,6 +125,7 @@
 		"PlayerItemPickupMixin",
 		"PlayerLocalSleepMixin",
 		"PoiRecordAccessor",
+		"PortalForcerMixin",
 		"PortalProcessorMixin",
 		"PressurePlateBlockEntityQueryMixin",
 		"PistonMovingBlockEntityQueryMixin",

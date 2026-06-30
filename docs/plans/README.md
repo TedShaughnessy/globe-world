@@ -13,14 +13,6 @@ point for current behavior and modded code anchors.
   social follow, temptation, short-range movement, and brain/social behaviors
   that still need actor-local alias handling after the owner-adjacent tameable
   fixes.
-- [Hexagonal tiles](hexagonal-tiles.md): plan for a chunk-composed hex topology
-  with toroidal Atlas projection and edge-blend-only terrain continuity.
-- [Hexagonal tiles first run](hexagonal-tiles-first-run.md): concrete
-  implementation slice for experimental hex runtime topology while deferring
-  seamless generation.
-- [Large-tile Atlas biome projection follow-ups](large-tile-atlas-biome-projection.md):
-  remaining UX and palette questions after implementing survey-mode
-  biome-colored projections for large tiles.
 - [Minecraft 26.2 upgrade plan](minecraft-26-2-upgrade.md): dependency bump,
   Loom source regeneration, mixin audit, packet policy refresh, and runtime
   validation plan for the next Minecraft target.

@@ -1,6 +1,7 @@
 package globe.world.client.mixin;
 
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.client.renderer.entity.FishingHookRenderer;
 import net.minecraft.client.renderer.entity.state.FishingHookRenderState;
 import net.minecraft.world.entity.player.Player;
@@ -33,10 +34,14 @@ public class FishingHookRendererMixin {
 
         double handX = state.x + state.lineOriginOffset.x;
         double handZ = state.z + state.lineOriginOffset.z;
-        double aliasHandX = CoordUtil.virtualBlock(entity.level(), CoordUtil.wrapBlock(entity.level(), handX), state.x);
-        double aliasHandZ = CoordUtil.virtualBlock(entity.level(), CoordUtil.wrapBlock(entity.level(), handZ), state.z);
-        if (aliasHandX != handX || aliasHandZ != handZ) {
-            state.lineOriginOffset = new Vec3(aliasHandX - state.x, state.lineOriginOffset.y, aliasHandZ - state.z);
+        TopologyContext topology = TopologyContexts.forLevel(entity.level());
+        Vec3 canonicalHand = topology.canonicalBlock(new Vec3(handX, state.y + state.lineOriginOffset.y, handZ));
+        Vec3 aliasHand = topology.virtualBlockForViewer(canonicalHand, new Vec3(state.x, state.y, state.z));
+        if (aliasHand.x() != handX || aliasHand.z() != handZ) {
+            state.lineOriginOffset = new Vec3(
+                    aliasHand.x() - state.x,
+                    state.lineOriginOffset.y,
+                    aliasHand.z() - state.z);
         }
     }
 }

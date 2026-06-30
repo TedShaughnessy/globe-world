@@ -14,8 +14,71 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
+import java.util.Optional;
 
-public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tiling) {
+public final class TopologyContext {
+    private final ResourceKey<Level> dimension;
+    private final DimensionTiling tiling;
+    private final TileGeometry geometry;
+
+    public TopologyContext(ResourceKey<Level> dimension, DimensionTiling tiling) {
+        this.dimension = dimension;
+        this.tiling = tiling;
+        this.geometry = TileGeometry.create(tiling);
+    }
+
+    public ResourceKey<Level> dimension() {
+        return dimension;
+    }
+
+    public DimensionTiling tiling() {
+        return tiling;
+    }
+
+    private TileGeometry geometry() {
+        return geometry;
+    }
+
+    public String geometryRevision() {
+        return geometry().geometryRevision();
+    }
+
+    public TileGeometry.LatticeBasis latticeBasis() {
+        return geometry().latticeBasis();
+    }
+
+    public Optional<LatticeBlendGeometry> blendGeometry() {
+        return geometry().blendGeometry();
+    }
+
+    public boolean coupledLattice() {
+        return geometry().coupledLattice();
+    }
+
+    public TileGeometry.LatticeCoordinate latticeCoordinate(ChunkPos raw) {
+        return geometry().latticeCoordinate(raw);
+    }
+
+    public List<TileGeometry.LatticeCoordinate> neighboringTiles() {
+        return geometry().neighboringTiles();
+    }
+
+    public ChunkPos latticeTranslation(TileGeometry.LatticeCoordinate coordinate) {
+        return geometry().latticeTranslation(coordinate);
+    }
+
+    public Vec3 translatedAlias(Vec3 canonical, TileGeometry.LatticeCoordinate coordinate) {
+        return geometry().translatedAlias(canonical, coordinate);
+    }
+
+    public List<TileGeometry.BoundarySegment> boundarySegments() {
+        return geometry().boundarySegments();
+    }
+
+    public TileGeometry.BoundaryHit nearestBoundary(Vec3 raw) {
+        return geometry().nearestBoundary(raw);
+    }
+
     public boolean enabled() {
         return tiling.enabled();
     }
@@ -26,6 +89,10 @@ public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tili
 
     public int tileSizeBlocks() {
         return tiling.tileSizeBlocks();
+    }
+
+    public int canonicalChunkCount() {
+        return geometry().canonicalChunkCount();
     }
 
     public int canonicalChunkX(int rawX) {
@@ -41,16 +108,11 @@ public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tili
     }
 
     public ChunkPos canonicalChunk(int rawX, int rawZ) {
-        int x = canonicalChunkX(rawX);
-        int z = canonicalChunkX(rawZ);
-        if (x == rawX && z == rawZ) {
-            return new ChunkPos(rawX, rawZ);
-        }
-        return new ChunkPos(x, z);
+        return geometry().canonicalChunk(rawX, rawZ);
     }
 
     public ChunkPos canonicalChunk(ChunkPos raw) {
-        return CoordUtil.wrapChunkPos(tiling, raw);
+        return geometry().canonicalChunk(raw.x(), raw.z());
     }
 
     public ChunkPos canonicalChunk(SectionPos raw) {
@@ -63,29 +125,19 @@ public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tili
     }
 
     public BlockPos canonicalBlock(int rawX, int y, int rawZ) {
-        int x = canonicalBlockX(rawX);
-        int z = canonicalBlockX(rawZ);
-        if (x == rawX && z == rawZ) {
-            return new BlockPos(rawX, y, rawZ);
-        }
-        return new BlockPos(x, y, z);
+        return geometry().canonicalBlock(rawX, y, rawZ);
     }
 
     public BlockPos canonicalBlock(BlockPos raw) {
-        return CoordUtil.wrapBlockPos(tiling, raw);
+        return geometry().canonicalBlock(raw.getX(), raw.getY(), raw.getZ());
     }
 
     public Vec3 canonicalBlock(Vec3 raw) {
-        double x = canonicalBlockX(raw.x());
-        double z = canonicalBlockX(raw.z());
-        if (x == raw.x() && z == raw.z()) {
-            return raw;
-        }
-        return new Vec3(x, raw.y(), z);
+        return geometry().canonicalBlock(raw);
     }
 
     public AABB canonicalBox(AABB raw) {
-        return CoordUtil.wrapAabb(tiling, raw);
+        return geometry().canonicalBox(raw);
     }
 
     public int tileAliasChunkX(int rawX) {
@@ -97,11 +149,11 @@ public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tili
     }
 
     public boolean isCanonical(BlockPos pos) {
-        return CoordUtil.isInCanonicalTile(tiling, pos);
+        return geometry().isCanonicalBlock(pos);
     }
 
     public boolean isCanonical(ChunkPos pos) {
-        return canonicalChunk(pos).equals(pos);
+        return geometry().isCanonicalChunk(pos);
     }
 
     public boolean isCanonical(SectionPos pos) {
@@ -117,10 +169,7 @@ public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tili
     }
 
     public ChunkPos virtualChunkForViewer(ChunkPos canonical, ChunkPos viewer) {
-        return new ChunkPos(
-                virtualChunkXForViewer(canonical.x(), viewer.x()),
-                virtualChunkXForViewer(canonical.z(), viewer.z())
-        );
+        return geometry().nearestAlias(canonical, viewer);
     }
 
     public ChunkPos virtualChunkForViewer(ChunkPos canonical, ServerPlayer viewer) {
@@ -132,12 +181,7 @@ public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tili
     }
 
     public BlockPos virtualBlockForViewer(BlockPos canonical, double viewerX, double viewerZ) {
-        int x = (int) virtualBlockXForViewer(canonical.getX(), viewerX);
-        int z = (int) virtualBlockXForViewer(canonical.getZ(), viewerZ);
-        if (x == canonical.getX() && z == canonical.getZ()) {
-            return canonical;
-        }
-        return new BlockPos(x, canonical.getY(), z);
+        return geometry().nearestAlias(canonical, new Vec3(viewerX, canonical.getY(), viewerZ));
     }
 
     public BlockPos virtualBlockForViewer(BlockPos canonical, ServerPlayer viewer) {
@@ -149,16 +193,11 @@ public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tili
     }
 
     public Vec3 virtualBlockForViewer(Vec3 canonical, Vec3 viewer) {
-        double x = virtualBlockXForViewer(canonical.x(), viewer.x());
-        double z = virtualBlockXForViewer(canonical.z(), viewer.z());
-        if (x == canonical.x() && z == canonical.z()) {
-            return canonical;
-        }
-        return new Vec3(x, canonical.y(), z);
+        return geometry().nearestAlias(canonical, viewer);
     }
 
     public AABB virtualBoxForViewer(AABB canonical, Vec3 viewer) {
-        return CoordUtil.virtualAabb(tiling, canonical, viewer.x(), viewer.z());
+        return geometry().virtualBoxForViewer(canonical, viewer);
     }
 
     public List<ChunkPos> loadedAliasesFor(ServerPlayer player, ChunkPos canonicalChunk) {
@@ -182,11 +221,11 @@ public record TopologyContext(ResourceKey<Level> dimension, DimensionTiling tili
     }
 
     public double wrappedDistanceSqr(Vec3 a, Vec3 b) {
-        return CoordUtil.wrappedDistanceSqr(tiling, a.x(), a.y(), a.z(), b.x(), b.y(), b.z());
+        return geometry().wrappedDistanceSqr(a, b);
     }
 
     public double wrappedChunkDistanceSqr(ChunkPos chunkPos, Vec3 pos) {
-        return CoordUtil.wrappedChunkDistanceSqr(tiling, chunkPos, pos);
+        return geometry().wrappedChunkDistanceSqr(chunkPos, pos);
     }
 
     public int wrappedChunkDistance(int a, int b) {

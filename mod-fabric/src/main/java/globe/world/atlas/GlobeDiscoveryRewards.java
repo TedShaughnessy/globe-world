@@ -1,6 +1,7 @@
 package globe.world.atlas;
 
 import globe.world.map.GlobeMapSavedData;
+import globe.world.topology.AtlasTorusProjection;
 import globe.world.util.DimensionTiling;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
@@ -39,9 +40,10 @@ public record GlobeDiscoveryRewards(
             return EMPTY;
         }
 
-        int tileSizeChunks = tiling.tileSizeChunks();
+        AtlasTorusProjection projection = AtlasTorusProjection.create(tiling);
+        int effectiveTileSizeChunks = Mth.ceil(Math.sqrt(projection.canonicalChunkCount()));
         if (GlobeAtlasSurvey.surveyMode(tiling)) {
-            return largeTileRewards(level, tiling, tileSizeChunks);
+            return largeTileRewards(level, tiling);
         }
 
         GlobeMapSavedData data = GlobeMapSavedData.getIfPresent(level, tiling);
@@ -51,19 +53,19 @@ public record GlobeDiscoveryRewards(
 
         int discoveredPixels = data.discoveredPixels();
         double discoveredPercent = data.discoveredPercent();
-        double discoveredAreaBlocks = data.discoveredAreaBlocks();
+        double discoveredAreaBlocks = data.discoveredAreaBlocks(tiling);
         boolean complete = data.complete();
         int totalPoints;
         int radiusCap;
 
-        if (tileSizeChunks <= 16) {
+        if (effectiveTileSizeChunks <= 16) {
             totalPoints = complete ? 4 : 0;
             radiusCap = complete ? 32 : 0;
         } else {
             int basePoints = Math.min((int)Math.floor(Math.sqrt(discoveredAreaBlocks) / 512.0D), 16);
             int percentPoints = Math.min((int)Math.floor(discoveredPercent / 12.5D), 8);
             int worldPoints = Math.max(basePoints, percentPoints);
-            if (tileSizeChunks <= 64 && discoveredPercent < 50.0D) {
+            if (effectiveTileSizeChunks <= 64 && discoveredPercent < 50.0D) {
                 worldPoints = 0;
             }
 
@@ -92,17 +94,18 @@ public record GlobeDiscoveryRewards(
                 radiusCap,
                 complete,
                 complete,
-                milestoneTenths(tileSizeChunks, tiling.tileSizeBlocks()));
+                milestoneTenths(
+                        effectiveTileSizeChunks,
+                        Math.sqrt(projection.canonicalBlockArea())));
     }
 
     private static GlobeDiscoveryRewards largeTileRewards(
             final ServerLevel level,
-            final DimensionTiling tiling,
-            final int tileSizeChunks) {
+            final DimensionTiling tiling) {
         GlobeAtlasSurveyState survey = GlobeAtlasSurveyState.getIfPresent(level, tiling).orElse(null);
         int biomesVisited = survey == null ? 0 : survey.biomeCount();
         int visitedChunks = survey == null ? 0 : survey.visitedChunks();
-        int targetChunks = GlobeAtlasSurvey.travelChunks(tileSizeChunks);
+        int targetChunks = GlobeAtlasSurvey.travelChunks(tiling);
         double visitedChunkPercent = Math.min(100.0D, visitedChunks * 100.0D / targetChunks);
         double visitedAreaBlocks = visitedChunks * 16.0D * 16.0D;
 
@@ -150,7 +153,7 @@ public record GlobeDiscoveryRewards(
         return List.copyOf(milestones);
     }
 
-    private static List<Integer> milestoneTenths(final int tileSizeChunks, final int tileSizeBlocks) {
+    private static List<Integer> milestoneTenths(final int tileSizeChunks, final double effectiveTileSizeBlocks) {
         List<Integer> milestones = new ArrayList<>();
         if (tileSizeChunks > GlobeAtlasSurvey.LARGE_TILE_CUTOFF_CHUNKS) {
             return largeTileMilestoneTenths();
@@ -168,7 +171,7 @@ public record GlobeDiscoveryRewards(
 
         if (tileSizeChunks > 64) {
             for (int point = 1; point <= 16; point++) {
-                double threshold = Math.pow(point * 512.0D / tileSizeBlocks, 2.0D) * 1000.0D;
+                double threshold = Math.pow(point * 512.0D / effectiveTileSizeBlocks, 2.0D) * 1000.0D;
                 int tenths = Mth.ceil(threshold);
                 if (tenths > 0 && tenths < 990) {
                     addMilestone(milestones, tenths);

@@ -2,6 +2,8 @@ package globe.world.util;
 
 import globe.world.diagnostics.DiagnosticsChannel;
 import globe.world.diagnostics.GlobeDiagnostics;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
@@ -20,7 +22,7 @@ public final class GenerationWindow {
     private final ChunkAccess center;
     private final StaticCache2D<GenerationChunkHolder> cache;
     private final ChunkStep generatingStep;
-    private final DimensionTiling tiling;
+    private final TopologyContext topology;
 
     private GenerationWindow(
             ServerLevel level,
@@ -31,7 +33,7 @@ public final class GenerationWindow {
         this.center = center;
         this.cache = cache;
         this.generatingStep = generatingStep;
-        this.tiling = DimensionTiling.forLevel(level);
+        this.topology = TopologyContexts.forLevel(level);
     }
 
     public static GenerationWindow forRegion(
@@ -43,12 +45,13 @@ public final class GenerationWindow {
     }
 
     public BlockPos canonicalReadPos(BlockPos rawPos) {
-        return CoordUtil.wrapBlockPos(this.level, rawPos);
+        return this.topology.canonicalBlock(rawPos);
     }
 
     public ChunkLookup resolveChunk(int rawChunkX, int rawChunkZ, ChunkStatus status, boolean loadOrGenerate) {
-        int virtualChunkX = virtualCacheChunkX(rawChunkX);
-        int virtualChunkZ = virtualCacheChunkZ(rawChunkZ);
+        ChunkPos virtualChunk = virtualCacheChunk(rawChunkX, rawChunkZ);
+        int virtualChunkX = virtualChunk.x();
+        int virtualChunkZ = virtualChunk.z();
         if (virtualChunkX == rawChunkX && virtualChunkZ == rawChunkZ) {
             return new ChunkLookup(ChunkLookup.Kind.VANILLA, rawChunkX, rawChunkZ, virtualChunkX, virtualChunkZ);
         }
@@ -62,8 +65,9 @@ public final class GenerationWindow {
     }
 
     public boolean hasChunk(int rawChunkX, int rawChunkZ) {
-        int virtualChunkX = virtualCacheChunkX(rawChunkX);
-        int virtualChunkZ = virtualCacheChunkZ(rawChunkZ);
+        ChunkPos virtualChunk = virtualCacheChunk(rawChunkX, rawChunkZ);
+        int virtualChunkX = virtualChunk.x();
+        int virtualChunkZ = virtualChunk.z();
         if (virtualChunkX == rawChunkX && virtualChunkZ == rawChunkZ) {
             return vanillaHasChunk(rawChunkX, rawChunkZ);
         }
@@ -71,12 +75,12 @@ public final class GenerationWindow {
     }
 
     public WriteDecision classifyWrite(BlockPos rawPos) {
-        BlockPos canonicalPos = CoordUtil.wrapBlockPos(this.level, rawPos);
+        BlockPos canonicalPos = this.topology.canonicalBlock(rawPos);
         ChunkPos canonicalChunk = chunkPos(canonicalPos);
         if (!withinWriteRadius(canonicalPos)) {
             return new WriteDecision(WriteDecision.Kind.DENIED_BY_RADIUS, rawPos, canonicalPos, canonicalChunk);
         }
-        if (canonicalPos == rawPos) {
+        if (canonicalPos.equals(rawPos)) {
             return new WriteDecision(WriteDecision.Kind.CANONICAL, rawPos, canonicalPos, canonicalChunk);
         }
         if (physicalCacheContains(canonicalPos)) {
@@ -101,19 +105,21 @@ public final class GenerationWindow {
         int chunkX = SectionPos.blockToSectionCoord(canonicalPos.getX());
         int chunkZ = SectionPos.blockToSectionCoord(canonicalPos.getZ());
         ChunkPos centerPos = this.center.getPos();
-        int distanceX = canonicalChunkDistance(centerPos.x(), chunkX);
-        int distanceZ = canonicalChunkDistance(centerPos.z(), chunkZ);
+        ChunkPos nearest = this.topology.virtualChunkForViewer(new ChunkPos(chunkX, chunkZ), centerPos);
+        int distanceX = Math.abs(nearest.x() - centerPos.x());
+        int distanceZ = Math.abs(nearest.z() - centerPos.z());
         int radius = this.generatingStep.blockStateWriteRadius();
         return distanceX <= radius && distanceZ <= radius;
     }
 
     public boolean physicalCacheContains(BlockPos canonicalPos) {
         ChunkPos chunkPos = chunkPos(canonicalPos);
-        return this.cache.contains(virtualCacheChunkX(chunkPos.x()), virtualCacheChunkZ(chunkPos.z()));
+        ChunkPos virtualChunk = virtualCacheChunk(chunkPos.x(), chunkPos.z());
+        return this.cache.contains(virtualChunk.x(), virtualChunk.z());
     }
 
     public int canonicalChunkDistance(int a, int b) {
-        return CoordUtil.wrappedChunkDistance(this.tiling, a, b);
+        return this.topology.wrappedChunkDistance(a, b);
     }
 
     public void logChunkLookup(ChunkLookup lookup, ChunkStatus status, boolean loadOrGenerate) {
@@ -157,12 +163,8 @@ public final class GenerationWindow {
         return distance < this.generatingStep.directDependencies().size();
     }
 
-    private int virtualCacheChunkX(int chunkX) {
-        return CoordUtil.virtualChunk(this.level, CoordUtil.wrapChunk(this.level, chunkX), this.center.getPos().x());
-    }
-
-    private int virtualCacheChunkZ(int chunkZ) {
-        return CoordUtil.virtualChunk(this.level, CoordUtil.wrapChunk(this.level, chunkZ), this.center.getPos().z());
+    private ChunkPos virtualCacheChunk(int rawChunkX, int rawChunkZ) {
+        return this.topology.virtualChunkForViewer(this.topology.canonicalChunk(rawChunkX, rawChunkZ), this.center.getPos());
     }
 
     private static ChunkPos chunkPos(BlockPos pos) {

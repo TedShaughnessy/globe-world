@@ -43,17 +43,24 @@ The supported topology-aware admin helpers are implemented in
 `GlobeDebugCommands`:
 
 - `/globeworld pos` reports the executing player's raw position, canonical
-  position, chunks, tile alias, configured tile settings, and local solar time.
+  position, chunks, lattice alias `(k, l)`, chunk translation, geometry
+  revision/basis, configured tile settings, and local solar time.
 - `/globeworld teleport_canon` moves the executing player from an alias back to
-  the canonical equivalent.
+  the two-dimensionally canonical equivalent.
 - `/globeworld teleport_border [inset]` moves the executing player to the
-  nearest canonical tile border.
-- `/globeworld teleport_alias <tileX> <tileZ>` moves the executing player to
-  the matching alias of their current canonical X/Z.
+  nearest exact canonical chunk-mask boundary.
+- `/globeworld teleport_border seam <a+|a-|b+|b-|c+|c-> [inset]` moves the
+  executing player to a selected seam direction. `C` names the `A-B` lattice
+  relation.
+- `/globeworld teleport_alias <k> <l>` moves the executing player to the
+  `k*A + l*B` alias of their current canonical position.
+- `/globeworld border_distance` reports Euclidean distance to the exact
+  discrete boundary, grouped by the available seam directions.
 - `/globeworld query_block <pos>` reports a raw block position, its canonical
-  owner, tile alias, canonical block state and block entity if the canonical
-  chunk is already loaded, loaded aliases for the executing player, alias
-  mutation access, and the interaction permission view for the executing entity.
+  owner, lattice alias and translation, canonical block state and block entity
+  if the canonical chunk is already loaded, loaded aliases for the executing
+  player, alias mutation access, and the interaction permission view for the
+  executing entity.
 - `/globeworld config` shows saved topology, presentation, day/night,
   natural-spawn, and forced-progression settings.
 - `/globeworld config set allow_mobs_at_world_spawn <true|false>` toggles

@@ -1,8 +1,6 @@
 package globe.world.topology;
 
 import com.mojang.datafixers.util.Either;
-import globe.world.util.CoordUtil;
-import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -84,11 +82,7 @@ public final class TopologicalRaycasts {
         Level level = actor.level();
         TopologyContext context = TopologyContexts.forLevel(level);
         Vec3 from = new Vec3(actor.getX(), actor.getEyeY(), actor.getZ());
-        Vec3 canonicalTarget = new Vec3(
-                context.canonicalBlockX(target.getX()),
-                targetY,
-                context.canonicalBlockX(target.getZ())
-        );
+        Vec3 canonicalTarget = context.canonicalBlock(new Vec3(target.getX(), targetY, target.getZ()));
         Vec3 to = context.virtualBlockForViewer(canonicalTarget, from);
         if (to.distanceTo(from) > LINE_OF_SIGHT_LIMIT) {
             return false;
@@ -269,23 +263,13 @@ public final class TopologicalRaycasts {
             return List.of(canonicalBox);
         }
 
-        int radius = Math.max(0, aliasTileRadius);
-        DimensionTiling tiling = context.tiling();
-        int tileSize = tiling.tileSizeBlocks();
-        double centerX = (canonicalBox.minX + canonicalBox.maxX) * 0.5D;
-        double centerZ = (canonicalBox.minZ + canonicalBox.maxZ) * 0.5D;
-        int baseTileX = CoordUtil.virtualBlockTileOffset(tiling, centerX, from.x());
-        int baseTileZ = CoordUtil.virtualBlockTileOffset(tiling, centerZ, from.z());
         double padding = Math.max(ProjectileUtil.DEFAULT_ENTITY_HIT_RESULT_MARGIN, entityMargin) + 1.0E-7D;
         AABB paddedSearchBox = searchBox.inflate(padding);
         List<AABB> boxes = new ArrayList<>();
 
-        for (int offsetX = -radius; offsetX <= radius; offsetX++) {
-            for (int offsetZ = -radius; offsetZ <= radius; offsetZ++) {
-                AABB box = canonicalBox.move((baseTileX + offsetX) * (double) tileSize, 0.0D, (baseTileZ + offsetZ) * (double) tileSize);
-                if (box.contains(from) || box.intersects(paddedSearchBox)) {
-                    boxes.add(box);
-                }
+        for (AABB box : TileGeometry.create(context.tiling()).nearbyAliasBoxes(canonicalBox, from, aliasTileRadius)) {
+            if (box.contains(from) || box.intersects(paddedSearchBox)) {
+                boxes.add(box);
             }
         }
 
@@ -358,11 +342,7 @@ public final class TopologicalRaycasts {
         if (!context.enabled()) {
             return visibleLocation;
         }
-        return new Vec3(
-                context.canonicalBlockX(visibleLocation.x()),
-                visibleLocation.y(),
-                context.canonicalBlockX(visibleLocation.z())
-        );
+        return context.canonicalBlock(visibleLocation);
     }
 
     public record BlockTraceOptions(

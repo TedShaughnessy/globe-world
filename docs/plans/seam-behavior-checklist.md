@@ -22,6 +22,8 @@ Status keys:
 | Canonical block ownership | Place and break blocks on both sides of an X seam and a Z seam. | The canonical tile stores one durable block state; aliases show the same result. | Manual |
 | Canonical chunk lookup | Stand outside the canonical tile and force chunk access through block placement, block entities, or commands. | Server lookups resolve to the canonical owner without creating durable alias chunks. | Candidate automated |
 | Corner wrapping | Repeat block and chunk checks at an X/Z corner alias. | Both axes wrap together and the visible corner behaves like the canonical corner. | Manual |
+| Hex seam ring | In width-8, width-12, and width-16 hex worlds, repeat ownership and movement checks at `±A`, `±B`, `±(A-B)`, and all vertices. | Every lattice alias resolves to one canonical owner and the exact staircase overlay agrees with command output. | Manual |
+| Offset-square split edges | In an offset-square world, test both east/west half-edges, north/south edges, T-junctions, and corners. | Each crossing reaches the neighbor named by the geometry boundary without duplicate or missing state. | Manual |
 | Disabled dimensions | Repeat a simple seam check in the End. | The End behaves like vanilla space, with no topology wrapping. | Manual |
 | Overworld/Nether split | Use different Overworld and Nether tile sizes. | Each dimension uses its own topology settings and no shared global tile math leaks across dimensions. | Manual |
 
@@ -44,6 +46,14 @@ Status keys:
 | Block update fanout | Place, break, or update a block visible through multiple loaded aliases. | Every loaded alias receives the visible update; unloaded aliases are not spammed. | Manual |
 | World events | Trigger sounds, particles, block events, break progress, and explosions near a seam. | Receivers get the nearest or loaded alias according to the packet policy table. | Manual |
 | Navigation UI | Use maps, compass/lodestone behavior, and waypoints near a seam. | UI packets use receiver-nearest aliases and wrapped range/visibility checks. | Manual |
+
+## Atlas Projection
+
+| Case | Setup | Expected behavior | Status |
+| --- | --- | --- | --- |
+| Coupled-lattice Atlas seams | In hex and offset-square worlds, reveal terrain and inspect held and placed Atlas views through all six lattice translations. | Translations by `A`, `B`, and `A-B` share pixels; held windows and markers choose the viewer-nearest copy. | Manual |
+| Atlas refresh and travel | Edit discovered terrain and use powered Atlas travel with source or destination near each coupled seam. | Refresh, wrapped effect radius, destination display, and arrival resolve through the same canonical geometry. | Manual |
+| Atlas projection save identity | Save/reload Atlas and survey data, then exercise a deliberately incompatible projection identity in a disposable world. | Matching layouts persist unchanged; incompatible tiling mode, geometry revision, or basis resets instead of reinterpreting discovery data. | Candidate automated |
 
 ## Entities, AI, And Combat
 

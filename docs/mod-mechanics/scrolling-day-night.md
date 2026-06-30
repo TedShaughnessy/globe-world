@@ -2,9 +2,10 @@
 
 ## What
 
-Scrolling day/night mode treats the canonical tile's X axis as longitude. In
-`DayNightCycleMode.SCROLLING`, local solar time shifts smoothly across the tile
-and wraps by one Minecraft day over one tile width.
+Scrolling day/night mode treats the topology's canonical east/west coordinate
+as longitude. In `DayNightCycleMode.SCROLLING`, local solar time shifts smoothly
+east to west and wraps by one Minecraft day over the geometry's longitude
+period.
 
 The feature is intentionally semi-realistic:
 
@@ -26,7 +27,7 @@ clock ownership or server light propagation.
 The saved setting is `GlobeSettings.gameplay().dayNightCycleMode()`:
 
 - `VANILLA`: normal global Minecraft time-of-day behavior.
-- `SCROLLING`: local solar time is derived from canonical X.
+- `SCROLLING`: local solar time is derived from geometry-canonical longitude.
 
 The setting is serialized as `day_night_cycle` inside the saved
 `globe_world.gameplay` group. The world-creation UI and pause/options Globe
@@ -55,15 +56,16 @@ values are sanitized to whole-number multipliers by `GameplaySettings`.
 The shared coordinate math lives in `CoordUtil`:
 
 ```text
-canonicalX = wrapBlock(x)
-longitudeOffsetTicks = canonicalX / tileSizeBlocks * 24000
+canonicalLongitude = geometry.canonicalLongitude(x)
+longitudeOffsetTicks = canonicalLongitude / geometry.longitudePeriodBlocks * 24000
 localSolarTimeTicks = worldTime + longitudeOffsetTicks
 localSolarDayTicks = localSolarTimeTicks mod 24000
 ```
 
-The middle of the canonical tile matches the global clock. The west and east
-sides are approximately half a Minecraft day behind and ahead of the global
-clock, and the wrapped X seam maps back to the same solar phase modulo one day.
+Square worlds use the tile width as the longitude period. East/west-pointed hex
+worlds use their horizontal lattice spacing. Vertical lattice translations
+preserve X and diagonal translations move by one whole longitude period, so
+local time is identical at every alias and constant north to south.
 
 ## Client Visuals
 

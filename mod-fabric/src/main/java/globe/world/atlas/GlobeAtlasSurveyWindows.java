@@ -1,7 +1,7 @@
 package globe.world.atlas;
 
 import globe.world.network.GlobeAtlasSurveyWindowPayload;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TileGeometry;
 import globe.world.util.DimensionTiling;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,13 +34,14 @@ public final class GlobeAtlasSurveyWindows {
             final GlobeAtlasSurveyState survey,
             final ServerPlayer player,
             final List<GlobeAtlasPowerState.Entry> atlases) {
-        double canonicalX = CoordUtil.wrapBlock(tiling, player.getX());
-        double canonicalZ = CoordUtil.wrapBlock(tiling, player.getZ());
-        int centerChunkX = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(canonicalX)));
-        int centerChunkZ = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(canonicalZ)));
+        TileGeometry geometry = TileGeometry.create(tiling);
+        Vec3 canonical = geometry.canonicalBlock(player.position());
+        ChunkPos center = geometry.canonicalChunk(
+                SectionPos.blockToSectionCoord(Mth.floor(canonical.x())),
+                SectionPos.blockToSectionCoord(Mth.floor(canonical.z())));
         List<GlobeAtlasSurveyWindowPayload.Marker> markers = new ArrayList<>();
-        addAtlasMarkers(tiling, centerChunkX, centerChunkZ, HELD_WINDOW_CHUNKS, atlases, null, markers);
-        return create(level, tiling, survey, centerChunkX, centerChunkZ, HELD_WINDOW_CHUNKS, markers);
+        addAtlasMarkers(tiling, center.x(), center.z(), HELD_WINDOW_CHUNKS, atlases, null, markers);
+        return create(level, tiling, survey, center.x(), center.z(), HELD_WINDOW_CHUNKS, markers);
     }
 
     public static GlobeAtlasSurveyWindowPayload placed(
@@ -48,12 +50,13 @@ public final class GlobeAtlasSurveyWindows {
             final GlobeAtlasSurveyState survey,
             final BlockPos atlasPos,
             final List<GlobeAtlasPowerState.Entry> atlases) {
-        int centerChunkX = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(atlasPos.getX()));
-        int centerChunkZ = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(atlasPos.getZ()));
+        ChunkPos center = TileGeometry.create(tiling).canonicalChunk(
+                SectionPos.blockToSectionCoord(atlasPos.getX()),
+                SectionPos.blockToSectionCoord(atlasPos.getZ()));
         List<GlobeAtlasSurveyWindowPayload.Marker> markers = new ArrayList<>();
         markers.add(new GlobeAtlasSurveyWindowPayload.Marker(PLACED_WINDOW_CHUNKS / 2, PLACED_WINDOW_CHUNKS / 2, SOURCE_ATLAS_MARKER));
-        addAtlasMarkers(tiling, centerChunkX, centerChunkZ, PLACED_WINDOW_CHUNKS, atlases, atlasPos, markers);
-        return create(level, tiling, survey, centerChunkX, centerChunkZ, PLACED_WINDOW_CHUNKS, markers);
+        addAtlasMarkers(tiling, center.x(), center.z(), PLACED_WINDOW_CHUNKS, atlases, atlasPos, markers);
+        return create(level, tiling, survey, center.x(), center.z(), PLACED_WINDOW_CHUNKS, markers);
     }
 
     private static GlobeAtlasSurveyWindowPayload create(
@@ -106,18 +109,20 @@ public final class GlobeAtlasSurveyWindows {
             final List<Identifier> palette,
             final Map<Identifier, Integer> paletteIndexes) {
         int halfWindow = windowChunks / 2;
+        TileGeometry geometry = TileGeometry.create(tiling);
         for (int z = 0; z < windowChunks; z++) {
-            int chunkZ = CoordUtil.wrapChunk(tiling, centerChunkZ + z - halfWindow);
             for (int x = 0; x < windowChunks; x++) {
-                int chunkX = CoordUtil.wrapChunk(tiling, centerChunkX + x - halfWindow);
-                if (!survey.isVisitedChunk(chunkX, chunkZ)) {
+                ChunkPos canonical = geometry.canonicalChunk(
+                        centerChunkX + x - halfWindow,
+                        centerChunkZ + z - halfWindow);
+                if (!survey.isVisitedChunk(canonical.x(), canonical.z())) {
                     continue;
                 }
 
                 int cell = x + z * windowChunks;
                 fillCell(
                         survey,
-                        new ChunkPos(chunkX, chunkZ).pack(),
+                        canonical.pack(),
                         cell,
                         discovered,
                         biomeIndexes,
@@ -169,14 +174,19 @@ public final class GlobeAtlasSurveyWindows {
             final List<GlobeAtlasPowerState.Entry> atlases,
             final BlockPos source,
             final List<GlobeAtlasSurveyWindowPayload.Marker> markers) {
+        TileGeometry geometry = TileGeometry.create(tiling);
+        BlockPos canonicalSource = source == null
+                ? null
+                : geometry.canonicalBlock(source.getX(), source.getY(), source.getZ());
         for (GlobeAtlasPowerState.Entry entry : atlases) {
-            if (source != null && entry.pos().equals(source)) {
+            if (canonicalSource != null && entry.pos().equals(canonicalSource)) {
                 continue;
             }
 
-            int chunkX = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(entry.pos().getX()));
-            int chunkZ = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(entry.pos().getZ()));
-            int cell = cellIndex(tiling, centerChunkX, centerChunkZ, windowChunks, chunkX, chunkZ);
+            ChunkPos chunk = geometry.canonicalChunk(
+                    SectionPos.blockToSectionCoord(entry.pos().getX()),
+                    SectionPos.blockToSectionCoord(entry.pos().getZ()));
+            int cell = cellIndex(tiling, centerChunkX, centerChunkZ, windowChunks, chunk.x(), chunk.z());
             if (cell >= 0) {
                 markers.add(new GlobeAtlasSurveyWindowPayload.Marker(cell % windowChunks, cell / windowChunks, ATLAS_MARKER));
             }
@@ -199,8 +209,12 @@ public final class GlobeAtlasSurveyWindows {
             final int windowChunks,
             final int chunkX,
             final int chunkZ) {
-        int dx = wrappedChunkDelta(tiling, chunkX, centerChunkX);
-        int dz = wrappedChunkDelta(tiling, chunkZ, centerChunkZ);
+        TileGeometry geometry = TileGeometry.create(tiling);
+        ChunkPos center = geometry.canonicalChunk(centerChunkX, centerChunkZ);
+        ChunkPos target = geometry.canonicalChunk(chunkX, chunkZ);
+        ChunkPos visible = geometry.nearestAlias(target, center);
+        int dx = visible.x() - center.x();
+        int dz = visible.z() - center.z();
         int halfWindow = windowChunks / 2;
         if (dx < -halfWindow || dx >= halfWindow || dz < -halfWindow || dz >= halfWindow) {
             return -1;
@@ -208,14 +222,5 @@ public final class GlobeAtlasSurveyWindows {
         int x = dx + halfWindow;
         int z = dz + halfWindow;
         return x + z * windowChunks;
-    }
-
-    private static int wrappedChunkDelta(final DimensionTiling tiling, final int chunk, final int center) {
-        if (!tiling.enabled()) {
-            return chunk - center;
-        }
-        int delta = chunk - center;
-        int tileSize = tiling.tileSizeChunks();
-        return (int)(delta - Math.rint(delta / (double)tileSize) * tileSize);
     }
 }

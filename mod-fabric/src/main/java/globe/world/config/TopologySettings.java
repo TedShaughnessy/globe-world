@@ -20,6 +20,7 @@ public record TopologySettings(
         boolean forceMissingNetherFortress,
         boolean avoidWaterOnlySeeds) {
     public static final int MIN_TILE_SIZE_CHUNKS = 2;
+    public static final int MIN_HEX_TILE_SIZE_CHUNKS = 8;
     public static final int FORCED_STRUCTURE_SMALL_TILE_MAX_CHUNKS = 256;
     public static final int DEFAULT_NETHER_TILE_SIZE_CHUNKS = Math.max(
             MIN_TILE_SIZE_CHUNKS,
@@ -99,10 +100,10 @@ public record TopologySettings(
             );
 
     public TopologySettings {
-        int sanitizedTileSize = sanitizeTileSize(tileSize);
-        int sanitizedNetherTileSize = sanitizeTileSize(netherTileSize);
         TilingMode sanitizedMode = mode != null ? mode : TilingMode.DISABLED;
         TilingMode sanitizedNetherMode = netherMode != null ? netherMode : TilingMode.DISABLED;
+        int sanitizedTileSize = sanitizeTileSize(sanitizedMode, tileSize);
+        int sanitizedNetherTileSize = sanitizeTileSize(sanitizedNetherMode, netherTileSize);
         PortalScale scale = sanitizeNetherPortalScale(netherPortalScaleNumerator, netherPortalScaleDenominator);
         mode = sanitizedMode;
         tileSize = sanitizedTileSize;
@@ -131,7 +132,7 @@ public record TopologySettings(
     }
 
     public boolean enabled() {
-        return mode == TilingMode.SQUARE;
+        return mode == TilingMode.SQUARE || mode == TilingMode.OFFSET_SQUARE || mode == TilingMode.HEX;
     }
 
     public boolean netherEnabled() {
@@ -242,7 +243,7 @@ public record TopologySettings(
     }
 
     public TopologySettings withNetherTileSize(int newNetherTileSize) {
-        int sanitizedNetherTileSize = sanitizeTileSize(newNetherTileSize);
+        int sanitizedNetherTileSize = sanitizeTileSize(netherMode, newNetherTileSize);
         return new TopologySettings(
                 mode,
                 tileSize,
@@ -331,10 +332,17 @@ public record TopologySettings(
     }
 
     private static TerrainMode sanitizeTerrainMode(TilingMode tilingMode, TerrainMode terrainMode) {
+        if (tilingMode == TilingMode.HEX || tilingMode == TilingMode.OFFSET_SQUARE) {
+            return TerrainMode.EDGE_BLEND;
+        }
         if (tilingMode != TilingMode.SQUARE || terrainMode == null || terrainMode == TerrainMode.DISABLED) {
             return TerrainMode.AUTO;
         }
         return terrainMode;
+    }
+
+    public static int sanitizeTileSize(TilingMode mode, int tileSize) {
+        return mode == TilingMode.HEX ? sanitizeHexTileSize(tileSize) : sanitizeTileSize(tileSize);
     }
 
     public static int sanitizeTileSize(int tileSize) {
@@ -345,13 +353,24 @@ public record TopologySettings(
         return sanitized == Integer.MAX_VALUE ? sanitized - 1 : sanitized + 1;
     }
 
+    public static int sanitizeHexTileSize(int tileSize) {
+        int sanitized = Math.max(MIN_HEX_TILE_SIZE_CHUNKS, tileSize);
+        int remainder = sanitized % 4;
+        if (remainder == 0) {
+            return sanitized;
+        }
+        int increment = 4 - remainder;
+        return sanitized > Integer.MAX_VALUE - increment ? sanitized - remainder : sanitized + increment;
+    }
+
     private static PortalScale sanitizeNetherPortalScale(int numerator, int denominator) {
         PortalScale requested = new PortalScale(Math.max(1, numerator), Math.max(1, denominator));
         return ALLOWED_NETHER_PORTAL_SCALES.contains(requested) ? requested : DEFAULT_NETHER_PORTAL_SCALE;
     }
 
     private static boolean defaultForceMissingStronghold(TilingMode mode, int tileSize) {
-        return mode == TilingMode.SQUARE && isSmallProgressionTile(tileSize);
+        return (mode == TilingMode.SQUARE || mode == TilingMode.OFFSET_SQUARE || mode == TilingMode.HEX)
+                && isSmallProgressionTile(tileSize);
     }
 
     private static boolean defaultForceMissingNetherStructure(TilingMode mode, int tileSize) {
@@ -359,7 +378,7 @@ public record TopologySettings(
     }
 
     private static boolean defaultAvoidWaterOnlySeeds(TilingMode mode) {
-        return mode == TilingMode.SQUARE;
+        return mode == TilingMode.SQUARE || mode == TilingMode.OFFSET_SQUARE || mode == TilingMode.HEX;
     }
 
     private static boolean isSmallProgressionTile(int tileSize) {

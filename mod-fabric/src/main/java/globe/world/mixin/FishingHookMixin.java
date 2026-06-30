@@ -2,10 +2,12 @@ package globe.world.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.FishingHook;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,7 +22,7 @@ public class FishingHookMixin {
             )
     )
     private double globeWorld$useWrappedOwnerDistance(FishingHook hook, Entity owner, Operation<Double> original) {
-        return CoordUtil.wrappedDistanceSqr(hook, owner);
+        return TopologyContexts.forLevel(hook.level()).wrappedDistanceSqr(hook.position(), owner.position());
     }
 
     @WrapOperation(
@@ -76,12 +78,20 @@ public class FishingHookMixin {
     @Unique
     private double globeWorld$ownerPullDeltaX(Entity owner) {
         FishingHook hook = (FishingHook) (Object) this;
-        return CoordUtil.wrappedDeltaBlock(hook.level(), owner.getX(), hook.getX());
+        Vec3 ownerAlias = this.globeWorld$ownerAlias(owner, hook);
+        return ownerAlias.x() - hook.getX();
     }
 
     @Unique
     private double globeWorld$ownerPullDeltaZ(Entity owner) {
         FishingHook hook = (FishingHook) (Object) this;
-        return CoordUtil.wrappedDeltaBlock(hook.level(), owner.getZ(), hook.getZ());
+        Vec3 ownerAlias = this.globeWorld$ownerAlias(owner, hook);
+        return ownerAlias.z() - hook.getZ();
+    }
+
+    @Unique
+    private Vec3 globeWorld$ownerAlias(Entity owner, FishingHook hook) {
+        TopologyContext topology = TopologyContexts.forLevel(hook.level());
+        return topology.virtualBlockForViewer(topology.canonicalBlock(owner.position()), hook.position());
     }
 }

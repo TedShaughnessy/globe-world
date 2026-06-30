@@ -3,6 +3,9 @@ package globe.world.client;
 import globe.world.config.GlobeConfig;
 import globe.world.config.GameplaySettings;
 import globe.world.config.TopologySettings;
+import globe.world.topology.TileGeometry;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import globe.world.util.CoordUtil;
 import globe.world.util.DimensionTiling;
 import globe.world.util.GlobeEntityAliasing;
@@ -15,6 +18,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,16 +54,18 @@ public final class GlobeDebugHud {
     }
 
     private static void collectLines(Level level, Entity cameraEntity, List<String> leftLines, List<String> rightLines) {
-        DimensionTiling currentTiling = DimensionTiling.forLevel(level);
+        TopologyContext topology = TopologyContexts.forLevel(level);
+        DimensionTiling currentTiling = topology.tiling();
         DimensionTiling overworldTiling = DimensionTiling.forDimension(Level.OVERWORLD);
         DimensionTiling netherTiling = DimensionTiling.forDimension(Level.NETHER);
         BlockPos pos = cameraEntity.blockPosition();
         ChunkPos chunk = ChunkPos.containing(pos);
-        double canonX = CoordUtil.wrapBlock(currentTiling, cameraEntity.getX());
-        double canonZ = CoordUtil.wrapBlock(currentTiling, cameraEntity.getZ());
-        int canonChunkX = CoordUtil.wrapChunk(currentTiling, chunk.x());
-        int canonChunkZ = CoordUtil.wrapChunk(currentTiling, chunk.z());
-        boolean canonicalChunk = chunk.x() == canonChunkX && chunk.z() == canonChunkZ;
+        Vec3 canonical = topology.canonicalBlock(cameraEntity.position());
+        ChunkPos canonicalChunk = topology.canonicalChunk(chunk);
+        TileGeometry.LatticeCoordinate lattice = topology.latticeCoordinate(chunk);
+        ChunkPos translation = topology.latticeTranslation(lattice);
+        TileGeometry.BoundaryHit nearestBoundary =
+                topology.enabled() ? topology.nearestBoundary(cameraEntity.position()) : null;
         long worldTime = level.getDefaultClockTime();
         double localDayTicks = CoordUtil.localSolarDayTicks(currentTiling, worldTime, cameraEntity.getX());
         double absoluteDayTicks = positiveModulo(worldTime, CoordUtil.MINECRAFT_DAY_TICKS);
@@ -67,8 +73,17 @@ public final class GlobeDebugHud {
         int effectiveRenderDistance = Minecraft.getInstance().options.getEffectiveRenderDistance();
 
         leftLines.add("[Globe World]");
-        leftLines.add(String.format(Locale.ROOT, "Wrapped XYZ: %.3f / %.3f / %.3f", canonX, cameraEntity.getY(), canonZ));
-        leftLines.add(String.format(Locale.ROOT, "Canon chunk: %d %d (%s)", canonChunkX, canonChunkZ, canonicalChunk ? "Canon" : "Alias"));
+        leftLines.add(String.format(Locale.ROOT, "Canonical XYZ: %.3f / %.3f / %.3f",
+                canonical.x(), canonical.y(), canonical.z()));
+        leftLines.add(String.format(Locale.ROOT, "Canon chunk: %d %d (%s)",
+                canonicalChunk.x(), canonicalChunk.z(), topology.isCanonical(chunk) ? "Canon" : "Alias"));
+        leftLines.add(String.format(Locale.ROOT, "Lattice: (%+d,%+d), shift %+d %+d [%s]",
+                lattice.k(), lattice.l(), translation.x(), translation.z(), topology.geometryRevision()));
+        topology.blendGeometry().ifPresent(blend -> leftLines.add(String.format(
+                Locale.ROOT,
+                "Ideal blend: %.1fm wide, signed distance %.1fm",
+                blend.blendWidth(),
+                blend.signedDistance(cameraEntity.getX(), cameraEntity.getZ(), lattice.k(), lattice.l()))));
         leftLines.add(String.format(Locale.ROOT, "Render distance: configured %d, effective %d",
                 configuredRenderDistance,
                 effectiveRenderDistance));
@@ -81,8 +96,7 @@ public final class GlobeDebugHud {
         leftLines.add("");
         leftLines.add("Facing: " + directionSummary(cameraEntity.getDirection()));
         leftLines.add("Local light level: " + lightSummary(level, pos));
-        leftLines.add("Distance to next wrap seam in X: " + seamDistance(currentTiling, cameraEntity.getX()));
-        leftLines.add("Distance to next wrap seam in Z: " + seamDistance(currentTiling, cameraEntity.getZ()));
+        leftLines.add("Nearest wrap seam: " + seamSummary(nearestBoundary));
         leftLines.add("Overworld tile width: " + tileSummary(overworldTiling));
         leftLines.add("Nether tile width: " + tileSummary(netherTiling));
         leftLines.add("Nether portal ratio: " + portalScaleSummary());
@@ -157,21 +171,25 @@ public final class GlobeDebugHud {
         }
         return String.format(
                 Locale.ROOT,
-                "%d chunks / %d m (%s)",
+                "%s, %d chunks / %d m (%s)",
+                tiling.mode().displayName(),
                 tiling.tileSizeChunks(),
                 tiling.tileSizeBlocks(),
                 tiling.terrainMode().displayName()
         );
     }
 
-    private static String seamDistance(DimensionTiling tiling, double coordinate) {
-        if (!tiling.enabled()) {
+    private static String seamSummary(TileGeometry.BoundaryHit hit) {
+        if (hit == null) {
             return "disabled";
         }
-        int tileSize = tiling.tileSizeBlocks();
-        double local = positiveModulo(coordinate + tileSize / 2.0, tileSize);
-        double distance = Math.min(local, tileSize - local);
-        return String.format(Locale.ROOT, "%.1f m (tile %d m)", distance, tileSize);
+        return String.format(
+                Locale.ROOT,
+                "%s %.1f m at %.1f %.1f",
+                hit.segment().outsideAlias().seamLabel(),
+                hit.distance(),
+                hit.boundaryX(),
+                hit.boundaryZ());
     }
 
     private static String dayCycleSummary() {

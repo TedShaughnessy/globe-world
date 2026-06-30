@@ -9,7 +9,7 @@ import globe.world.atlas.GlobeDiscoveryRewards;
 import globe.world.block.entity.GlobeBlockEntity;
 import globe.world.network.GlobeAtlasSurveyWindowPayload;
 import globe.world.network.GlobeMapSnapshotPayload;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TileGeometry;
 import globe.world.util.DimensionTiling;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -29,6 +29,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -137,11 +138,13 @@ public final class GlobeMapTracker {
             final GlobeMapSavedData data,
             final GlobeAtlasSurveyState survey,
             final ServerPlayer player) {
-        double canonicalX = CoordUtil.wrapBlock(tiling, player.getX());
-        double canonicalZ = CoordUtil.wrapBlock(tiling, player.getZ());
+        TileGeometry geometry = TileGeometry.create(tiling);
+        Vec3 canonical = geometry.canonicalBlock(player.position());
+        double canonicalX = canonical.x();
+        double canonicalZ = canonical.z();
         UUID playerId = player.getUUID();
         RevealState previous = LAST_REVEALS.get(playerId);
-        if (previous != null && !previous.shouldReveal(tiling, canonicalX, canonicalZ, server.getTickCount())) {
+        if (previous != null && !previous.shouldReveal(geometry, canonicalX, canonicalZ, server.getTickCount())) {
             return;
         }
 
@@ -190,8 +193,12 @@ public final class GlobeMapTracker {
             final double canonicalX,
             final double y,
             final double canonicalZ) {
-        int centerChunkX = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(canonicalX)));
-        int centerChunkZ = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(canonicalZ)));
+        TileGeometry geometry = TileGeometry.create(tiling);
+        ChunkPos center = geometry.canonicalChunk(
+                SectionPos.blockToSectionCoord(Mth.floor(canonicalX)),
+                SectionPos.blockToSectionCoord(Mth.floor(canonicalZ)));
+        int centerChunkX = center.x();
+        int centerChunkZ = center.z();
         boolean changed = false;
         int radiusSqr = SURVEY_REVEAL_RADIUS_CHUNKS * SURVEY_REVEAL_RADIUS_CHUNKS;
         for (int dz = -SURVEY_REVEAL_RADIUS_CHUNKS; dz <= SURVEY_REVEAL_RADIUS_CHUNKS; dz++) {
@@ -200,9 +207,8 @@ public final class GlobeMapTracker {
                     continue;
                 }
 
-                int chunkX = CoordUtil.wrapChunk(tiling, centerChunkX + dx);
-                int chunkZ = CoordUtil.wrapChunk(tiling, centerChunkZ + dz);
-                changed |= recordSurveyChunk(level, tiling, survey, chunkX, chunkZ, y, false);
+                ChunkPos canonical = geometry.canonicalChunk(centerChunkX + dx, centerChunkZ + dz);
+                changed |= recordSurveyChunk(level, tiling, survey, canonical.x(), canonical.z(), y, false);
             }
         }
         return fillSurveyGaps(level, tiling, survey, centerChunkX, centerChunkZ, y) | changed;
@@ -259,9 +265,10 @@ public final class GlobeMapTracker {
 
             int localX = start % size;
             int localZ = start / size;
-            int chunkX = CoordUtil.wrapChunk(tiling, centerChunkX + localX - radius);
-            int chunkZ = CoordUtil.wrapChunk(tiling, centerChunkZ + localZ - radius);
-            if (survey.isVisitedChunk(chunkX, chunkZ)) {
+            ChunkPos chunk = TileGeometry.create(tiling).canonicalChunk(
+                    centerChunkX + localX - radius,
+                    centerChunkZ + localZ - radius);
+            if (survey.isVisitedChunk(chunk.x(), chunk.z())) {
                 seen[start] = true;
                 continue;
             }
@@ -283,9 +290,10 @@ public final class GlobeMapTracker {
 
             for (int i = 0; i < componentSize; i++) {
                 int index = component[i];
-                int fillX = CoordUtil.wrapChunk(tiling, centerChunkX + index % size - radius);
-                int fillZ = CoordUtil.wrapChunk(tiling, centerChunkZ + index / size - radius);
-                changed |= recordSurveyChunk(level, tiling, survey, fillX, fillZ, y, true);
+                ChunkPos fill = TileGeometry.create(tiling).canonicalChunk(
+                        centerChunkX + index % size - radius,
+                        centerChunkZ + index / size - radius);
+                changed |= recordSurveyChunk(level, tiling, survey, fill.x(), fill.z(), y, true);
             }
         }
 
@@ -332,9 +340,10 @@ public final class GlobeMapTracker {
                         continue;
                     }
 
-                    int chunkX = CoordUtil.wrapChunk(tiling, centerChunkX + nextX - radius);
-                    int chunkZ = CoordUtil.wrapChunk(tiling, centerChunkZ + nextZ - radius);
-                    if (survey.isVisitedChunk(chunkX, chunkZ)) {
+                    ChunkPos chunk = TileGeometry.create(tiling).canonicalChunk(
+                            centerChunkX + nextX - radius,
+                            centerChunkZ + nextZ - radius);
+                    if (survey.isVisitedChunk(chunk.x(), chunk.z())) {
                         seen[next] = true;
                         continue;
                     }
@@ -461,10 +470,13 @@ public final class GlobeMapTracker {
             final GlobeAtlasSurveyState survey,
             final List<GlobeAtlasPowerState.Entry> atlases,
             final boolean force) {
-        double canonicalX = CoordUtil.wrapBlock(tiling, player.getX());
-        double canonicalZ = CoordUtil.wrapBlock(tiling, player.getZ());
-        int centerChunkX = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(canonicalX)));
-        int centerChunkZ = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(canonicalZ)));
+        TileGeometry geometry = TileGeometry.create(tiling);
+        Vec3 canonical = geometry.canonicalBlock(player.position());
+        ChunkPos center = geometry.canonicalChunk(
+                SectionPos.blockToSectionCoord(Mth.floor(canonical.x())),
+                SectionPos.blockToSectionCoord(Mth.floor(canonical.z())));
+        int centerChunkX = center.x();
+        int centerChunkZ = center.z();
         UUID playerId = player.getUUID();
         WindowSyncState previous = LAST_HELD_SURVEY_WINDOWS.get(playerId);
         if (!force && previous != null && previous.matches(centerChunkX, centerChunkZ, survey.revision())) {
@@ -491,14 +503,9 @@ public final class GlobeMapTracker {
             if (!(level.getBlockEntity(pos) instanceof GlobeBlockEntity atlas) || !atlas.projectionEnabled()) {
                 continue;
             }
-            double distanceSqr = CoordUtil.wrappedDistanceSqr(
-                    tiling,
-                    player.getX(),
-                    player.getY(),
-                    player.getZ(),
-                    pos.getX() + 0.5D,
-                    pos.getY() + 0.5D,
-                    pos.getZ() + 0.5D);
+            double distanceSqr = TileGeometry.create(tiling).wrappedDistanceSqr(
+                    player.position(),
+                    Vec3.atCenterOf(pos));
             if (distanceSqr > (double)PLACED_SURVEY_VIEW_DISTANCE_BLOCKS * PLACED_SURVEY_VIEW_DISTANCE_BLOCKS) {
                 continue;
             }
@@ -511,8 +518,11 @@ public final class GlobeMapTracker {
                 return;
             }
             BlockPos pos = candidate.pos();
-            int centerChunkX = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(pos.getX()));
-            int centerChunkZ = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(pos.getZ()));
+            ChunkPos center = TileGeometry.create(tiling).canonicalChunk(
+                    SectionPos.blockToSectionCoord(pos.getX()),
+                    SectionPos.blockToSectionCoord(pos.getZ()));
+            int centerChunkX = center.x();
+            int centerChunkZ = center.z();
             long centerKey = new ChunkPos(centerChunkX, centerChunkZ).pack();
             if (!force && sentRevisions.getOrDefault(centerKey, -1) == survey.revision()) {
                 continue;
@@ -529,13 +539,15 @@ public final class GlobeMapTracker {
     }
 
     private record RevealState(double x, double z, int tick) {
-        boolean shouldReveal(final DimensionTiling tiling, final double currentX, final double currentZ, final int currentTick) {
+        boolean shouldReveal(final TileGeometry geometry, final double currentX, final double currentZ, final int currentTick) {
             if (currentTick - this.tick >= PERIODIC_REVEAL_TICKS) {
                 return true;
             }
 
             double moveThresholdSqr = (double)REVEAL_MOVE_THRESHOLD_BLOCKS * REVEAL_MOVE_THRESHOLD_BLOCKS;
-            return CoordUtil.wrappedDistanceSqrXZ(tiling, currentX, currentZ, this.x, this.z) >= moveThresholdSqr;
+            return geometry.wrappedDistanceSqr(
+                    new Vec3(currentX, 0.0D, currentZ),
+                    new Vec3(this.x, 0.0D, this.z)) >= moveThresholdSqr;
         }
     }
 

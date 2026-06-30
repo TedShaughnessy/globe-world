@@ -1,8 +1,13 @@
 package globe.world.util;
 
+import globe.world.topology.LatticeMath;
+import globe.world.topology.TileGeometry;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Leashable;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -166,10 +171,22 @@ public final class GlobeEntityAliasing {
         Entity offsetSource = aliasOffsetSource(entity);
         AABB sourceBox = offsetSource.getBoundingBox();
         AABB entityBox = entity.getBoundingBox();
-        double padding = Math.max(sourceBox.getSize(), entityBox.getSize()) * 0.5D;
+        double padding = Math.max(horizontalRadius(sourceBox), horizontalRadius(entityBox));
         int maxOffset = (int) Math.ceil((renderRadius + padding) / tileWidth);
         if (maxOffset <= 0) {
             return List.of();
+        }
+        TileGeometry geometry = TileGeometry.create(tiling);
+        if (geometry.coupledLattice()) {
+            return visualLatticeOffsets(
+                    geometry,
+                    sourceBox,
+                    entityBox,
+                    cameraPos,
+                    renderRadius,
+                    padding,
+                    ringLimit
+            );
         }
 
         int minOffsetX = -maxOffset;
@@ -206,6 +223,74 @@ public final class GlobeEntityAliasing {
         return offsets;
     }
 
+    static List<AliasOffset> visualLatticeOffsets(
+            TileGeometry geometry,
+            AABB sourceBox,
+            AABB entityBox,
+            Vec3 cameraPos,
+            double renderRadius,
+            double padding,
+            int ringLimit) {
+        AABB canonicalSourceBox = geometry.canonicalBox(sourceBox);
+        Vec3 canonicalCenter = canonicalSourceBox.getCenter();
+        LatticeMath.CoefficientBounds searchBounds = LatticeMath.coefficientBounds(
+                geometry.latticeBasis(),
+                cameraPos.x() - canonicalCenter.x(),
+                cameraPos.z() - canonicalCenter.z(),
+                renderRadius + padding);
+        int minK = searchBounds.minK();
+        int maxK = searchBounds.maxK();
+        int minL = searchBounds.minL();
+        int maxL = searchBounds.maxL();
+        if (ringLimit != Integer.MAX_VALUE) {
+            AABB nearestBox = geometry.virtualBoxForViewer(canonicalSourceBox, cameraPos);
+            TileGeometry.LatticeCoordinate nearest = LatticeMath.coordinateForBlockTranslation(
+                    geometry.latticeBasis(),
+                    nearestBox.minX - canonicalSourceBox.minX,
+                    nearestBox.minZ - canonicalSourceBox.minZ);
+            minK = Math.max(minK, nearest.k() - ringLimit);
+            maxK = Math.min(maxK, nearest.k() + ringLimit);
+            minL = Math.max(minL, nearest.l() - ringLimit);
+            maxL = Math.min(maxL, nearest.l() + ringLimit);
+        }
+
+        double renderRadiusSqr = renderRadius * renderRadius;
+        List<AliasOffset> offsets = new ArrayList<>();
+        for (int k = minK; k <= maxK; k++) {
+            for (int l = minL; l <= maxL; l++) {
+                TileGeometry.LatticeCoordinate canonicalCoordinate = new TileGeometry.LatticeCoordinate(k, l);
+                ChunkPos translation = geometry.latticeTranslation(canonicalCoordinate);
+                AABB aliasBox = canonicalSourceBox.move(
+                        translation.x() * 16.0D,
+                        0.0D,
+                        translation.z() * 16.0D);
+                double dx = aliasBox.minX - sourceBox.minX;
+                double dz = aliasBox.minZ - sourceBox.minZ;
+                if (Math.abs(dx) < 1.0E-7D && Math.abs(dz) < 1.0E-7D) {
+                    continue;
+                }
+
+                AABB sourceAliasBox = sourceBox.move(dx, 0.0D, dz);
+                if (distanceToBoxSqr(cameraPos, sourceAliasBox) > renderRadiusSqr) {
+                    continue;
+                }
+
+                TileGeometry.LatticeCoordinate sourceCoordinate = LatticeMath.coordinateForBlockTranslation(
+                        geometry.latticeBasis(),
+                        dx,
+                        dz);
+                offsets.add(new AliasOffset(
+                        sourceCoordinate.k(),
+                        sourceCoordinate.l(),
+                        dx,
+                        dz,
+                        entityBox.move(dx, 0.0D, dz)
+                ));
+            }
+        }
+        return offsets;
+    }
+
     public static boolean isWholeTileRebase(Level level, Vec3 oldPos, Vec3 newPos) {
         DimensionTiling tiling = DimensionTiling.forLevel(level);
         if (!tiling.enabled()) {
@@ -219,6 +304,19 @@ public final class GlobeEntityAliasing {
 
         double rawDx = newPos.x - oldPos.x;
         double rawDz = newPos.z - oldPos.z;
+        if (TileGeometry.create(tiling).coupledLattice()) {
+            TopologyContext topology = TopologyContexts.forLevel(level);
+            Vec3 canonicalOld = topology.canonicalBlock(oldPos);
+            Vec3 canonicalNew = topology.canonicalBlock(newPos);
+            double residualX = canonicalNew.x - canonicalOld.x;
+            double residualZ = canonicalNew.z - canonicalOld.z;
+            double residualSqr = residualX * residualX + residualZ * residualZ;
+            double rawHorizontalSqr = rawDx * rawDx + rawDz * rawDz;
+            return rawHorizontalSqr > 0.0D
+                    && residualSqr <= 16.0D
+                    && residualSqr * 16.0D < rawHorizontalSqr;
+        }
+
         int tileDx = (int) Math.rint(rawDx / tileWidth);
         int tileDz = (int) Math.rint(rawDz / tileWidth);
         if (tileDx == 0 && tileDz == 0) {
@@ -235,6 +333,10 @@ public final class GlobeEntityAliasing {
     private static Entity aliasOffsetSource(Entity entity) {
         Entity root = entity.getRootVehicle();
         return root instanceof Player ? entity : root;
+    }
+
+    private static double horizontalRadius(AABB box) {
+        return Math.hypot(box.getXsize(), box.getZsize()) * 0.5D;
     }
 
     public static double distanceToBoxSqr(Vec3 point, AABB box) {

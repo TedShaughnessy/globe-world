@@ -64,9 +64,9 @@ public class EntityPacketUtil {
     }
 
     private static ClientboundAddEntityPacket virtualizeAddEntity(ClientboundAddEntityPacket packet, ServerPlayer viewer) {
-        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
-        double x = topology.virtualBlockXForViewer(packet.getX(), viewer.getX());
-        double z = topology.virtualBlockXForViewer(packet.getZ(), viewer.getZ());
+        Vec3 virtualPos = virtualize(new Vec3(packet.getX(), packet.getY(), packet.getZ()), viewer);
+        double x = virtualPos.x();
+        double z = virtualPos.z();
         if (x == packet.getX() && z == packet.getZ()) return packet;
 
         return new ClientboundAddEntityPacket(
@@ -161,8 +161,9 @@ public class EntityPacketUtil {
             boolean keepZ) {
         Vec3 pos = values.position();
         TopologyContext topology = TopologyContexts.forLevel(viewer.level());
-        double x = keepX ? pos.x : topology.virtualBlockXForViewer(pos.x, viewer.getX());
-        double z = keepZ ? pos.z : topology.virtualBlockXForViewer(pos.z, viewer.getZ());
+        Vec3 virtualPos = topology.virtualBlockForViewer(topology.canonicalBlock(pos), viewer.position());
+        double x = keepX ? pos.x : virtualPos.x();
+        double z = keepZ ? pos.z : virtualPos.z();
         if (x == pos.x && z == pos.z) return values;
         return new PositionMoveRotation(new Vec3(x, pos.y, z), values.deltaMovement(), values.yRot(), values.xRot());
     }

@@ -87,13 +87,11 @@ public class BlockPacketUtil {
             (ClientboundSectionBlocksUpdatePacketAccessor) packet;
         SectionPos sectionPos = access.globeWorld$getSectionPos();
         TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        ChunkPos canonicalChunk = topology.canonicalChunk(sectionPos);
+        ChunkPos virtualChunk = topology.virtualChunkForViewer(canonicalChunk, viewer);
 
-        int virtualSectionX = SectionPos.blockToSectionCoord(
-            (int) topology.virtualBlockXForViewer(sectionPos.minBlockX(), viewer.getX())
-        );
-        int virtualSectionZ = SectionPos.blockToSectionCoord(
-            (int) topology.virtualBlockXForViewer(sectionPos.minBlockZ(), viewer.getZ())
-        );
+        int virtualSectionX = virtualChunk.x();
+        int virtualSectionZ = virtualChunk.z();
 
         if (virtualSectionX == sectionPos.x() && virtualSectionZ == sectionPos.z()) return packet;
 
@@ -203,7 +201,8 @@ public class BlockPacketUtil {
     }
 
     private static BlockPos virtualBlockPos(BlockPos pos, ServerPlayer viewer) {
-        return TopologyContexts.forLevel(viewer.level()).virtualBlockForViewer(pos, viewer);
+        TopologyContext topology = TopologyContexts.forLevel(viewer.level());
+        return topology.virtualBlockForViewer(topology.canonicalBlock(pos), viewer);
     }
 
     private static BlockPos offsetBlockPos(

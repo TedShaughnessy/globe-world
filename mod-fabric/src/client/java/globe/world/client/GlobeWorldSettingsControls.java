@@ -51,6 +51,13 @@ public class GlobeWorldSettingsControls implements Layout {
     private static final String DISTANT_HORIZONS_MOD_ID = "distanthorizons";
     private static final String CURVATURE_TOOLTIP = "Curves the terrain. Comfortable is a gentler curve; "
             + "Realistic uses the full globe curve for the tile.";
+    private static final String SQUARE_TILE_SHAPE_TOOLTIP = "Uses the established square tile with independent X/Z wrapping.";
+    private static final String HEX_TILE_SHAPE_TOOLTIP = "Uses a six-edge chunk-composed hex tile. "
+            + "Tile width is at least 8 chunks and a multiple of four. "
+            + "Experimental v1 hex worlds are incompatible with corrected v2 ownership; "
+            + "use a backup or create a new world.";
+    private static final String OFFSET_SQUARE_TILE_SHAPE_TOOLTIP = "Uses square tiles whose east/west "
+            + "neighbors are shifted north/south by half a tile. Tile width is always an even number of chunks";
     private static final String DAY_LENGTH_TOOLTIP = "Scales the length of the Minecraft day night cycle";
     private static final String ALLOW_MOBS_AT_WORLD_SPAWN_TOOLTIP = "Allows natural mobs to spawn inside vanilla's 24-block world-spawn exclusion.";
     private static final String PLAYER_MOB_SPAWN_EXCLUSION_TOOLTIP = "Minimum natural-spawn distance from the nearest non-spectator player.";
@@ -150,6 +157,7 @@ public class GlobeWorldSettingsControls implements Layout {
 
     private CycleButton<CreateMode> createModeButton;
     private TilePresetSlider simpleTileSlider;
+    private CycleButton<TilingMode> overworldTilingModeButton;
     private EditBox customTileField;
     private CycleButton<TerrainMode> overworldTopologyButton;
     private MultiLineTextWidget overworldInfo;
@@ -233,6 +241,20 @@ public class GlobeWorldSettingsControls implements Layout {
                 setSimpleTilePreset(preset));
         addRow(simpleTileSlider, () -> createWorld && createMode == CreateMode.SIMPLE, SECTION_SPACING);
 
+        overworldTilingModeButton = CycleButton.<TilingMode>builder(
+                        GlobeWorldSettingsControls::tilingModeLabel,
+                        currentTopology().mode()
+                )
+                .withValues(List.of(TilingMode.SQUARE, TilingMode.OFFSET_SQUARE, TilingMode.HEX))
+                .withTooltip(mode -> tooltip(tilingModeTooltip(mode)))
+                .create(0, 0, CONTROL_WIDTH, 20, Component.literal("Overworld Tile Shape"),
+                        (button, mode) -> setTopology(currentTopology().withMode(mode)));
+        addRow(
+                overworldTilingModeButton,
+                () -> createWorld && createMode == CreateMode.CUSTOM,
+                SECTION_SPACING
+        );
+
         customTileField = new EditBox(minecraft.font, 110, 20, Component.literal("Overworld Tile Size"));
         customTileField.setMaxLength(7);
         customTileField.setEditable(editable);
@@ -251,7 +273,7 @@ public class GlobeWorldSettingsControls implements Layout {
         StringWidget customTileLabel = new StringWidget(
                 CONTROL_WIDTH - customTileField.getWidth() - ROW_SPACING,
                 customTileField.getHeight(),
-                Component.literal("Overworld Tile Size (even chunks)"),
+                Component.literal("Overworld Tile Size (chunks)"),
                 minecraft.font
         );
         addRow(
@@ -260,8 +282,7 @@ public class GlobeWorldSettingsControls implements Layout {
                         customTileField,
                         CONTROL_WIDTH
                 ),
-                () -> createWorld && createMode == CreateMode.CUSTOM,
-                SECTION_SPACING
+                () -> createWorld && createMode == CreateMode.CUSTOM
         );
 
         overworldTopologyButton = CycleButton.<TerrainMode>builder(
@@ -514,6 +535,22 @@ public class GlobeWorldSettingsControls implements Layout {
         return Component.literal(mode.displayName());
     }
 
+    private static Component tilingModeLabel(TilingMode mode) {
+        return Component.literal(switch (mode) {
+            case OFFSET_SQUARE -> "Offset Square (Experimental)";
+            case HEX -> "Hex (Experimental)";
+            case DISABLED, SQUARE -> mode.displayName();
+        });
+    }
+
+    private static String tilingModeTooltip(TilingMode mode) {
+        return switch (mode) {
+            case OFFSET_SQUARE -> OFFSET_SQUARE_TILE_SHAPE_TOOLTIP;
+            case HEX -> HEX_TILE_SHAPE_TOOLTIP;
+            case DISABLED, SQUARE -> SQUARE_TILE_SHAPE_TOOLTIP;
+        };
+    }
+
     private static String dayCycleTooltip(DayNightCycleMode mode) {
         return switch (mode) {
             case VANILLA -> "Vanilla keeps the same time of day everywhere.";
@@ -669,10 +706,14 @@ public class GlobeWorldSettingsControls implements Layout {
         if (simpleTileSlider != null) {
             simpleTileSlider.setPreset(currentTilePreset());
         }
+        overworldTilingModeButton.setValue(topology.mode());
         if (customTileField != null) {
             setTileFieldValue(customTileField, topology.tileSize());
         }
         overworldTopologyButton.setValue(topology.terrainMode());
+        overworldTopologyButton.active = editable
+                && topology.mode() != TilingMode.HEX
+                && topology.mode() != TilingMode.OFFSET_SQUARE;
         overworldInfo.setMessage(overworldInfo(topology));
         overworldCurvatureSlider.setPercent(presentation.curvaturePercent());
         overworldCurvatureSlider.active = topology.enabled();
@@ -727,6 +768,7 @@ public class GlobeWorldSettingsControls implements Layout {
         if (simpleTileSlider != null) {
             simpleTileSlider.active = false;
         }
+        overworldTilingModeButton.active = false;
         if (customTileField != null) {
             customTileField.setEditable(false);
             customTileField.active = false;
@@ -777,6 +819,8 @@ public class GlobeWorldSettingsControls implements Layout {
             return Component.literal("Overworld tile: Disabled");
         }
         return Component.literal("Overworld tile: ")
+                .append(Component.literal(topology.mode().displayName()))
+                .append(", ")
                 .append(tileSummary(topology.tileSize(), effectiveOverworldTerrainMode(topology)));
     }
 

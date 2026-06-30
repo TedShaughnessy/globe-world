@@ -2,15 +2,15 @@ package globe.world.client.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import globe.world.util.CoordUtil;
-import globe.world.util.DimensionTiling;
+import globe.world.topology.TopologyContext;
+import globe.world.topology.TopologyContexts;
 import net.minecraft.client.renderer.item.properties.numeric.CompassAngleState;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.ItemOwner;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -30,19 +30,19 @@ public class CompassAngleStateMixin {
             ItemOwner owner,
             Operation<GlobalPos> original) {
         GlobalPos target = original.call(compassTarget, level, itemStack, owner);
-        DimensionTiling tiling = DimensionTiling.forLevel(level);
+        TopologyContext topology = TopologyContexts.forLevel(level);
         if (target == null
                 || owner == null
                 || !globeWorld$usesNearestAlias(compassTarget)
                 || !target.dimension().equals(level.dimension())
-                || !tiling.enabled()) {
+                || !topology.enabled()) {
             return target;
         }
 
         BlockPos pos = target.pos();
-        double targetX = CoordUtil.virtualBlock(level, pos.getX() + 0.5, owner.position().x());
-        double targetZ = CoordUtil.virtualBlock(level, pos.getZ() + 0.5, owner.position().z());
-        return GlobalPos.of(target.dimension(), new BlockPos(Mth.floor(targetX), pos.getY(), Mth.floor(targetZ)));
+        Vec3 targetCenter = Vec3.atCenterOf(topology.canonicalBlock(pos));
+        Vec3 visibleCenter = topology.virtualBlockForViewer(targetCenter, owner.position());
+        return GlobalPos.of(target.dimension(), BlockPos.containing(visibleCenter));
     }
 
     private static boolean globeWorld$usesNearestAlias(CompassAngleState.CompassTarget compassTarget) {

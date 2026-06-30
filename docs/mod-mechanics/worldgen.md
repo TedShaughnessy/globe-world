@@ -30,6 +30,59 @@ The automatic policy uses compact torus for small tiles, periodic lattice for
 clean large multiples, and edge blend for awkward medium/large sizes. Changing
 tile size resets saved explicit terrain methods back to `AUTO`.
 
+Experimental hex and offset-square topology force/resolve terrain to
+`EDGE_BLEND`. Their continuous base-terrain fields are blended across the
+ideal six-sided lattice Voronoi cell. Hex whole-chunk ownership retains its
+staircase mask; offset-square retains its exact `W x W` owner even though its
+ideal blend cell is hexagonal. Discrete carvers, features, and structures still
+rely on canonical seeds, generation windows, and spillover rather than
+numerical blending; they were validated separately from the scalar blend.
+
+## Coupled-Lattice Edge Blending
+
+`LatticeBlendGeometry` derives a continuous block-space cell from the same
+`A`/`B` basis used by `HexTileGeometry` or
+`OffsetSquareTileGeometry`. For each of the six neighbor vectors
+`±A`, `±B`, and `±(A-B)`, it computes the signed perpendicular distance to that
+neighbor's Voronoi half-plane. The resolved width is one quarter of the cell
+inradius, clamped to 64–256 blocks. Minimum hexes can therefore have overlapping
+bands; normalization handles every contributing cell without a side or vertex
+priority.
+
+A width-`8` hex has an ideal-cell inradius of about `57.7` blocks, below the
+`64`-block minimum blend width. It is intentionally supported as a fully
+blended micro-hex with no one-contributor safe interior and a higher relative
+sampling cost. Width `12` is the smallest supported hex with an unblended
+interior. These size characteristics do not alter the lattice basis or the
+translation-invariant blend result.
+
+`PeriodicNoiseUtil.sampleHorizontal(...)` evaluates a product of symmetric
+smoothstep gates for each nearby lattice representative. It samples vanilla at
+`p - t` only when that representative has nonzero weight, then normalizes the
+weighted sum. The untouched interior takes exactly one vanilla sample. Ordinary
+non-overlapping sides take two and vertices take three. Translating by either
+lattice basis vector only permutes representatives, so the result is invariant
+under all six seam translations. Candidate enumeration and weighting allocate
+no collections on the sample hot path.
+
+Physical world X/Z are translated before noise scaling, offsets, or vanilla
+input reordering. This is important for `DensityFunctions.ShiftB`, whose
+vanilla noise arguments are `(Z, X, 0)`: the lattice translation is applied to
+world `(X,Z)` first and only then reordered. The shared path covers density and
+climate noise, shifted/cave noise, aquifer fields, legacy `BlendedNoise`,
+surface and clay-band fields, frozen-ocean/badlands fields, and noise-backed
+state/count providers. Square terrain modes retain their previous samplers.
+
+For offset-square worlds the basis is `(W, W/2)` and `(0, W)`. Translating the
+continuous field by either vector leaves it unchanged across all four square
+ownership cuts, including both east/west T-junctions.
+
+Known-unit positional random factories canonicalize a complete X/Z pair through
+`TileGeometry` in block or chunk units. Surface randomness and carver/structure
+seed calls use the same pairwise rule, preventing a coupled-lattice seed from being formed
+from independently wrapped axes. `/globeworld pos` and the debug HUD report the
+resolved blend width and signed ideal-boundary distance.
+
 ## Seed Preflight
 
 `TopologySettings.avoid_water_only_seeds` is a create-time heuristic for random
@@ -101,9 +154,10 @@ size is at most 256 chunks and off for larger tiles.
 
 ## Implementation
 
-Terrain and biome hooks route many X/Z-dependent samples through periodic noise
-utilities or terrain-mode-aware sampling. Positional random factories are wrapped
-where the caller's coordinate unit is known. Generator phases that rely on raw
+Terrain and biome hooks route X/Z-dependent continuous samples through periodic
+noise utilities or terrain-mode-aware sampling. Positional random factories are
+wrapped where the caller's coordinate unit is known, and carver/structure seed
+calls canonicalize their complete chunk pair. Generator phases that rely on raw
 ambient `CoordUtil` calls run inside scoped dimension tiling contexts; async
 biome/noise work captures the caller's dimension context and restores it on the
 worker thread. For extreme periodic-lattice tiles, octave cell counts that
@@ -118,7 +172,9 @@ through wrapped `Level.setBlock` into canonical storage.
 `GenerationWindow` is the shared worldgen helper for bounded region access at
 tile edges. It gives `WorldGenRegionMixin` one vocabulary for canonical block
 reads, physical-cache alias chunk lookup, toroidal write-radius checks, physical
-cache availability, and write classification. It does not call live
+cache availability, and write classification. Independent square worlds use
+separate X/Z periods; hex and offset-square worlds resolve cache aliases and
+canonical destinations through `TopologyContext` and `TileGeometry`. It does not call live
 `ServerLevel.getChunk(...)`, mutate chunks directly, or replace the terrain and
 noise periodicity hooks. Manual seam testing after the extraction confirmed the
 helper preserves the existing ownership model and does not introduce durable
@@ -247,13 +303,15 @@ available.
 When tiling is enabled and neither vanilla nor forced stronghold progression is
 available, or when structure generation is disabled, `EnderEyeItemMixin`
 replaces a thrown Eye of Ender with a fallback path: `EndPortalFallback` chooses
-and persists one canonical position centered on the throwing player, repairs a
-5x5 End portal frame with a deterministic random subset of eyes already
-inserted, then spawns a normal Eye of Ender. The eye entity and its flight
-target stay in canonical server coordinates so entity storage canonicalization
-cannot desynchronize the projectile from its target; entity packets still render
-the eye through the nearest visual alias for the throwing player. The fallback
-path preserves vanilla item use, stat, sound, and advancement side effects.
+and persists one canonical position near the throwing player, moving inward
+when necessary until the complete repair footprint is inside the square or hex
+canonical mask. It repairs a 5x5 End portal frame with a deterministic random
+subset of eyes already inserted, then spawns a normal Eye of Ender. The eye
+entity and its flight target stay in canonical server coordinates so entity
+storage canonicalization cannot desynchronize the projectile from its target;
+entity packets still render the eye through the nearest visual alias for the
+throwing player. The fallback path preserves vanilla item use, stat, sound, and
+advancement side effects.
 Once a fallback portal has been assigned, later Overworld Eye of Ender throws use
 it only while vanilla or forced stronghold progression is still unavailable, so
 a saved emergency portal does not mask a later-valid stronghold path.
@@ -273,6 +331,7 @@ canonical candidate starts and warns that validation may load or generate
 - `mod-fabric/src/main/java/globe/world/util/TerrainMode.java`
 - `mod-fabric/src/main/java/globe/world/util/PeriodicNoiseUtil.java`
 - `mod-fabric/src/main/java/globe/world/util/PeriodicPositionalRandomFactory.java`
+- `mod-fabric/src/main/java/globe/world/topology/LatticeBlendGeometry.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeSettings.java`
 - `mod-fabric/src/main/java/globe/world/config/GlobeSettingsHolder.java`
 - `mod-fabric/src/main/java/globe/world/config/TopologySettings.java`
@@ -316,6 +375,8 @@ canonical candidate starts and warns that validation may load or generate
 
 ## Open Audits
 
+- Run the six-seam, east/west T-junction, and four-corner offset-square
+  acceptance matrix for continuous and discrete generation.
 - Validate periodicity for Nether terrain/noise and features.
 - Audit structure query and persistence paths.
 - Add a controlled virtual feature-origin pass for edge features such as monster

@@ -6,7 +6,7 @@ import com.mojang.math.Axis;
 import globe.world.GlobeWorldBlocks;
 import globe.world.atlas.GlobeAtlasSurvey;
 import globe.world.network.GlobeAtlasSurveyWindowPayload;
-import globe.world.util.CoordUtil;
+import globe.world.topology.TileGeometry;
 import globe.world.util.DimensionTiling;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -16,7 +16,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 public final class GlobeHeldMapRenderer {
     private static final int MIN_VANILLA_MAP_SPAN = 128;
@@ -59,8 +61,10 @@ public final class GlobeHeldMapRenderer {
             return;
         }
 
-        double centerX = CoordUtil.wrapBlock(tiling, client.player.getX());
-        double centerZ = CoordUtil.wrapBlock(tiling, client.player.getZ());
+        TileGeometry geometry = TileGeometry.create(tiling);
+        Vec3 canonical = geometry.canonicalBlock(client.player.position());
+        double centerX = canonical.x();
+        double centerZ = canonical.z();
         Identifier texture = GlobeAtlasSurvey.surveyMode(tiling)
                 ? surveyTexture(tiling, centerX, centerZ)
                 : literalTexture(tiling, centerX, centerZ);
@@ -88,15 +92,16 @@ public final class GlobeHeldMapRenderer {
                 centerX,
                 centerZ,
                 mapSpanBlocks,
-                tiling.tileSizeBlocks());
+                tiling);
     }
 
     private static Identifier surveyTexture(final DimensionTiling tiling, final double centerX, final double centerZ) {
-        int centerChunkX = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(centerX)));
-        int centerChunkZ = CoordUtil.wrapChunk(tiling, SectionPos.blockToSectionCoord(Mth.floor(centerZ)));
+        ChunkPos center = TileGeometry.create(tiling).canonicalChunk(
+                SectionPos.blockToSectionCoord(Mth.floor(centerX)),
+                SectionPos.blockToSectionCoord(Mth.floor(centerZ)));
         return GlobeAtlasSurveyTextureCache.heldTextureForCurrentDimension(
-                centerChunkX,
-                centerChunkZ,
+                center.x(),
+                center.z(),
                 GlobeAtlasSurveyWindowPayload.HELD_WINDOW_CHUNKS);
     }
 
